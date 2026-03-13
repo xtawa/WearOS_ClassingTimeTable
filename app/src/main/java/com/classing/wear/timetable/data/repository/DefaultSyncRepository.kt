@@ -25,6 +25,8 @@ class DefaultSyncRepository(
     private val conflictStrategy: ConflictStrategy = ConflictStrategy.LATEST_VERSION_WINS,
 ) : SyncRepository {
 
+    private val maxRetry = 2
+
     private val state = MutableStateFlow<SyncState>(SyncState.Idle)
 
     override fun observeSyncState(): Flow<SyncState> = state.asStateFlow()
@@ -39,52 +41,57 @@ class DefaultSyncRepository(
         state.value = SyncState.Syncing
 
         val currentMeta = syncMetadataDao.get() ?: defaultMetadata()
-        return try {
-            val payload = phoneSyncManager.requestFromPhone(mode, currentMeta.dataVersion)
-            val applyResult = payloadApplier.apply(payload, mode)
+        var lastError: Throwable? = null
+        repeat(maxRetry + 1) {
+            try {
+                val payload = phoneSyncManager.requestFromPhone(mode, currentMeta.dataVersion)
+                val applyResult = payloadApplier.apply(payload, mode)
 
-            // Conflict strategy hook: real app can branch on server conflict payload here.
-            val ack = phoneSyncManager.submitWatchChanges(
-                LocalChangeSet(
-                    mode = mode,
-                    localVersion = applyResult.dataVersion,
-                ),
-            )
+                // Conflict strategy hook: real app can branch on server conflict payload here.
+                val ack = phoneSyncManager.submitWatchChanges(
+                    LocalChangeSet(
+                        mode = mode,
+                        localVersion = applyResult.dataVersion,
+                    ),
+                )
 
-            val now = Instant.now()
-            val metadata = currentMeta.copy(
-                lastFullSyncAt = if (mode == SyncMode.FULL) now else currentMeta.lastFullSyncAt,
-                lastDeltaSyncAt = if (mode == SyncMode.DELTA) now else currentMeta.lastDeltaSyncAt,
-                lastSuccessAt = now,
-                lastErrorMessage = null,
-                dataVersion = maxOf(applyResult.dataVersion, ack.acceptedVersion),
-                pendingChanges = if (conflictStrategy == ConflictStrategy.PHONE_WINS) 0 else currentMeta.pendingChanges,
-            )
-            syncMetadataDao.upsert(metadata)
-
-            state.value = SyncState.Success(now)
-            SyncResult(
-                success = true,
-                syncedRecords = applyResult.recordsWritten,
-                conflictCount = ack.conflictCount,
-                message = "Sync completed with $conflictStrategy",
-            )
-        } catch (t: Throwable) {
-            val now = Instant.now()
-            syncMetadataDao.upsert(
-                currentMeta.copy(
-                    lastErrorMessage = t.message,
+                val now = Instant.now()
+                val metadata = currentMeta.copy(
+                    lastFullSyncAt = if (mode == SyncMode.FULL) now else currentMeta.lastFullSyncAt,
                     lastDeltaSyncAt = if (mode == SyncMode.DELTA) now else currentMeta.lastDeltaSyncAt,
-                ),
-            )
-            state.value = SyncState.Failed(t.message ?: "unknown error")
-            SyncResult(
-                success = false,
-                syncedRecords = 0,
-                conflictCount = 0,
-                message = t.message ?: "sync failed",
-            )
+                    lastSuccessAt = now,
+                    lastErrorMessage = null,
+                    dataVersion = maxOf(applyResult.dataVersion, ack.acceptedVersion),
+                    pendingChanges = if (conflictStrategy == ConflictStrategy.PHONE_WINS) 0 else currentMeta.pendingChanges,
+                )
+                syncMetadataDao.upsert(metadata)
+
+                state.value = SyncState.Success(now)
+                return SyncResult(
+                    success = true,
+                    syncedRecords = applyResult.recordsWritten,
+                    conflictCount = ack.conflictCount,
+                    message = "Sync completed with $conflictStrategy",
+                )
+            } catch (t: Throwable) {
+                lastError = t
+            }
         }
+
+        val now = Instant.now()
+        syncMetadataDao.upsert(
+            currentMeta.copy(
+                lastErrorMessage = lastError?.message,
+                lastDeltaSyncAt = if (mode == SyncMode.DELTA) now else currentMeta.lastDeltaSyncAt,
+            ),
+        )
+        state.value = SyncState.Failed(lastError?.message ?: "unknown error")
+        return SyncResult(
+            success = false,
+            syncedRecords = 0,
+            conflictCount = 0,
+            message = lastError?.message ?: "sync failed",
+        )
     }
 
     private fun defaultMetadata(): SyncMetadataEntity {
