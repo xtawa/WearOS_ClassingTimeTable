@@ -1,0 +1,110 @@
+﻿package com.classing.wear.timetable.ui.screen.search
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.domain.model.Course
+import com.classing.wear.timetable.ui.component.EmptyState
+import com.classing.wear.timetable.ui.component.screenPadding
+import com.classing.wear.timetable.ui.state.SearchUiState
+import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+
+@Composable
+fun SearchScreen(
+    state: SearchUiState,
+    onQueryChange: (String) -> Unit,
+    onCourseClick: (Long) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = screenPadding(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Text(text = "搜索课程", style = MaterialTheme.typography.titleSmall)
+        }
+
+        item {
+            OutlinedTextField(
+                value = state.query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("课程名/教师") },
+            )
+        }
+
+        when {
+            state.query.isBlank() -> item {
+                EmptyState(title = "输入关键词", subtitle = "例如: Android / 李老师")
+            }
+            state.results.isEmpty() -> item {
+                EmptyState(title = "未找到课程", subtitle = "试试更短关键词")
+            }
+            else -> {
+                items(state.results) { course ->
+                    CourseSearchItem(course = course, onClick = { onCourseClick(course.localId) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CourseSearchItem(course: Course, onClick: () -> Unit) {
+    Card(onClick = onClick) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(text = course.name, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = "${course.teacher} · ${course.classroom}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 220, heightDp = 220)
+@Composable
+private fun SearchPreview() {
+    ClassingTimetableTheme(useDynamicColor = false) {
+        SearchScreen(
+            state = SearchUiState(
+                query = "Android",
+                results = listOf(
+                    Course(
+                        localId = 1,
+                        remoteId = null,
+                        semesterId = 1,
+                        name = "Android 应用开发",
+                        teacher = "赵老师",
+                        classroom = "403",
+                        note = "",
+                        colorLabel = "teal",
+                        isFavorite = true,
+                        version = 1,
+                    ),
+                ),
+            ),
+            onQueryChange = {},
+            onCourseClick = {},
+        )
+    }
+}

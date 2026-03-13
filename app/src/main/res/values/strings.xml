@@ -1,0 +1,5 @@
+﻿<resources>
+    <string name="app_name">Classing Timetable</string>
+    <string name="sync_channel_name">课程同步</string>
+    <string name="reminder_channel_name">课程提醒</string>
+</resources>
