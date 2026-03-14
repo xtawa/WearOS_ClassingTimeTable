@@ -8,6 +8,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object TimeFormatters {
+    private val clockRangeRegex = Regex("""^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$""")
+
     private fun dateFormatter(): DateTimeFormatter {
         val locale = Locale.getDefault()
         return if (locale.language == "zh") {
@@ -34,6 +36,17 @@ object TimeFormatters {
 
     fun formatTimeRange(start: LocalDateTime, end: LocalDateTime): String {
         return "${start.format(timeFormatter())}-${end.format(timeFormatter())}"
+    }
+
+    fun formatSlotLabelAndTime(label: String, start: LocalDateTime, end: LocalDateTime): String {
+        val timeRange = formatTimeRange(start, end)
+        val trimmed = label.trim()
+        if (trimmed.isBlank()) return timeRange
+        val normalizedLabel = trimmed.replace(" ", "")
+        val normalizedRange = timeRange.replace(" ", "")
+        if (normalizedLabel == normalizedRange) return timeRange
+        if (clockRangeRegex.matches(trimmed)) return trimmed
+        return "$trimmed $timeRange"
     }
 
     fun formatCountdown(duration: Duration?): String {

@@ -79,8 +79,6 @@ import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
 import com.classing.shared.importer.ImportResult
 import com.classing.shared.importer.ScheduleImportAdapter
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -92,7 +90,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -113,9 +110,6 @@ private enum class WearSyncMode {
     WEARABLE_API,
     WEAROS_APP,
 }
-
-private const val CLASSING_NOTICE_URL = "https://api.rskiller.zcwww.cc/GetClassingNotice"
-private const val CLASSING_NOTICE_KEY = "A8bC9dE0fG1hI2jK"
 
 private data class LessonUi(
     val id: String,
@@ -1762,28 +1756,6 @@ private fun SettingsLayer(
 @Composable
 private fun AboutLayer(contentPadding: PaddingValues) {
     val uriHandler = LocalUriHandler.current
-    val coroutineScope = rememberCoroutineScope()
-    var noticeText by remember { mutableStateOf("") }
-    var noticeLoading by remember { mutableStateOf(false) }
-    var noticeError by remember { mutableStateOf<String?>(null) }
-
-    fun refreshNotice() {
-        coroutineScope.launch {
-            noticeLoading = true
-            noticeError = null
-            val result = fetchClassingNotice()
-            if (result.isSuccess) {
-                noticeText = result.getOrNull().orEmpty()
-            } else {
-                noticeError = result.exceptionOrNull()?.message
-            }
-            noticeLoading = false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        refreshNotice()
-    }
 
     Column(
         modifier = Modifier
@@ -1809,7 +1781,7 @@ private fun AboutLayer(contentPadding: PaddingValues) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
                     contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.size(56.dp),
                 )
             }
         }
@@ -1822,52 +1794,6 @@ private fun AboutLayer(contentPadding: PaddingValues) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(stringResource(R.string.settings_about_notice_title), fontWeight = FontWeight.SemiBold)
-                when {
-                    noticeLoading -> {
-                        Text(
-                            text = stringResource(R.string.settings_about_notice_loading),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-
-                    !noticeError.isNullOrBlank() -> {
-                        Text(
-                            text = stringResource(R.string.settings_about_notice_failed, noticeError.orEmpty()),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-
-                    noticeText.isBlank() -> {
-                        Text(
-                            text = stringResource(R.string.settings_about_notice_empty),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    else -> {
-                        Text(
-                            text = noticeText,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-                TextButton(onClick = { refreshNotice() }) {
-                    Text(stringResource(R.string.settings_about_notice_refresh))
-                }
-            }
-        }
         Card(
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -2064,86 +1990,6 @@ private suspend fun syncLessonsViaWearOsApp(
         source = WearDataLayerContracts.SOURCE_WEAROS_APP,
         allowDisconnectedQueue = true,
     )
-}
-
-private suspend fun fetchClassingNotice(): Result<String> = withContext(Dispatchers.IO) {
-    runCatching {
-        val postBody = "key=$CLASSING_NOTICE_KEY"
-        val connection = (URL(CLASSING_NOTICE_URL).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doOutput = true
-            connectTimeout = 8000
-            readTimeout = 8000
-            setRequestProperty("Accept", "application/json,text/plain,*/*")
-            setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-        }
-        try {
-            connection.outputStream.use { output ->
-                output.write(postBody.toByteArray(Charsets.UTF_8))
-                output.flush()
-            }
-            val responseCode = connection.responseCode
-            val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty().trim()
-            if (responseCode !in 200..299) {
-                throw IllegalStateException("HTTP $responseCode")
-            }
-            parseNoticePayload(response)
-        } finally {
-            connection.disconnect()
-        }
-    }
-}
-
-private fun parseNoticePayload(raw: String): String {
-    val content = raw.trim()
-    if (content.isBlank()) return ""
-
-    if (content.startsWith("{") && content.endsWith("}")) {
-        return runCatching { parseNoticeObject(JSONObject(content)) }.getOrDefault(content)
-    }
-
-    if (content.startsWith("[") && content.endsWith("]")) {
-        return runCatching { parseNoticeArray(JSONArray(content)) }.getOrDefault(content)
-    }
-
-    return content
-}
-
-private fun parseNoticeObject(json: JSONObject): String {
-    val preferredKeys = listOf("notice", "content", "message", "msg", "data", "result")
-    preferredKeys.forEach { key ->
-        if (!json.has(key) || json.isNull(key)) return@forEach
-        val parsed = parseNoticeValue(json.get(key))
-        if (parsed.isNotBlank()) return parsed
-    }
-
-    val keys = json.keys()
-    while (keys.hasNext()) {
-        val key = keys.next()
-        if (json.isNull(key)) continue
-        val parsed = parseNoticeValue(json.get(key))
-        if (parsed.isNotBlank()) return parsed
-    }
-    return ""
-}
-
-private fun parseNoticeArray(array: JSONArray): String {
-    for (index in 0 until array.length()) {
-        val value = array.opt(index) ?: continue
-        val parsed = parseNoticeValue(value)
-        if (parsed.isNotBlank()) return parsed
-    }
-    return ""
-}
-
-private fun parseNoticeValue(value: Any): String {
-    return when (value) {
-        is String -> value.trim()
-        is JSONObject -> parseNoticeObject(value)
-        is JSONArray -> parseNoticeArray(value)
-        else -> value.toString().trim()
-    }
 }
 
 private fun findWearOsCompanionInfo(context: Context): WearOsCompanionInfo? {

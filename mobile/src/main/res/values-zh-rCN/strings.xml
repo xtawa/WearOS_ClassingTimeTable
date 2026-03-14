@@ -1,5 +1,5 @@
 ﻿<resources>
-    <string name="app_name">Classing 课表</string>
+    <string name="app_name">Classing 课程表</string>
 
     <string name="layer_dashboard">课表</string>
     <string name="layer_week_view">周视图</string>

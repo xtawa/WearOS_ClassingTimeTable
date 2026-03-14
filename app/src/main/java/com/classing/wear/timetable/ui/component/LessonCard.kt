@@ -65,7 +65,11 @@ fun LessonCard(
             }
 
             Text(
-                text = "${lesson.timeSlot.label} ${TimeFormatters.formatTimeRange(lesson.startAt, lesson.endAt)}",
+                text = TimeFormatters.formatSlotLabelAndTime(
+                    label = lesson.timeSlot.label,
+                    start = lesson.startAt,
+                    end = lesson.endAt,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

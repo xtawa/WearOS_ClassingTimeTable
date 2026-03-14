@@ -15,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -38,6 +40,7 @@ fun SettingsScreen(
     onForceFullSync: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
+    val haptic = LocalHapticFeedback.current
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -58,11 +61,6 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        text = stringResource(R.string.settings_last_sync, state.syncMessage),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }
@@ -74,7 +72,10 @@ fun SettingsScreen(
                 PreferenceSwitchCard(
                     title = stringResource(R.string.settings_dynamic_color),
                     checked = state.preferences.dynamicColor,
-                    onCheckedChange = onToggleDynamicColor,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleDynamicColor(it)
+                    },
                 )
             }
 
@@ -82,7 +83,10 @@ fun SettingsScreen(
                 PreferenceSwitchCard(
                     title = stringResource(R.string.settings_reminder),
                     checked = state.preferences.remindersEnabled,
-                    onCheckedChange = onToggleReminder,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleReminder(it)
+                    },
                 )
             }
 
@@ -90,7 +94,10 @@ fun SettingsScreen(
                 PreferenceSwitchCard(
                     title = stringResource(R.string.settings_auto_sync),
                     checked = state.preferences.autoSync,
-                    onCheckedChange = onToggleAutoSync,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleAutoSync(it)
+                    },
                 )
             }
 
@@ -98,7 +105,10 @@ fun SettingsScreen(
                 PreferenceSwitchCard(
                     title = stringResource(R.string.settings_show_weekend),
                     checked = state.preferences.showWeekend,
-                    onCheckedChange = onToggleWeekend,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleWeekend(it)
+                    },
                 )
             }
 
@@ -106,12 +116,21 @@ fun SettingsScreen(
                 PreferenceSwitchCard(
                     title = stringResource(R.string.settings_show_completed_today),
                     checked = state.preferences.showCompletedToday,
-                    onCheckedChange = onToggleShowCompletedToday,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleShowCompletedToday(it)
+                    },
                 )
             }
 
             item {
-                Button(onClick = onForceFullSync, modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onForceFullSync()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(stringResource(R.string.settings_force_full_sync))
                 }
             }

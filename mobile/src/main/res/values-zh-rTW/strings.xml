@@ -1,5 +1,5 @@
 ﻿<resources>
-    <string name="app_name">Classing 課表</string>
+    <string name="app_name">Classing Time</string>
 
     <string name="layer_dashboard">課表</string>
     <string name="layer_week_view">週檢視</string>
