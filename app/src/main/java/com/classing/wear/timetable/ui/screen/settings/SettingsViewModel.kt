@@ -53,6 +53,10 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setShowWeekend(enabled) }
     }
 
+    fun toggleShowCompletedToday(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowCompletedToday(enabled) }
+    }
+
     fun forceFullSync() {
         viewModelScope.launch {
             _uiState.update { it.copy(syncMessage = WearI18n.syncRequesting()) }

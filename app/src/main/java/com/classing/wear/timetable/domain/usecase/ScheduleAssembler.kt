@@ -16,6 +16,7 @@ import com.classing.wear.timetable.domain.model.WeekSchedule
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.temporal.WeekFields
 
 class ScheduleAssembler {
     fun buildDayOccurrences(
@@ -34,7 +35,10 @@ class ScheduleAssembler {
         val slotMap = slots.associateBy { it.localId }
 
         val baseList = sessions
-            .filter { it.dayOfWeek == date.dayOfWeek && it.weekRule.contains(weekIndex) }
+            .filter {
+                it.dayOfWeek == date.dayOfWeek &&
+                    (it.weekRule.contains(weekIndex) || isLegacyMobileSession(it))
+            }
             .mapNotNull { session ->
                 val course = courseMap[session.courseId] ?: return@mapNotNull null
                 val slot = slotMap[session.timeSlotId] ?: return@mapNotNull null
@@ -98,7 +102,11 @@ class ScheduleAssembler {
         slots: List<TimeSlot>,
         exceptions: List<ScheduleException>,
     ): WeekSchedule {
-        val weekIndex = WeekCalculator.weekIndex(semester.startDate, weekStart)
+        val weekIndex = if (isMobileSyncSemester(semester, sessions)) {
+            weekStart.get(WeekFields.ISO.weekOfWeekBasedYear()).coerceAtLeast(1)
+        } else {
+            WeekCalculator.weekIndex(semester.startDate, weekStart)
+        }
         val days = (0..6).associate { offset ->
             val date = weekStart.plusDays(offset.toLong())
             date.dayOfWeek to buildDayOccurrences(
@@ -172,5 +180,15 @@ class ScheduleAssembler {
             startAt = startAt,
             endAt = endAt,
         )
+    }
+
+    // Compatibility for old mobile-synced rows that stored ISO week numbers.
+    private fun isLegacyMobileSession(session: CourseSession): Boolean {
+        return session.remoteId?.startsWith("mobile-session-") == true
+    }
+
+    private fun isMobileSyncSemester(semester: Semester, sessions: List<CourseSession>): Boolean {
+        if (semester.remoteId == "mobile-sync-semester") return true
+        return sessions.any { isLegacyMobileSession(it) }
     }
 }

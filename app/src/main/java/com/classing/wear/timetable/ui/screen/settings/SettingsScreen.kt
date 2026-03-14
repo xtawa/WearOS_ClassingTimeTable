@@ -34,6 +34,7 @@ fun SettingsScreen(
     onToggleReminder: (Boolean) -> Unit,
     onToggleAutoSync: (Boolean) -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
+    onToggleShowCompletedToday: (Boolean) -> Unit,
     onForceFullSync: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
@@ -102,6 +103,14 @@ fun SettingsScreen(
             }
 
             item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_show_completed_today),
+                    checked = state.preferences.showCompletedToday,
+                    onCheckedChange = onToggleShowCompletedToday,
+                )
+            }
+
+            item {
                 Button(onClick = onForceFullSync, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.settings_force_full_sync))
                 }
@@ -148,6 +157,7 @@ private fun SettingsScreenPreview() {
             onToggleReminder = {},
             onToggleAutoSync = {},
             onToggleWeekend = {},
+            onToggleShowCompletedToday = {},
             onForceFullSync = {},
         )
     }

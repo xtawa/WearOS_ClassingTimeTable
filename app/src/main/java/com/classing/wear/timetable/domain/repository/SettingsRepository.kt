@@ -7,6 +7,7 @@ data class UserPreferences(
     val remindersEnabled: Boolean = true,
     val autoSync: Boolean = true,
     val showWeekend: Boolean = true,
+    val showCompletedToday: Boolean = false,
 )
 
 interface SettingsRepository {
@@ -15,4 +16,5 @@ interface SettingsRepository {
     suspend fun setReminderEnabled(enabled: Boolean)
     suspend fun setAutoSync(enabled: Boolean)
     suspend fun setShowWeekend(enabled: Boolean)
+    suspend fun setShowCompletedToday(enabled: Boolean)
 }

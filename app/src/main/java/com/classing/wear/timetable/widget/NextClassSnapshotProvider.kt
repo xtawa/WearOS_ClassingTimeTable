@@ -11,6 +11,7 @@ import java.util.Locale
 data class NextClassSnapshot(
     val hasLesson: Boolean,
     val courseTitle: String,
+    val dateText: String,
     val timeText: String,
     val locationText: String,
     val shortComplicationText: String,
@@ -21,6 +22,8 @@ data class NextClassSnapshot(
 class NextClassSnapshotProvider(
     private val appContainer: AppContainer,
 ) {
+    private val dateFormatter = DateTimeFormatter.ofPattern("MM-dd EEE", Locale.getDefault())
+
     suspend fun loadSnapshot(): NextClassSnapshot {
         val today = appContainer.timeProvider.today()
         val next = appContainer.scheduleRepository.observeNextLesson(today).first()
@@ -30,6 +33,7 @@ class NextClassSnapshotProvider(
             return NextClassSnapshot(
                 hasLesson = false,
                 courseTitle = WearI18n.tileNoClassTitle(),
+                dateText = today.format(dateFormatter),
                 timeText = WearI18n.tileNoClassSubtitle(),
                 locationText = "",
                 shortComplicationText = WearI18n.complicationNoClassShortText(),
@@ -46,6 +50,7 @@ class NextClassSnapshotProvider(
         return NextClassSnapshot(
             hasLesson = true,
             courseTitle = lesson.course.name,
+            dateText = lesson.date.format(dateFormatter),
             timeText = timeRange,
             locationText = location,
             shortComplicationText = short,

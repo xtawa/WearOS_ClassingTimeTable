@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.classing.shared.sync.WearDataLayerContracts
 import com.classing.wear.timetable.ClassingTimetableApplication
+import com.classing.wear.timetable.core.time.WeekCalculator
 import com.classing.wear.timetable.data.sync.RemoteCourse
 import com.classing.wear.timetable.data.sync.RemoteException
 import com.classing.wear.timetable.data.sync.RemoteSchedulePayload
@@ -97,13 +98,19 @@ class MobileSyncListenerService : WearableListenerService() {
         val lessons = root.optJSONArray("lessons")
             ?: return ApplyResult(success = false, appliedLessonCount = 0, errorMessage = "Missing lessons array")
 
+        val today = LocalDate.now()
+        val currentWeekStart = WeekCalculator.weekStart(today)
+        val currentIsoWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear()).coerceIn(1, 53)
+        val semesterStart = currentWeekStart.minusWeeks((currentIsoWeek - 1).toLong())
+        val semesterTotalWeeks = 54
+
         val semesterRemoteId = "mobile-sync-semester"
         val semester = RemoteSemester(
             remoteId = semesterRemoteId,
             name = "Mobile Synced",
-            startDate = LocalDate.now().minusWeeks(1),
-            endDate = LocalDate.now().plusWeeks(20),
-            totalWeeks = 21,
+            startDate = semesterStart,
+            endDate = semesterStart.plusWeeks(semesterTotalWeeks.toLong()).minusDays(1),
+            totalWeeks = semesterTotalWeeks,
             isActive = true,
             version = System.currentTimeMillis(),
         )
@@ -147,15 +154,14 @@ class MobileSyncListenerService : WearableListenerService() {
                 version = System.currentTimeMillis(),
             )
 
-            val week = LocalDate.now().get(WeekFields.ISO.weekOfWeekBasedYear()).coerceAtLeast(1)
             sessions += RemoteSession(
                 remoteId = "mobile-session-$index",
                 semesterRemoteId = semesterRemoteId,
                 courseRemoteId = courseRemoteId,
                 dayOfWeek = dayOfWeek,
                 timeSlotRemoteId = slot.remoteId,
-                startWeek = week,
-                endWeek = week + 20,
+                startWeek = 1,
+                endWeek = semesterTotalWeeks,
                 weekParity = "ALL",
                 version = System.currentTimeMillis(),
             )

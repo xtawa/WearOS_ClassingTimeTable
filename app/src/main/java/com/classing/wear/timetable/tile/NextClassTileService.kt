@@ -56,6 +56,8 @@ class NextClassTileService : TileService() {
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
             .addContent(textElement(snapshot.courseTitle, 16f))
             .addContent(spacer(4f))
+            .addContent(textElement(snapshot.dateText, 12f))
+            .addContent(spacer(2f))
             .addContent(textElement(snapshot.timeText, 14f))
 
         if (snapshot.locationText.isNotBlank()) {

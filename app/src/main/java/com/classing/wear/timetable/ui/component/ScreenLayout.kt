@@ -10,8 +10,12 @@ import com.classing.wear.timetable.ui.theme.isRoundScreen
 
 @Composable
 fun screenPadding(): PaddingValues {
-    val horizontal = if (isRoundScreen()) 18.dp else 12.dp
-    return PaddingValues(horizontal = horizontal, vertical = 10.dp)
+    return if (isRoundScreen()) {
+        // Reserve extra safe area on round screens so first/last cards are not clipped.
+        PaddingValues(start = 20.dp, top = 30.dp, end = 20.dp, bottom = 36.dp)
+    } else {
+        PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+    }
 }
 
 fun Modifier.screenContentPadding(): Modifier = this

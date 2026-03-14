@@ -6,8 +6,10 @@ import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
+import com.classing.wear.timetable.domain.model.LessonStatus
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
+import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val scheduleRepository: ScheduleRepository,
+    private val settingsRepository: SettingsRepository,
     private val mobileSyncRequester: MobileSyncRequester,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
@@ -39,11 +42,17 @@ class HomeViewModel(
                 scheduleRepository.observeActiveSemester(),
                 scheduleRepository.observeTodayLessons(today),
                 scheduleRepository.observeNextLesson(today),
+                settingsRepository.observePreferences(),
                 syncState,
-            ) { semester, lessons, next, syncState ->
+            ) { semester, lessons, next, preferences, syncState ->
                 val weekLabel = semester?.let {
                     WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
                 } ?: WearI18n.semesterNotSet()
+                val visibleLessons = if (preferences.showCompletedToday) {
+                    lessons
+                } else {
+                    lessons.filter { it.status != LessonStatus.FINISHED }
+                }
 
                 HomeUiState(
                     isLoading = false,
@@ -52,7 +61,7 @@ class HomeViewModel(
                     weekLabel = weekLabel,
                     syncState = syncState,
                     nextLesson = next,
-                    todayLessons = lessons,
+                    todayLessons = visibleLessons,
                     errorMessage = (syncState as? SyncState.Failed)?.message,
                 )
             }.collect { state ->

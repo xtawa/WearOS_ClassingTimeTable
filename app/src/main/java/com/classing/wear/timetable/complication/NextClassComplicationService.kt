@@ -22,6 +22,7 @@ class NextClassComplicationService : SuspendingComplicationDataSourceService() {
         val preview = NextClassSnapshot(
             hasLesson = true,
             courseTitle = "Advanced Android",
+            dateText = "03-14 Fri",
             timeText = "09:00-10:40",
             locationText = "A-301",
             shortComplicationText = "09:00 Android",

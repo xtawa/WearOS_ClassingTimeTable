@@ -24,6 +24,7 @@ class DefaultSettingsRepository(
                 remindersEnabled = pref[KEY_REMINDER] ?: true,
                 autoSync = pref[KEY_AUTO_SYNC] ?: true,
                 showWeekend = pref[KEY_SHOW_WEEKEND] ?: true,
+                showCompletedToday = pref[KEY_SHOW_COMPLETED_TODAY] ?: false,
             )
         }
     }
@@ -44,10 +45,15 @@ class DefaultSettingsRepository(
         dataStore.edit { it[KEY_SHOW_WEEKEND] = enabled }
     }
 
+    override suspend fun setShowCompletedToday(enabled: Boolean) {
+        dataStore.edit { it[KEY_SHOW_COMPLETED_TODAY] = enabled }
+    }
+
     companion object {
         private val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         private val KEY_REMINDER = booleanPreferencesKey("reminder_enabled")
         private val KEY_AUTO_SYNC = booleanPreferencesKey("auto_sync")
         private val KEY_SHOW_WEEKEND = booleanPreferencesKey("show_weekend")
+        private val KEY_SHOW_COMPLETED_TODAY = booleanPreferencesKey("show_completed_today")
     }
 }

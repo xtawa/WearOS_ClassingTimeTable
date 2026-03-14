@@ -38,6 +38,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                     initializer {
                         HomeViewModel(
                             scheduleRepository = appContainer.scheduleRepository,
+                            settingsRepository = appContainer.settingsRepository,
                             mobileSyncRequester = appContainer.mobileSyncRequester,
                             timeProvider = appContainer.timeProvider,
                         )
@@ -132,6 +133,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                 onToggleReminder = vm::toggleReminder,
                 onToggleAutoSync = vm::toggleAutoSync,
                 onToggleWeekend = vm::toggleWeekend,
+                onToggleShowCompletedToday = vm::toggleShowCompletedToday,
                 onForceFullSync = vm::forceFullSync,
             )
         }

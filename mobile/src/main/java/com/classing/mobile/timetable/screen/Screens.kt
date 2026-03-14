@@ -7,6 +7,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,7 +28,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,8 +54,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -101,6 +106,11 @@ private enum class ChangeScope {
 private enum class WearSyncMode {
     WEARABLE_API,
     WEAROS_APP,
+}
+
+private enum class SettingsSubPage {
+    Main,
+    About,
 }
 
 private data class LessonUi(
@@ -1591,6 +1601,8 @@ private fun SettingsLayer(
     onRefreshWearStatus: () -> Unit,
     onManualWearSync: () -> Unit,
 ) {
+    var subPage by remember { mutableStateOf(SettingsSubPage.Main) }
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1600,143 +1612,249 @@ private fun SettingsLayer(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Card {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        if (subPage == SettingsSubPage.About) {
+            Text(
+                stringResource(R.string.settings_about_page_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            TextButton(onClick = { subPage = SettingsSubPage.Main }) {
+                Text(stringResource(R.string.settings_about_back_button))
+            }
+            Card {
                 Column {
-                    Text(stringResource(R.string.settings_show_weekend_title), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_show_weekend_desc), style = MaterialTheme.typography.bodySmall)
-                }
-                Switch(checked = showWeekend, onCheckedChange = onToggleWeekend)
-            }
-        }
-        Card {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(stringResource(R.string.settings_reminder_toggle_title), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_reminder_toggle_desc), style = MaterialTheme.typography.bodySmall)
-                }
-                Switch(checked = reminderEnabled, onCheckedChange = onToggleReminder)
-            }
-        }
-        Card {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.settings_reminder_lead_title, reminderMinutes), fontWeight = FontWeight.SemiBold)
-                Slider(
-                    value = reminderMinutes.toFloat(),
-                    onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
-                    valueRange = 5f..60f,
-                )
-            }
-        }
-        Card {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.settings_backup_title), fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.settings_backup_desc), style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onExportBackup) {
-                        Text(stringResource(R.string.settings_backup_button))
-                    }
-                    Button(onClick = onRestoreBackup) {
-                        Text(stringResource(R.string.settings_restore_button))
-                    }
-                }
-                Text(
-                    text = stringResource(R.string.settings_restore_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Card {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.settings_wear_comm_title), fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.settings_wear_comm_desc), style = MaterialTheme.typography.bodySmall)
-                Text(
-                    text = stringResource(R.string.settings_wear_sync_mode_label),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = wearSyncMode == WearSyncMode.WEARABLE_API,
-                        onClick = { onWearSyncModeChange(WearSyncMode.WEARABLE_API) },
-                        label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        contentDescription = stringResource(R.string.app_name),
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .size(64.dp),
                     )
-                    FilterChip(
-                        selected = wearSyncMode == WearSyncMode.WEAROS_APP,
-                        onClick = { onWearSyncModeChange(WearSyncMode.WEAROS_APP) },
-                        label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
                 }
-                Text(
-                    text = stringResource(R.string.settings_wear_connection_label, wearConnectionMessage),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_wear_sync_label, wearSyncMessage),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onRefreshWearStatus) {
-                        Text(stringResource(R.string.settings_wear_refresh_button))
+            }
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(stringResource(R.string.settings_about_links_title), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = stringResource(R.string.settings_about_official_site),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable {
+                            runCatching { uriHandler.openUri("https://lyxyy.notion.site/classing") }
+                        },
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_about_help_support),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable {
+                            runCatching { uriHandler.openUri("https://lyxyy.notion.site/classinghelp") }
+                        },
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_about_contact_us),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable {
+                            runCatching { uriHandler.openUri("mailto:zeromostia@gmail.com") }
+                        },
+                    )
+                }
+            }
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(stringResource(R.string.settings_about_team_title), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_about_team_members), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Text(
+                text = stringResource(R.string.settings_about_ai_notice),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 24.dp),
+            )
+        } else {
+            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Card {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(stringResource(R.string.settings_show_weekend_title), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.settings_show_weekend_desc), style = MaterialTheme.typography.bodySmall)
                     }
-                    Button(onClick = onManualWearSync, enabled = !wearSyncInProgress) {
-                        Text(
-                            if (wearSyncInProgress) {
-                                stringResource(R.string.settings_wear_syncing_button)
-                            } else {
-                                stringResource(R.string.settings_wear_sync_button)
-                            },
+                    Switch(checked = showWeekend, onCheckedChange = onToggleWeekend)
+                }
+            }
+            Card {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(stringResource(R.string.settings_reminder_toggle_title), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.settings_reminder_toggle_desc), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = reminderEnabled, onCheckedChange = onToggleReminder)
+                }
+            }
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.settings_reminder_lead_title, reminderMinutes), fontWeight = FontWeight.SemiBold)
+                    Slider(
+                        value = reminderMinutes.toFloat(),
+                        onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
+                        valueRange = 5f..60f,
+                    )
+                }
+            }
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.settings_backup_title), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_backup_desc), style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onExportBackup) {
+                            Text(stringResource(R.string.settings_backup_button))
+                        }
+                        Button(onClick = onRestoreBackup) {
+                            Text(stringResource(R.string.settings_restore_button))
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.settings_restore_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.settings_wear_comm_title), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_wear_comm_desc), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(R.string.settings_wear_sync_mode_label),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = wearSyncMode == WearSyncMode.WEARABLE_API,
+                            onClick = { onWearSyncModeChange(WearSyncMode.WEARABLE_API) },
+                            label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
+                        )
+                        FilterChip(
+                            selected = wearSyncMode == WearSyncMode.WEAROS_APP,
+                            onClick = { onWearSyncModeChange(WearSyncMode.WEAROS_APP) },
+                            label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
                         )
                     }
+                    Text(
+                        text = stringResource(R.string.settings_wear_connection_label, wearConnectionMessage),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_wear_sync_label, wearSyncMessage),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onRefreshWearStatus) {
+                            Text(stringResource(R.string.settings_wear_refresh_button))
+                        }
+                        Button(onClick = onManualWearSync, enabled = !wearSyncInProgress) {
+                            Text(
+                                if (wearSyncInProgress) {
+                                    stringResource(R.string.settings_wear_syncing_button)
+                                } else {
+                                    stringResource(R.string.settings_wear_sync_button)
+                                },
+                            )
+                        }
+                    }
                 }
             }
-        }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.settings_danger_title), fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.settings_danger_desc), style = MaterialTheme.typography.bodySmall)
-                Button(
-                    onClick = onClearAllSchedules,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                    ),
+            Card {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(R.string.settings_danger_clear_button))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(stringResource(R.string.settings_about_entry_title), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(R.string.settings_about_entry_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { subPage = SettingsSubPage.About }) {
+                        Text(stringResource(R.string.settings_about_entry_button))
+                    }
+                }
+            }
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.settings_danger_title), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_danger_desc), style = MaterialTheme.typography.bodySmall)
+                    Button(
+                        onClick = onClearAllSchedules,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                    ) {
+                        Text(stringResource(R.string.settings_danger_clear_button))
+                    }
                 }
             }
         }

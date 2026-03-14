@@ -65,6 +65,7 @@
     <string name="settings_reminder">Class reminders</string>
     <string name="settings_auto_sync">Auto sync</string>
     <string name="settings_show_weekend">Show weekend</string>
+    <string name="settings_show_completed_today">Show finished classes today</string>
     <string name="settings_last_sync">Last sync: %1$s</string>
     <string name="settings_force_full_sync">Sync now</string>
     <string name="tile_next_class_label">Classing Next Class Tile</string>
