@@ -90,6 +90,46 @@ object WearI18n {
         }
     }
 
+    fun tileNoClassTitle(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "今日无后续课程"
+            Lang.ZH_TW -> "今日無後續課程"
+            Lang.EN -> "No more classes"
+        }
+    }
+
+    fun tileNoClassSubtitle(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "请稍后同步或查看下周课表"
+            Lang.ZH_TW -> "請稍後同步或查看下週課表"
+            Lang.EN -> "Sync later or check weekly schedule"
+        }
+    }
+
+    fun locationUnknown(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "地点待定"
+            Lang.ZH_TW -> "地點待定"
+            Lang.EN -> "Location TBD"
+        }
+    }
+
+    fun complicationNextClassTitle(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "下节课"
+            Lang.ZH_TW -> "下節課"
+            Lang.EN -> "Next class"
+        }
+    }
+
+    fun complicationNoClassLongText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "暂无后续课程"
+            Lang.ZH_TW -> "暫無後續課程"
+            Lang.EN -> "No upcoming class"
+        }
+    }
+
     fun complicationNoClassShortText(): String {
         return when (currentLang()) {
             Lang.ZH_CN -> "无课"

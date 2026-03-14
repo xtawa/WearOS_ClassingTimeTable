@@ -1,4 +1,4 @@
-﻿package com.classing.mobile.timetable.reminder
+﻿package com.xtawa.classingtime.reminder
 
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -27,3 +27,4 @@ object ReminderScheduler {
         )
     }
 }
+

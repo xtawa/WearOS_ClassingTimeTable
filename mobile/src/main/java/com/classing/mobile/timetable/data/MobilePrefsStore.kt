@@ -1,4 +1,4 @@
-﻿package com.classing.mobile.timetable.data
+﻿package com.xtawa.classingtime.data
 
 import android.content.Context
 import org.json.JSONArray
@@ -20,6 +20,7 @@ data class MobileSettings(
     val reminderMinutes: Int,
     val rawIcs: String,
     val parseMessage: String,
+    val wearSyncMode: String,
 )
 
 object MobilePrefsStore {
@@ -29,6 +30,7 @@ object MobilePrefsStore {
     private const val KEY_REMINDER_MINUTES = "reminder_minutes"
     private const val KEY_RAW_ICS = "raw_ics"
     private const val KEY_PARSE_MESSAGE = "parse_message"
+    private const val KEY_WEAR_SYNC_MODE = "wear_sync_mode"
     private const val KEY_LESSONS_JSON = "lessons_json"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -41,6 +43,7 @@ object MobilePrefsStore {
             reminderMinutes = p.getInt(KEY_REMINDER_MINUTES, 15).coerceIn(5, 60),
             rawIcs = p.getString(KEY_RAW_ICS, "") ?: "",
             parseMessage = p.getString(KEY_PARSE_MESSAGE, "") ?: "",
+            wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "WEARABLE_API") ?: "WEARABLE_API",
         )
     }
 
@@ -51,6 +54,7 @@ object MobilePrefsStore {
             .putInt(KEY_REMINDER_MINUTES, settings.reminderMinutes.coerceIn(5, 60))
             .putString(KEY_RAW_ICS, settings.rawIcs)
             .putString(KEY_PARSE_MESSAGE, settings.parseMessage)
+            .putString(KEY_WEAR_SYNC_MODE, settings.wearSyncMode)
             .apply()
     }
 
@@ -97,3 +101,4 @@ object MobilePrefsStore {
         prefs(context).edit().putString(KEY_LESSONS_JSON, arr.toString()).apply()
     }
 }
+

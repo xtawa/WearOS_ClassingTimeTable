@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.classing.mobile.timetable"
+    namespace = "com.xtawa.classingtime"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.classing.mobile.timetable"
+        applicationId = "com.xtawa.classingtime"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -57,6 +57,8 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

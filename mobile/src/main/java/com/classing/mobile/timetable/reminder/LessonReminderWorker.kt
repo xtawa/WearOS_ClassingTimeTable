@@ -1,4 +1,4 @@
-﻿package com.classing.mobile.timetable.reminder
+﻿package com.xtawa.classingtime.reminder
 
 import android.Manifest
 import android.app.NotificationChannel
@@ -12,9 +12,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.classing.mobile.timetable.MainActivity
-import com.classing.mobile.timetable.R
-import com.classing.mobile.timetable.data.MobilePrefsStore
+import com.xtawa.classingtime.MainActivity
+import com.xtawa.classingtime.R
+import com.xtawa.classingtime.data.MobilePrefsStore
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -159,3 +159,4 @@ class LessonReminderWorker(
         private const val KEY_NOTIFIED_KEYS = "reminder_notified_keys"
     }
 }
+
