@@ -188,14 +188,6 @@
     <string name="danger_clear_success_message">All timetable data deleted.</string>
     <string name="danger_clear_canceled_message">Delete-all canceled.</string>
 
-    <string name="seed_course_1">Software Architecture</string>
-    <string name="seed_course_2">Data Structures</string>
-    <string name="seed_course_3">Computer Networks</string>
-    <string name="seed_course_4">Linear Algebra</string>
-    <string name="seed_course_5">Operating Systems</string>
-    <string name="seed_note_lecture">Lecture</string>
-    <string name="seed_note_lab">Lab</string>
-    <string name="seed_note_chapter_6">Chapter 6</string>
 
     <string name="weekday_mon">Mon</string>
     <string name="weekday_tue">Tue</string>

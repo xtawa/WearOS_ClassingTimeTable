@@ -63,8 +63,10 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
 import com.xtawa.classingtime.reminder.ReminderScheduler
+import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
+import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
 import com.google.android.gms.wearable.Wearable
 import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
@@ -165,7 +167,7 @@ fun MobileTimetableScreen() {
     var pendingRestoreWarnings by remember { mutableStateOf<List<String>>(emptyList()) }
     var showRestoreConfirmDialog by remember { mutableStateOf(false) }
     var showClearAllConfirmDialog by remember { mutableStateOf(false) }
-    var lessons by remember { mutableStateOf(seedLessons(context)) }
+    var lessons by remember { mutableStateOf(emptyList<LessonUi>()) }
     var wearConnectedCount by remember { mutableIntStateOf(0) }
     var wearConnectionMessage by remember { mutableStateOf(context.getString(R.string.wear_connection_checking)) }
     var wearSyncMessage by remember {
@@ -416,7 +418,7 @@ fun MobileTimetableScreen() {
         if (storedLessons.isNotEmpty()) {
             lessons = storedLessons.map { it.toLessonUi() }
         } else {
-            lessons = seedLessons(context)
+            lessons = emptyList()
             persistLessons()
         }
 
@@ -1857,17 +1859,8 @@ private suspend fun syncLessonsToWear(
     lessons: List<LessonUi>,
     zoneId: ZoneId,
 ): Result<Int> {
-    return runCatching {
-        val nodes = Wearable.getNodeClient(context).connectedNodes.await()
-        if (nodes.isEmpty()) error("No connected Wear device")
-        val payload = buildWearSyncPayload(lessons, zoneId).toByteArray(Charsets.UTF_8)
-        nodes.forEach { node ->
-            Wearable.getMessageClient(context)
-                .sendMessage(node.id, WEAR_SYNC_PATH, payload)
-                .await()
-        }
-        nodes.size
-    }
+    val persisted = lessons.map { it.toPersistedLesson() }
+    return WearDataLayerSyncPublisher.publishLessonsSnapshot(context, persisted, zoneId)
 }
 
 private fun syncLessonsViaWearOsApp(
@@ -1995,8 +1988,8 @@ private fun formatWearSyncAckMessage(context: Context, ack: WearSyncAckInfo): St
 
 private fun resolveWearSyncSourceLabel(context: Context, source: String): String {
     return when (source.uppercase()) {
-        "WEARABLE_API" -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
-        "WEAROS_APP" -> context.getString(R.string.settings_wear_sync_mode_wearos_app)
+        WearDataLayerContracts.SOURCE_WEARABLE_API -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
+        WearDataLayerContracts.SOURCE_WEAROS_APP -> context.getString(R.string.settings_wear_sync_mode_wearos_app)
         else -> source.ifBlank { "unknown" }
     }
 }
@@ -2235,16 +2228,6 @@ private fun CourseDraft.toLessonUi(index: Int, zoneId: ZoneId, untitled: String)
     )
 }
 
-private fun seedLessons(context: Context): List<LessonUi> {
-    return listOf(
-        LessonUi("1", context.getString(R.string.seed_course_1), "A-301", context.getString(R.string.seed_note_lecture), DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(10, 40)),
-        LessonUi("2", context.getString(R.string.seed_course_2), "B-210", context.getString(R.string.seed_note_lab), DayOfWeek.MONDAY, LocalTime.of(14, 0), LocalTime.of(15, 40)),
-        LessonUi("3", context.getString(R.string.seed_course_3), "A-518", null, DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(11, 40)),
-        LessonUi("4", context.getString(R.string.seed_course_4), "B-202", null, DayOfWeek.WEDNESDAY, LocalTime.of(8, 0), LocalTime.of(9, 40)),
-        LessonUi("5", context.getString(R.string.seed_course_5), "A-402", context.getString(R.string.seed_note_chapter_6), DayOfWeek.FRIDAY, LocalTime.of(13, 30), LocalTime.of(15, 10)),
-    )
-}
-
 private fun parseManualTime(raw: String): LocalTime? {
     val trimmed = raw.trim()
     if (trimmed.isBlank()) return null
@@ -2280,7 +2263,6 @@ private fun MobileLayer.labelRes(): Int {
     }
 }
 
-private const val WEAR_SYNC_PATH = "/classing/mobile_sync_lessons"
 private val clockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 800)

@@ -42,6 +42,30 @@ object WearI18n {
         }
     }
 
+    fun syncRequesting(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "正在请求手机同步"
+            Lang.ZH_TW -> "正在請求手機同步"
+            Lang.EN -> "Requesting phone sync"
+        }
+    }
+
+    fun syncRequestSent(nodeCount: Int): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "已发送同步请求（$nodeCount 台手机）"
+            Lang.ZH_TW -> "已傳送同步請求（$nodeCount 台手機）"
+            Lang.EN -> "Sync request sent ($nodeCount phone)"
+        }
+    }
+
+    fun syncRequestFailed(message: String): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "同步请求失败: $message"
+            Lang.ZH_TW -> "同步請求失敗: $message"
+            Lang.EN -> "Sync request failed: $message"
+        }
+    }
+
     fun courseNotFound(): String {
         return when (currentLang()) {
             Lang.ZH_CN -> "课程不存在"

@@ -6,34 +6,32 @@ import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
-import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
-import com.classing.wear.timetable.domain.repository.SyncRepository
+import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.HomeUiState
+import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val scheduleRepository: ScheduleRepository,
-    private val syncRepository: SyncRepository,
+    private val mobileSyncRequester: MobileSyncRequester,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
+    private val syncState = MutableStateFlow<SyncState>(SyncState.Idle)
 
     init {
         val today = timeProvider.today()
 
         viewModelScope.launch {
-            // First run: guarantee visible data, then try a delta sync.
-            scheduleRepository.seedDemoDataIfNeeded()
-            syncRepository.sync(SyncMode.DELTA)
+            requestSyncFromPhone()
         }
 
         viewModelScope.launch {
@@ -41,7 +39,7 @@ class HomeViewModel(
                 scheduleRepository.observeActiveSemester(),
                 scheduleRepository.observeTodayLessons(today),
                 scheduleRepository.observeNextLesson(today),
-                syncRepository.observeSyncState(),
+                syncState,
             ) { semester, lessons, next, syncState ->
                 val weekLabel = semester?.let {
                     WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
@@ -49,6 +47,7 @@ class HomeViewModel(
 
                 HomeUiState(
                     isLoading = false,
+                    hasSchedule = semester != null,
                     dateLabel = TimeFormatters.formatDate(today),
                     weekLabel = weekLabel,
                     syncState = syncState,
@@ -64,8 +63,17 @@ class HomeViewModel(
 
     fun retrySync() {
         viewModelScope.launch {
-            _uiState.update { it.copy(syncState = SyncState.Syncing, errorMessage = null) }
-            syncRepository.sync(SyncMode.DELTA)
+            requestSyncFromPhone()
+        }
+    }
+
+    private suspend fun requestSyncFromPhone() {
+        syncState.value = SyncState.Syncing
+        val result = mobileSyncRequester.requestSyncFromPhone()
+        syncState.value = if (result.isSuccess) {
+            SyncState.Success(Instant.now())
+        } else {
+            SyncState.Failed(result.exceptionOrNull()?.message ?: "sync request failed")
         }
     }
 }

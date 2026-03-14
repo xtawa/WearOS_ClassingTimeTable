@@ -6,10 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.WeekSchedule
@@ -39,8 +41,11 @@ fun WeekScreen(
     onCurrentWeek: () -> Unit,
     onLessonClick: (Long) -> Unit,
 ) {
-    LazyColumn(
+    val listState = rememberScalingLazyListState()
+
+    ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = screenPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -63,7 +68,7 @@ fun WeekScreen(
             }
             else -> {
                 items(state.schedule.days.entries.toList()) { entry ->
-                    DayScheduleCard(
+                    DayScheduleSection(
                         day = entry.key,
                         lessons = entry.value,
                         onLessonClick = onLessonClick,
@@ -81,49 +86,63 @@ private fun WeekHeader(
     onNextWeek: () -> Unit,
     onCurrentWeek: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(text = label, style = MaterialTheme.typography.titleSmall)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Button(modifier = Modifier.weight(1f), onClick = onPreviousWeek) { Text(stringResource(R.string.week_action_prev)) }
-            Button(modifier = Modifier.weight(1f), onClick = onCurrentWeek) { Text(stringResource(R.string.week_action_current)) }
-            Button(modifier = Modifier.weight(1f), onClick = onNextWeek) { Text(stringResource(R.string.week_action_next)) }
+            Text(text = label, style = MaterialTheme.typography.titleSmall)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Button(modifier = Modifier.weight(1f), onClick = onPreviousWeek) {
+                    Text(stringResource(R.string.week_action_prev))
+                }
+                Button(modifier = Modifier.weight(1f), onClick = onNextWeek) {
+                    Text(stringResource(R.string.week_action_next))
+                }
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onCurrentWeek,
+            ) {
+                Text(stringResource(R.string.week_action_current))
+            }
         }
     }
 }
 
 @Composable
-private fun DayScheduleCard(
+private fun DayScheduleSection(
     day: DayOfWeek,
     lessons: List<LessonOccurrence>,
     onLessonClick: (Long) -> Unit,
 ) {
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = stringResource(R.string.week_day_lesson_count, dayLabel(day), lessons.size),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (lessons.isEmpty()) {
             Text(
-                text = stringResource(R.string.week_day_lesson_count, dayLabel(day), lessons.size),
-                style = MaterialTheme.typography.titleSmall,
+                text = stringResource(R.string.week_no_lessons),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (lessons.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.week_no_lessons),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        } else {
+            lessons.forEach { lesson ->
+                LessonCard(
+                    lesson = lesson,
+                    onClick = { onLessonClick(lesson.course.localId) },
                 )
-            } else {
-                lessons.forEach { lesson ->
-                    LessonCard(
-                        lesson = lesson,
-                        onClick = { onLessonClick(lesson.course.localId) },
-                    )
-                }
             }
         }
     }
@@ -147,7 +166,7 @@ private fun WeekScreenPreview() {
 
     ClassingTimetableTheme(useDynamicColor = false) {
         WeekScreen(
-            state = WeekUiState(isLoading = false, weekLabel = "第3周", schedule = week),
+            state = WeekUiState(isLoading = false, weekLabel = "Week 3", schedule = week),
             onPreviousWeek = {},
             onNextWeek = {},
             onCurrentWeek = {},
@@ -155,3 +174,4 @@ private fun WeekScreenPreview() {
         )
     }
 }
+

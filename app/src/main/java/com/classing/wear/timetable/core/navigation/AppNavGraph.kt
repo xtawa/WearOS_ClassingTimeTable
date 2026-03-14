@@ -38,7 +38,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                     initializer {
                         HomeViewModel(
                             scheduleRepository = appContainer.scheduleRepository,
-                            syncRepository = appContainer.syncRepository,
+                            mobileSyncRequester = appContainer.mobileSyncRequester,
                             timeProvider = appContainer.timeProvider,
                         )
                     }
@@ -120,7 +120,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                     initializer {
                         SettingsViewModel(
                             settingsRepository = appContainer.settingsRepository,
-                            syncRepository = appContainer.syncRepository,
+                            mobileSyncRequester = appContainer.mobileSyncRequester,
                         )
                     }
                 },

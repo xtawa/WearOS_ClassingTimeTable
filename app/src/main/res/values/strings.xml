@@ -19,12 +19,21 @@
     <string name="home_action_this_week">Week</string>
     <string name="home_action_search">Search</string>
     <string name="home_action_settings">Settings</string>
+    <string name="home_action_sync_now">Sync now</string>
+    <string name="home_action_this_week_subtitle">View weekly timeline</string>
+    <string name="home_action_search_subtitle">Find courses quickly</string>
+    <string name="home_action_settings_subtitle">Sync and preferences</string>
     <string name="home_next_lesson_title">Next class</string>
     <string name="home_next_lesson_empty">No more classes today</string>
+    <string name="home_next_lesson_no_data">No timetable data yet</string>
+    <string name="home_onboarding_title">Import courses from phone first</string>
+    <string name="home_onboarding_subtitle">Wear no longer uses built-in demo courses on first launch.</string>
+    <string name="home_quick_actions_title">Quick actions</string>
+    <string name="home_today_section_title">Today</string>
 
     <string name="week_loading">Loading weekly schedule</string>
     <string name="week_empty_title">No schedule yet</string>
-    <string name="week_empty_subtitle">Sync or import courses first</string>
+    <string name="week_empty_subtitle">Import on phone and sync to Wear first</string>
     <string name="week_action_prev">Prev</string>
     <string name="week_action_current">Current</string>
     <string name="week_action_next">Next</string>
@@ -33,6 +42,7 @@
 
     <string name="search_title">Search courses</string>
     <string name="search_input_label">Course or teacher</string>
+    <string name="search_hint_watch_input">Short keywords work best on watch input.</string>
     <string name="search_empty_input_title">Enter keywords</string>
     <string name="search_empty_input_subtitle">For example: Android / Alice</string>
     <string name="search_empty_result_title">No courses found</string>

@@ -188,14 +188,6 @@
     <string name="danger_clear_success_message">已删除全部课表数据。</string>
     <string name="danger_clear_canceled_message">已取消删除全部课表。</string>
 
-    <string name="seed_course_1">软件体系结构</string>
-    <string name="seed_course_2">数据结构</string>
-    <string name="seed_course_3">计算机网络</string>
-    <string name="seed_course_4">线性代数</string>
-    <string name="seed_course_5">操作系统</string>
-    <string name="seed_note_lecture">讲授</string>
-    <string name="seed_note_lab">实验</string>
-    <string name="seed_note_chapter_6">第 6 章</string>
 
     <string name="weekday_mon">周一</string>
     <string name="weekday_tue">周二</string>

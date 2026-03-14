@@ -57,4 +57,14 @@
     <string name="settings_show_weekend">顯示週末</string>
     <string name="settings_last_sync">最近同步: %1$s</string>
     <string name="settings_force_full_sync">立即完整同步</string>
+    <string name="home_action_sync_now">立即同步</string>
+    <string name="home_action_this_week_subtitle">檢視本週時間軸</string>
+    <string name="home_action_search_subtitle">快速搜尋課程</string>
+    <string name="home_action_settings_subtitle">同步與偏好設定</string>
+    <string name="home_next_lesson_no_data">尚無課表資料</string>
+    <string name="home_onboarding_title">請先在手機端匯入課程</string>
+    <string name="home_onboarding_subtitle">首次使用不再提供預設示例課程。</string>
+    <string name="home_quick_actions_title">快捷操作</string>
+    <string name="home_today_section_title">今天</string>
+    <string name="search_hint_watch_input">手錶輸入建議使用短關鍵字。</string>
 </resources>

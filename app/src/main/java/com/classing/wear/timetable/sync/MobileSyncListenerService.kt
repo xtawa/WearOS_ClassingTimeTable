@@ -2,6 +2,7 @@ package com.classing.wear.timetable.sync
 
 import android.content.Context
 import android.util.Log
+import com.classing.shared.sync.WearDataLayerContracts
 import com.classing.wear.timetable.ClassingTimetableApplication
 import com.classing.wear.timetable.data.sync.RemoteCourse
 import com.classing.wear.timetable.data.sync.RemoteException
@@ -12,13 +13,17 @@ import com.classing.wear.timetable.data.sync.RemoteTimeSlot
 import com.classing.wear.timetable.data.sync.SyncPayloadApplier
 import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.widget.WearSurfaceUpdateRequester
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.WeekFields
-import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +32,7 @@ import org.json.JSONObject
 
 class MobileSyncListenerService : WearableListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private data class ApplyResult(
         val success: Boolean,
         val appliedLessonCount: Int,
@@ -34,20 +40,32 @@ class MobileSyncListenerService : WearableListenerService() {
     )
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
-        when (messageEvent.path) {
-            PATH_SYNC_LESSONS -> handleLessonSync(messageEvent)
-            else -> super.onMessageReceived(messageEvent)
+        if (messageEvent.path != WearDataLayerContracts.PATH_SYNC_LESSONS) {
+            super.onMessageReceived(messageEvent)
+            return
+        }
+
+        val payload = runCatching { String(messageEvent.data, StandardCharsets.UTF_8) }.getOrNull().orEmpty()
+        handleLessonSync(payload = payload, sourceNodeId = messageEvent.sourceNodeId)
+    }
+
+    override fun onDataChanged(dataEvents: DataEventBuffer) {
+        dataEvents.forEach { event ->
+            if (event.type != DataEvent.TYPE_CHANGED) return@forEach
+            if (event.dataItem.uri.path != WearDataLayerContracts.PATH_SYNC_LESSONS) return@forEach
+
+            val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+            val payload = dataMap.getString(WearDataLayerContracts.KEY_PAYLOAD).orEmpty()
+            val sourceNodeId = event.dataItem.uri.host
+            handleLessonSync(payload = payload, sourceNodeId = sourceNodeId)
         }
     }
 
-    private fun handleLessonSync(messageEvent: MessageEvent) {
-        val bytes = messageEvent.data
-        val payload = runCatching { String(bytes, StandardCharsets.UTF_8) }.getOrNull().orEmpty()
+    private fun handleLessonSync(payload: String, sourceNodeId: String?) {
         if (payload.isBlank()) return
 
         val parsed = runCatching { JSONObject(payload) }.getOrNull() ?: return
         val lessonCount = parsed.optJSONArray("lessons")?.length() ?: 0
-        val sourceNodeId = messageEvent.sourceNodeId
 
         serviceScope.launch {
             val result = applyPayloadToWearDb(parsed)
@@ -57,6 +75,7 @@ class MobileSyncListenerService : WearableListenerService() {
                 .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
                 .putBoolean(KEY_LAST_APPLY_SUCCESS, result.success)
                 .apply()
+
             WearSurfaceUpdateRequester.requestAll(applicationContext)
             sendSyncAckToMobile(sourceNodeId, lessonCount, result)
             Log.i(TAG, "Received mobile sync payload with $lessonCount lessons, applied=${result.success}")
@@ -66,7 +85,6 @@ class MobileSyncListenerService : WearableListenerService() {
     private suspend fun applyPayloadToWearDb(root: JSONObject): ApplyResult {
         val lessons = root.optJSONArray("lessons")
             ?: return ApplyResult(success = false, appliedLessonCount = 0, errorMessage = "Missing lessons array")
-        if (lessons.length() == 0) return ApplyResult(success = false, appliedLessonCount = 0, errorMessage = "No lessons in payload")
 
         val semesterRemoteId = "mobile-sync-semester"
         val semester = RemoteSemester(
@@ -132,10 +150,6 @@ class MobileSyncListenerService : WearableListenerService() {
             )
         }
 
-        if (courses.isEmpty() || sessions.isEmpty()) {
-            return ApplyResult(success = false, appliedLessonCount = 0, errorMessage = "No valid lessons to apply")
-        }
-
         val payload = RemoteSchedulePayload(
             dataVersion = System.currentTimeMillis(),
             semesters = listOf(semester),
@@ -157,28 +171,49 @@ class MobileSyncListenerService : WearableListenerService() {
     }
 
     private fun sendSyncAckToMobile(
-        nodeId: String,
+        sourceNodeId: String?,
         requestedLessonCount: Int,
         result: ApplyResult,
     ) {
-        val ack = JSONObject()
-            .put("success", result.success)
-            .put("requestedLessonCount", requestedLessonCount)
-            .put("appliedLessonCount", result.appliedLessonCount)
-            .put("syncedAt", System.currentTimeMillis())
-            .put("source", "WEARABLE_API")
-            .put("error", result.errorMessage.orEmpty())
-            .toString()
-            .toByteArray(StandardCharsets.UTF_8)
+        val syncedAt = System.currentTimeMillis()
+        val source = WearDataLayerContracts.SOURCE_WEARABLE_API
 
-        Wearable.getMessageClient(this)
-            .sendMessage(nodeId, PATH_SYNC_ACK, ack)
-            .addOnSuccessListener {
-                Log.i(TAG, "Sent sync ACK to mobile node=$nodeId")
-            }
+        val dataRequest = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_ACK).apply {
+            dataMap.putBoolean(WearDataLayerContracts.KEY_SUCCESS, result.success)
+            dataMap.putInt(WearDataLayerContracts.KEY_REQUESTED_LESSON_COUNT, requestedLessonCount)
+            dataMap.putInt(WearDataLayerContracts.KEY_APPLIED_LESSON_COUNT, result.appliedLessonCount)
+            dataMap.putLong(WearDataLayerContracts.KEY_SYNCED_AT, syncedAt)
+            dataMap.putString(WearDataLayerContracts.KEY_SOURCE, source)
+            dataMap.putString(WearDataLayerContracts.KEY_ERROR, result.errorMessage.orEmpty())
+            dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, syncedAt)
+        }.asPutDataRequest().setUrgent()
+
+        Wearable.getDataClient(this)
+            .putDataItem(dataRequest)
             .addOnFailureListener { error ->
-                Log.w(TAG, "Failed to send sync ACK: ${error.message}")
+                Log.w(TAG, "Failed to publish ACK DataItem: ${error.message}")
             }
+
+        if (!sourceNodeId.isNullOrBlank()) {
+            val ack = JSONObject()
+                .put(WearDataLayerContracts.KEY_SUCCESS, result.success)
+                .put(WearDataLayerContracts.KEY_REQUESTED_LESSON_COUNT, requestedLessonCount)
+                .put(WearDataLayerContracts.KEY_APPLIED_LESSON_COUNT, result.appliedLessonCount)
+                .put(WearDataLayerContracts.KEY_SYNCED_AT, syncedAt)
+                .put(WearDataLayerContracts.KEY_SOURCE, source)
+                .put(WearDataLayerContracts.KEY_ERROR, result.errorMessage.orEmpty())
+                .toString()
+                .toByteArray(StandardCharsets.UTF_8)
+
+            Wearable.getMessageClient(this)
+                .sendMessage(sourceNodeId, WearDataLayerContracts.PATH_SYNC_ACK, ack)
+                .addOnSuccessListener {
+                    Log.i(TAG, "Sent sync ACK message to mobile node=$sourceNodeId")
+                }
+                .addOnFailureListener { error ->
+                    Log.w(TAG, "Failed to send sync ACK message: ${error.message}")
+                }
+        }
     }
 
     private fun parseTime(raw: String): LocalTime? {
@@ -190,8 +225,6 @@ class MobileSyncListenerService : WearableListenerService() {
 
     companion object {
         private const val TAG = "MobileSyncListener"
-        const val PATH_SYNC_LESSONS = "/classing/mobile_sync_lessons"
-        const val PATH_SYNC_ACK = "/classing/wear_sync_ack"
 
         private const val PREF_NAME = "wear_mobile_sync"
         private const val KEY_LAST_PAYLOAD = "last_payload"

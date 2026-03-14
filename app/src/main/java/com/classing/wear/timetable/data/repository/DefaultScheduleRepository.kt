@@ -8,8 +8,6 @@ import com.classing.wear.timetable.data.local.dao.ScheduleExceptionDao
 import com.classing.wear.timetable.data.local.dao.SemesterDao
 import com.classing.wear.timetable.data.local.dao.TimeSlotDao
 import com.classing.wear.timetable.data.mapper.asDomain
-import com.classing.wear.timetable.data.mock.MockRemotePayloadFactory
-import com.classing.wear.timetable.data.sync.SyncPayloadApplier
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.NextLessonHint
@@ -21,7 +19,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
@@ -31,7 +28,6 @@ class DefaultScheduleRepository(
     private val sessionDao: CourseSessionDao,
     private val slotDao: TimeSlotDao,
     private val exceptionDao: ScheduleExceptionDao,
-    private val payloadApplier: SyncPayloadApplier,
     private val assembler: ScheduleAssembler = ScheduleAssembler(),
     private val timeProvider: TimeProvider = SystemTimeProvider(),
 ) : ScheduleRepository {
@@ -106,15 +102,6 @@ class DefaultScheduleRepository(
 
     override fun observeCourseDetail(courseId: Long): Flow<Course?> {
         return courseDao.observeById(courseId).map { it?.asDomain() }
-    }
-
-    override suspend fun seedDemoDataIfNeeded() {
-        if (semesterDao.observeActiveSemester().first() != null) return
-
-        payloadApplier.apply(
-            payload = MockRemotePayloadFactory.fullPayload(),
-            mode = com.classing.wear.timetable.domain.model.SyncMode.FULL,
-        )
     }
 
     private fun observeScheduleContext(semester: Semester): Flow<ScheduleContext> {

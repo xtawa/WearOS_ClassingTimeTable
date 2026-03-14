@@ -14,6 +14,7 @@ import com.classing.wear.timetable.data.sync.SyncPayloadApplier
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.domain.repository.SyncRepository
+import com.classing.wear.timetable.sync.MobileSyncRequester
 
 interface AppContainer {
     val database: AppDatabase
@@ -21,13 +22,16 @@ interface AppContainer {
     val scheduleRepository: ScheduleRepository
     val syncRepository: SyncRepository
     val settingsRepository: SettingsRepository
+    val mobileSyncRequester: MobileSyncRequester
 }
 
 class DefaultAppContainer(
     context: Context,
 ) : AppContainer {
+    private val appContext = context.applicationContext
+
     override val database: AppDatabase = Room.databaseBuilder(
-        context,
+        appContext,
         AppDatabase::class.java,
         "classing_timetable.db",
     )
@@ -46,7 +50,6 @@ class DefaultAppContainer(
         sessionDao = database.courseSessionDao(),
         slotDao = database.timeSlotDao(),
         exceptionDao = database.scheduleExceptionDao(),
-        payloadApplier = syncPayloadApplier,
         timeProvider = timeProvider,
     )
 
@@ -56,5 +59,7 @@ class DefaultAppContainer(
         payloadApplier = syncPayloadApplier,
     )
 
-    override val settingsRepository: SettingsRepository = DefaultSettingsRepository(context)
+    override val settingsRepository: SettingsRepository = DefaultSettingsRepository(appContext)
+
+    override val mobileSyncRequester: MobileSyncRequester = MobileSyncRequester(appContext)
 }

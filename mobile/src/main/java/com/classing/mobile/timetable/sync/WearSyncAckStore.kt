@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.sync
 
 import android.content.Context
+import com.classing.shared.sync.WearDataLayerContracts
 import org.json.JSONObject
 
 data class WearSyncAckInfo(
@@ -12,7 +13,7 @@ data class WearSyncAckInfo(
 )
 
 object WearSyncAckStore {
-    const val PATH_SYNC_ACK = "/classing/wear_sync_ack"
+    const val PATH_SYNC_ACK = WearDataLayerContracts.PATH_SYNC_ACK
 
     private const val PREF_NAME = "mobile_wear_sync_ack"
     private const val KEY_SYNCED_AT = "synced_at"

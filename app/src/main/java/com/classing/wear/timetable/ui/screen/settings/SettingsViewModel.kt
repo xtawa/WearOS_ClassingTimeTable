@@ -3,34 +3,35 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.classing.wear.timetable.core.i18n.WearI18n
-import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.domain.repository.SettingsRepository
-import com.classing.wear.timetable.domain.repository.SyncRepository
+import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
-    private val syncRepository: SyncRepository,
+    private val mobileSyncRequester: MobileSyncRequester,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
+    private val syncMessage = MutableStateFlow(WearI18n.syncNever())
 
     init {
         viewModelScope.launch {
             combine(
                 settingsRepository.observePreferences(),
-                syncRepository.observeSyncMetadata(),
-            ) { pref, syncMeta ->
+                syncMessage,
+            ) { pref, syncText ->
                 SettingsUiState(
                     isLoading = false,
                     preferences = pref,
-                    syncMessage = syncMeta.lastSuccessAt?.toString() ?: WearI18n.syncNever(),
+                    syncMessage = syncText,
                 )
             }.collect { _uiState.value = it }
         }
@@ -54,7 +55,13 @@ class SettingsViewModel(
 
     fun forceFullSync() {
         viewModelScope.launch {
-            syncRepository.sync(SyncMode.FULL)
+            _uiState.update { it.copy(syncMessage = WearI18n.syncRequesting()) }
+            val result = mobileSyncRequester.requestSyncFromPhone()
+            syncMessage.value = if (result.isSuccess) {
+                WearI18n.syncRequestSent(result.getOrDefault(0))
+            } else {
+                WearI18n.syncRequestFailed(result.exceptionOrNull()?.message ?: "unknown")
+            }
         }
     }
 }

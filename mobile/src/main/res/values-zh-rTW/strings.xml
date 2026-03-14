@@ -188,14 +188,6 @@
     <string name="danger_clear_success_message">已刪除全部課表資料。</string>
     <string name="danger_clear_canceled_message">已取消刪除全部課表。</string>
 
-    <string name="seed_course_1">軟體架構</string>
-    <string name="seed_course_2">資料結構</string>
-    <string name="seed_course_3">計算機網路</string>
-    <string name="seed_course_4">線性代數</string>
-    <string name="seed_course_5">作業系統</string>
-    <string name="seed_note_lecture">講授</string>
-    <string name="seed_note_lab">實驗</string>
-    <string name="seed_note_chapter_6">第 6 章</string>
 
     <string name="weekday_mon">週一</string>
     <string name="weekday_tue">週二</string>

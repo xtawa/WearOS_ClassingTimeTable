@@ -29,6 +29,7 @@ class SyncPayloadApplier(
         val slotIdMap = mutableMapOf<String, Long>()
         val courseIdMap = mutableMapOf<String, Long>()
         val sessionIdMap = mutableMapOf<String, Long>()
+        var activeSemesterId: Long? = null
 
         // Keep a remoteId -> localId cache so cross-table references can be resolved in one transaction.
         suspend fun resolveSemesterId(remoteId: String): Long? {
@@ -77,8 +78,11 @@ class SyncPayloadApplier(
                     existing.localId
                 }
                 semesterIdMap[remote.remoteId] = id
+                if (remote.isActive) activeSemesterId = id
                 total += 1
             }
+
+            activeSemesterId?.let { semesterDao.setActiveSemester(it) }
 
             if (mode == SyncMode.FULL) {
                 semesterIdMap.values.forEach { semesterId ->

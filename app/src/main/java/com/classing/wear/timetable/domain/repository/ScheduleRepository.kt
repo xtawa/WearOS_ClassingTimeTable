@@ -15,5 +15,4 @@ interface ScheduleRepository {
     fun observeNextLesson(nowDate: LocalDate): Flow<NextLessonHint>
     fun searchCourses(keyword: String): Flow<List<Course>>
     fun observeCourseDetail(courseId: Long): Flow<Course?>
-    suspend fun seedDemoDataIfNeeded()
 }

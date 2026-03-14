@@ -1,15 +1,12 @@
-﻿package com.classing.wear.timetable.worker
+package com.classing.wear.timetable.worker
 
 import android.content.Context
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.classing.wear.timetable.ClassingTimetableApplication
-import com.classing.wear.timetable.domain.model.SyncMode
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(
@@ -19,9 +16,15 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         val app = applicationContext as ClassingTimetableApplication
-        val repository = app.appContainer.syncRepository
-        val result = repository.sync(SyncMode.DELTA)
-        return if (result.success) Result.success() else Result.retry()
+        val result = app.appContainer.mobileSyncRequester.requestSyncFromPhone()
+        if (result.isSuccess) return Result.success()
+
+        val message = result.exceptionOrNull()?.message.orEmpty()
+        return if (message.contains("No connected phone", ignoreCase = true)) {
+            Result.success()
+        } else {
+            Result.retry()
+        }
     }
 
     companion object {
@@ -29,11 +32,6 @@ class SyncWorker(
 
         fun enqueuePeriodic(context: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(30, TimeUnit.MINUTES)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build(),
-                )
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(

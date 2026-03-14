@@ -5,9 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -16,9 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.ui.component.EmptyState
+import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.SearchUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
@@ -29,13 +32,34 @@ fun SearchScreen(
     onQueryChange: (String) -> Unit,
     onCourseClick: (Long) -> Unit,
 ) {
-    LazyColumn(
+    val listState = rememberScalingLazyListState()
+
+    ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = screenPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text(text = stringResource(R.string.search_title), style = MaterialTheme.typography.titleSmall)
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(text = stringResource(R.string.search_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = stringResource(R.string.search_hint_watch_input),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         item {
@@ -55,6 +79,9 @@ fun SearchScreen(
                     subtitle = stringResource(R.string.search_empty_input_subtitle),
                 )
             }
+            state.isLoading -> item {
+                LoadingState(message = stringResource(R.string.common_loading))
+            }
             state.results.isEmpty() -> item {
                 EmptyState(
                     title = stringResource(R.string.search_empty_result_title),
@@ -72,7 +99,12 @@ fun SearchScreen(
 
 @Composable
 private fun CourseSearchItem(course: Course, onClick: () -> Unit) {
-    Card(onClick = onClick) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,8 +133,8 @@ private fun SearchPreview() {
                         localId = 1,
                         remoteId = null,
                         semesterId = 1,
-                        name = "Android 应用开发",
-                        teacher = "赵老师",
+                        name = "Android App Development",
+                        teacher = "Alice",
                         classroom = "403",
                         note = "",
                         colorLabel = "teal",
@@ -116,3 +148,4 @@ private fun SearchPreview() {
         )
     }
 }
+

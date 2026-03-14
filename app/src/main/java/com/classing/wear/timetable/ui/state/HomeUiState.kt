@@ -6,6 +6,7 @@ import com.classing.wear.timetable.domain.model.SyncState
 
 data class HomeUiState(
     val isLoading: Boolean = true,
+    val hasSchedule: Boolean = false,
     val dateLabel: String = "",
     val weekLabel: String = "",
     val syncState: SyncState = SyncState.Idle,
