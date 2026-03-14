@@ -13,8 +13,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.screenPadding
@@ -33,7 +35,7 @@ fun SearchScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text(text = "搜索课程", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(R.string.search_title), style = MaterialTheme.typography.titleSmall)
         }
 
         item {
@@ -42,16 +44,22 @@ fun SearchScreen(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("课程名/教师") },
+                label = { Text(stringResource(R.string.search_input_label)) },
             )
         }
 
         when {
             state.query.isBlank() -> item {
-                EmptyState(title = "输入关键词", subtitle = "例如: Android / 李老师")
+                EmptyState(
+                    title = stringResource(R.string.search_empty_input_title),
+                    subtitle = stringResource(R.string.search_empty_input_subtitle),
+                )
             }
             state.results.isEmpty() -> item {
-                EmptyState(title = "未找到课程", subtitle = "试试更短关键词")
+                EmptyState(
+                    title = stringResource(R.string.search_empty_result_title),
+                    subtitle = stringResource(R.string.search_empty_result_subtitle),
+                )
             }
             else -> {
                 items(state.results) { course ->

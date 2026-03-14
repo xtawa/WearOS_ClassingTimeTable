@@ -3,6 +3,7 @@
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
@@ -39,9 +40,10 @@ class CourseDetailViewModel(
                     isLoading = false,
                     course = course,
                     upcomingLessons = lessons,
-                    errorMessage = if (course == null) "课程不存在" else null,
+                    errorMessage = if (course == null) WearI18n.courseNotFound() else null,
                 )
             }.collect { _uiState.value = it }
         }
     }
 }
+

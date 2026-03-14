@@ -1,0 +1,60 @@
+<resources>
+    <string name="app_name">Classing 课程表</string>
+    <string name="sync_channel_name">课程同步</string>
+    <string name="reminder_channel_name">上课提醒</string>
+    <string name="reminder_notification_title">上课提醒</string>
+    <string name="reminder_notification_default_content">课程即将开始</string>
+
+    <string name="common_loading">加载中...</string>
+    <string name="common_load_failed">加载失败</string>
+    <string name="common_retry">重试</string>
+
+    <string name="home_loading_today_courses">正在加载今日课程</string>
+    <string name="home_empty_today_title">今日无课</string>
+    <string name="home_empty_today_subtitle">抬腕休息一下，记得看下周安排</string>
+    <string name="home_sync_idle">待同步</string>
+    <string name="home_sync_syncing">同步中</string>
+    <string name="home_sync_success">已同步</string>
+    <string name="home_sync_failed">同步失败</string>
+    <string name="home_action_this_week">本周</string>
+    <string name="home_action_search">搜索</string>
+    <string name="home_action_settings">设置</string>
+    <string name="home_next_lesson_title">下一节课</string>
+    <string name="home_next_lesson_empty">今日没有后续课程</string>
+
+    <string name="week_loading">正在加载周课表</string>
+    <string name="week_empty_title">暂无课表</string>
+    <string name="week_empty_subtitle">请先同步或导入课程</string>
+    <string name="week_action_prev">上周</string>
+    <string name="week_action_current">本周</string>
+    <string name="week_action_next">下周</string>
+    <string name="week_day_lesson_count">%1$s（%2$d节）</string>
+    <string name="week_no_lessons">无课</string>
+
+    <string name="search_title">搜索课程</string>
+    <string name="search_input_label">课程名/教师</string>
+    <string name="search_empty_input_title">输入关键词</string>
+    <string name="search_empty_input_subtitle">例如: Android / 李老师</string>
+    <string name="search_empty_result_title">未找到课程</string>
+    <string name="search_empty_result_subtitle">试试更短关键词</string>
+
+    <string name="detail_title">课程详情</string>
+    <string name="detail_back">返回</string>
+    <string name="detail_loading">正在加载课程</string>
+    <string name="detail_course_not_found_title">课程不存在</string>
+    <string name="detail_course_not_found_subtitle">可能已被删除</string>
+    <string name="detail_no_schedule_title">本周无排课</string>
+    <string name="detail_no_schedule_subtitle">检查单双周或周次规则</string>
+    <string name="detail_teacher">教师: %1$s</string>
+    <string name="detail_location">地点: %1$s</string>
+    <string name="detail_note">备注: %1$s</string>
+    <string name="detail_note_empty">暂无</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_dynamic_color">动态配色</string>
+    <string name="settings_reminder">上课提醒</string>
+    <string name="settings_auto_sync">自动同步</string>
+    <string name="settings_show_weekend">显示周末</string>
+    <string name="settings_last_sync">最近同步: %1$s</string>
+    <string name="settings_force_full_sync">立即全量同步</string>
+</resources>

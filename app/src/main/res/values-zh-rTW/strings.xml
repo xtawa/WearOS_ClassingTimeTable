@@ -1,0 +1,60 @@
+<resources>
+    <string name="app_name">Classing 課表</string>
+    <string name="sync_channel_name">課程同步</string>
+    <string name="reminder_channel_name">上課提醒</string>
+    <string name="reminder_notification_title">上課提醒</string>
+    <string name="reminder_notification_default_content">課程即將開始</string>
+
+    <string name="common_loading">載入中...</string>
+    <string name="common_load_failed">載入失敗</string>
+    <string name="common_retry">重試</string>
+
+    <string name="home_loading_today_courses">正在載入今日課程</string>
+    <string name="home_empty_today_title">今日無課</string>
+    <string name="home_empty_today_subtitle">抬腕休息一下，記得看下週安排</string>
+    <string name="home_sync_idle">待同步</string>
+    <string name="home_sync_syncing">同步中</string>
+    <string name="home_sync_success">已同步</string>
+    <string name="home_sync_failed">同步失敗</string>
+    <string name="home_action_this_week">本週</string>
+    <string name="home_action_search">搜尋</string>
+    <string name="home_action_settings">設定</string>
+    <string name="home_next_lesson_title">下一節課</string>
+    <string name="home_next_lesson_empty">今日沒有後續課程</string>
+
+    <string name="week_loading">正在載入週課表</string>
+    <string name="week_empty_title">暫無課表</string>
+    <string name="week_empty_subtitle">請先同步或匯入課程</string>
+    <string name="week_action_prev">上週</string>
+    <string name="week_action_current">本週</string>
+    <string name="week_action_next">下週</string>
+    <string name="week_day_lesson_count">%1$s（%2$d節）</string>
+    <string name="week_no_lessons">無課</string>
+
+    <string name="search_title">搜尋課程</string>
+    <string name="search_input_label">課程名/教師</string>
+    <string name="search_empty_input_title">輸入關鍵字</string>
+    <string name="search_empty_input_subtitle">例如: Android / 李老師</string>
+    <string name="search_empty_result_title">找不到課程</string>
+    <string name="search_empty_result_subtitle">試試更短關鍵字</string>
+
+    <string name="detail_title">課程詳情</string>
+    <string name="detail_back">返回</string>
+    <string name="detail_loading">正在載入課程</string>
+    <string name="detail_course_not_found_title">課程不存在</string>
+    <string name="detail_course_not_found_subtitle">可能已被刪除</string>
+    <string name="detail_no_schedule_title">本週無排課</string>
+    <string name="detail_no_schedule_subtitle">檢查單雙週或週次規則</string>
+    <string name="detail_teacher">教師: %1$s</string>
+    <string name="detail_location">地點: %1$s</string>
+    <string name="detail_note">備註: %1$s</string>
+    <string name="detail_note_empty">暫無</string>
+
+    <string name="settings_title">設定</string>
+    <string name="settings_dynamic_color">動態配色</string>
+    <string name="settings_reminder">上課提醒</string>
+    <string name="settings_auto_sync">自動同步</string>
+    <string name="settings_show_weekend">顯示週末</string>
+    <string name="settings_last_sync">最近同步: %1$s</string>
+    <string name="settings_force_full_sync">立即完整同步</string>
+</resources>

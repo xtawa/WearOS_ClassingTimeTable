@@ -1,3 +1,81 @@
-<resources>
+﻿<resources>
     <string name="app_name">Classing Mobile</string>
+
+    <string name="layer_dashboard">Timetable</string>
+    <string name="layer_week_view">Week</string>
+    <string name="layer_import">Import</string>
+    <string name="layer_settings">Settings</string>
+
+    <string name="initial_parse_message">Paste ICS content and tap "Parse &amp; Import".</string>
+    <string name="message_reminder_enabled">Class reminders enabled.</string>
+    <string name="message_notification_permission_missing">Notification permission denied. Class reminders are off.</string>
+    <string name="loading_message">Loading timetable...</string>
+
+    <string name="screen_title">Class Timetable</string>
+    <string name="screen_subtitle">Daily/weekly view, ICS import, and reminder settings.</string>
+
+    <string name="message_input_cleared">Input cleared.</string>
+    <string name="message_reminder_disabled">Class reminders disabled.</string>
+
+    <string name="overview_title">Overview</string>
+    <string name="overview_total_count">Total classes: %1$d</string>
+    <string name="overview_selected_day_count">Selected: %1$s | Classes: %2$d</string>
+
+    <string name="day_filter_title">By Day</string>
+    <string name="day_chip_label">%1$s (%2$d)</string>
+    <string name="today_classes_title">Today\'s Classes</string>
+    <string name="no_classes_today">No classes for this day.</string>
+
+    <string name="day_header_title">%1$s (%2$d)</string>
+    <string name="no_classes">No classes</string>
+    <string name="time_range_text">%1$s-%2$s</string>
+
+    <string name="import_title">iCalendar (ICS) Import</string>
+    <string name="import_input_label">Paste ICS content</string>
+    <string name="import_button_parse">Parse &amp; Import</string>
+    <string name="import_button_sample">Load Sample</string>
+    <string name="import_button_clear">Clear</string>
+
+    <string name="status_title">Status</string>
+    <string name="status_warning_prefix">Notice: %1$s</string>
+    <string name="import_preview_title">Import Preview (%1$d)</string>
+
+    <string name="untitled_course">Untitled Course</string>
+    <string name="no_location">No location</string>
+    <string name="one_time_schedule">One-time event</string>
+
+    <string name="settings_title">Display &amp; Reminder</string>
+    <string name="settings_show_weekend_title">Show weekend</string>
+    <string name="settings_show_weekend_desc">Include Saturday and Sunday in timetable.</string>
+    <string name="settings_reminder_toggle_title">Class reminders</string>
+    <string name="settings_reminder_toggle_desc">Notify before class starts.</string>
+    <string name="settings_reminder_lead_title">Lead time: %1$d min</string>
+
+    <string name="empty_input_message">Input is empty.</string>
+    <string name="parse_success_message">Parsed successfully. Imported %1$d classes.</string>
+    <string name="parse_partial_message">Partially parsed. Imported %1$d classes, ignored %2$d malformed lines.</string>
+    <string name="parse_failure_message">Parse failed: %1$s</string>
+
+    <string name="seed_course_1">Software Architecture</string>
+    <string name="seed_course_2">Data Structures</string>
+    <string name="seed_course_3">Computer Networks</string>
+    <string name="seed_course_4">Linear Algebra</string>
+    <string name="seed_course_5">Operating Systems</string>
+    <string name="seed_note_lecture">Lecture</string>
+    <string name="seed_note_lab">Lab</string>
+    <string name="seed_note_chapter_6">Chapter 6</string>
+
+    <string name="weekday_mon">Mon</string>
+    <string name="weekday_tue">Tue</string>
+    <string name="weekday_wed">Wed</string>
+    <string name="weekday_thu">Thu</string>
+    <string name="weekday_fri">Fri</string>
+    <string name="weekday_sat">Sat</string>
+    <string name="weekday_sun">Sun</string>
+
+    <string name="reminder_channel_name">Class reminders</string>
+    <string name="reminder_channel_description">Notifications before class starts.</string>
+    <string name="reminder_notification_title">Class reminder: %1$s</string>
+    <string name="reminder_notification_body_with_location">Starts in %1$d min · %2$s · %3$s</string>
+    <string name="reminder_notification_body_no_location">Starts in %1$d min · %2$s</string>
 </resources>

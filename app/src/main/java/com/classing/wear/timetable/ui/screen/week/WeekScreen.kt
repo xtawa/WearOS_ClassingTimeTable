@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -15,8 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.WeekSchedule
 import com.classing.wear.timetable.ui.PreviewSamples
@@ -27,6 +28,8 @@ import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.WeekUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun WeekScreen(
@@ -51,9 +54,12 @@ fun WeekScreen(
         }
 
         when {
-            state.isLoading -> item { LoadingState(message = "正在加载周课表") }
+            state.isLoading -> item { LoadingState(message = stringResource(R.string.week_loading)) }
             state.schedule.days.isEmpty() -> item {
-                EmptyState(title = "暂无课表", subtitle = "请先同步或导入课程")
+                EmptyState(
+                    title = stringResource(R.string.week_empty_title),
+                    subtitle = stringResource(R.string.week_empty_subtitle),
+                )
             }
             else -> {
                 items(state.schedule.days.entries.toList()) { entry ->
@@ -81,9 +87,9 @@ private fun WeekHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Button(modifier = Modifier.weight(1f), onClick = onPreviousWeek) { Text("上周") }
-            Button(modifier = Modifier.weight(1f), onClick = onCurrentWeek) { Text("本周") }
-            Button(modifier = Modifier.weight(1f), onClick = onNextWeek) { Text("下周") }
+            Button(modifier = Modifier.weight(1f), onClick = onPreviousWeek) { Text(stringResource(R.string.week_action_prev)) }
+            Button(modifier = Modifier.weight(1f), onClick = onCurrentWeek) { Text(stringResource(R.string.week_action_current)) }
+            Button(modifier = Modifier.weight(1f), onClick = onNextWeek) { Text(stringResource(R.string.week_action_next)) }
         }
     }
 }
@@ -101,10 +107,13 @@ private fun DayScheduleCard(
                 .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(text = "${dayLabel(day)} (${lessons.size}节)", style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = stringResource(R.string.week_day_lesson_count, dayLabel(day), lessons.size),
+                style = MaterialTheme.typography.titleSmall,
+            )
             if (lessons.isEmpty()) {
                 Text(
-                    text = "无课",
+                    text = stringResource(R.string.week_no_lessons),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -121,15 +130,7 @@ private fun DayScheduleCard(
 }
 
 private fun dayLabel(day: DayOfWeek): String {
-    return when (day) {
-        DayOfWeek.MONDAY -> "周一"
-        DayOfWeek.TUESDAY -> "周二"
-        DayOfWeek.WEDNESDAY -> "周三"
-        DayOfWeek.THURSDAY -> "周四"
-        DayOfWeek.FRIDAY -> "周五"
-        DayOfWeek.SATURDAY -> "周六"
-        DayOfWeek.SUNDAY -> "周日"
-    }
+    return day.getDisplayName(TextStyle.SHORT, Locale.getDefault())
 }
 
 @Preview(showBackground = true, widthDp = 220, heightDp = 220)

@@ -2,6 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
@@ -32,7 +33,7 @@ class WeekViewModel(
                 .collect { schedule ->
                     _uiState.value = WeekUiState(
                         isLoading = false,
-                        weekLabel = "第${schedule.weekIndex}周",
+                        weekLabel = WearI18n.weekLabel(schedule.weekIndex),
                         schedule = schedule,
                         errorMessage = null,
                     )
@@ -52,3 +53,4 @@ class WeekViewModel(
         selectedWeekStart.value = WeekCalculator.weekStart(timeProvider.today())
     }
 }
+

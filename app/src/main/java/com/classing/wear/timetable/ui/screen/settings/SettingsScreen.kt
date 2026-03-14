@@ -15,8 +15,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.ui.component.screenPadding
@@ -37,12 +39,12 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text(text = "设置", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.titleSmall)
         }
 
         item {
             PreferenceSwitchCard(
-                title = "动态配色",
+                title = stringResource(R.string.settings_dynamic_color),
                 checked = state.preferences.dynamicColor,
                 onCheckedChange = onToggleDynamicColor,
             )
@@ -50,7 +52,7 @@ fun SettingsScreen(
 
         item {
             PreferenceSwitchCard(
-                title = "上课提醒",
+                title = stringResource(R.string.settings_reminder),
                 checked = state.preferences.remindersEnabled,
                 onCheckedChange = onToggleReminder,
             )
@@ -58,7 +60,7 @@ fun SettingsScreen(
 
         item {
             PreferenceSwitchCard(
-                title = "自动同步",
+                title = stringResource(R.string.settings_auto_sync),
                 checked = state.preferences.autoSync,
                 onCheckedChange = onToggleAutoSync,
             )
@@ -66,7 +68,7 @@ fun SettingsScreen(
 
         item {
             PreferenceSwitchCard(
-                title = "显示周末",
+                title = stringResource(R.string.settings_show_weekend),
                 checked = state.preferences.showWeekend,
                 onCheckedChange = onToggleWeekend,
             )
@@ -80,9 +82,12 @@ fun SettingsScreen(
                         .padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(text = "最近同步: ${state.syncMessage}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(R.string.settings_last_sync, state.syncMessage),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     Button(onClick = onForceFullSync, modifier = Modifier.fillMaxWidth()) {
-                        Text("立即全量同步")
+                        Text(stringResource(R.string.settings_force_full_sync))
                     }
                 }
             }

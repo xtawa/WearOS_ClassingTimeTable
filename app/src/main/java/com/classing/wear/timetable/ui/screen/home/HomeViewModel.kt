@@ -2,6 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
@@ -43,8 +44,8 @@ class HomeViewModel(
                 syncRepository.observeSyncState(),
             ) { semester, lessons, next, syncState ->
                 val weekLabel = semester?.let {
-                    "第${WeekCalculator.weekIndex(it.startDate, today)}周"
-                } ?: "未设置学期"
+                    WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
+                } ?: WearI18n.semesterNotSet()
 
                 HomeUiState(
                     isLoading = false,
@@ -68,3 +69,4 @@ class HomeViewModel(
         }
     }
 }
+

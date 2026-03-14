@@ -2,6 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.domain.repository.SyncRepository
@@ -29,7 +30,7 @@ class SettingsViewModel(
                 SettingsUiState(
                     isLoading = false,
                     preferences = pref,
-                    syncMessage = syncMeta.lastSuccessAt?.toString() ?: "尚未同步",
+                    syncMessage = syncMeta.lastSuccessAt?.toString() ?: WearI18n.syncNever(),
                 )
             }.collect { _uiState.value = it }
         }
@@ -57,3 +58,4 @@ class SettingsViewModel(
         }
     }
 }
+

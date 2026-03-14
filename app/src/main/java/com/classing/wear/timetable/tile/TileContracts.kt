@@ -1,5 +1,6 @@
 ﻿package com.classing.wear.timetable.tile
 
+import com.classing.wear.timetable.core.i18n.WearI18n
 import java.time.Instant
 
 data class TileScheduleSnapshot(
@@ -19,8 +20,8 @@ interface TileUpdateRequester {
 class PlaceholderTileDataProvider : TileDataProvider {
     override suspend fun buildSnapshot(): TileScheduleSnapshot {
         return TileScheduleSnapshot(
-            title = "下一节课",
-            subtitle = "接入 Wear Tiles API 后显示实时数据",
+            title = WearI18n.tilePlaceholderTitle(),
+            subtitle = WearI18n.tilePlaceholderSubtitle(),
             timestamp = Instant.now(),
         )
     }

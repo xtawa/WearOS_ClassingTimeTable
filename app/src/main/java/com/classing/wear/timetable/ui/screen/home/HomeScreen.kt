@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -16,8 +15,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.R
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.domain.model.NextLessonHint
 import com.classing.wear.timetable.domain.model.SyncState
@@ -65,7 +66,7 @@ fun HomeScreen(
         }
 
         when {
-            state.isLoading -> item { LoadingState(message = "正在加载今日课程") }
+            state.isLoading -> item { LoadingState(message = stringResource(R.string.home_loading_today_courses)) }
             state.errorMessage != null -> item {
                 ErrorState(
                     detail = state.errorMessage,
@@ -74,8 +75,8 @@ fun HomeScreen(
             }
             state.todayLessons.isEmpty() -> item {
                 EmptyState(
-                    title = "今日无课",
-                    subtitle = "抬腕休息一下，记得看下周安排",
+                    title = stringResource(R.string.home_empty_today_title),
+                    subtitle = stringResource(R.string.home_empty_today_subtitle),
                 )
             }
             else -> {
@@ -93,10 +94,10 @@ fun HomeScreen(
 @Composable
 private fun HeaderSection(dateLabel: String, weekLabel: String, syncState: SyncState) {
     val syncLabel = when (syncState) {
-        SyncState.Idle -> "待同步"
-        SyncState.Syncing -> "同步中"
-        is SyncState.Success -> "已同步"
-        is SyncState.Failed -> "同步失败"
+        SyncState.Idle -> stringResource(R.string.home_sync_idle)
+        SyncState.Syncing -> stringResource(R.string.home_sync_syncing)
+        is SyncState.Success -> stringResource(R.string.home_sync_success)
+        is SyncState.Failed -> stringResource(R.string.home_sync_failed)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -120,10 +121,10 @@ private fun NavigationQuickActions(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Button(onClick = onOpenWeek, modifier = Modifier.weight(1f)) {
-            Text("本周")
+            Text(stringResource(R.string.home_action_this_week))
         }
         Button(onClick = onOpenSearch, modifier = Modifier.weight(1f)) {
-            Text("搜索")
+            Text(stringResource(R.string.home_action_search))
         }
     }
     Row(
@@ -131,7 +132,7 @@ private fun NavigationQuickActions(
         horizontalArrangement = Arrangement.End,
     ) {
         Button(onClick = onOpenSettings) {
-            Text("设置")
+            Text(stringResource(R.string.home_action_settings))
         }
     }
 }
@@ -149,10 +150,10 @@ private fun NextLessonCard(hint: NextLessonHint) {
                 .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(text = "下一节课", style = MaterialTheme.typography.labelMedium)
+            Text(text = stringResource(R.string.home_next_lesson_title), style = MaterialTheme.typography.labelMedium)
             val lesson = hint.lesson
             if (lesson == null) {
-                Text(text = "今日没有后续课程", style = MaterialTheme.typography.bodySmall)
+                Text(text = stringResource(R.string.home_next_lesson_empty), style = MaterialTheme.typography.bodySmall)
             } else {
                 Text(text = lesson.course.name, style = MaterialTheme.typography.titleSmall)
                 Text(

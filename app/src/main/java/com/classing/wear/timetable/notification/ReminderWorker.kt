@@ -1,11 +1,14 @@
 ﻿package com.classing.wear.timetable.notification
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.classing.wear.timetable.R
@@ -18,14 +21,27 @@ class ReminderWorker(
     override suspend fun doWork(): Result {
         ensureChannel()
         val courseId = inputData.getLong(KEY_COURSE_ID, -1L)
-        val content = inputData.getString(KEY_CONTENT) ?: "课程即将开始"
+        val content = inputData.getString(KEY_CONTENT)
+            ?.takeIf { it.isNotBlank() }
+            ?: applicationContext.getString(R.string.reminder_notification_default_content)
 
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("上课提醒")
+            .setContentTitle(applicationContext.getString(R.string.reminder_notification_title))
             .setContentText(content)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return Result.success()
+        }
+        if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
+            return Result.success()
+        }
 
         NotificationManagerCompat.from(applicationContext).notify(courseId.toInt().coerceAtLeast(1), notification)
         return Result.success()

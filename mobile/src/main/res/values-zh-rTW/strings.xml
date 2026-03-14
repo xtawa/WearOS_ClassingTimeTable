@@ -1,0 +1,81 @@
+﻿<resources>
+    <string name="app_name">Classing 課表</string>
+
+    <string name="layer_dashboard">課表</string>
+    <string name="layer_week_view">週檢視</string>
+    <string name="layer_import">匯入</string>
+    <string name="layer_settings">設定</string>
+
+    <string name="initial_parse_message">請貼上 ICS 內容後點擊「解析並匯入」。</string>
+    <string name="message_reminder_enabled">課程提醒已開啟。</string>
+    <string name="message_notification_permission_missing">未授予通知權限，課程提醒未開啟。</string>
+    <string name="loading_message">正在載入課表...</string>
+
+    <string name="screen_title">課程表</string>
+    <string name="screen_subtitle">支援按日/按週檢視、ICS 匯入與提醒設定。</string>
+
+    <string name="message_input_cleared">已清空輸入內容。</string>
+    <string name="message_reminder_disabled">課程提醒已關閉。</string>
+
+    <string name="overview_title">課表概覽</string>
+    <string name="overview_total_count">課程總數：%1$d</string>
+    <string name="overview_selected_day_count">目前選擇：%1$s | 當天課程：%2$d</string>
+
+    <string name="day_filter_title">按天檢視</string>
+    <string name="day_chip_label">%1$s（%2$d）</string>
+    <string name="today_classes_title">當日課程</string>
+    <string name="no_classes_today">當天暫無課程。</string>
+
+    <string name="day_header_title">%1$s（%2$d）</string>
+    <string name="no_classes">無課程</string>
+    <string name="time_range_text">%1$s-%2$s</string>
+
+    <string name="import_title">iCalendar (ICS) 匯入</string>
+    <string name="import_input_label">貼上 ICS 內容</string>
+    <string name="import_button_parse">解析並匯入</string>
+    <string name="import_button_sample">載入範例</string>
+    <string name="import_button_clear">清空</string>
+
+    <string name="status_title">狀態</string>
+    <string name="status_warning_prefix">提示：%1$s</string>
+    <string name="import_preview_title">匯入預覽（%1$d）</string>
+
+    <string name="untitled_course">未命名課程</string>
+    <string name="no_location">無地點</string>
+    <string name="one_time_schedule">單次安排</string>
+
+    <string name="settings_title">顯示與提醒</string>
+    <string name="settings_show_weekend_title">顯示週末</string>
+    <string name="settings_show_weekend_desc">課表包含週六與週日。</string>
+    <string name="settings_reminder_toggle_title">課程提醒</string>
+    <string name="settings_reminder_toggle_desc">在課程開始前發送提醒。</string>
+    <string name="settings_reminder_lead_title">提前提醒：%1$d 分鐘</string>
+
+    <string name="empty_input_message">輸入內容為空。</string>
+    <string name="parse_success_message">解析成功，已匯入 %1$d 節課程。</string>
+    <string name="parse_partial_message">部分解析成功，已匯入 %1$d 節課程，忽略 %2$d 行異常內容。</string>
+    <string name="parse_failure_message">解析失敗：%1$s</string>
+
+    <string name="seed_course_1">軟體架構</string>
+    <string name="seed_course_2">資料結構</string>
+    <string name="seed_course_3">計算機網路</string>
+    <string name="seed_course_4">線性代數</string>
+    <string name="seed_course_5">作業系統</string>
+    <string name="seed_note_lecture">講授</string>
+    <string name="seed_note_lab">實驗</string>
+    <string name="seed_note_chapter_6">第 6 章</string>
+
+    <string name="weekday_mon">週一</string>
+    <string name="weekday_tue">週二</string>
+    <string name="weekday_wed">週三</string>
+    <string name="weekday_thu">週四</string>
+    <string name="weekday_fri">週五</string>
+    <string name="weekday_sat">週六</string>
+    <string name="weekday_sun">週日</string>
+
+    <string name="reminder_channel_name">課程提醒</string>
+    <string name="reminder_channel_description">課程開始前的提醒通知。</string>
+    <string name="reminder_notification_title">上課提醒：%1$s</string>
+    <string name="reminder_notification_body_with_location">%1$d 分鐘後開始 · %2$s · %3$s</string>
+    <string name="reminder_notification_body_no_location">%1$d 分鐘後開始 · %2$s</string>
+</resources>

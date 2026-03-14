@@ -1,5 +1,60 @@
-﻿<resources>
+<resources>
     <string name="app_name">Classing Timetable</string>
-    <string name="sync_channel_name">课程同步</string>
-    <string name="reminder_channel_name">课程提醒</string>
+    <string name="sync_channel_name">Schedule Sync</string>
+    <string name="reminder_channel_name">Class Reminder</string>
+    <string name="reminder_notification_title">Class Reminder</string>
+    <string name="reminder_notification_default_content">Class starts soon</string>
+
+    <string name="common_loading">Loading...</string>
+    <string name="common_load_failed">Load failed</string>
+    <string name="common_retry">Retry</string>
+
+    <string name="home_loading_today_courses">Loading today\'s classes</string>
+    <string name="home_empty_today_title">No classes today</string>
+    <string name="home_empty_today_subtitle">Take a break and check next week\'s schedule.</string>
+    <string name="home_sync_idle">Pending sync</string>
+    <string name="home_sync_syncing">Syncing</string>
+    <string name="home_sync_success">Synced</string>
+    <string name="home_sync_failed">Sync failed</string>
+    <string name="home_action_this_week">Week</string>
+    <string name="home_action_search">Search</string>
+    <string name="home_action_settings">Settings</string>
+    <string name="home_next_lesson_title">Next class</string>
+    <string name="home_next_lesson_empty">No more classes today</string>
+
+    <string name="week_loading">Loading weekly schedule</string>
+    <string name="week_empty_title">No schedule yet</string>
+    <string name="week_empty_subtitle">Sync or import courses first</string>
+    <string name="week_action_prev">Prev</string>
+    <string name="week_action_current">Current</string>
+    <string name="week_action_next">Next</string>
+    <string name="week_day_lesson_count">%1$s (%2$d classes)</string>
+    <string name="week_no_lessons">No class</string>
+
+    <string name="search_title">Search courses</string>
+    <string name="search_input_label">Course or teacher</string>
+    <string name="search_empty_input_title">Enter keywords</string>
+    <string name="search_empty_input_subtitle">For example: Android / Alice</string>
+    <string name="search_empty_result_title">No courses found</string>
+    <string name="search_empty_result_subtitle">Try shorter keywords</string>
+
+    <string name="detail_title">Course details</string>
+    <string name="detail_back">Back</string>
+    <string name="detail_loading">Loading course</string>
+    <string name="detail_course_not_found_title">Course not found</string>
+    <string name="detail_course_not_found_subtitle">It may have been deleted</string>
+    <string name="detail_no_schedule_title">No classes this week</string>
+    <string name="detail_no_schedule_subtitle">Check week and odd/even rules</string>
+    <string name="detail_teacher">Teacher: %1$s</string>
+    <string name="detail_location">Location: %1$s</string>
+    <string name="detail_note">Note: %1$s</string>
+    <string name="detail_note_empty">None</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_dynamic_color">Dynamic colors</string>
+    <string name="settings_reminder">Class reminders</string>
+    <string name="settings_auto_sync">Auto sync</string>
+    <string name="settings_show_weekend">Show weekend</string>
+    <string name="settings_last_sync">Last sync: %1$s</string>
+    <string name="settings_force_full_sync">Sync now</string>
 </resources>

@@ -13,8 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.R
 import com.classing.wear.timetable.ui.PreviewSamples
 import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.LessonCard
@@ -36,25 +38,33 @@ fun CourseDetailScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "课程详情",
+                    text = stringResource(R.string.detail_title),
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Button(onClick = onBack) {
-                    Text("返回")
+                    Text(stringResource(R.string.detail_back))
                 }
             }
         }
 
         when {
-            state.isLoading -> item { LoadingState(message = "正在加载课程") }
-            state.course == null -> item { EmptyState(title = "课程不存在", subtitle = "可能已被删除") }
+            state.isLoading -> item { LoadingState(message = stringResource(R.string.detail_loading)) }
+            state.course == null -> item {
+                EmptyState(
+                    title = stringResource(R.string.detail_course_not_found_title),
+                    subtitle = stringResource(R.string.detail_course_not_found_subtitle),
+                )
+            }
             else -> {
                 item {
                     CourseSummaryCard(state)
                 }
                 if (state.upcomingLessons.isEmpty()) {
                     item {
-                        EmptyState(title = "本周无排课", subtitle = "检查单双周或周次规则")
+                        EmptyState(
+                            title = stringResource(R.string.detail_no_schedule_title),
+                            subtitle = stringResource(R.string.detail_no_schedule_subtitle),
+                        )
                     }
                 } else {
                     items(state.upcomingLessons) { lesson ->
@@ -78,17 +88,20 @@ private fun CourseSummaryCard(state: CourseDetailUiState) {
         ) {
             Text(text = course.name, style = MaterialTheme.typography.titleSmall)
             Text(
-                text = "教师: ${course.teacher}",
+                text = stringResource(R.string.detail_teacher, course.teacher),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "地点: ${course.classroom}",
+                text = stringResource(R.string.detail_location, course.classroom),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "备注: ${course.note.ifBlank { "暂无" }}",
+                text = stringResource(
+                    R.string.detail_note,
+                    course.note.ifBlank { stringResource(R.string.detail_note_empty) },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
