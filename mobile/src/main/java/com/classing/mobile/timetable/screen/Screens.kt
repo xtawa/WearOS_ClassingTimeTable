@@ -115,6 +115,7 @@ private enum class WearSyncMode {
 }
 
 private const val CLASSING_NOTICE_URL = "https://api.rskiller.zcwww.cc/GetClassingNotice"
+private const val CLASSING_NOTICE_KEY = "A8bC9dE0fG1hI2jK"
 
 private data class LessonUi(
     val id: String,
@@ -2067,13 +2068,20 @@ private suspend fun syncLessonsViaWearOsApp(
 
 private suspend fun fetchClassingNotice(): Result<String> = withContext(Dispatchers.IO) {
     runCatching {
+        val postBody = "key=$CLASSING_NOTICE_KEY"
         val connection = (URL(CLASSING_NOTICE_URL).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
+            requestMethod = "POST"
+            doOutput = true
             connectTimeout = 8000
             readTimeout = 8000
             setRequestProperty("Accept", "application/json,text/plain,*/*")
+            setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         }
         try {
+            connection.outputStream.use { output ->
+                output.write(postBody.toByteArray(Charsets.UTF_8))
+                output.flush()
+            }
             val responseCode = connection.responseCode
             val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
             val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty().trim()
