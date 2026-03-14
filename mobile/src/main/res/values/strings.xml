@@ -120,7 +120,7 @@
     <string name="settings_danger_desc">Delete all timetable data from this device.</string>
     <string name="settings_danger_clear_button">Delete All Timetables</string>
     <string name="settings_wear_comm_title">Wear Communication</string>
-    <string name="settings_wear_comm_desc">Check Wear connection and sync timetable manually. For CN/LE builds, prefer WearOS App mode.</string>
+    <string name="settings_wear_comm_desc">Check Wear connection and sync timetable manually. On Samsung CN/LE devices, WearOS App mode queues sync through the companion app and Data Layer.</string>
     <string name="settings_wear_sync_mode_label">Sync method</string>
     <string name="settings_wear_sync_mode_wearable_api">Wearable API</string>
     <string name="settings_wear_sync_mode_wearos_app">WearOS App</string>
@@ -141,7 +141,10 @@
     <string name="wear_sync_ack_success">Wear confirmed sync (%1$d classes) at %2$s via %3$s</string>
     <string name="wear_sync_ack_failed">Wear reported sync failed at %1$s: %2$s</string>
     <string name="wearos_app_available">WearOS app available: %1$s</string>
+    <string name="wearos_app_available_connected">WearOS app available: %1$s, connected watches: %2$d</string>
     <string name="wearos_app_unavailable">WearOS app not installed</string>
+    <string name="wear_sync_queued">Sync queued. Wear will receive it after reconnecting through the companion app.</string>
+    <string name="wear_sync_queued_via_wearos_app">Sync queued via WearOS app: %1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">WearOS app opened (%1$s). Complete sync in app.</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS app sync failed: %1$s</string>
 

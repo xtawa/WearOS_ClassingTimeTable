@@ -5,6 +5,7 @@ import com.classing.shared.sync.WearDataLayerContracts
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.xtawa.classingtime.data.PersistedLesson
+import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -13,6 +14,11 @@ import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
 
+data class WearSyncDispatchResult(
+    val connectedNodeCount: Int,
+    val queuedForCompanion: Boolean,
+)
+
 object WearDataLayerSyncPublisher {
     private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -20,32 +26,59 @@ object WearDataLayerSyncPublisher {
         context: Context,
         lessons: List<PersistedLesson>,
         zoneId: ZoneId,
-    ): Result<Int> {
+        source: String = WearDataLayerContracts.SOURCE_WEARABLE_API,
+        allowDisconnectedQueue: Boolean = false,
+    ): Result<WearSyncDispatchResult> {
         return runCatching {
             val connectedNodes = Wearable.getNodeClient(context).connectedNodes.await()
-            if (connectedNodes.isEmpty()) error("No connected Wear device")
+            if (connectedNodes.isEmpty() && !allowDisconnectedQueue) {
+                error("No connected Wear device")
+            }
 
-            val payload = buildPayload(lessons, zoneId)
+            val updatedAt = System.currentTimeMillis()
+            val payload = buildPayload(
+                lessons = lessons,
+                zoneId = zoneId,
+                source = source,
+                updatedAt = updatedAt,
+            )
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_LESSONS).apply {
                 dataMap.putString(WearDataLayerContracts.KEY_PAYLOAD, payload)
                 dataMap.putString(WearDataLayerContracts.KEY_FORMAT, "classingtime_mobile_sync_v1")
                 dataMap.putString(WearDataLayerContracts.KEY_TIMEZONE, zoneId.id)
+                dataMap.putString(WearDataLayerContracts.KEY_SOURCE, source)
                 dataMap.putString(
                     WearDataLayerContracts.KEY_GENERATED_AT,
                     LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 )
                 // Force DataItem version bump so Wear always receives a changed event.
-                dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, System.currentTimeMillis())
+                dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
             }.asPutDataRequest().setUrgent()
 
             Wearable.getDataClient(context).putDataItem(request).await()
-            connectedNodes.size
+
+            val payloadBytes = payload.toByteArray(StandardCharsets.UTF_8)
+            val messageNodeCount = connectedNodes.count { node ->
+                runCatching {
+                    Wearable.getMessageClient(context)
+                        .sendMessage(node.id, WearDataLayerContracts.PATH_SYNC_LESSONS, payloadBytes)
+                        .await()
+                    true
+                }.getOrDefault(false)
+            }
+
+            WearSyncDispatchResult(
+                connectedNodeCount = messageNodeCount,
+                queuedForCompanion = allowDisconnectedQueue && messageNodeCount == 0,
+            )
         }
     }
 
     private fun buildPayload(
         lessons: List<PersistedLesson>,
         zoneId: ZoneId,
+        source: String,
+        updatedAt: Long,
     ): String {
         val arr = JSONArray()
         lessons.sortedWith(compareBy<PersistedLesson> { it.dayOfWeek }.thenBy { it.startMinute }).forEach { lesson ->
@@ -69,6 +102,8 @@ object WearDataLayerSyncPublisher {
             .put("format", "classingtime_mobile_sync_v1")
             .put("timezone", zoneId.id)
             .put("generatedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+            .put("source", source)
+            .put("updatedAt", updatedAt)
             .put("lessons", arr)
             .toString()
     }

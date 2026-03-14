@@ -9,6 +9,7 @@ object WearDataLayerContracts {
     const val KEY_FORMAT = "format"
     const val KEY_TIMEZONE = "timezone"
     const val KEY_GENERATED_AT = "generatedAt"
+    const val KEY_REQUESTED_AT = "requestedAt"
     const val KEY_UPDATED_AT = "updatedAt"
 
     const val KEY_SUCCESS = "success"
@@ -21,4 +22,3 @@ object WearDataLayerContracts {
     const val SOURCE_WEARABLE_API = "WEARABLE_API"
     const val SOURCE_WEAROS_APP = "WEAROS_APP"
 }
-

@@ -120,7 +120,7 @@
     <string name="settings_danger_desc">刪除此裝置上的全部課表資料。</string>
     <string name="settings_danger_clear_button">刪除全部課表</string>
     <string name="settings_wear_comm_title">Wear 通訊</string>
-    <string name="settings_wear_comm_desc">檢查 Wear 連線狀態，並手動同步課表。國行/CN/LE 版本建議使用 WearOS App 模式。</string>
+    <string name="settings_wear_comm_desc">檢查 Wear 連線狀態，並手動同步課表。國行三星/CN/LE 裝置建議使用 WearOS App 模式，透過伴侶應用與 Data Layer 排隊同步。</string>
     <string name="settings_wear_sync_mode_label">同步方式</string>
     <string name="settings_wear_sync_mode_wearable_api">Wearable API</string>
     <string name="settings_wear_sync_mode_wearos_app">WearOS App</string>
@@ -141,7 +141,10 @@
     <string name="wear_sync_ack_success">Wear 已確認同步（%1$d 節課程），時間 %2$s，方式 %3$s</string>
     <string name="wear_sync_ack_failed">Wear 回報同步失敗，時間 %1$s：%2$s</string>
     <string name="wearos_app_available">WearOS App 可用：%1$s</string>
+    <string name="wearos_app_available_connected">WearOS App 可用：%1$s，已連線手錶：%2$d 台</string>
     <string name="wearos_app_unavailable">未安裝 WearOS App</string>
+    <string name="wear_sync_queued">同步已排隊，手錶經伴侶應用重新連線後會自動接收。</string>
+    <string name="wear_sync_queued_via_wearos_app">已透過 WearOS App 排隊同步：%1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">已開啟 WearOS App（%1$s），請在 App 內完成同步。</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS App 同步失敗：%1$s</string>
 

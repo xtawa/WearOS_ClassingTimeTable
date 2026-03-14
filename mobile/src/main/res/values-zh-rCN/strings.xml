@@ -120,7 +120,7 @@
     <string name="settings_danger_desc">删除本设备上的全部课表数据。</string>
     <string name="settings_danger_clear_button">删除全部课表</string>
     <string name="settings_wear_comm_title">Wear 通信</string>
-    <string name="settings_wear_comm_desc">检查 Wear 连接状态，并手动同步课表。国行/CN/LE 版本建议使用 WearOS App 模式。</string>
+    <string name="settings_wear_comm_desc">检查 Wear 连接状态，并手动同步课表。国行三星/CN/LE 设备建议使用 WearOS App 模式，通过伴侣应用和 Data Layer 排队同步。</string>
     <string name="settings_wear_sync_mode_label">同步方式</string>
     <string name="settings_wear_sync_mode_wearable_api">Wearable API</string>
     <string name="settings_wear_sync_mode_wearos_app">WearOS App</string>
@@ -141,7 +141,10 @@
     <string name="wear_sync_ack_success">Wear 已确认同步（%1$d 节课程），时间 %2$s，方式 %3$s</string>
     <string name="wear_sync_ack_failed">Wear 反馈同步失败，时间 %1$s：%2$s</string>
     <string name="wearos_app_available">WearOS App 可用：%1$s</string>
+    <string name="wearos_app_available_connected">WearOS App 可用：%1$s，已连接手表：%2$d 台</string>
     <string name="wearos_app_unavailable">未安装 WearOS App</string>
+    <string name="wear_sync_queued">同步已排队，手表经伴侣应用重新连通后会自动接收。</string>
+    <string name="wear_sync_queued_via_wearos_app">已通过 WearOS App 排队同步：%1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">已唤起 WearOS App（%1$s），请在 App 内完成同步。</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS App 同步失败：%1$s</string>
 

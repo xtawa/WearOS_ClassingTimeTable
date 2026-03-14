@@ -51,6 +51,13 @@ object WearI18n {
     }
 
     fun syncRequestSent(nodeCount: Int): String {
+        if (nodeCount <= 0) {
+            return when (currentLang()) {
+                Lang.ZH_CN -> "同步请求已排队，等待手机连通"
+                Lang.ZH_TW -> "同步請求已排隊，等待手機連通"
+                Lang.EN -> "Sync request queued until phone reconnects"
+            }
+        }
         return when (currentLang()) {
             Lang.ZH_CN -> "已发送同步请求（$nodeCount 台手机）"
             Lang.ZH_TW -> "已傳送同步請求（$nodeCount 台手機）"

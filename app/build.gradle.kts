@@ -9,7 +9,8 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.classing.wear.timetable"
+        // Data Layer routes messages only between handheld and watch APKs that share an app id.
+        applicationId = "com.xtawa.classingtime"
         minSdk = 30
         targetSdk = 35
         versionCode = 1

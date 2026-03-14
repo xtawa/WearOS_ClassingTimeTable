@@ -67,6 +67,7 @@ import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
+import com.xtawa.classingtime.sync.WearSyncDispatchResult
 import com.google.android.gms.wearable.Wearable
 import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
@@ -262,9 +263,17 @@ fun MobileTimetableScreen() {
 
             WearSyncMode.WEAROS_APP -> {
                 val companion = findWearOsCompanionInfo(context)
-                wearConnectedCount = if (companion == null) 0 else 1
+                val result = fetchConnectedWearNodeCount(context)
+                val nodeCount = result.getOrDefault(0)
+                wearConnectedCount = nodeCount
                 wearConnectionMessage = if (companion == null) {
                     context.getString(R.string.wearos_app_unavailable)
+                } else if (nodeCount > 0) {
+                    context.getString(
+                        R.string.wearos_app_available_connected,
+                        companion.toDisplayLabel(),
+                        nodeCount,
+                    )
                 } else {
                     context.getString(R.string.wearos_app_available, companion.toDisplayLabel())
                 }
@@ -278,50 +287,46 @@ fun MobileTimetableScreen() {
         val startedAtMillis = System.currentTimeMillis()
         when (wearSyncMode) {
             WearSyncMode.WEARABLE_API -> {
-                val result = syncLessonsToWear(context, lessons, zoneId)
-                wearSyncMessage = if (result.isSuccess) {
-                    val nodeCount = result.getOrDefault(0)
-                    context.getString(
-                        R.string.wear_sync_waiting_ack,
-                        nodeCount,
-                    )
-                } else {
-                    context.getString(
-                        R.string.wear_sync_failed,
-                        result.exceptionOrNull()?.message ?: "unknown",
-                    )
-                }
-                if (result.isSuccess) {
-                    val ack = awaitWearSyncAck(context, startedAtMillis)
-                    if (ack != null) {
+                val result = syncLessonsToWear(
+                    context = context,
+                    lessons = lessons,
+                    zoneId = zoneId,
+                    source = WearDataLayerContracts.SOURCE_WEARABLE_API,
+                    allowDisconnectedQueue = false,
+                )
+                wearSyncMessage = handleStartedWearSync(
+                    context = context,
+                    result = result,
+                    startedAtMillis = startedAtMillis,
+                    latestAckUpdater = { ack ->
                         latestWearAckAtMillis = ack.syncedAtMillis
                         wearSyncMessage = formatWearSyncAckMessage(context, ack)
-                    } else {
-                        wearSyncMessage = context.getString(R.string.wear_sync_ack_timeout)
-                    }
-                }
+                    },
+                )
             }
 
             WearSyncMode.WEAROS_APP -> {
+                val companion = findWearOsCompanionInfo(context)
+                    ?: run {
+                        wearSyncMessage = context.getString(R.string.wear_sync_via_wearos_app_failed, "WearOS app not installed")
+                        wearSyncInProgress = false
+                        refreshWearConnectionStatus()
+                        return
+                    }
                 val result = syncLessonsViaWearOsApp(context, lessons, zoneId)
-                wearSyncMessage = if (result.isSuccess) {
-                    context.getString(
-                        R.string.wear_sync_via_wearos_app_triggered,
-                        result.getOrNull().orEmpty(),
-                    )
-                } else {
-                    context.getString(
-                        R.string.wear_sync_via_wearos_app_failed,
-                        result.exceptionOrNull()?.message ?: "unknown",
-                    )
-                }
-                if (result.isSuccess) {
-                    val ack = awaitWearSyncAck(context, startedAtMillis, timeoutMillis = 5000L)
-                    if (ack != null) {
+                wearSyncMessage = handleStartedWearSync(
+                    context = context,
+                    result = result,
+                    startedAtMillis = startedAtMillis,
+                    queuedMessage = context.getString(
+                        R.string.wear_sync_queued_via_wearos_app,
+                        companion.toDisplayLabel(),
+                    ),
+                    latestAckUpdater = { ack ->
                         latestWearAckAtMillis = ack.syncedAtMillis
                         wearSyncMessage = formatWearSyncAckMessage(context, ack)
-                    }
-                }
+                    },
+                )
             }
         }
         wearSyncInProgress = false
@@ -1858,37 +1863,34 @@ private suspend fun syncLessonsToWear(
     context: Context,
     lessons: List<LessonUi>,
     zoneId: ZoneId,
-): Result<Int> {
+    source: String,
+    allowDisconnectedQueue: Boolean,
+): Result<WearSyncDispatchResult> {
     val persisted = lessons.map { it.toPersistedLesson() }
-    return WearDataLayerSyncPublisher.publishLessonsSnapshot(context, persisted, zoneId)
+    return WearDataLayerSyncPublisher.publishLessonsSnapshot(
+        context = context,
+        lessons = persisted,
+        zoneId = zoneId,
+        source = source,
+        allowDisconnectedQueue = allowDisconnectedQueue,
+    )
 }
 
-private fun syncLessonsViaWearOsApp(
+private suspend fun syncLessonsViaWearOsApp(
     context: Context,
     lessons: List<LessonUi>,
     zoneId: ZoneId,
-): Result<String> {
-    return runCatching {
-        val companion = findWearOsCompanionInfo(context) ?: error("WearOS app not installed")
-        val payload = buildWearSyncPayload(lessons, zoneId)
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/json"
-            putExtra(Intent.EXTRA_SUBJECT, "Classing Timetable Sync")
-            putExtra(Intent.EXTRA_TEXT, payload)
-            setPackage(companion.packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        val packageManager = context.packageManager
-        if (shareIntent.resolveActivity(packageManager) != null) {
-            context.startActivity(shareIntent)
-        } else {
-            val launchIntent = packageManager.getLaunchIntentForPackage(companion.packageName)
-                ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ?: error("WearOS app installed but no launch activity")
-            context.startActivity(launchIntent)
-        }
-        companion.toDisplayLabel()
-    }
+): Result<WearSyncDispatchResult> {
+    val companion = findWearOsCompanionInfo(context) ?: return Result.failure(
+        IllegalStateException("WearOS app not installed"),
+    )
+    return syncLessonsToWear(
+        context = context,
+        lessons = lessons,
+        zoneId = zoneId,
+        source = WearDataLayerContracts.SOURCE_WEAROS_APP,
+        allowDisconnectedQueue = true,
+    )
 }
 
 private fun findWearOsCompanionInfo(context: Context): WearOsCompanionInfo? {
@@ -1929,26 +1931,36 @@ private fun WearOsCompanionInfo.toDisplayLabel(): String {
     }
 }
 
-private fun buildWearSyncPayload(lessons: List<LessonUi>, zoneId: ZoneId): String {
-    val arr = JSONArray()
-    lessons.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }).forEach { lesson ->
-        arr.put(
-            JSONObject()
-                .put("id", lesson.id)
-                .put("title", lesson.title)
-                .put("dayOfWeek", lesson.dayOfWeek.value)
-                .put("startTime", lesson.startTime.format(clockFormatter))
-                .put("endTime", lesson.endTime.format(clockFormatter))
-                .put("location", lesson.location ?: "")
-                .put("note", lesson.note ?: ""),
+private suspend fun handleStartedWearSync(
+    context: Context,
+    result: Result<WearSyncDispatchResult>,
+    startedAtMillis: Long,
+    queuedMessage: String = context.getString(R.string.wear_sync_queued),
+    latestAckUpdater: (WearSyncAckInfo) -> Unit,
+): String {
+    if (result.isFailure) {
+        return context.getString(
+            R.string.wear_sync_failed,
+            result.exceptionOrNull()?.message ?: "unknown",
         )
     }
-    return JSONObject()
-        .put("format", "classingtime_mobile_sync_v1")
-        .put("timezone", zoneId.id)
-        .put("generatedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-        .put("lessons", arr)
-        .toString()
+
+    val dispatch = result.getOrThrow()
+    if (dispatch.connectedNodeCount <= 0) {
+        return if (dispatch.queuedForCompanion) {
+            queuedMessage
+        } else {
+            context.getString(R.string.wear_connection_disconnected)
+        }
+    }
+
+    val ack = awaitWearSyncAck(context, startedAtMillis)
+    if (ack != null) {
+        latestAckUpdater(ack)
+        return formatWearSyncAckMessage(context, ack)
+    }
+
+    return context.getString(R.string.wear_sync_ack_timeout)
 }
 
 private suspend fun awaitWearSyncAck(

@@ -46,7 +46,7 @@ class MobileSyncListenerService : WearableListenerService() {
         }
 
         val payload = runCatching { String(messageEvent.data, StandardCharsets.UTF_8) }.getOrNull().orEmpty()
-        handleLessonSync(payload = payload, sourceNodeId = messageEvent.sourceNodeId)
+        handleLessonSync(payload = payload, sourceNodeId = messageEvent.sourceNodeId, sourceHint = null)
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
@@ -57,15 +57,26 @@ class MobileSyncListenerService : WearableListenerService() {
             val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
             val payload = dataMap.getString(WearDataLayerContracts.KEY_PAYLOAD).orEmpty()
             val sourceNodeId = event.dataItem.uri.host
-            handleLessonSync(payload = payload, sourceNodeId = sourceNodeId)
+            val sourceHint = dataMap.getString(WearDataLayerContracts.KEY_SOURCE).orEmpty()
+            handleLessonSync(payload = payload, sourceNodeId = sourceNodeId, sourceHint = sourceHint)
         }
     }
 
-    private fun handleLessonSync(payload: String, sourceNodeId: String?) {
+    private fun handleLessonSync(payload: String, sourceNodeId: String?, sourceHint: String?) {
         if (payload.isBlank()) return
 
         val parsed = runCatching { JSONObject(payload) }.getOrNull() ?: return
+        val updatedAt = parsed.optLong(WearDataLayerContracts.KEY_UPDATED_AT, 0L)
+        if (updatedAt > 0L && isDuplicatePayload(updatedAt)) {
+            Log.i(TAG, "Ignore duplicated mobile sync payload updatedAt=$updatedAt")
+            return
+        }
+        if (updatedAt > 0L) markHandledPayload(updatedAt)
+
         val lessonCount = parsed.optJSONArray("lessons")?.length() ?: 0
+        val source = parsed.optString(WearDataLayerContracts.KEY_SOURCE)
+            .ifBlank { sourceHint.orEmpty() }
+            .ifBlank { WearDataLayerContracts.SOURCE_WEARABLE_API }
 
         serviceScope.launch {
             val result = applyPayloadToWearDb(parsed)
@@ -77,7 +88,7 @@ class MobileSyncListenerService : WearableListenerService() {
                 .apply()
 
             WearSurfaceUpdateRequester.requestAll(applicationContext)
-            sendSyncAckToMobile(sourceNodeId, lessonCount, result)
+            sendSyncAckToMobile(sourceNodeId, lessonCount, result, source)
             Log.i(TAG, "Received mobile sync payload with $lessonCount lessons, applied=${result.success}")
         }
     }
@@ -174,9 +185,9 @@ class MobileSyncListenerService : WearableListenerService() {
         sourceNodeId: String?,
         requestedLessonCount: Int,
         result: ApplyResult,
+        source: String,
     ) {
         val syncedAt = System.currentTimeMillis()
-        val source = WearDataLayerContracts.SOURCE_WEARABLE_API
 
         val dataRequest = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_ACK).apply {
             dataMap.putBoolean(WearDataLayerContracts.KEY_SUCCESS, result.success)
@@ -223,6 +234,17 @@ class MobileSyncListenerService : WearableListenerService() {
             ?: runCatching { LocalTime.parse(text, java.time.format.DateTimeFormatter.ofPattern("H:mm")) }.getOrNull()
     }
 
+    private fun isDuplicatePayload(updatedAt: Long): Boolean {
+        return getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            .getLong(KEY_LAST_HANDLED_UPDATED_AT, 0L) == updatedAt
+    }
+
+    private fun markHandledPayload(updatedAt: Long) {
+        getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
+            .putLong(KEY_LAST_HANDLED_UPDATED_AT, updatedAt)
+            .apply()
+    }
+
     companion object {
         private const val TAG = "MobileSyncListener"
 
@@ -231,5 +253,6 @@ class MobileSyncListenerService : WearableListenerService() {
         private const val KEY_LAST_LESSON_COUNT = "last_lesson_count"
         private const val KEY_LAST_SYNC_AT = "last_sync_at"
         private const val KEY_LAST_APPLY_SUCCESS = "last_apply_success"
+        private const val KEY_LAST_HANDLED_UPDATED_AT = "last_handled_updated_at"
     }
 }
