@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -78,6 +79,8 @@ import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
 import com.classing.shared.importer.ImportResult
 import com.classing.shared.importer.ScheduleImportAdapter
+import java.net.HttpURLConnection
+import java.net.URL
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -85,9 +88,11 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -96,6 +101,7 @@ private enum class MobileLayer {
     WeekBoard,
     Import,
     Settings,
+    About,
 }
 
 private enum class ChangeScope {
@@ -108,10 +114,7 @@ private enum class WearSyncMode {
     WEAROS_APP,
 }
 
-private enum class SettingsSubPage {
-    Main,
-    About,
-}
+private const val CLASSING_NOTICE_URL = "https://api.rskiller.zcwww.cc/GetClassingNotice"
 
 private data class LessonUi(
     val id: String,
@@ -691,6 +694,8 @@ fun MobileTimetableScreen() {
                     }
                 },
             )
+
+            MobileLayer.About -> AboutLayer(contentPadding = innerPadding)
         }
     }
 
@@ -1601,8 +1606,6 @@ private fun SettingsLayer(
     onRefreshWearStatus: () -> Unit,
     onManualWearSync: () -> Unit,
 ) {
-    var subPage by remember { mutableStateOf(SettingsSubPage.Main) }
-    val uriHandler = LocalUriHandler.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1612,252 +1615,303 @@ private fun SettingsLayer(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (subPage == SettingsSubPage.About) {
-            Text(
-                stringResource(R.string.settings_about_page_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            TextButton(onClick = { subPage = SettingsSubPage.Main }) {
-                Text(stringResource(R.string.settings_about_back_button))
-            }
-            Card {
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Card {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = stringResource(R.string.app_name),
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .size(64.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                    )
+                    Text(stringResource(R.string.settings_show_weekend_title), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_show_weekend_desc), style = MaterialTheme.typography.bodySmall)
                 }
+                Switch(checked = showWeekend, onCheckedChange = onToggleWeekend)
             }
-            Card {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(stringResource(R.string.settings_about_links_title), fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = stringResource(R.string.settings_about_official_site),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable {
-                            runCatching { uriHandler.openUri("https://lyxyy.notion.site/classing") }
-                        },
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_about_help_support),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable {
-                            runCatching { uriHandler.openUri("https://lyxyy.notion.site/classinghelp") }
-                        },
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_about_contact_us),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable {
-                            runCatching { uriHandler.openUri("mailto:zeromostia@gmail.com") }
-                        },
-                    )
+        }
+        Card {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(stringResource(R.string.settings_reminder_toggle_title), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_reminder_toggle_desc), style = MaterialTheme.typography.bodySmall)
                 }
+                Switch(checked = reminderEnabled, onCheckedChange = onToggleReminder)
             }
-            Card {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(stringResource(R.string.settings_about_team_title), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_about_team_members), style = MaterialTheme.typography.bodySmall)
-                }
+        }
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.settings_reminder_lead_title, reminderMinutes), fontWeight = FontWeight.SemiBold)
+                Slider(
+                    value = reminderMinutes.toFloat(),
+                    onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
+                    valueRange = 5f..60f,
+                )
             }
-            Text(
-                text = stringResource(R.string.settings_about_ai_notice),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
-        } else {
-            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Card {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(stringResource(R.string.settings_show_weekend_title), fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(R.string.settings_show_weekend_desc), style = MaterialTheme.typography.bodySmall)
+        }
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.settings_backup_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_backup_desc), style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onExportBackup) {
+                        Text(stringResource(R.string.settings_backup_button))
                     }
-                    Switch(checked = showWeekend, onCheckedChange = onToggleWeekend)
-                }
-            }
-            Card {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(stringResource(R.string.settings_reminder_toggle_title), fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(R.string.settings_reminder_toggle_desc), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Switch(checked = reminderEnabled, onCheckedChange = onToggleReminder)
-                }
-            }
-            Card {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(stringResource(R.string.settings_reminder_lead_title, reminderMinutes), fontWeight = FontWeight.SemiBold)
-                    Slider(
-                        value = reminderMinutes.toFloat(),
-                        onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
-                        valueRange = 5f..60f,
-                    )
-                }
-            }
-            Card {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(stringResource(R.string.settings_backup_title), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_backup_desc), style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onExportBackup) {
-                            Text(stringResource(R.string.settings_backup_button))
-                        }
-                        Button(onClick = onRestoreBackup) {
-                            Text(stringResource(R.string.settings_restore_button))
-                        }
-                    }
-                    Text(
-                        text = stringResource(R.string.settings_restore_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Card {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(stringResource(R.string.settings_wear_comm_title), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_wear_comm_desc), style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        text = stringResource(R.string.settings_wear_sync_mode_label),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = wearSyncMode == WearSyncMode.WEARABLE_API,
-                            onClick = { onWearSyncModeChange(WearSyncMode.WEARABLE_API) },
-                            label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
-                        )
-                        FilterChip(
-                            selected = wearSyncMode == WearSyncMode.WEAROS_APP,
-                            onClick = { onWearSyncModeChange(WearSyncMode.WEAROS_APP) },
-                            label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.settings_wear_connection_label, wearConnectionMessage),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_wear_sync_label, wearSyncMessage),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onRefreshWearStatus) {
-                            Text(stringResource(R.string.settings_wear_refresh_button))
-                        }
-                        Button(onClick = onManualWearSync, enabled = !wearSyncInProgress) {
-                            Text(
-                                if (wearSyncInProgress) {
-                                    stringResource(R.string.settings_wear_syncing_button)
-                                } else {
-                                    stringResource(R.string.settings_wear_sync_button)
-                                },
-                            )
-                        }
+                    Button(onClick = onRestoreBackup) {
+                        Text(stringResource(R.string.settings_restore_button))
                     }
                 }
+                Text(
+                    text = stringResource(R.string.settings_restore_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Card {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(stringResource(R.string.settings_about_entry_title), fontWeight = FontWeight.SemiBold)
+        }
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.settings_wear_comm_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_wear_comm_desc), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = stringResource(R.string.settings_wear_sync_mode_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = wearSyncMode == WearSyncMode.WEARABLE_API,
+                        onClick = { onWearSyncModeChange(WearSyncMode.WEARABLE_API) },
+                        label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
+                    )
+                    FilterChip(
+                        selected = wearSyncMode == WearSyncMode.WEAROS_APP,
+                        onClick = { onWearSyncModeChange(WearSyncMode.WEAROS_APP) },
+                        label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_wear_connection_label, wearConnectionMessage),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_wear_sync_label, wearSyncMessage),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRefreshWearStatus) {
+                        Text(stringResource(R.string.settings_wear_refresh_button))
+                    }
+                    Button(onClick = onManualWearSync, enabled = !wearSyncInProgress) {
                         Text(
-                            stringResource(R.string.settings_about_entry_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            if (wearSyncInProgress) {
+                                stringResource(R.string.settings_wear_syncing_button)
+                            } else {
+                                stringResource(R.string.settings_wear_sync_button)
+                            },
                         )
-                    }
-                    TextButton(onClick = { subPage = SettingsSubPage.About }) {
-                        Text(stringResource(R.string.settings_about_entry_button))
-                    }
-                }
-            }
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(stringResource(R.string.settings_danger_title), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_danger_desc), style = MaterialTheme.typography.bodySmall)
-                    Button(
-                        onClick = onClearAllSchedules,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                        ),
-                    ) {
-                        Text(stringResource(R.string.settings_danger_clear_button))
                     }
                 }
             }
         }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.settings_danger_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_danger_desc), style = MaterialTheme.typography.bodySmall)
+                Button(
+                    onClick = onClearAllSchedules,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                ) {
+                    Text(stringResource(R.string.settings_danger_clear_button))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutLayer(contentPadding: PaddingValues) {
+    val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
+    var noticeText by remember { mutableStateOf("") }
+    var noticeLoading by remember { mutableStateOf(false) }
+    var noticeError by remember { mutableStateOf<String?>(null) }
+
+    fun refreshNotice() {
+        coroutineScope.launch {
+            noticeLoading = true
+            noticeError = null
+            val result = fetchClassingNotice()
+            if (result.isSuccess) {
+                noticeText = result.getOrNull().orEmpty()
+            } else {
+                noticeError = result.exceptionOrNull()?.message
+            }
+            noticeLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshNotice()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            stringResource(R.string.settings_about_page_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Card {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.size(72.dp),
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(stringResource(R.string.settings_about_notice_title), fontWeight = FontWeight.SemiBold)
+                when {
+                    noticeLoading -> {
+                        Text(
+                            text = stringResource(R.string.settings_about_notice_loading),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
+                    !noticeError.isNullOrBlank() -> {
+                        Text(
+                            text = stringResource(R.string.settings_about_notice_failed, noticeError.orEmpty()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+
+                    noticeText.isBlank() -> {
+                        Text(
+                            text = stringResource(R.string.settings_about_notice_empty),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    else -> {
+                        Text(
+                            text = noticeText,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                TextButton(onClick = { refreshNotice() }) {
+                    Text(stringResource(R.string.settings_about_notice_refresh))
+                }
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(stringResource(R.string.settings_about_links_title), fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = stringResource(R.string.settings_about_official_site),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable {
+                        runCatching { uriHandler.openUri("https://lyxyy.notion.site/classing") }
+                    },
+                )
+                Text(
+                    text = stringResource(R.string.settings_about_help_support),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable {
+                        runCatching { uriHandler.openUri("https://lyxyy.notion.site/classinghelp") }
+                    },
+                )
+                Text(
+                    text = stringResource(R.string.settings_about_contact_us),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable {
+                        runCatching { uriHandler.openUri("mailto:zeromostia@gmail.com") }
+                    },
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.settings_about_ai_notice),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 24.dp),
+        )
     }
 }
 
@@ -2009,6 +2063,79 @@ private suspend fun syncLessonsViaWearOsApp(
         source = WearDataLayerContracts.SOURCE_WEAROS_APP,
         allowDisconnectedQueue = true,
     )
+}
+
+private suspend fun fetchClassingNotice(): Result<String> = withContext(Dispatchers.IO) {
+    runCatching {
+        val connection = (URL(CLASSING_NOTICE_URL).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 8000
+            readTimeout = 8000
+            setRequestProperty("Accept", "application/json,text/plain,*/*")
+        }
+        try {
+            val responseCode = connection.responseCode
+            val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
+            val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty().trim()
+            if (responseCode !in 200..299) {
+                throw IllegalStateException("HTTP $responseCode")
+            }
+            parseNoticePayload(response)
+        } finally {
+            connection.disconnect()
+        }
+    }
+}
+
+private fun parseNoticePayload(raw: String): String {
+    val content = raw.trim()
+    if (content.isBlank()) return ""
+
+    if (content.startsWith("{") && content.endsWith("}")) {
+        return runCatching { parseNoticeObject(JSONObject(content)) }.getOrDefault(content)
+    }
+
+    if (content.startsWith("[") && content.endsWith("]")) {
+        return runCatching { parseNoticeArray(JSONArray(content)) }.getOrDefault(content)
+    }
+
+    return content
+}
+
+private fun parseNoticeObject(json: JSONObject): String {
+    val preferredKeys = listOf("notice", "content", "message", "msg", "data", "result")
+    preferredKeys.forEach { key ->
+        if (!json.has(key) || json.isNull(key)) return@forEach
+        val parsed = parseNoticeValue(json.get(key))
+        if (parsed.isNotBlank()) return parsed
+    }
+
+    val keys = json.keys()
+    while (keys.hasNext()) {
+        val key = keys.next()
+        if (json.isNull(key)) continue
+        val parsed = parseNoticeValue(json.get(key))
+        if (parsed.isNotBlank()) return parsed
+    }
+    return ""
+}
+
+private fun parseNoticeArray(array: JSONArray): String {
+    for (index in 0 until array.length()) {
+        val value = array.opt(index) ?: continue
+        val parsed = parseNoticeValue(value)
+        if (parsed.isNotBlank()) return parsed
+    }
+    return ""
+}
+
+private fun parseNoticeValue(value: Any): String {
+    return when (value) {
+        is String -> value.trim()
+        is JSONObject -> parseNoticeObject(value)
+        is JSONArray -> parseNoticeArray(value)
+        else -> value.toString().trim()
+    }
 }
 
 private fun findWearOsCompanionInfo(context: Context): WearOsCompanionInfo? {
@@ -2390,6 +2517,7 @@ private fun MobileLayer.labelRes(): Int {
         MobileLayer.WeekBoard -> R.string.layer_week_view
         MobileLayer.Import -> R.string.layer_import
         MobileLayer.Settings -> R.string.layer_settings
+        MobileLayer.About -> R.string.layer_about
     }
 }
 

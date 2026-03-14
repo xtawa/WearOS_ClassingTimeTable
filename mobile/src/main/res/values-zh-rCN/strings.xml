@@ -5,6 +5,7 @@
     <string name="layer_week_view">周视图</string>
     <string name="layer_import">导入</string>
     <string name="layer_settings">设置</string>
+    <string name="layer_about">关于</string>
 
     <string name="initial_parse_message">请粘贴 ICS 内容，先预览，再确认导入。</string>
     <string name="message_reminder_enabled">课程提醒已开启。</string>
@@ -122,6 +123,11 @@
     <string name="settings_about_page_title">关于</string>
     <string name="settings_about_back_button">返回设置</string>
     <string name="settings_about_links_title">链接</string>
+    <string name="settings_about_notice_title">公告</string>
+    <string name="settings_about_notice_loading">正在加载公告...</string>
+    <string name="settings_about_notice_empty">暂无公告。</string>
+    <string name="settings_about_notice_failed">公告加载失败：%1$s</string>
+    <string name="settings_about_notice_refresh">刷新公告</string>
     <string name="settings_about_official_site">官方网站</string>
     <string name="settings_about_help_support">帮助与支持</string>
     <string name="settings_about_contact_us">联系我们</string>

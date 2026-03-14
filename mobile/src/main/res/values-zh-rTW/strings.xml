@@ -5,6 +5,7 @@
     <string name="layer_week_view">週檢視</string>
     <string name="layer_import">匯入</string>
     <string name="layer_settings">設定</string>
+    <string name="layer_about">關於</string>
 
     <string name="initial_parse_message">請貼上 ICS 內容，先預覽，再確認匯入。</string>
     <string name="message_reminder_enabled">課程提醒已開啟。</string>
@@ -122,6 +123,11 @@
     <string name="settings_about_page_title">關於</string>
     <string name="settings_about_back_button">返回設定</string>
     <string name="settings_about_links_title">連結</string>
+    <string name="settings_about_notice_title">公告</string>
+    <string name="settings_about_notice_loading">正在載入公告...</string>
+    <string name="settings_about_notice_empty">暫無公告。</string>
+    <string name="settings_about_notice_failed">公告載入失敗：%1$s</string>
+    <string name="settings_about_notice_refresh">重新整理公告</string>
     <string name="settings_about_official_site">官方網站</string>
     <string name="settings_about_help_support">幫助與支援</string>
     <string name="settings_about_contact_us">聯絡我們</string>

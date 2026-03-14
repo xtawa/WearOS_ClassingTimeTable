@@ -55,6 +55,7 @@
     <string name="settings_reminder">上課提醒</string>
     <string name="settings_auto_sync">自動同步</string>
     <string name="settings_show_weekend">顯示週末</string>
+    <string name="settings_show_completed_today">顯示今天已完成課程</string>
     <string name="settings_last_sync">最近同步: %1$s</string>
     <string name="settings_force_full_sync">立即完整同步</string>
     <string name="home_action_sync_now">立即同步</string>
