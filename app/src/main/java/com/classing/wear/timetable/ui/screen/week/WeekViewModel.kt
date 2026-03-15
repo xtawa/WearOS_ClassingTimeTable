@@ -6,16 +6,20 @@ import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
+import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.ui.state.WeekUiState
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class WeekViewModel(
     private val scheduleRepository: ScheduleRepository,
+    private val settingsRepository: SettingsRepository,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
 
@@ -26,10 +30,15 @@ class WeekViewModel(
 
     init {
         viewModelScope.launch {
-            selectedWeekStart
-                .flatMapLatest { weekStart ->
-                    scheduleRepository.observeWeekSchedule(weekStart)
-                }
+            combine(
+                selectedWeekStart
+                    .flatMapLatest { weekStart ->
+                        scheduleRepository.observeWeekSchedule(weekStart)
+                    },
+                settingsRepository.observePreferences().map { it.showWeekend },
+            ) { schedule, showWeekend ->
+                schedule.applyWeekendVisibility(showWeekend)
+            }
                 .collect { schedule ->
                     _uiState.value = WeekUiState(
                         isLoading = false,

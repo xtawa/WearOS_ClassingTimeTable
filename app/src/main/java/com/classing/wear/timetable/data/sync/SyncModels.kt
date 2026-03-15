@@ -1,6 +1,5 @@
 ﻿package com.classing.wear.timetable.data.sync
 
-import com.classing.wear.timetable.domain.model.SyncMode
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -70,16 +69,4 @@ data class RemoteException(
     val newCourseRemoteId: String?,
     val newTimeSlotRemoteId: String?,
     val version: Long,
-)
-
-data class LocalChangeSet(
-    val mode: SyncMode,
-    val localVersion: Long,
-)
-
-data class RemoteSyncAck(
-    val success: Boolean,
-    val acceptedVersion: Long,
-    val conflictCount: Int,
-    val message: String,
 )

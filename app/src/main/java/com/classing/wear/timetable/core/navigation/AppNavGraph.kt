@@ -78,6 +78,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                     initializer {
                         WeekViewModel(
                             scheduleRepository = appContainer.scheduleRepository,
+                            settingsRepository = appContainer.settingsRepository,
                             timeProvider = appContainer.timeProvider,
                         )
                     }
@@ -122,6 +123,8 @@ fun AppNavGraph(appContainer: AppContainer) {
                         SettingsViewModel(
                             settingsRepository = appContainer.settingsRepository,
                             mobileSyncRequester = appContainer.mobileSyncRequester,
+                            autoSyncController = appContainer.autoSyncController,
+                            reminderWorkController = appContainer.reminderWorkController,
                         )
                     }
                 },

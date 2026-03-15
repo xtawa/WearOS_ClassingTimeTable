@@ -81,11 +81,11 @@ class MobileSyncListenerService : WearableListenerService() {
 
         serviceScope.launch {
             val result = applyPayloadToWearDb(parsed)
-            getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
-                .putString(KEY_LAST_PAYLOAD, payload)
-                .putInt(KEY_LAST_LESSON_COUNT, lessonCount)
-                .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
-                .putBoolean(KEY_LAST_APPLY_SUCCESS, result.success)
+            getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE).edit()
+                .putString(MobileSyncPrefs.KEY_LAST_PAYLOAD, payload)
+                .putInt(MobileSyncPrefs.KEY_LAST_LESSON_COUNT, lessonCount)
+                .putLong(MobileSyncPrefs.KEY_LAST_SYNC_AT, System.currentTimeMillis())
+                .putBoolean(MobileSyncPrefs.KEY_LAST_APPLY_SUCCESS, result.success)
                 .apply()
 
             WearSurfaceUpdateRequester.requestAll(applicationContext)
@@ -242,23 +242,17 @@ class MobileSyncListenerService : WearableListenerService() {
 
     private fun isDuplicatePayload(updatedAt: Long): Boolean {
         return getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .getLong(KEY_LAST_HANDLED_UPDATED_AT, 0L) == updatedAt
+            .getLong(MobileSyncPrefs.KEY_LAST_HANDLED_UPDATED_AT, 0L) == updatedAt
     }
 
     private fun markHandledPayload(updatedAt: Long) {
-        getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
-            .putLong(KEY_LAST_HANDLED_UPDATED_AT, updatedAt)
+        getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE).edit()
+            .putLong(MobileSyncPrefs.KEY_LAST_HANDLED_UPDATED_AT, updatedAt)
             .apply()
     }
 
     companion object {
         private const val TAG = "MobileSyncListener"
-
-        private const val PREF_NAME = "wear_mobile_sync"
-        private const val KEY_LAST_PAYLOAD = "last_payload"
-        private const val KEY_LAST_LESSON_COUNT = "last_lesson_count"
-        private const val KEY_LAST_SYNC_AT = "last_sync_at"
-        private const val KEY_LAST_APPLY_SUCCESS = "last_apply_success"
-        private const val KEY_LAST_HANDLED_UPDATED_AT = "last_handled_updated_at"
+        private const val PREF_NAME = MobileSyncPrefs.PREF_NAME
     }
 }

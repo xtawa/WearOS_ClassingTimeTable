@@ -28,7 +28,7 @@ class SyncWorker(
     }
 
     companion object {
-        private const val UNIQUE_WORK_NAME = "schedule_sync_worker"
+        internal const val UNIQUE_WORK_NAME = "schedule_sync_worker"
 
         fun enqueuePeriodic(context: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(30, TimeUnit.MINUTES)
@@ -39,6 +39,10 @@ class SyncWorker(
                 ExistingPeriodicWorkPolicy.KEEP,
                 request,
             )
+        }
+
+        fun cancelPeriodic(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
         }
     }
 }

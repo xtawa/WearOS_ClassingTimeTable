@@ -6,6 +6,8 @@ import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.SettingsUiState
+import com.classing.wear.timetable.worker.AutoSyncController
+import com.classing.wear.timetable.worker.ReminderWorkController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
@@ -16,6 +18,8 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val mobileSyncRequester: MobileSyncRequester,
+    private val autoSyncController: AutoSyncController,
+    private val reminderWorkController: ReminderWorkController,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -42,11 +46,17 @@ class SettingsViewModel(
     }
 
     fun toggleReminder(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setReminderEnabled(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setReminderEnabled(enabled)
+            reminderWorkController.setEnabled(enabled)
+        }
     }
 
     fun toggleAutoSync(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setAutoSync(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setAutoSync(enabled)
+            autoSyncController.setEnabled(enabled)
+        }
     }
 
     fun toggleWeekend(enabled: Boolean) {

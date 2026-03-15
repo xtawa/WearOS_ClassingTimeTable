@@ -2,15 +2,6 @@
 
 import java.time.Instant
 
-data class SyncMetadata(
-    val lastFullSyncAt: Instant?,
-    val lastDeltaSyncAt: Instant?,
-    val lastSuccessAt: Instant?,
-    val lastErrorMessage: String?,
-    val dataVersion: Long,
-    val pendingChanges: Int,
-)
-
 enum class SyncMode {
     FULL,
     DELTA,

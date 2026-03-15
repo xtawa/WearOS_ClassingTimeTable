@@ -4,13 +4,11 @@ import com.classing.wear.timetable.data.local.entity.CourseEntity
 import com.classing.wear.timetable.data.local.entity.CourseSessionEntity
 import com.classing.wear.timetable.data.local.entity.ScheduleExceptionEntity
 import com.classing.wear.timetable.data.local.entity.SemesterEntity
-import com.classing.wear.timetable.data.local.entity.SyncMetadataEntity
 import com.classing.wear.timetable.data.local.entity.TimeSlotEntity
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.domain.model.CourseSession
 import com.classing.wear.timetable.domain.model.ScheduleException
 import com.classing.wear.timetable.domain.model.Semester
-import com.classing.wear.timetable.domain.model.SyncMetadata
 import com.classing.wear.timetable.domain.model.TimeSlot
 import com.classing.wear.timetable.domain.model.WeekParity
 import com.classing.wear.timetable.domain.model.WeekRule
@@ -105,11 +103,3 @@ fun ScheduleExceptionEntity.asDomain(): ScheduleException {
     }
 }
 
-fun SyncMetadataEntity.asDomain(): SyncMetadata = SyncMetadata(
-    lastFullSyncAt = lastFullSyncAt,
-    lastDeltaSyncAt = lastDeltaSyncAt,
-    lastSuccessAt = lastSuccessAt,
-    lastErrorMessage = lastErrorMessage,
-    dataVersion = dataVersion,
-    pendingChanges = pendingChanges,
-)
