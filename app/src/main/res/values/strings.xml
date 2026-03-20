@@ -8,6 +8,7 @@
     <string name="common_loading">Loading...</string>
     <string name="common_load_failed">Load failed</string>
     <string name="common_retry">Retry</string>
+    <string name="common_date_week_label">%1$s · %2$s</string>
 
     <string name="home_loading_today_courses">Loading today\'s classes</string>
     <string name="home_empty_today_title">No classes today</string>
@@ -19,6 +20,7 @@
     <string name="home_action_this_week">Week</string>
     <string name="home_action_search">Search</string>
     <string name="home_action_settings">Settings</string>
+    <string name="home_action_week_short">W</string>
     <string name="home_action_sync_now">Sync now</string>
     <string name="home_action_this_week_subtitle">View weekly timeline</string>
     <string name="home_action_search_subtitle">Find courses quickly</string>
@@ -30,6 +32,7 @@
     <string name="home_onboarding_subtitle">Wear no longer uses built-in demo courses on first launch.</string>
     <string name="home_quick_actions_title">Quick actions</string>
     <string name="home_today_section_title">Today</string>
+    <string name="home_brand_wordmark">CLASSING</string>
 
     <string name="week_loading">Loading weekly schedule</string>
     <string name="week_empty_title">No schedule yet</string>
@@ -47,6 +50,7 @@
     <string name="search_empty_input_subtitle">For example: Android / Alice</string>
     <string name="search_empty_result_title">No courses found</string>
     <string name="search_empty_result_subtitle">Try shorter keywords</string>
+    <string name="search_course_meta">%1$s · %2$s</string>
 
     <string name="detail_title">Course details</string>
     <string name="detail_back">Back</string>
@@ -61,6 +65,8 @@
     <string name="detail_note_empty">None</string>
 
     <string name="settings_title">Settings</string>
+    <string name="settings_section_preference">Preference</string>
+    <string name="settings_section_tile">Tile</string>
     <string name="settings_dynamic_color">Dynamic colors</string>
     <string name="settings_reminder">Class reminders</string>
     <string name="settings_auto_sync">Auto sync</string>

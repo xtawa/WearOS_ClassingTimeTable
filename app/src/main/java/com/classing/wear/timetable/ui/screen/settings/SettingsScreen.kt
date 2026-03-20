@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.screen.settings
+package com.classing.wear.timetable.ui.screen.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -55,179 +56,160 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.titleSmall)
-                }
+                Text(
+                    text = stringResource(R.string.settings_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
 
         if (state.isLoading) {
             item { LoadingState(message = stringResource(R.string.common_loading)) }
-        } else {
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_dynamic_color),
-                    checked = state.preferences.dynamicColor,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleDynamicColor(it)
-                    },
-                )
-            }
+            return@ScalingLazyColumn
+        }
 
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_reminder),
-                    checked = state.preferences.remindersEnabled,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleReminder(it)
-                    },
-                )
-            }
+        item { SettingsSectionTag(title = stringResource(R.string.settings_section_preference)) }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_dynamic_color),
+                checked = state.preferences.dynamicColor,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleDynamicColor(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_reminder),
+                checked = state.preferences.remindersEnabled,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleReminder(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_auto_sync),
+                checked = state.preferences.autoSync,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleAutoSync(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_show_weekend),
+                checked = state.preferences.showWeekend,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleWeekend(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_show_completed_today),
+                checked = state.preferences.showCompletedToday,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleShowCompletedToday(it)
+                },
+            )
+        }
 
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_auto_sync),
-                    checked = state.preferences.autoSync,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleAutoSync(it)
-                    },
-                )
-            }
+        item { SettingsSectionTag(title = stringResource(R.string.settings_section_tile)) }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_tile_show_course_name),
+                checked = state.preferences.tileShowCourseName,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleTileShowCourseName(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_tile_show_current_week),
+                checked = state.preferences.tileShowCurrentWeek,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleTileShowCurrentWeek(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_tile_show_time_range),
+                checked = state.preferences.tileShowTimeRange,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleTileShowTimeRange(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_tile_show_teacher),
+                checked = state.preferences.tileShowTeacher,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleTileShowTeacher(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_tile_show_location),
+                checked = state.preferences.tileShowLocation,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleTileShowLocation(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_tile_show_countdown),
+                checked = state.preferences.tileShowCountdown,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleTileShowCountdown(it)
+                },
+            )
+        }
 
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_show_weekend),
-                    checked = state.preferences.showWeekend,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleWeekend(it)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_show_completed_today),
-                    checked = state.preferences.showCompletedToday,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleShowCompletedToday(it)
-                    },
-                )
-            }
-
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.settings_tile_template_title),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                    }
-                }
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_tile_show_course_name),
-                    checked = state.preferences.tileShowCourseName,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleTileShowCourseName(it)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_tile_show_current_week),
-                    checked = state.preferences.tileShowCurrentWeek,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleTileShowCurrentWeek(it)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_tile_show_time_range),
-                    checked = state.preferences.tileShowTimeRange,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleTileShowTimeRange(it)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_tile_show_teacher),
-                    checked = state.preferences.tileShowTeacher,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleTileShowTeacher(it)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_tile_show_location),
-                    checked = state.preferences.tileShowLocation,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleTileShowLocation(it)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitchCard(
-                    title = stringResource(R.string.settings_tile_show_countdown),
-                    checked = state.preferences.tileShowCountdown,
-                    onCheckedChange = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleTileShowCountdown(it)
-                    },
-                )
-            }
-
-            item {
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onForceFullSync()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.settings_force_full_sync))
-                }
+        item {
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onForceFullSync()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(stringResource(R.string.settings_force_full_sync))
             }
         }
     }
+}
+
+@Composable
+private fun SettingsSectionTag(title: String) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f),
+        modifier = Modifier.padding(horizontal = 4.dp),
+    )
 }
 
 @Composable
@@ -237,9 +219,7 @@ private fun PreferenceSwitchCard(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Row(
             modifier = Modifier
@@ -279,4 +259,3 @@ private fun SettingsScreenPreview() {
         )
     }
 }
-

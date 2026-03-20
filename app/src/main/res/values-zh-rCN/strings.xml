@@ -1,6 +1,6 @@
-<resources>
+﻿<resources>
     <string name="app_name">Classing 课程表</string>
-    <string name="sync_channel_name">课程同步</string>
+    <string name="sync_channel_name">课表同步</string>
     <string name="reminder_channel_name">上课提醒</string>
     <string name="reminder_notification_title">上课提醒</string>
     <string name="reminder_notification_default_content">课程即将开始</string>
@@ -8,10 +8,11 @@
     <string name="common_loading">加载中...</string>
     <string name="common_load_failed">加载失败</string>
     <string name="common_retry">重试</string>
+    <string name="common_date_week_label">%1$s · %2$s</string>
 
     <string name="home_loading_today_courses">正在加载今日课程</string>
     <string name="home_empty_today_title">今日无课</string>
-    <string name="home_empty_today_subtitle">抬腕休息一下，记得看下周安排</string>
+    <string name="home_empty_today_subtitle">休息一下，记得看看下周安排。</string>
     <string name="home_sync_idle">待同步</string>
     <string name="home_sync_syncing">同步中</string>
     <string name="home_sync_success">已同步</string>
@@ -19,24 +20,37 @@
     <string name="home_action_this_week">本周</string>
     <string name="home_action_search">搜索</string>
     <string name="home_action_settings">设置</string>
+    <string name="home_action_week_short">周</string>
+    <string name="home_action_sync_now">立即同步</string>
+    <string name="home_action_this_week_subtitle">查看本周时间轴</string>
+    <string name="home_action_search_subtitle">快速查找课程</string>
+    <string name="home_action_settings_subtitle">同步与偏好设置</string>
     <string name="home_next_lesson_title">下一节课</string>
-    <string name="home_next_lesson_empty">今日没有后续课程</string>
+    <string name="home_next_lesson_empty">今天没有后续课程</string>
+    <string name="home_next_lesson_no_data">暂无课表数据</string>
+    <string name="home_onboarding_title">请先在手机端导入课程</string>
+    <string name="home_onboarding_subtitle">首次使用不再提供预置示例课程。</string>
+    <string name="home_quick_actions_title">快捷操作</string>
+    <string name="home_today_section_title">今天</string>
+    <string name="home_brand_wordmark">CLASSING</string>
 
     <string name="week_loading">正在加载周课表</string>
     <string name="week_empty_title">暂无课表</string>
-    <string name="week_empty_subtitle">请先同步或导入课程</string>
+    <string name="week_empty_subtitle">请先在手机端导入并同步到 Wear</string>
     <string name="week_action_prev">上周</string>
     <string name="week_action_current">本周</string>
     <string name="week_action_next">下周</string>
-    <string name="week_day_lesson_count">%1$s（%2$d节）</string>
+    <string name="week_day_lesson_count">%1$s（%2$d 节）</string>
     <string name="week_no_lessons">无课</string>
 
     <string name="search_title">搜索课程</string>
-    <string name="search_input_label">课程名/教师</string>
-    <string name="search_empty_input_title">输入关键词</string>
-    <string name="search_empty_input_subtitle">例如: Android / 李老师</string>
+    <string name="search_input_label">课程或教师</string>
+    <string name="search_hint_watch_input">手表输入建议使用短关键词。</string>
+    <string name="search_empty_input_title">请输入关键词</string>
+    <string name="search_empty_input_subtitle">例如：Android / 李老师</string>
     <string name="search_empty_result_title">未找到课程</string>
     <string name="search_empty_result_subtitle">试试更短关键词</string>
+    <string name="search_course_meta">%1$s · %2$s</string>
 
     <string name="detail_title">课程详情</string>
     <string name="detail_back">返回</string>
@@ -44,35 +58,29 @@
     <string name="detail_course_not_found_title">课程不存在</string>
     <string name="detail_course_not_found_subtitle">可能已被删除</string>
     <string name="detail_no_schedule_title">本周无排课</string>
-    <string name="detail_no_schedule_subtitle">检查单双周或周次规则</string>
-    <string name="detail_teacher">教师: %1$s</string>
-    <string name="detail_location">地点: %1$s</string>
-    <string name="detail_note">备注: %1$s</string>
+    <string name="detail_no_schedule_subtitle">请检查单双周或周次规则</string>
+    <string name="detail_teacher">教师：%1$s</string>
+    <string name="detail_location">地点：%1$s</string>
+    <string name="detail_note">备注：%1$s</string>
     <string name="detail_note_empty">暂无</string>
 
     <string name="settings_title">设置</string>
+    <string name="settings_section_preference">偏好</string>
+    <string name="settings_section_tile">磁贴</string>
     <string name="settings_dynamic_color">动态配色</string>
     <string name="settings_reminder">上课提醒</string>
     <string name="settings_auto_sync">自动同步</string>
     <string name="settings_show_weekend">显示周末</string>
     <string name="settings_show_completed_today">显示今天已完成课程</string>
-    <string name="settings_tile_template_title">小组件/Tile 模板</string>
+    <string name="settings_tile_template_title">磁贴/小组件模板</string>
     <string name="settings_tile_show_course_name">显示课程名</string>
     <string name="settings_tile_show_current_week">显示当前周数</string>
     <string name="settings_tile_show_time_range">显示时间段</string>
     <string name="settings_tile_show_teacher">显示教师</string>
     <string name="settings_tile_show_location">显示地点</string>
     <string name="settings_tile_show_countdown">显示倒计时</string>
-    <string name="settings_last_sync">最近同步: %1$s</string>
-    <string name="settings_force_full_sync">立即全量同步</string>
-    <string name="home_action_sync_now">立即同步</string>
-    <string name="home_action_this_week_subtitle">查看本周时间轴</string>
-    <string name="home_action_search_subtitle">快速查找课程</string>
-    <string name="home_action_settings_subtitle">同步与偏好设置</string>
-    <string name="home_next_lesson_no_data">尚无课表数据</string>
-    <string name="home_onboarding_title">请先在手机端导入课程</string>
-    <string name="home_onboarding_subtitle">首次使用不再提供预置示例课程。</string>
-    <string name="home_quick_actions_title">快捷操作</string>
-    <string name="home_today_section_title">今天</string>
-    <string name="search_hint_watch_input">手表输入建议使用短关键词。</string>
+    <string name="settings_last_sync">最近同步：%1$s</string>
+    <string name="settings_force_full_sync">立即同步</string>
+    <string name="tile_next_class_label">Classing 下一节课磁贴</string>
+    <string name="complication_next_class_label">Classing 下一节课复杂功能</string>
 </resources>

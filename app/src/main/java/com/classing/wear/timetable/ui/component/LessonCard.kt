@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.component
+package com.classing.wear.timetable.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,49 +37,56 @@ fun LessonCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = { onClick?.invoke() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 42.dp)
+                    .background(statusColor, CircleShape),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = lesson.course.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(statusColor, CircleShape),
+                    )
+                }
                 Text(
-                    text = lesson.course.name,
-                    style = MaterialTheme.typography.titleSmall,
+                    text = TimeFormatters.formatSlotLabelAndTime(
+                        label = lesson.timeSlot.label,
+                        start = lesson.startAt,
+                        end = lesson.endAt,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${lesson.course.teacher} · ${lesson.course.classroom}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(statusColor, CircleShape),
-                )
             }
-
-            Text(
-                text = TimeFormatters.formatSlotLabelAndTime(
-                    label = lesson.timeSlot.label,
-                    start = lesson.startAt,
-                    end = lesson.endAt,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Text(
-                text = "${lesson.course.teacher} · ${lesson.course.classroom}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
         }
     }
 }

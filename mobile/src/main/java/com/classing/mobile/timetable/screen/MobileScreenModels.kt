@@ -13,6 +13,9 @@ internal enum class MobileLayer {
 internal enum class SettingsPage {
     Main,
     Import,
+    WeekMode,
+    WearCommunication,
+    About,
 }
 
 internal enum class WeekNumberMode {

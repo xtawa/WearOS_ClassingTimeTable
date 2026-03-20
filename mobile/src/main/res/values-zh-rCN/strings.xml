@@ -7,6 +7,13 @@
     <string name="layer_import">导入</string>
     <string name="layer_settings">设置</string>
     <string name="layer_about">关于</string>
+    <string name="ghost_title_schedule">课表</string>
+    <string name="ghost_title_import">导入</string>
+    <string name="ghost_title_settings">设置</string>
+    <string name="ghost_title_week">周数</string>
+    <string name="ghost_title_wear">Wear</string>
+    <string name="ghost_title_ai">AI</string>
+    <string name="common_copied">已复制</string>
 
     <string name="initial_parse_message">请粘贴 ICS 内容，先预览，再确认导入。</string>
     <string name="message_reminder_enabled">课程提醒已开启。</string>
@@ -27,6 +34,10 @@
     <string name="day_chip_label">%1$s（%2$d）</string>
     <string name="today_classes_title">当日课程</string>
     <string name="no_classes_today">当天暂无课程。</string>
+    <string name="calendar_prev_month">上月</string>
+    <string name="calendar_next_month">下月</string>
+    <string name="calendar_selected_date_title">%1$s 的课程</string>
+    <string name="calendar_no_classes_on_date">该日期暂无课程。</string>
 
     <string name="day_header_title">%1$s（%2$d）</string>
     <string name="no_classes">无课程</string>
@@ -54,6 +65,7 @@
     <string name="json_prompt_page_desc">将此 Prompt 发给 AI，拿到 JSON 后粘贴回导入框。</string>
     <string name="json_prompt_page_label">转译 Prompt</string>
     <string name="json_prompt_back_button">返回导入页</string>
+    <string name="json_prompt_usage_steps">1. 复制 Prompt  2. 粘贴到 AI 并附上课表  3. 将 JSON 结果粘贴回导入页</string>
     <string name="json_prompt_content">你是课表 JSON 转译助手。\n请把用户提供的课表文本，转换为移动应用可导入的 JSON。\n只输出 JSON，不要输出 Markdown 或解释。\n\n必须严格使用以下结构：\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"课程名\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"location\": \"可选\",\n      \"note\": \"可选\"\n    }\n  ]\n}\n\n规则：\n1. dayOfWeek 取值 1-7（1=周一，7=周日）。\n2. startTime/endTime 必须为 24 小时制 HH:mm。\n3. 必填字段：title、dayOfWeek、startTime、endTime。\n4. location/note 不确定时可填空字符串。\n5. 不要把不同时间段的课程合并成一条。</string>
 
     <string name="status_title">状态</string>
@@ -77,6 +89,8 @@
     <string name="manual_input_title_label">课程名称</string>
     <string name="manual_input_start_time_label">开始时间（HH:mm）</string>
     <string name="manual_input_end_time_label">结束时间（HH:mm）</string>
+    <string name="manual_input_start_time_placeholder">08:00</string>
+    <string name="manual_input_end_time_placeholder">09:40</string>
     <string name="manual_input_location_label">上课地点（可选）</string>
     <string name="manual_input_note_label">备注（可选）</string>
     <string name="manual_import_button">添加并导入</string>
@@ -110,8 +124,10 @@
     <string name="settings_title">显示与提醒</string>
     <string name="settings_show_weekend_title">显示周末</string>
     <string name="settings_show_weekend_desc">课表包含周六和周日。</string>
+    <string name="settings_badge_weekend">周</string>
     <string name="settings_reminder_toggle_title">课程提醒</string>
     <string name="settings_reminder_toggle_desc">在课程开始前发送提醒。</string>
+    <string name="settings_badge_reminder">铃</string>
     <string name="settings_reminder_lead_title">提前提醒：%1$d 分钟</string>
     <string name="settings_backup_title">备份</string>
     <string name="settings_backup_desc">导出当前课表为专属 JSON，保存位置由你手动选择。</string>
@@ -121,15 +137,22 @@
     <string name="settings_import_entry_title">导入课表</string>
     <string name="settings_import_entry_desc">进入独立导入页，支持 ICS、JSON 或手动录入。</string>
     <string name="settings_import_entry_button">打开导入页</string>
+    <string name="settings_badge_import">导</string>
     <string name="settings_week_mode_title">周数计算</string>
     <string name="settings_week_mode_desc">可切换自然周或学期周，学期周按起始日期每 7 天计算。</string>
     <string name="settings_week_mode_natural">自然周</string>
     <string name="settings_week_mode_semester">学期周</string>
+    <string name="settings_badge_week_mode">周</string>
+    <string name="settings_badge_wear">W</string>
+    <string name="settings_current_week_badge">当前</string>
     <string name="settings_semester_start_date_value">学期起始日：%1$s</string>
+    <string name="settings_semester_current_week_value">当前学期周：第 %1$d 周</string>
+    <string name="settings_natural_current_week_value">当前自然周：第 %1$d 周</string>
     <string name="settings_semester_start_date_pick_button">选择起始日期</string>
     <string name="settings_about_entry_title">关于</string>
     <string name="settings_about_entry_desc">应用信息、链接与制作成员。</string>
     <string name="settings_about_entry_button">打开</string>
+    <string name="settings_badge_about">关</string>
     <string name="settings_about_page_title">关于</string>
     <string name="settings_about_back_button">返回设置</string>
     <string name="settings_about_links_title">链接</string>

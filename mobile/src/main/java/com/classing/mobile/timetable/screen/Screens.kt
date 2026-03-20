@@ -8,9 +8,11 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -43,9 +47,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -94,8 +101,11 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
@@ -110,7 +120,6 @@ fun MobileTimetableScreen() {
     var initialized by remember { mutableStateOf(false) }
     var layerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
     var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
-    var selectedDayValue by remember { mutableIntStateOf(LocalDate.now().dayOfWeek.value) }
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
@@ -147,6 +156,9 @@ fun MobileTimetableScreen() {
     var wearSyncInProgress by remember { mutableStateOf(false) }
     var wearSyncMode by remember { mutableStateOf(WearSyncMode.WEARABLE_API) }
     val coroutineScope = rememberCoroutineScope()
+    val wearSyncMutex = remember { Mutex() }
+    var weekSettingsAutoSyncPending by remember { mutableStateOf(false) }
+    var weekSettingsAutoSyncJob by remember { mutableStateOf<Job?>(null) }
 
     fun persistSettings() {
         com.xtawa.classingtime.screen.persistSettings(
@@ -221,8 +233,7 @@ fun MobileTimetableScreen() {
         wearSyncMessage = refreshed.wearSyncMessage
     }
 
-    suspend fun runManualWearSync() {
-        wearSyncInProgress = true
+    suspend fun runWearSyncInternal() {
         val result = executeManualWearSync(
             context = context,
             wearSyncMode = wearSyncMode,
@@ -236,7 +247,47 @@ fun MobileTimetableScreen() {
         latestWearAckAtMillis = result.latestAckAtMillis
         wearConnectedCount = result.wearConnectedCount
         wearConnectionMessage = result.wearConnectionMessage
-        wearSyncInProgress = false
+    }
+
+    suspend fun runManualWearSync() {
+        wearSyncMutex.withLock {
+            wearSyncInProgress = true
+            try {
+                runWearSyncInternal()
+            } finally {
+                wearSyncInProgress = false
+            }
+        }
+    }
+
+    suspend fun runWeekSettingsAutoWearSync() {
+        wearSyncMutex.withLock {
+            wearSyncInProgress = true
+            try {
+                runWearSyncInternal()
+            } finally {
+                wearSyncInProgress = false
+            }
+        }
+    }
+
+    fun scheduleWeekSettingsAutoSync() {
+        weekSettingsAutoSyncPending = true
+        if (weekSettingsAutoSyncJob?.isActive == true) return
+        weekSettingsAutoSyncJob = coroutineScope.launch {
+            try {
+                delay(700L)
+                while (weekSettingsAutoSyncPending) {
+                    weekSettingsAutoSyncPending = false
+                    runWeekSettingsAutoWearSync()
+                    if (weekSettingsAutoSyncPending) {
+                        delay(700L)
+                    }
+                }
+            } finally {
+                weekSettingsAutoSyncJob = null
+            }
+        }
     }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -354,7 +405,6 @@ fun MobileTimetableScreen() {
 
     val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
-    val selectedDay = DayOfWeek.of(selectedDayValue)
     val visibleDays = if (showWeekend) DayOfWeek.values().toList() else DayOfWeek.values().filter { it.value <= 5 }
     val lessonsByDay = lessons.groupBy { it.dayOfWeek }
     val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
@@ -485,45 +535,120 @@ fun MobileTimetableScreen() {
 
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp,
             ) {
-                Text(
-                    text = stringResource(R.string.screen_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = stringResource(R.string.screen_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(34.dp),
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                    contentDescription = stringResource(R.string.app_name),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                        Text(
+                            text = stringResource(R.string.screen_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.screen_subtitle),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Surface(
+                            modifier = Modifier.size(32.dp),
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Filled.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         bottomBar = {
-            NavigationBar {
-                MobileLayer.entries.forEach { item ->
-                    val icon = when (item) {
-                        MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
-                        MobileLayer.Calendar -> Icons.Filled.CalendarMonth
-                        MobileLayer.Settings -> Icons.Filled.Settings
+            Surface(
+                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp,
+            ) {
+                NavigationBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .height(82.dp),
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                ) {
+                    MobileLayer.entries.forEach { item ->
+                        val icon = when (item) {
+                            MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
+                            MobileLayer.Calendar -> Icons.Filled.CalendarMonth
+                            MobileLayer.Settings -> Icons.Filled.Settings
+                        }
+                        NavigationBarItem(
+                            selected = item == layer,
+                            onClick = {
+                                layerName = item.name
+                                if (item != MobileLayer.Settings) {
+                                    settingsPageName = SettingsPage.Main.name
+                                }
+                            },
+                            icon = { Icon(imageVector = icon, contentDescription = null) },
+                            alwaysShowLabel = true,
+                            label = {
+                                Text(
+                                    stringResource(item.labelRes()),
+                                    fontWeight = if (item == layer) FontWeight.SemiBold else FontWeight.Medium,
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                        )
                     }
-                    NavigationBarItem(
-                        selected = item == layer,
-                        onClick = {
-                            layerName = item.name
-                            if (item != MobileLayer.Settings) {
-                                settingsPageName = SettingsPage.Main.name
-                            }
-                        },
-                        icon = { Icon(imageVector = icon, contentDescription = null) },
-                        alwaysShowLabel = true,
-                        label = { Text(stringResource(item.labelRes())) },
-                    )
                 }
             }
         },
@@ -536,12 +661,9 @@ fun MobileTimetableScreen() {
                 onLongPressLesson = { editingLesson = it },
             )
 
-            MobileLayer.Calendar -> DashboardLayer(
+            MobileLayer.Calendar -> CalendarMonthLayer(
                 contentPadding = innerPadding,
-                visibleDays = visibleDays,
-                selectedDay = selectedDay,
                 lessonsByDay = lessonsByDay,
-                onSelectDay = { selectedDayValue = it.value },
             )
 
             MobileLayer.Settings -> when (settingsPage) {
@@ -550,10 +672,17 @@ fun MobileTimetableScreen() {
                     showWeekend = showWeekend,
                     reminderEnabled = reminderEnabled,
                     reminderMinutes = reminderMinutes,
-                    weekNumberMode = weekNumberMode,
-                    semesterWeekStartDate = semesterWeekStartDate,
                     onOpenImportPage = {
                         settingsPageName = SettingsPage.Import.name
+                    },
+                    onOpenWeekModePage = {
+                        settingsPageName = SettingsPage.WeekMode.name
+                    },
+                    onOpenWearCommunicationPage = {
+                        settingsPageName = SettingsPage.WearCommunication.name
+                    },
+                    onOpenAboutPage = {
+                        settingsPageName = SettingsPage.About.name
                     },
                     onToggleWeekend = {
                         showWeekend = it
@@ -579,14 +708,6 @@ fun MobileTimetableScreen() {
                         persistSettings()
                         if (reminderEnabled) syncReminderWork()
                     },
-                    onWeekNumberModeChange = { mode ->
-                        weekNumberMode = mode
-                        persistSettings()
-                    },
-                    onSemesterWeekStartDateChange = { date ->
-                        semesterWeekStartDate = date
-                        persistSettings()
-                    },
                     onExportBackup = {
                         pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
                         val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
@@ -598,10 +719,42 @@ fun MobileTimetableScreen() {
                     onClearAllSchedules = {
                         showClearAllConfirmDialog = true
                     },
+                )
+
+                SettingsPage.Import -> importContent(innerPadding)
+
+                SettingsPage.WeekMode -> WeekModeSettingsPage(
+                    contentPadding = innerPadding,
+                    weekNumberMode = weekNumberMode,
+                    semesterWeekStartDate = semesterWeekStartDate,
+                    onBack = {
+                        settingsPageName = SettingsPage.Main.name
+                    },
+                    onWeekNumberModeChange = { mode ->
+                        if (weekNumberMode != mode) {
+                            weekNumberMode = mode
+                            persistSettings()
+                            scheduleWeekSettingsAutoSync()
+                        }
+                    },
+                    onSemesterWeekStartDateChange = { date ->
+                        if (semesterWeekStartDate != date) {
+                            semesterWeekStartDate = date
+                            persistSettings()
+                            scheduleWeekSettingsAutoSync()
+                        }
+                    },
+                )
+
+                SettingsPage.WearCommunication -> WearCommunicationSettingsPage(
+                    contentPadding = innerPadding,
                     wearSyncMode = wearSyncMode,
                     wearConnectionMessage = wearConnectionMessage,
                     wearSyncMessage = wearSyncMessage,
                     wearSyncInProgress = wearSyncInProgress,
+                    onBack = {
+                        settingsPageName = SettingsPage.Main.name
+                    },
                     onWearSyncModeChange = { mode ->
                         wearSyncMode = mode
                         persistSettings()
@@ -621,7 +774,12 @@ fun MobileTimetableScreen() {
                     },
                 )
 
-                SettingsPage.Import -> importContent(innerPadding)
+                SettingsPage.About -> AboutLayer(
+                    contentPadding = innerPadding,
+                    onBack = {
+                        settingsPageName = SettingsPage.Main.name
+                    },
+                )
             }
         }
     }

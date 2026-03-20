@@ -8,9 +8,11 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -107,11 +110,49 @@ internal fun WeekBoardLayer(
             .fillMaxSize()
             .padding(contentPadding),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item {
+            Column(
+                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.ghost_title_schedule),
+                    style = MaterialTheme.typography.displayLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                Text(
+                    text = stringResource(R.string.layer_dashboard),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = stringResource(R.string.week_long_press_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         items(visibleDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
-            Card {
+            val isEmpty = lessons.isEmpty()
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isEmpty) {
+                        MaterialTheme.colorScheme.surfaceContainerLow
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    },
+                ),
+                border = if (isEmpty) {
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                } else {
+                    null
+                },
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -123,41 +164,77 @@ internal fun WeekBoardLayer(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    if (lessons.isEmpty()) {
+                    if (isEmpty) {
                         Text(stringResource(R.string.no_classes), style = MaterialTheme.typography.bodySmall)
                     } else {
-                        Text(
-                            text = stringResource(R.string.week_long_press_hint),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                         lessons.forEach { lesson ->
-                            Row(
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .pointerInput(lesson.id) {
                                         detectTapGestures(
                                             onLongPress = { onLongPressLesson(lesson) },
                                         )
-                                    },
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                                },
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                             ) {
-                                Text(
-                                    text = stringResource(
-                                        R.string.time_range_text,
-                                        lesson.startTime.format(clockFormatter),
-                                        lesson.endTime.format(clockFormatter),
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                                Text(
-                                    text = lesson.title,
-                                    modifier = Modifier.padding(start = 12.dp),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 9.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(
+                                        modifier = Modifier.size(width = 70.dp, height = 40.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        Text(
+                                            text = lesson.startTime.format(clockFormatter),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        Text(
+                                            text = lesson.endTime.format(clockFormatter),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 1.dp, height = 30.dp),
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    )
+                                    {
+                                        Text(
+                                            text = lesson.title,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        if (!lesson.location.isNullOrBlank()) {
+                                            Text(
+                                                text = lesson.location,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -215,24 +292,38 @@ internal fun ImportLayer(
             .padding(horizontal = 16.dp)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (onBackToSettings != null) {
             TextButton(onClick = onBackToSettings) {
                 Text(stringResource(R.string.settings_about_back_button))
             }
         }
-        Text(stringResource(R.string.import_page_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Text(
-            text = stringResource(R.string.import_page_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.ghost_title_import),
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                text = stringResource(R.string.import_page_title),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.import_page_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Text(
                 text = stringResource(R.string.import_method_ics),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
             )
         }
@@ -254,7 +345,7 @@ internal fun ImportLayer(
             Button(onClick = onCancelPreview, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
             Button(onClick = onClearInput) { Text(stringResource(R.string.import_button_clear)) }
         }
-        Card {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
             Column(
                 modifier = Modifier.padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -279,7 +370,7 @@ internal fun ImportLayer(
         val collapsedIcs = preview.size > previewCollapseThreshold
         val shownIcsPreview = if (collapsedIcs && !expandIcsPreview) preview.take(previewCollapseThreshold) else preview
         shownIcsPreview.forEach { draft ->
-            Card {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -311,11 +402,12 @@ internal fun ImportLayer(
         }
 
         HorizontalDivider()
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Text(
                 text = stringResource(R.string.import_method_json),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
             )
         }
@@ -345,7 +437,7 @@ internal fun ImportLayer(
         val collapsedJson = jsonPreview.size > previewCollapseThreshold
         val shownJsonPreview = if (collapsedJson && !expandJsonPreview) jsonPreview.take(previewCollapseThreshold) else jsonPreview
         shownJsonPreview.forEach { lesson ->
-            Card {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -379,11 +471,12 @@ internal fun ImportLayer(
         }
 
         HorizontalDivider()
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Text(
                 text = stringResource(R.string.import_method_manual),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
             )
         }
@@ -414,7 +507,7 @@ internal fun ImportLayer(
             onValueChange = { manualStart = it },
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.manual_input_start_time_label)) },
-            placeholder = { Text("08:00") },
+            placeholder = { Text(stringResource(R.string.manual_input_start_time_placeholder)) },
             singleLine = true,
         )
         OutlinedTextField(
@@ -422,7 +515,7 @@ internal fun ImportLayer(
             onValueChange = { manualEnd = it },
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.manual_input_end_time_label)) },
-            placeholder = { Text("09:40") },
+            placeholder = { Text(stringResource(R.string.manual_input_end_time_placeholder)) },
             singleLine = true,
         )
         OutlinedTextField(

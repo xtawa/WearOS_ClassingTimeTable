@@ -9,13 +9,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val FallbackDarkScheme: ColorScheme = darkColorScheme(
-    primary = TealPrimary,
-    onPrimary = TealOnPrimary,
-    secondary = TealSecondary,
-    background = TealBackground,
-    surface = TealSurface,
-    onSurface = TealOnSurface,
-    error = TealError,
+    primary = IndigoPrimary,
+    onPrimary = IndigoOnPrimary,
+    primaryContainer = IndigoPrimaryContainer,
+    onPrimaryContainer = IndigoOnPrimaryContainer,
+    secondary = IndigoSecondary,
+    onSecondary = IndigoOnSecondary,
+    secondaryContainer = IndigoSecondaryContainer,
+    onSecondaryContainer = IndigoOnSecondaryContainer,
+    tertiary = IndigoTertiary,
+    onTertiary = IndigoOnTertiary,
+    background = IndigoBackground,
+    onBackground = IndigoOnBackground,
+    surface = IndigoSurface,
+    onSurface = IndigoOnSurface,
+    surfaceVariant = IndigoSurfaceVariant,
+    onSurfaceVariant = IndigoOnSurfaceVariant,
+    outline = IndigoOutline,
+    outlineVariant = IndigoOutlineVariant,
+    surfaceContainerLow = IndigoSurfaceContainerLow,
+    surfaceContainer = IndigoSurfaceContainer,
+    surfaceContainerHigh = IndigoSurfaceContainerHigh,
+    error = IndigoError,
 )
 
 @Composable

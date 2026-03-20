@@ -1,17 +1,21 @@
-﻿package com.classing.wear.timetable.ui.screen.week
+package com.classing.wear.timetable.ui.screen.week
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,7 +46,6 @@ fun WeekScreen(
     onLessonClick: (Long) -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
-
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
@@ -59,13 +62,17 @@ fun WeekScreen(
         }
 
         when {
-            state.isLoading -> item { LoadingState(message = stringResource(R.string.week_loading)) }
+            state.isLoading -> item {
+                LoadingState(message = stringResource(R.string.week_loading))
+            }
+
             state.schedule.days.isEmpty() -> item {
                 EmptyState(
                     title = stringResource(R.string.week_empty_title),
                     subtitle = stringResource(R.string.week_empty_subtitle),
                 )
             }
+
             else -> {
                 items(state.schedule.days.entries.toList()) { entry ->
                     DayScheduleSection(
@@ -86,35 +93,75 @@ private fun WeekHeader(
     onNextWeek: () -> Unit,
     onCurrentWeek: () -> Unit,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-    ) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(text = label, style = MaterialTheme.typography.titleSmall)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Button(modifier = Modifier.weight(1f), onClick = onPreviousWeek) {
-                    Text(stringResource(R.string.week_action_prev))
+                CircleActionButton(
+                    label = "‹",
+                    onClick = onPreviousWeek,
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                 }
-                Button(modifier = Modifier.weight(1f), onClick = onNextWeek) {
-                    Text(stringResource(R.string.week_action_next))
-                }
+                CircleActionButton(
+                    label = "›",
+                    onClick = onNextWeek,
+                )
             }
-            Button(
-                modifier = Modifier.fillMaxWidth(),
+            Card(
                 onClick = onCurrentWeek,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                shape = RoundedCornerShape(999.dp),
             ) {
-                Text(stringResource(R.string.week_action_current))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.week_action_current),
+                        modifier = Modifier.padding(start = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun CircleActionButton(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Box(
+            modifier = Modifier.size(30.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+            )
         }
     }
 }
@@ -126,17 +173,47 @@ private fun DayScheduleSection(
     onLessonClick: (Long) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = stringResource(R.string.week_day_lesson_count, dayLabel(day), lessons.size),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (lessons.isEmpty()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = stringResource(R.string.week_no_lessons),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = stringResource(R.string.week_day_lesson_count, dayLabel(day), lessons.size),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (lessons.isEmpty()) {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
             )
+            if (!lessons.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .size(5.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
+                )
+            }
+        }
+        if (lessons.isEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.week_no_lessons),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         } else {
             lessons.forEach { lesson ->
                 LessonCard(
@@ -163,7 +240,6 @@ private fun WeekScreenPreview() {
             DayOfWeek.TUESDAY to emptyList(),
         ),
     )
-
     ClassingTimetableTheme(useDynamicColor = false) {
         WeekScreen(
             state = WeekUiState(isLoading = false, weekLabel = "Week 3", schedule = week),
@@ -174,4 +250,3 @@ private fun WeekScreenPreview() {
         )
     }
 }
-
