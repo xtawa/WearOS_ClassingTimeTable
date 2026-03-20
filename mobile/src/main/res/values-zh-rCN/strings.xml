@@ -2,6 +2,7 @@
     <string name="app_name">Classing 课程表</string>
 
     <string name="layer_dashboard">课表</string>
+    <string name="layer_calendar">日历</string>
     <string name="layer_week_view">周视图</string>
     <string name="layer_import">导入</string>
     <string name="layer_settings">设置</string>
@@ -117,6 +118,15 @@
     <string name="settings_backup_button">导出课表 JSON</string>
     <string name="settings_restore_button">从 JSON 还原</string>
     <string name="settings_restore_hint">还原会覆盖当前课表，确认后执行。</string>
+    <string name="settings_import_entry_title">导入课表</string>
+    <string name="settings_import_entry_desc">进入独立导入页，支持 ICS、JSON 或手动录入。</string>
+    <string name="settings_import_entry_button">打开导入页</string>
+    <string name="settings_week_mode_title">周数计算</string>
+    <string name="settings_week_mode_desc">可切换自然周或学期周，学期周按起始日期每 7 天计算。</string>
+    <string name="settings_week_mode_natural">自然周</string>
+    <string name="settings_week_mode_semester">学期周</string>
+    <string name="settings_semester_start_date_value">学期起始日：%1$s</string>
+    <string name="settings_semester_start_date_pick_button">选择起始日期</string>
     <string name="settings_about_entry_title">关于</string>
     <string name="settings_about_entry_desc">应用信息、链接与制作成员。</string>
     <string name="settings_about_entry_button">打开</string>

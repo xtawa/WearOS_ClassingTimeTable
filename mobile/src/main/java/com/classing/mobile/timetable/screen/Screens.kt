@@ -28,6 +28,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,7 +39,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -101,11 +108,14 @@ fun MobileTimetableScreen() {
     val adapter = remember { ScheduleImportAdapter() }
 
     var initialized by remember { mutableStateOf(false) }
-    var layerName by remember { mutableStateOf(MobileLayer.Dashboard.name) }
+    var layerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
+    var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
     var selectedDayValue by remember { mutableIntStateOf(LocalDate.now().dayOfWeek.value) }
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
+    var weekNumberMode by remember { mutableStateOf(WeekNumberMode.NATURAL) }
+    var semesterWeekStartDate by remember { mutableStateOf(LocalDate.now()) }
     var rawIcs by remember { mutableStateOf("") }
     var rawJson by remember { mutableStateOf("") }
     var parseMessage by remember { mutableStateOf(context.getString(R.string.initial_parse_message)) }
@@ -147,6 +157,8 @@ fun MobileTimetableScreen() {
             rawIcs = rawIcs,
             parseMessage = parseMessage,
             wearSyncMode = wearSyncMode,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
         )
     }
 
@@ -217,6 +229,8 @@ fun MobileTimetableScreen() {
             lessons = lessons,
             zoneId = zoneId,
             latestWearAckAtMillis = latestWearAckAtMillis,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
         )
         wearSyncMessage = result.wearSyncMessage
         latestWearAckAtMillis = result.latestAckAtMillis
@@ -311,6 +325,8 @@ fun MobileTimetableScreen() {
         rawIcs = settings.rawIcs.takeUnless { it.contains("PRODID:-//Classing//Schedule Demo//EN") }.orEmpty()
         parseMessage = settings.parseMessage.ifBlank { context.getString(R.string.initial_parse_message) }
         wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.WEARABLE_API
+        weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
+        semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
 
         if (storedLessons.isNotEmpty()) {
             lessons = storedLessons.map { it.toLessonUi() }
@@ -336,10 +352,136 @@ fun MobileTimetableScreen() {
         return
     }
 
-    val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Dashboard
+    val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule
+    val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
     val selectedDay = DayOfWeek.of(selectedDayValue)
     val visibleDays = if (showWeekend) DayOfWeek.values().toList() else DayOfWeek.values().filter { it.value <= 5 }
     val lessonsByDay = lessons.groupBy { it.dayOfWeek }
+    val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
+        ImportLayer(
+            contentPadding = innerPadding,
+            onBackToSettings = { settingsPageName = SettingsPage.Main.name },
+            rawIcs = rawIcs,
+            rawJson = rawJson,
+            parseMessage = parseMessage,
+            warnings = warnings,
+            preview = draftPreview,
+            jsonPreview = jsonPreview,
+            hasPendingImport = pendingImportLessons.isNotEmpty(),
+            onRawChange = { rawIcs = it },
+            onJsonRawChange = { rawJson = it },
+            onClearInput = {
+                rawIcs = ""
+                rawJson = ""
+                pendingImportLessons = emptyList()
+                pendingImportConflicts = emptyList()
+                showImportConflictDialog = false
+                draftPreview = emptyList()
+                jsonPreview = emptyList()
+                warnings = emptyList()
+                parseMessage = context.getString(R.string.message_input_cleared)
+                persistSettings()
+            },
+            onParsePreview = {
+                val result = parseToLessons(rawIcs, parser, adapter, zoneId, context)
+                pendingImportLessons = result.lessons
+                draftPreview = result.drafts
+                jsonPreview = emptyList()
+                parseMessage = result.message
+                warnings = result.warnings
+                persistSettings()
+            },
+            onParseJsonPreview = {
+                val result = parseJsonToLessons(rawJson, context)
+                pendingImportLessons = result.lessons
+                draftPreview = emptyList()
+                jsonPreview = result.lessons
+                parseMessage = result.message
+                warnings = result.warnings
+                persistSettings()
+            },
+            onConfirmImport = {
+                if (pendingImportLessons.isEmpty()) {
+                    parseMessage = context.getString(R.string.no_pending_import_message)
+                } else {
+                    val conflicts = detectLessonConflicts(pendingImportLessons)
+                    if (conflicts.isEmpty()) {
+                        applyImportedLessons(pendingImportLessons)
+                        parseMessage = context.getString(R.string.import_confirmed_message, pendingImportLessons.size)
+                        pendingImportLessons = emptyList()
+                        draftPreview = emptyList()
+                        jsonPreview = emptyList()
+                        warnings = emptyList()
+                    } else {
+                        pendingImportConflicts = conflicts
+                        showImportConflictDialog = true
+                        parseMessage = context.getString(R.string.import_conflict_detected_message, conflicts.size)
+                    }
+                }
+                persistSettings()
+            },
+            onCancelPreview = {
+                pendingImportLessons = emptyList()
+                draftPreview = emptyList()
+                jsonPreview = emptyList()
+                warnings = emptyList()
+                parseMessage = context.getString(R.string.import_preview_canceled_message)
+                persistSettings()
+            },
+            onManualImport = { title, location, note, dayOfWeek, startRaw, endRaw ->
+                val safeTitle = title.trim()
+                val safeLocation = location.trim().ifBlank { null }
+                val safeNote = note.trim().ifBlank { null }
+                val start = parseManualTime(startRaw)
+                val end = parseManualTime(endRaw)
+                when {
+                    safeTitle.isBlank() -> {
+                        parseMessage = context.getString(R.string.manual_import_title_required_message)
+                        persistSettings()
+                        false
+                    }
+
+                    start == null || end == null -> {
+                        parseMessage = context.getString(R.string.manual_import_time_format_message)
+                        persistSettings()
+                        false
+                    }
+
+                    !end.isAfter(start) -> {
+                        parseMessage = context.getString(R.string.manual_import_time_order_message)
+                        persistSettings()
+                        false
+                    }
+
+                    else -> {
+                        val newLesson = LessonUi(
+                            id = "manual-${System.currentTimeMillis()}-${safeTitle.hashCode()}",
+                            title = safeTitle,
+                            location = safeLocation,
+                            note = safeNote,
+                            dayOfWeek = dayOfWeek,
+                            startTime = start,
+                            endTime = end,
+                        )
+                        val conflicts = findConflictsWithExisting(newLesson, lessons)
+                        if (conflicts.isEmpty()) {
+                            appendManualLesson(newLesson)
+                            parseMessage = context.getString(R.string.manual_import_success_message, safeTitle)
+                            persistSettings()
+                            true
+                        } else {
+                            pendingManualLesson = newLesson
+                            pendingManualConflicts = conflicts
+                            showManualConflictDialog = true
+                            parseMessage = context.getString(R.string.manual_import_conflict_detected_message, conflicts.size)
+                            persistSettings()
+                            false
+                        }
+                    }
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -360,20 +502,41 @@ fun MobileTimetableScreen() {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(MobileLayer.entries) { item ->
-                        FilterChip(
-                            selected = item == layer,
-                            onClick = { layerName = item.name },
-                            label = { Text(stringResource(item.labelRes())) },
-                        )
+            }
+        },
+        bottomBar = {
+            NavigationBar {
+                MobileLayer.entries.forEach { item ->
+                    val icon = when (item) {
+                        MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
+                        MobileLayer.Calendar -> Icons.Filled.CalendarMonth
+                        MobileLayer.Settings -> Icons.Filled.Settings
                     }
+                    NavigationBarItem(
+                        selected = item == layer,
+                        onClick = {
+                            layerName = item.name
+                            if (item != MobileLayer.Settings) {
+                                settingsPageName = SettingsPage.Main.name
+                            }
+                        },
+                        icon = { Icon(imageVector = icon, contentDescription = null) },
+                        alwaysShowLabel = true,
+                        label = { Text(stringResource(item.labelRes())) },
+                    )
                 }
             }
         },
     ) { innerPadding ->
         when (layer) {
-            MobileLayer.Dashboard -> DashboardLayer(
+            MobileLayer.Schedule -> WeekBoardLayer(
+                contentPadding = innerPadding,
+                visibleDays = visibleDays,
+                lessonsByDay = lessonsByDay,
+                onLongPressLesson = { editingLesson = it },
+            )
+
+            MobileLayer.Calendar -> DashboardLayer(
                 contentPadding = innerPadding,
                 visibleDays = visibleDays,
                 selectedDay = selectedDay,
@@ -381,200 +544,85 @@ fun MobileTimetableScreen() {
                 onSelectDay = { selectedDayValue = it.value },
             )
 
-            MobileLayer.WeekBoard -> WeekBoardLayer(
-                contentPadding = innerPadding,
-                visibleDays = visibleDays,
-                lessonsByDay = lessonsByDay,
-                onLongPressLesson = { editingLesson = it },
-            )
-
-            MobileLayer.Import -> ImportLayer(
-                contentPadding = innerPadding,
-                rawIcs = rawIcs,
-                rawJson = rawJson,
-                parseMessage = parseMessage,
-                warnings = warnings,
-                preview = draftPreview,
-                jsonPreview = jsonPreview,
-                hasPendingImport = pendingImportLessons.isNotEmpty(),
-                onRawChange = { rawIcs = it },
-                onJsonRawChange = { rawJson = it },
-                onClearInput = {
-                    rawIcs = ""
-                    rawJson = ""
-                    pendingImportLessons = emptyList()
-                    pendingImportConflicts = emptyList()
-                    showImportConflictDialog = false
-                    draftPreview = emptyList()
-                    jsonPreview = emptyList()
-                    warnings = emptyList()
-                    parseMessage = context.getString(R.string.message_input_cleared)
-                    persistSettings()
-                },
-                onParsePreview = {
-                    val result = parseToLessons(rawIcs, parser, adapter, zoneId, context)
-                    pendingImportLessons = result.lessons
-                    draftPreview = result.drafts
-                    jsonPreview = emptyList()
-                    parseMessage = result.message
-                    warnings = result.warnings
-                    persistSettings()
-                },
-                onParseJsonPreview = {
-                    val result = parseJsonToLessons(rawJson, context)
-                    pendingImportLessons = result.lessons
-                    draftPreview = emptyList()
-                    jsonPreview = result.lessons
-                    parseMessage = result.message
-                    warnings = result.warnings
-                    persistSettings()
-                },
-                onConfirmImport = {
-                    if (pendingImportLessons.isEmpty()) {
-                        parseMessage = context.getString(R.string.no_pending_import_message)
-                    } else {
-                        val conflicts = detectLessonConflicts(pendingImportLessons)
-                        if (conflicts.isEmpty()) {
-                            applyImportedLessons(pendingImportLessons)
-                            parseMessage = context.getString(R.string.import_confirmed_message, pendingImportLessons.size)
-                            pendingImportLessons = emptyList()
-                            draftPreview = emptyList()
-                            jsonPreview = emptyList()
-                            warnings = emptyList()
+            MobileLayer.Settings -> when (settingsPage) {
+                SettingsPage.Main -> SettingsLayer(
+                    contentPadding = innerPadding,
+                    showWeekend = showWeekend,
+                    reminderEnabled = reminderEnabled,
+                    reminderMinutes = reminderMinutes,
+                    weekNumberMode = weekNumberMode,
+                    semesterWeekStartDate = semesterWeekStartDate,
+                    onOpenImportPage = {
+                        settingsPageName = SettingsPage.Import.name
+                    },
+                    onToggleWeekend = {
+                        showWeekend = it
+                        persistSettings()
+                    },
+                    onToggleReminder = { enabled ->
+                        if (!enabled) {
+                            reminderEnabled = false
+                            parseMessage = context.getString(R.string.message_reminder_disabled)
+                            persistSettings()
+                            syncReminderWork()
+                        } else if (hasNotificationPermission(context)) {
+                            reminderEnabled = true
+                            parseMessage = context.getString(R.string.message_reminder_enabled)
+                            persistSettings()
+                            syncReminderWork()
                         } else {
-                            pendingImportConflicts = conflicts
-                            showImportConflictDialog = true
-                            parseMessage = context.getString(R.string.import_conflict_detected_message, conflicts.size)
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
-                    }
-                    persistSettings()
-                },
-                onCancelPreview = {
-                    pendingImportLessons = emptyList()
-                    draftPreview = emptyList()
-                    jsonPreview = emptyList()
-                    warnings = emptyList()
-                    parseMessage = context.getString(R.string.import_preview_canceled_message)
-                    persistSettings()
-                },
-                onManualImport = { title, location, note, dayOfWeek, startRaw, endRaw ->
-                    val safeTitle = title.trim()
-                    val safeLocation = location.trim().ifBlank { null }
-                    val safeNote = note.trim().ifBlank { null }
-                    val start = parseManualTime(startRaw)
-                    val end = parseManualTime(endRaw)
-                    when {
-                        safeTitle.isBlank() -> {
-                            parseMessage = context.getString(R.string.manual_import_title_required_message)
-                            persistSettings()
-                            false
-                        }
-
-                        start == null || end == null -> {
-                            parseMessage = context.getString(R.string.manual_import_time_format_message)
-                            persistSettings()
-                            false
-                        }
-
-                        !end.isAfter(start) -> {
-                            parseMessage = context.getString(R.string.manual_import_time_order_message)
-                            persistSettings()
-                            false
-                        }
-
-                        else -> {
-                            val newLesson = LessonUi(
-                                id = "manual-${System.currentTimeMillis()}-${safeTitle.hashCode()}",
-                                title = safeTitle,
-                                location = safeLocation,
-                                note = safeNote,
-                                dayOfWeek = dayOfWeek,
-                                startTime = start,
-                                endTime = end,
-                            )
-                            val conflicts = findConflictsWithExisting(newLesson, lessons)
-                            if (conflicts.isEmpty()) {
-                                appendManualLesson(newLesson)
-                                parseMessage = context.getString(R.string.manual_import_success_message, safeTitle)
-                                persistSettings()
-                                true
-                            } else {
-                                pendingManualLesson = newLesson
-                                pendingManualConflicts = conflicts
-                                showManualConflictDialog = true
-                                parseMessage = context.getString(R.string.manual_import_conflict_detected_message, conflicts.size)
-                                persistSettings()
-                                false
-                            }
-                        }
-                    }
-                },
-            )
-
-            MobileLayer.Settings -> SettingsLayer(
-                contentPadding = innerPadding,
-                showWeekend = showWeekend,
-                reminderEnabled = reminderEnabled,
-                reminderMinutes = reminderMinutes,
-                onToggleWeekend = {
-                    showWeekend = it
-                    persistSettings()
-                },
-                onToggleReminder = { enabled ->
-                    if (!enabled) {
-                        reminderEnabled = false
-                        parseMessage = context.getString(R.string.message_reminder_disabled)
+                    },
+                    onReminderMinutesChange = {
+                        reminderMinutes = it
                         persistSettings()
-                        syncReminderWork()
-                    } else if (hasNotificationPermission(context)) {
-                        reminderEnabled = true
-                        parseMessage = context.getString(R.string.message_reminder_enabled)
+                        if (reminderEnabled) syncReminderWork()
+                    },
+                    onWeekNumberModeChange = { mode ->
+                        weekNumberMode = mode
                         persistSettings()
-                        syncReminderWork()
-                    } else {
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                },
-                onReminderMinutesChange = {
-                    reminderMinutes = it
-                    persistSettings()
-                    if (reminderEnabled) syncReminderWork()
-                },
-                onExportBackup = {
-                    pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
-                    val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
-                    exportBackupLauncher.launch(name)
-                },
-                onRestoreBackup = {
-                    restoreBackupLauncher.launch(arrayOf("application/json", "text/plain"))
-                },
-                onClearAllSchedules = {
-                    showClearAllConfirmDialog = true
-                },
-                wearSyncMode = wearSyncMode,
-                wearConnectionMessage = wearConnectionMessage,
-                wearSyncMessage = wearSyncMessage,
-                wearSyncInProgress = wearSyncInProgress,
-                onWearSyncModeChange = { mode ->
-                    wearSyncMode = mode
-                    persistSettings()
-                    coroutineScope.launch {
-                        refreshWearConnectionStatus()
-                    }
-                },
-                onRefreshWearStatus = {
-                    coroutineScope.launch {
-                        refreshWearConnectionStatus()
-                    }
-                },
-                onManualWearSync = {
-                    coroutineScope.launch {
-                        runManualWearSync()
-                    }
-                },
-            )
+                    },
+                    onSemesterWeekStartDateChange = { date ->
+                        semesterWeekStartDate = date
+                        persistSettings()
+                    },
+                    onExportBackup = {
+                        pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
+                        val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
+                        exportBackupLauncher.launch(name)
+                    },
+                    onRestoreBackup = {
+                        restoreBackupLauncher.launch(arrayOf("application/json", "text/plain"))
+                    },
+                    onClearAllSchedules = {
+                        showClearAllConfirmDialog = true
+                    },
+                    wearSyncMode = wearSyncMode,
+                    wearConnectionMessage = wearConnectionMessage,
+                    wearSyncMessage = wearSyncMessage,
+                    wearSyncInProgress = wearSyncInProgress,
+                    onWearSyncModeChange = { mode ->
+                        wearSyncMode = mode
+                        persistSettings()
+                        coroutineScope.launch {
+                            refreshWearConnectionStatus()
+                        }
+                    },
+                    onRefreshWearStatus = {
+                        coroutineScope.launch {
+                            refreshWearConnectionStatus()
+                        }
+                    },
+                    onManualWearSync = {
+                        coroutineScope.launch {
+                            runManualWearSync()
+                        }
+                    },
+                )
 
-            MobileLayer.About -> AboutLayer(contentPadding = innerPadding)
+                SettingsPage.Import -> importContent(innerPadding)
+            }
         }
     }
 

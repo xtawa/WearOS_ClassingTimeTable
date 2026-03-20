@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.classing.shared.sync.WearDataLayerContracts
 import com.classing.wear.timetable.ClassingTimetableApplication
-import com.classing.wear.timetable.core.time.WeekCalculator
 import com.classing.wear.timetable.data.sync.RemoteCourse
 import com.classing.wear.timetable.data.sync.RemoteException
 import com.classing.wear.timetable.data.sync.RemoteSchedulePayload
@@ -22,8 +21,10 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import java.nio.charset.StandardCharsets
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,11 @@ import org.json.JSONObject
 
 class MobileSyncListenerService : WearableListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private enum class WeekNumberMode {
+        NATURAL,
+        SEMESTER,
+    }
 
     private data class ApplyResult(
         val success: Boolean,
@@ -98,16 +104,30 @@ class MobileSyncListenerService : WearableListenerService() {
         val lessons = root.optJSONArray("lessons")
             ?: return ApplyResult(success = false, appliedLessonCount = 0, errorMessage = "Missing lessons array")
 
-        val today = LocalDate.now()
-        val currentWeekStart = WeekCalculator.weekStart(today)
-        val currentIsoWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear()).coerceIn(1, 53)
-        val semesterStart = currentWeekStart.minusWeeks((currentIsoWeek - 1).toLong())
-        val semesterTotalWeeks = 54
+        val weekNumberMode = WeekNumberMode.entries.firstOrNull {
+            it.name == root.optString("weekNumberMode").uppercase()
+        } ?: WeekNumberMode.NATURAL
+        val semesterWeekStartDate = runCatching {
+            LocalDate.parse(root.optString("semesterWeekStartDate"))
+        }.getOrNull()
 
-        val semesterRemoteId = "mobile-sync-semester"
+        val today = LocalDate.now()
+        val isoWeekStart = LocalDate.of(today.get(WeekFields.ISO.weekBasedYear()), 1, 4)
+            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val semesterStart = when (weekNumberMode) {
+            WeekNumberMode.SEMESTER -> semesterWeekStartDate ?: today
+            WeekNumberMode.NATURAL -> isoWeekStart
+        }
+        val semesterTotalWeeks = 520
+
+        val semesterRemoteId = when (weekNumberMode) {
+            WeekNumberMode.SEMESTER -> "mobile-sync-semester-semester"
+            WeekNumberMode.NATURAL -> "mobile-sync-semester-natural"
+        }
+
         val semester = RemoteSemester(
             remoteId = semesterRemoteId,
-            name = "Mobile Synced",
+            name = "Mobile Synced (${weekNumberMode.name})",
             startDate = semesterStart,
             endDate = semesterStart.plusWeeks(semesterTotalWeeks.toLong()).minusDays(1),
             totalWeeks = semesterTotalWeeks,

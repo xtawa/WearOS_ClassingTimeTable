@@ -179,6 +179,8 @@ internal suspend fun syncLessonsToWear(
     zoneId: ZoneId,
     source: String,
     allowDisconnectedQueue: Boolean,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
 ): Result<WearSyncDispatchResult> {
     val persisted = lessons.map { it.toPersistedLesson() }
     return WearDataLayerSyncPublisher.publishLessonsSnapshot(
@@ -187,6 +189,8 @@ internal suspend fun syncLessonsToWear(
         zoneId = zoneId,
         source = source,
         allowDisconnectedQueue = allowDisconnectedQueue,
+        weekNumberMode = weekNumberMode.name,
+        semesterWeekStartDate = semesterWeekStartDate,
     )
 }
 
@@ -194,8 +198,10 @@ internal suspend fun syncLessonsViaWearOsApp(
     context: Context,
     lessons: List<LessonUi>,
     zoneId: ZoneId,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
 ): Result<WearSyncDispatchResult> {
-    val companion = findWearOsCompanionInfo(context) ?: return Result.failure(
+    findWearOsCompanionInfo(context) ?: return Result.failure(
         IllegalStateException("WearOS app not installed"),
     )
     return syncLessonsToWear(
@@ -204,6 +210,8 @@ internal suspend fun syncLessonsViaWearOsApp(
         zoneId = zoneId,
         source = WearDataLayerContracts.SOURCE_WEAROS_APP,
         allowDisconnectedQueue = true,
+        weekNumberMode = weekNumberMode,
+        semesterWeekStartDate = semesterWeekStartDate,
     )
 }
 

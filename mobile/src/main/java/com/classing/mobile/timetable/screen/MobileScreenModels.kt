@@ -5,11 +5,19 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 internal enum class MobileLayer {
-    Dashboard,
-    WeekBoard,
-    Import,
+    Schedule,
+    Calendar,
     Settings,
-    About,
+}
+
+internal enum class SettingsPage {
+    Main,
+    Import,
+}
+
+internal enum class WeekNumberMode {
+    NATURAL,
+    SEMESTER,
 }
 
 internal enum class ChangeScope {

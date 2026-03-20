@@ -272,11 +272,9 @@ internal fun hasNotificationPermission(context: Context): Boolean {
 
 internal fun MobileLayer.labelRes(): Int {
     return when (this) {
-        MobileLayer.Dashboard -> R.string.layer_dashboard
-        MobileLayer.WeekBoard -> R.string.layer_week_view
-        MobileLayer.Import -> R.string.layer_import
+        MobileLayer.Schedule -> R.string.layer_dashboard
+        MobileLayer.Calendar -> R.string.layer_calendar
         MobileLayer.Settings -> R.string.layer_settings
-        MobileLayer.About -> R.string.layer_about
     }
 }
 

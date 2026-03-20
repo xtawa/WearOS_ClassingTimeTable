@@ -170,6 +170,7 @@ internal fun WeekBoardLayer(
 @Composable
 internal fun ImportLayer(
     contentPadding: PaddingValues,
+    onBackToSettings: (() -> Unit)? = null,
     rawIcs: String,
     rawJson: String,
     parseMessage: String,
@@ -216,6 +217,11 @@ internal fun ImportLayer(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (onBackToSettings != null) {
+            TextButton(onClick = onBackToSettings) {
+                Text(stringResource(R.string.settings_about_back_button))
+            }
+        }
         Text(stringResource(R.string.import_page_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(
             text = stringResource(R.string.import_page_desc),

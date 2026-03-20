@@ -7,6 +7,7 @@ import com.google.android.gms.wearable.Wearable
 import com.xtawa.classingtime.data.PersistedLesson
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -28,6 +29,8 @@ object WearDataLayerSyncPublisher {
         zoneId: ZoneId,
         source: String = WearDataLayerContracts.SOURCE_WEARABLE_API,
         allowDisconnectedQueue: Boolean = false,
+        weekNumberMode: String = "NATURAL",
+        semesterWeekStartDate: LocalDate = LocalDate.now(),
     ): Result<WearSyncDispatchResult> {
         return runCatching {
             val connectedNodes = Wearable.getNodeClient(context).connectedNodes.await()
@@ -41,6 +44,8 @@ object WearDataLayerSyncPublisher {
                 zoneId = zoneId,
                 source = source,
                 updatedAt = updatedAt,
+                weekNumberMode = weekNumberMode,
+                semesterWeekStartDate = semesterWeekStartDate,
             )
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_LESSONS).apply {
                 dataMap.putString(WearDataLayerContracts.KEY_PAYLOAD, payload)
@@ -79,6 +84,8 @@ object WearDataLayerSyncPublisher {
         zoneId: ZoneId,
         source: String,
         updatedAt: Long,
+        weekNumberMode: String,
+        semesterWeekStartDate: LocalDate,
     ): String {
         val arr = JSONArray()
         lessons.sortedWith(compareBy<PersistedLesson> { it.dayOfWeek }.thenBy { it.startMinute }).forEach { lesson ->
@@ -104,6 +111,8 @@ object WearDataLayerSyncPublisher {
             .put("generatedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
             .put("source", source)
             .put("updatedAt", updatedAt)
+            .put("weekNumberMode", weekNumberMode)
+            .put("semesterWeekStartDate", semesterWeekStartDate.toString())
             .put("lessons", arr)
             .toString()
     }

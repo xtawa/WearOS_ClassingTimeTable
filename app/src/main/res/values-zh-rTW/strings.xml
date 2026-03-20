@@ -56,6 +56,13 @@
     <string name="settings_auto_sync">自動同步</string>
     <string name="settings_show_weekend">顯示週末</string>
     <string name="settings_show_completed_today">顯示今天已完成課程</string>
+    <string name="settings_tile_template_title">小工具/Tile 範本</string>
+    <string name="settings_tile_show_course_name">顯示課程名</string>
+    <string name="settings_tile_show_current_week">顯示目前週數</string>
+    <string name="settings_tile_show_time_range">顯示時間段</string>
+    <string name="settings_tile_show_teacher">顯示教師</string>
+    <string name="settings_tile_show_location">顯示地點</string>
+    <string name="settings_tile_show_countdown">顯示倒數</string>
     <string name="settings_last_sync">最近同步: %1$s</string>
     <string name="settings_force_full_sync">立即完整同步</string>
     <string name="home_action_sync_now">立即同步</string>

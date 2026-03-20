@@ -36,8 +36,7 @@ class ScheduleAssembler {
 
         val baseList = sessions
             .filter {
-                it.dayOfWeek == date.dayOfWeek &&
-                    (it.weekRule.contains(weekIndex) || isLegacyMobileSession(it))
+                it.dayOfWeek == date.dayOfWeek && it.weekRule.contains(weekIndex)
             }
             .mapNotNull { session ->
                 val course = courseMap[session.courseId] ?: return@mapNotNull null
@@ -102,7 +101,7 @@ class ScheduleAssembler {
         slots: List<TimeSlot>,
         exceptions: List<ScheduleException>,
     ): WeekSchedule {
-        val weekIndex = if (isMobileSyncSemester(semester, sessions)) {
+        val weekIndex = if (isNaturalWeekSemester(semester)) {
             weekStart.get(WeekFields.ISO.weekOfWeekBasedYear()).coerceAtLeast(1)
         } else {
             WeekCalculator.weekIndex(semester.startDate, weekStart)
@@ -182,13 +181,7 @@ class ScheduleAssembler {
         )
     }
 
-    // Compatibility for old mobile-synced rows that stored ISO week numbers.
-    private fun isLegacyMobileSession(session: CourseSession): Boolean {
-        return session.remoteId?.startsWith("mobile-session-") == true
-    }
-
-    private fun isMobileSyncSemester(semester: Semester, sessions: List<CourseSession>): Boolean {
-        if (semester.remoteId == "mobile-sync-semester") return true
-        return sessions.any { isLegacyMobileSession(it) }
+    private fun isNaturalWeekSemester(semester: Semester): Boolean {
+        return semester.remoteId == "mobile-sync-semester-natural"
     }
 }

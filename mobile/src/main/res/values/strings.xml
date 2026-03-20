@@ -2,6 +2,7 @@
     <string name="app_name">Classing Time</string>
 
     <string name="layer_dashboard">Timetable</string>
+    <string name="layer_calendar">Calendar</string>
     <string name="layer_week_view">Week</string>
     <string name="layer_import">Import</string>
     <string name="layer_settings">Settings</string>
@@ -117,6 +118,15 @@
     <string name="settings_backup_button">Export Timetable JSON</string>
     <string name="settings_restore_button">Restore from JSON</string>
     <string name="settings_restore_hint">Restoring will overwrite current timetable after confirmation.</string>
+    <string name="settings_import_entry_title">Import Timetable</string>
+    <string name="settings_import_entry_desc">Open a dedicated import page for ICS, JSON, or manual entry.</string>
+    <string name="settings_import_entry_button">Open Import Page</string>
+    <string name="settings_week_mode_title">Week Number Mode</string>
+    <string name="settings_week_mode_desc">Switch between natural weeks and semester weeks. Semester weeks are calculated every 7 days from the start date.</string>
+    <string name="settings_week_mode_natural">Natural Week</string>
+    <string name="settings_week_mode_semester">Semester Week</string>
+    <string name="settings_semester_start_date_value">Semester Start Date: %1$s</string>
+    <string name="settings_semester_start_date_pick_button">Pick Start Date</string>
     <string name="settings_about_entry_title">About</string>
     <string name="settings_about_entry_desc">App info, links, and credits.</string>
     <string name="settings_about_entry_button">Open</string>

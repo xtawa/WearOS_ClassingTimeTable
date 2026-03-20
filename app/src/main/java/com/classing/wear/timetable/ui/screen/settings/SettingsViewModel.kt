@@ -67,6 +67,30 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setShowCompletedToday(enabled) }
     }
 
+    fun toggleTileShowTeacher(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTileShowTeacher(enabled) }
+    }
+
+    fun toggleTileShowLocation(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTileShowLocation(enabled) }
+    }
+
+    fun toggleTileShowCountdown(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTileShowCountdown(enabled) }
+    }
+
+    fun toggleTileShowCourseName(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTileShowCourseName(enabled) }
+    }
+
+    fun toggleTileShowCurrentWeek(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTileShowCurrentWeek(enabled) }
+    }
+
+    fun toggleTileShowTimeRange(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTileShowTimeRange(enabled) }
+    }
+
     fun forceFullSync() {
         viewModelScope.launch {
             _uiState.update { it.copy(syncMessage = WearI18n.syncRequesting()) }

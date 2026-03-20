@@ -1,5 +1,6 @@
 ﻿package com.xtawa.classingtime.screen
 
+import android.app.DatePickerDialog
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -99,9 +100,14 @@ internal fun SettingsLayer(
     showWeekend: Boolean,
     reminderEnabled: Boolean,
     reminderMinutes: Int,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+    onOpenImportPage: () -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
     onToggleReminder: (Boolean) -> Unit,
     onReminderMinutesChange: (Int) -> Unit,
+    onWeekNumberModeChange: (WeekNumberMode) -> Unit,
+    onSemesterWeekStartDateChange: (LocalDate) -> Unit,
     onExportBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
     onClearAllSchedules: () -> Unit,
@@ -113,6 +119,7 @@ internal fun SettingsLayer(
     onRefreshWearStatus: () -> Unit,
     onManualWearSync: () -> Unit,
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -175,6 +182,20 @@ internal fun SettingsLayer(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Text(stringResource(R.string.settings_import_entry_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_import_entry_desc), style = MaterialTheme.typography.bodySmall)
+                Button(onClick = onOpenImportPage) {
+                    Text(stringResource(R.string.settings_import_entry_button))
+                }
+            }
+        }
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(stringResource(R.string.settings_backup_title), fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.settings_backup_desc), style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -190,6 +211,53 @@ internal fun SettingsLayer(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.settings_week_mode_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_week_mode_desc), style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = weekNumberMode == WeekNumberMode.NATURAL,
+                        onClick = { onWeekNumberModeChange(WeekNumberMode.NATURAL) },
+                        label = { Text(stringResource(R.string.settings_week_mode_natural)) },
+                    )
+                    FilterChip(
+                        selected = weekNumberMode == WeekNumberMode.SEMESTER,
+                        onClick = { onWeekNumberModeChange(WeekNumberMode.SEMESTER) },
+                        label = { Text(stringResource(R.string.settings_week_mode_semester)) },
+                    )
+                }
+                if (weekNumberMode == WeekNumberMode.SEMESTER) {
+                    Text(
+                        text = stringResource(
+                            R.string.settings_semester_start_date_value,
+                            semesterWeekStartDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(
+                        onClick = {
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    onSemesterWeekStartDateChange(LocalDate.of(year, month + 1, dayOfMonth))
+                                },
+                                semesterWeekStartDate.year,
+                                semesterWeekStartDate.monthValue - 1,
+                                semesterWeekStartDate.dayOfMonth,
+                            ).show()
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_semester_start_date_pick_button))
+                    }
+                }
             }
         }
         Card {

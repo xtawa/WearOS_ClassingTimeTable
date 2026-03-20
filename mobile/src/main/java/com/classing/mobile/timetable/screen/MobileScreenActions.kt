@@ -7,6 +7,7 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.reminder.ReminderScheduler
 import com.xtawa.classingtime.sync.WearSyncAckStore
+import java.time.LocalDate
 import java.time.ZoneId
 
 internal data class SyncAckUpdate(
@@ -36,6 +37,8 @@ internal fun persistSettings(
     rawIcs: String,
     parseMessage: String,
     wearSyncMode: WearSyncMode,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
 ) {
     MobilePrefsStore.saveSettings(
         context,
@@ -46,6 +49,8 @@ internal fun persistSettings(
             rawIcs = rawIcs,
             parseMessage = parseMessage,
             wearSyncMode = wearSyncMode.name,
+            weekNumberMode = weekNumberMode.name,
+            semesterWeekStartDate = semesterWeekStartDate.toString(),
         ),
     )
 }
@@ -145,6 +150,8 @@ internal suspend fun executeManualWearSync(
     lessons: List<LessonUi>,
     zoneId: ZoneId,
     latestWearAckAtMillis: Long,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
 ): ManualWearSyncResult {
     val startedAtMillis = System.currentTimeMillis()
     var nextLatestAckAt = latestWearAckAtMillis
@@ -156,6 +163,8 @@ internal suspend fun executeManualWearSync(
                 zoneId = zoneId,
                 source = WearDataLayerContracts.SOURCE_WEARABLE_API,
                 allowDisconnectedQueue = false,
+                weekNumberMode = weekNumberMode,
+                semesterWeekStartDate = semesterWeekStartDate,
             )
             handleStartedWearSync(
                 context = context,
@@ -186,7 +195,13 @@ internal suspend fun executeManualWearSync(
                     )
                 }
 
-            val result = syncLessonsViaWearOsApp(context, lessons, zoneId)
+            val result = syncLessonsViaWearOsApp(
+                context = context,
+                lessons = lessons,
+                zoneId = zoneId,
+                weekNumberMode = weekNumberMode,
+                semesterWeekStartDate = semesterWeekStartDate,
+            )
             handleStartedWearSync(
                 context = context,
                 result = result,

@@ -2,6 +2,7 @@
     <string name="app_name">Classing Time</string>
 
     <string name="layer_dashboard">課表</string>
+    <string name="layer_calendar">日曆</string>
     <string name="layer_week_view">週檢視</string>
     <string name="layer_import">匯入</string>
     <string name="layer_settings">設定</string>
@@ -117,6 +118,15 @@
     <string name="settings_backup_button">匯出課表 JSON</string>
     <string name="settings_restore_button">從 JSON 還原</string>
     <string name="settings_restore_hint">還原會覆蓋目前課表，確認後執行。</string>
+    <string name="settings_import_entry_title">匯入課表</string>
+    <string name="settings_import_entry_desc">進入獨立匯入頁，支援 ICS、JSON 或手動輸入。</string>
+    <string name="settings_import_entry_button">開啟匯入頁</string>
+    <string name="settings_week_mode_title">週數計算</string>
+    <string name="settings_week_mode_desc">可切換自然週或學期週，學期週按起始日期每 7 天計算。</string>
+    <string name="settings_week_mode_natural">自然週</string>
+    <string name="settings_week_mode_semester">學期週</string>
+    <string name="settings_semester_start_date_value">學期起始日：%1$s</string>
+    <string name="settings_semester_start_date_pick_button">選擇起始日期</string>
     <string name="settings_about_entry_title">關於</string>
     <string name="settings_about_entry_desc">應用資訊、連結與製作成員。</string>
     <string name="settings_about_entry_button">開啟</string>

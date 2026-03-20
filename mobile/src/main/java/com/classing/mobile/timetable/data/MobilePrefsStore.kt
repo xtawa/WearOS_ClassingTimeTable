@@ -21,6 +21,8 @@ data class MobileSettings(
     val rawIcs: String,
     val parseMessage: String,
     val wearSyncMode: String,
+    val weekNumberMode: String,
+    val semesterWeekStartDate: String,
 )
 
 object MobilePrefsStore {
@@ -31,6 +33,8 @@ object MobilePrefsStore {
     private const val KEY_RAW_ICS = "raw_ics"
     private const val KEY_PARSE_MESSAGE = "parse_message"
     private const val KEY_WEAR_SYNC_MODE = "wear_sync_mode"
+    private const val KEY_WEEK_NUMBER_MODE = "week_number_mode"
+    private const val KEY_SEMESTER_WEEK_START_DATE = "semester_week_start_date"
     private const val KEY_LESSONS_JSON = "lessons_json"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -44,6 +48,8 @@ object MobilePrefsStore {
             rawIcs = p.getString(KEY_RAW_ICS, "") ?: "",
             parseMessage = p.getString(KEY_PARSE_MESSAGE, "") ?: "",
             wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "WEARABLE_API") ?: "WEARABLE_API",
+            weekNumberMode = p.getString(KEY_WEEK_NUMBER_MODE, "NATURAL") ?: "NATURAL",
+            semesterWeekStartDate = p.getString(KEY_SEMESTER_WEEK_START_DATE, "") ?: "",
         )
     }
 
@@ -55,6 +61,8 @@ object MobilePrefsStore {
             .putString(KEY_RAW_ICS, settings.rawIcs)
             .putString(KEY_PARSE_MESSAGE, settings.parseMessage)
             .putString(KEY_WEAR_SYNC_MODE, settings.wearSyncMode)
+            .putString(KEY_WEEK_NUMBER_MODE, settings.weekNumberMode)
+            .putString(KEY_SEMESTER_WEEK_START_DATE, settings.semesterWeekStartDate)
             .apply()
     }
 

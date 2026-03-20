@@ -10,6 +10,7 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import com.xtawa.classingtime.data.MobilePrefsStore
 import java.nio.charset.StandardCharsets
+import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,10 +57,15 @@ class WearSyncRequestListenerService : WearableListenerService() {
     private fun triggerMobileSyncPublish() {
         serviceScope.launch {
             val lessons = MobilePrefsStore.loadLessons(applicationContext)
+            val settings = MobilePrefsStore.loadSettings(applicationContext)
+            val semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }
+                .getOrDefault(LocalDate.now())
             val result = WearDataLayerSyncPublisher.publishLessonsSnapshot(
                 context = applicationContext,
                 lessons = lessons,
                 zoneId = ZoneId.systemDefault(),
+                weekNumberMode = settings.weekNumberMode,
+                semesterWeekStartDate = semesterWeekStartDate,
             )
             if (result.isSuccess) {
                 Log.i(TAG, "Wear sync request handled, published ${lessons.size} lessons")

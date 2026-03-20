@@ -37,6 +37,12 @@ fun SettingsScreen(
     onToggleAutoSync: (Boolean) -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
     onToggleShowCompletedToday: (Boolean) -> Unit,
+    onToggleTileShowTeacher: (Boolean) -> Unit,
+    onToggleTileShowLocation: (Boolean) -> Unit,
+    onToggleTileShowCountdown: (Boolean) -> Unit,
+    onToggleTileShowCourseName: (Boolean) -> Unit,
+    onToggleTileShowCurrentWeek: (Boolean) -> Unit,
+    onToggleTileShowTimeRange: (Boolean) -> Unit,
     onForceFullSync: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
@@ -124,6 +130,92 @@ fun SettingsScreen(
             }
 
             item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_tile_template_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                    }
+                }
+            }
+
+            item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_tile_show_course_name),
+                    checked = state.preferences.tileShowCourseName,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleTileShowCourseName(it)
+                    },
+                )
+            }
+
+            item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_tile_show_current_week),
+                    checked = state.preferences.tileShowCurrentWeek,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleTileShowCurrentWeek(it)
+                    },
+                )
+            }
+
+            item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_tile_show_time_range),
+                    checked = state.preferences.tileShowTimeRange,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleTileShowTimeRange(it)
+                    },
+                )
+            }
+
+            item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_tile_show_teacher),
+                    checked = state.preferences.tileShowTeacher,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleTileShowTeacher(it)
+                    },
+                )
+            }
+
+            item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_tile_show_location),
+                    checked = state.preferences.tileShowLocation,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleTileShowLocation(it)
+                    },
+                )
+            }
+
+            item {
+                PreferenceSwitchCard(
+                    title = stringResource(R.string.settings_tile_show_countdown),
+                    checked = state.preferences.tileShowCountdown,
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleTileShowCountdown(it)
+                    },
+                )
+            }
+
+            item {
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -177,6 +269,12 @@ private fun SettingsScreenPreview() {
             onToggleAutoSync = {},
             onToggleWeekend = {},
             onToggleShowCompletedToday = {},
+            onToggleTileShowTeacher = {},
+            onToggleTileShowLocation = {},
+            onToggleTileShowCountdown = {},
+            onToggleTileShowCourseName = {},
+            onToggleTileShowCurrentWeek = {},
+            onToggleTileShowTimeRange = {},
             onForceFullSync = {},
         )
     }

@@ -54,16 +54,42 @@ class NextClassTileService : TileService() {
     private fun buildRoot(snapshot: NextClassSnapshot): LayoutElementBuilders.LayoutElement {
         val content = LayoutElementBuilders.Column.Builder()
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-            .addContent(textElement(snapshot.courseTitle, 16f))
-            .addContent(spacer(4f))
             .addContent(textElement(snapshot.dateText, 12f))
-            .addContent(spacer(2f))
-            .addContent(textElement(snapshot.timeText, 14f))
+
+        if (snapshot.weekText.isNotBlank()) {
+            content
+                .addContent(spacer(2f))
+                .addContent(textElement(snapshot.weekText, 12f))
+        }
+
+        if (snapshot.courseTitle.isNotBlank()) {
+            content
+                .addContent(spacer(4f))
+                .addContent(textElement(snapshot.courseTitle, 16f))
+        }
+
+        if (snapshot.timeText.isNotBlank()) {
+            content
+                .addContent(spacer(2f))
+                .addContent(textElement(snapshot.timeText, 14f))
+        }
+
+        if (snapshot.teacherText.isNotBlank()) {
+            content
+                .addContent(spacer(2f))
+                .addContent(textElement(snapshot.teacherText, 12f))
+        }
 
         if (snapshot.locationText.isNotBlank()) {
             content
                 .addContent(spacer(2f))
                 .addContent(textElement(snapshot.locationText, 12f))
+        }
+
+        if (snapshot.countdownText.isNotBlank()) {
+            content
+                .addContent(spacer(2f))
+                .addContent(textElement(snapshot.countdownText, 12f))
         }
 
         return LayoutElementBuilders.Box.Builder()

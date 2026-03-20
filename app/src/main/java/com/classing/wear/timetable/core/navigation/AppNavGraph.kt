@@ -137,6 +137,12 @@ fun AppNavGraph(appContainer: AppContainer) {
                 onToggleAutoSync = vm::toggleAutoSync,
                 onToggleWeekend = vm::toggleWeekend,
                 onToggleShowCompletedToday = vm::toggleShowCompletedToday,
+                onToggleTileShowTeacher = vm::toggleTileShowTeacher,
+                onToggleTileShowLocation = vm::toggleTileShowLocation,
+                onToggleTileShowCountdown = vm::toggleTileShowCountdown,
+                onToggleTileShowCourseName = vm::toggleTileShowCourseName,
+                onToggleTileShowCurrentWeek = vm::toggleTileShowCurrentWeek,
+                onToggleTileShowTimeRange = vm::toggleTileShowTimeRange,
                 onForceFullSync = vm::forceFullSync,
             )
         }
