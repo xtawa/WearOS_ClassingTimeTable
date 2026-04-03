@@ -13,6 +13,7 @@ internal enum class MobileLayer {
 internal enum class SettingsPage {
     Main,
     Import,
+    BackupRestore,
     WeekMode,
     WearCommunication,
     About,

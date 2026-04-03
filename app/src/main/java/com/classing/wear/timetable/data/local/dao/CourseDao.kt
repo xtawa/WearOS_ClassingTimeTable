@@ -17,7 +17,12 @@ interface CourseDao {
     @Query("SELECT * FROM courses WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): CourseEntity?
 
-    @Query("SELECT * FROM courses WHERE semesterId = :semesterId AND name LIKE '%' || :keyword || '%' ORDER BY isFavorite DESC, name ASC")
+    @Query(
+        "SELECT * FROM courses " +
+            "WHERE semesterId = :semesterId " +
+            "AND (name LIKE '%' || :keyword || '%' OR teacher LIKE '%' || :keyword || '%') " +
+            "ORDER BY isFavorite DESC, name ASC",
+    )
     fun search(semesterId: Long, keyword: String): Flow<List<CourseEntity>>
 
     @Upsert

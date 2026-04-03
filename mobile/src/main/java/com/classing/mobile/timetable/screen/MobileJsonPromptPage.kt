@@ -18,7 +18,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,9 +59,12 @@ internal fun JsonPromptPage(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onBack) {
-            Text(stringResource(R.string.json_prompt_back_button))
-        }
+        SecondaryPageHeader(
+            title = stringResource(R.string.json_prompt_page_title),
+            onBack = onBack,
+            backLabel = stringResource(R.string.json_prompt_back_button),
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

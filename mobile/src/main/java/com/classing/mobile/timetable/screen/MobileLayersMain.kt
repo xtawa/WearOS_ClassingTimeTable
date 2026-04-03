@@ -105,6 +105,14 @@ internal fun WeekBoardLayer(
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
+    val todayDay = LocalDate.now().dayOfWeek
+    val prioritizedDays = remember(visibleDays, todayDay) {
+        if (visibleDays.contains(todayDay)) {
+            listOf(todayDay) + visibleDays.filterNot { it == todayDay }
+        } else {
+            visibleDays
+        }
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -136,7 +144,7 @@ internal fun WeekBoardLayer(
                 )
             }
         }
-        items(visibleDays) { day ->
+        items(prioritizedDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
             val isEmpty = lessons.isEmpty()
             Card(
@@ -295,9 +303,12 @@ internal fun ImportLayer(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (onBackToSettings != null) {
-            TextButton(onClick = onBackToSettings) {
-                Text(stringResource(R.string.settings_about_back_button))
-            }
+            SecondaryPageHeader(
+                title = stringResource(R.string.import_page_title),
+                onBack = onBackToSettings,
+                backLabel = stringResource(R.string.settings_about_back_button),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

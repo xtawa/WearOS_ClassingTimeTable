@@ -9,6 +9,7 @@
     <string name="layer_about">About</string>
     <string name="ghost_title_schedule">SCHEDULE</string>
     <string name="ghost_title_import">IMPORT</string>
+    <string name="ghost_title_backup">BACKUP</string>
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
     <string name="ghost_title_wear">WEAR</string>
@@ -38,6 +39,12 @@
     <string name="calendar_next_month">Next</string>
     <string name="calendar_selected_date_title">Schedule on %1$s</string>
     <string name="calendar_no_classes_on_date">No classes on this date.</string>
+    <string name="calendar_timeline_hint">Timeline mode: this week is expanded automatically, and earlier days this month are grouped and collapsed.</string>
+    <string name="calendar_timeline_day_title">%1$s · %2$s</string>
+    <string name="calendar_this_week_badge">THIS WEEK</string>
+    <string name="calendar_expand_day">Expand</string>
+    <string name="calendar_collapse_day">Collapse</string>
+    <string name="calendar_past_days_group_title">Earlier This Month (%1$d days)</string>
 
     <string name="day_header_title">%1$s (%2$d)</string>
     <string name="no_classes">No classes</string>
@@ -129,11 +136,12 @@
     <string name="settings_reminder_toggle_desc">Notify before class starts.</string>
     <string name="settings_badge_reminder">R</string>
     <string name="settings_reminder_lead_title">Lead time: %1$d min</string>
-    <string name="settings_backup_title">Backup</string>
-    <string name="settings_backup_desc">Export current timetable to dedicated JSON. You choose the save location.</string>
+    <string name="settings_backup_title">Backup &amp; Restore</string>
+    <string name="settings_backup_desc">Export current timetable to JSON or restore from a JSON backup file.</string>
     <string name="settings_backup_button">Export Timetable JSON</string>
     <string name="settings_restore_button">Restore from JSON</string>
     <string name="settings_restore_hint">Restoring will overwrite current timetable after confirmation.</string>
+    <string name="settings_badge_backup">B</string>
     <string name="settings_import_entry_title">Import Timetable</string>
     <string name="settings_import_entry_desc">Open a dedicated import page for ICS, JSON, or manual entry.</string>
     <string name="settings_import_entry_button">Open Import Page</string>
@@ -155,7 +163,15 @@
     <string name="settings_badge_about">A</string>
     <string name="settings_about_page_title">About</string>
     <string name="settings_about_back_button">Back to Settings</string>
+    <string name="settings_about_version_value">V%1$s</string>
     <string name="settings_about_links_title">Links</string>
+    <string name="settings_about_resources_title">RESOURCES</string>
+    <string name="settings_about_mission_title">OUR MISSION</string>
+    <string name="settings_about_mission_desc">Transforming the chaotic student schedule into a curated editorial experience. Built for the academic elite.</string>
+    <string name="settings_about_quote">"Curating academic excellence through precision design and intellectual rigor."</string>
+    <string name="settings_about_privacy_certified">Data Privacy Certified</string>
+    <string name="settings_about_ai_optimized">AI Scheduling Optimized</string>
+    <string name="settings_about_footer_copyright">© %1$d Xihao Zhang.</string>
     <string name="settings_about_notice_title">Announcements</string>
     <string name="settings_about_notice_loading">Loading announcements...</string>
     <string name="settings_about_notice_empty">No announcements for now.</string>

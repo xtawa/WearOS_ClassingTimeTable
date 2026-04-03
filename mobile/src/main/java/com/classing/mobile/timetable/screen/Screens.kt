@@ -575,18 +575,6 @@ fun MobileTimetableScreen() {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.screen_subtitle),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                        Surface(
                             modifier = Modifier.size(32.dp),
                             shape = RoundedCornerShape(999.dp),
                             color = MaterialTheme.colorScheme.secondaryContainer,
@@ -675,6 +663,9 @@ fun MobileTimetableScreen() {
                     onOpenImportPage = {
                         settingsPageName = SettingsPage.Import.name
                     },
+                    onOpenBackupRestorePage = {
+                        settingsPageName = SettingsPage.BackupRestore.name
+                    },
                     onOpenWeekModePage = {
                         settingsPageName = SettingsPage.WeekMode.name
                     },
@@ -708,6 +699,18 @@ fun MobileTimetableScreen() {
                         persistSettings()
                         if (reminderEnabled) syncReminderWork()
                     },
+                    onClearAllSchedules = {
+                        showClearAllConfirmDialog = true
+                    },
+                )
+
+                SettingsPage.Import -> importContent(innerPadding)
+
+                SettingsPage.BackupRestore -> BackupRestoreSettingsPage(
+                    contentPadding = innerPadding,
+                    onBack = {
+                        settingsPageName = SettingsPage.Main.name
+                    },
                     onExportBackup = {
                         pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
                         val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
@@ -716,12 +719,7 @@ fun MobileTimetableScreen() {
                     onRestoreBackup = {
                         restoreBackupLauncher.launch(arrayOf("application/json", "text/plain"))
                     },
-                    onClearAllSchedules = {
-                        showClearAllConfirmDialog = true
-                    },
                 )
-
-                SettingsPage.Import -> importContent(innerPadding)
 
                 SettingsPage.WeekMode -> WeekModeSettingsPage(
                     contentPadding = innerPadding,
