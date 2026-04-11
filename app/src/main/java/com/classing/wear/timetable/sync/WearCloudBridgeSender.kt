@@ -65,18 +65,34 @@ class WearCloudBridgeSender(
         }
     }
 
-    suspend fun requestPhoneCloudSync(trigger: String): Result<Int> {
+    suspend fun requestPhoneCloudSync(trigger: String, wearWebDavSnapshot: WearCloudConfig? = null): Result<Int> {
         return runCatching {
             val requestedAt = System.currentTimeMillis()
-            val payload = JSONObject()
+            val payloadObject = JSONObject()
                 .put(WearDataLayerContracts.KEY_TRIGGER, trigger)
                 .put(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
+            wearWebDavSnapshot?.let {
+                payloadObject.put(
+                    WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT,
+                    JSONObject()
+                        .put("enabled", it.enabled)
+                        .put("serverUrl", it.serverUrl)
+                        .put("remotePath", it.remotePath)
+                        .put("username", it.username)
+                        .put("password", it.password),
+                )
+            }
+            val payload = payloadObject
                 .toString()
                 .toByteArray(StandardCharsets.UTF_8)
 
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_PHONE_CLOUD_SYNC_REQUEST).apply {
                 dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
                 dataMap.putString(WearDataLayerContracts.KEY_TRIGGER, trigger)
+                dataMap.putString(
+                    WearDataLayerContracts.KEY_REQUEST_PAYLOAD,
+                    payloadObject.toString(),
+                )
             }.asPutDataRequest().setUrgent()
             Wearable.getDataClient(context).putDataItem(request).await()
 

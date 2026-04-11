@@ -171,7 +171,7 @@
     <string name="settings_about_resources_title">RESOURCES</string>
     <string name="settings_about_mission_title">OUR MISSION</string>
     <string name="settings_about_mission_desc">Transforming the chaotic student schedule into a curated editorial experience. Built for the academic elite.</string>
-    <string name="settings_about_quote">"Curating academic excellence through precision design and intellectual rigor."</string>
+    <string name="settings_about_quote"></string>
     <string name="settings_about_privacy_certified">Data Privacy Certified</string>
     <string name="settings_about_ai_optimized">AI Scheduling Optimized</string>
     <string name="settings_about_footer_copyright">© %1$d Xihao Zhang.</string>
@@ -241,6 +241,7 @@
     <string name="settings_cloud_sync_last_sync">Last cloud sync: %1$s</string>
     <string name="settings_cloud_sync_status">Status: %1$s</string>
     <string name="settings_cloud_sync_push_status">Wear config push: %1$s</string>
+    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear WebDAV info updated (mobile authoritative).</string>
 
     <string name="empty_input_message">Input is empty.</string>
     <string name="parse_success_preview_message">Parsed successfully. Preview contains %1$d classes. Confirm to import.</string>

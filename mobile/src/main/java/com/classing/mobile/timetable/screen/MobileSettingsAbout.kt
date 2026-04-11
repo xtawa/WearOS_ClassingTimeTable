@@ -910,6 +910,7 @@ internal fun AboutLayer(
     }
 
     val openWechatSupport: () -> Unit = { showWechatDialog = true }
+    val aboutQuote = stringResource(R.string.settings_about_quote).trim()
 
     Column(
         modifier = Modifier
@@ -1020,21 +1021,23 @@ internal fun AboutLayer(
                 }
             }
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 2.dp),
-                shape = RoundedCornerShape(22.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_about_quote),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
+            if (aboutQuote.isNotBlank()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 2.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                ) {
+                    Text(
+                        text = aboutQuote,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
         }

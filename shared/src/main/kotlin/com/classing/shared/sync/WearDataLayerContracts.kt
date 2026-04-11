@@ -25,6 +25,8 @@ object WearDataLayerContracts {
     const val KEY_TRIGGER = "trigger"
     const val KEY_CONFIG_PAYLOAD = "configPayload"
     const val KEY_SETTINGS_PAYLOAD = "settingsPayload"
+    const val KEY_REQUEST_PAYLOAD = "requestPayload"
+    const val KEY_WEAR_WEBDAV_SNAPSHOT = "wearWebdavSnapshot"
 
     const val SOURCE_WEARABLE_API = "WEARABLE_API"
     const val SOURCE_WEAROS_APP = "WEAROS_APP"

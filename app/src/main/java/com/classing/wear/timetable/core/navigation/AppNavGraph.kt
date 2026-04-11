@@ -17,6 +17,7 @@ import com.classing.wear.timetable.ui.screen.detail.CourseDetailScreen
 import com.classing.wear.timetable.ui.screen.detail.CourseDetailViewModel
 import com.classing.wear.timetable.ui.screen.home.HomeScreen
 import com.classing.wear.timetable.ui.screen.home.HomeViewModel
+import com.classing.wear.timetable.ui.screen.settings.CloudSyncEditScreen
 import com.classing.wear.timetable.ui.screen.settings.CloudSyncScreen
 import com.classing.wear.timetable.ui.screen.settings.SettingsScreen
 import com.classing.wear.timetable.ui.screen.settings.SettingsViewModel
@@ -152,6 +153,14 @@ fun AppNavGraph(appContainer: AppContainer) {
 
         composable(Destinations.CloudSync.route) {
             CloudSyncScreen(
+                settingsRepository = appContainer.settingsRepository,
+                onOpenEdit = { navController.navigate(Destinations.CloudSyncEdit.route) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Destinations.CloudSyncEdit.route) {
+            CloudSyncEditScreen(
                 settingsRepository = appContainer.settingsRepository,
                 onBack = { navController.popBackStack() },
             )

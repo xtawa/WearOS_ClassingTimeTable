@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun CloudSyncScreen(
     settingsRepository: SettingsRepository,
+    onOpenEdit: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -49,6 +50,8 @@ fun CloudSyncScreen(
     var config by remember { mutableStateOf(WearCloudConfigStore.load(context)) }
     var status by remember { mutableStateOf(WearCloudConfigStore.loadSyncStatus(context).first) }
     var lastSyncedAt by remember { mutableStateOf(WearCloudConfigStore.loadSyncStatus(context).second) }
+    var configUpdateStatus by remember { mutableStateOf(WearCloudConfigStore.loadConfigUpdateStatus(context).first) }
+    var configUpdatedAt by remember { mutableStateOf(WearCloudConfigStore.loadConfigUpdateStatus(context).second) }
     var syncing by remember { mutableStateOf(false) }
 
     fun refreshUiState() {
@@ -56,6 +59,9 @@ fun CloudSyncScreen(
         val (s, at) = WearCloudConfigStore.loadSyncStatus(context)
         status = s
         lastSyncedAt = at
+        val (updateMessage, updateAt) = WearCloudConfigStore.loadConfigUpdateStatus(context)
+        configUpdateStatus = updateMessage
+        configUpdatedAt = updateAt
     }
 
     LaunchedEffect(Unit) {
@@ -64,6 +70,12 @@ fun CloudSyncScreen(
 
     val lastSyncText = if (lastSyncedAt > 0L) {
         LocalDateTime.ofInstant(Instant.ofEpochMilli(lastSyncedAt), ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+    } else {
+        stringResource(R.string.settings_cloud_sync_never)
+    }
+    val configUpdatedText = if (configUpdatedAt > 0L) {
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(configUpdatedAt), ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
     } else {
         stringResource(R.string.settings_cloud_sync_never)
@@ -129,6 +141,30 @@ fun CloudSyncScreen(
                     modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+        if (configUpdateStatus.isNotBlank()) {
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Text(
+                        text = stringResource(
+                            R.string.settings_cloud_sync_wear_config_update_label,
+                            configUpdateStatus,
+                            configUpdatedText,
+                        ),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+        item {
+            Button(
+                onClick = onOpenEdit,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(stringResource(R.string.settings_cloud_sync_edit_button))
             }
         }
         item {

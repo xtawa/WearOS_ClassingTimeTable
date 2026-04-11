@@ -45,6 +45,7 @@ internal fun persistSettings(
     cloudServerUrl: String,
     cloudRemotePath: String,
     cloudUsername: String,
+    cloudConfigPushStatus: String,
     cloudLastResult: String,
     cloudLastSyncedAt: Long,
 ) {
@@ -64,6 +65,7 @@ internal fun persistSettings(
             cloudServerUrl = cloudServerUrl,
             cloudRemotePath = cloudRemotePath,
             cloudUsername = cloudUsername,
+            cloudConfigPushStatus = cloudConfigPushStatus,
             cloudLastResult = cloudLastResult,
             cloudLastSyncedAt = cloudLastSyncedAt,
         ),

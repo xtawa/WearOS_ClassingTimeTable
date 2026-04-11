@@ -171,7 +171,7 @@
     <string name="settings_about_resources_title">资源</string>
     <string name="settings_about_mission_title">我们的使命</string>
     <string name="settings_about_mission_desc">将混乱的学生日程转化为清晰且优雅的课程体验。</string>
-    <string name="settings_about_quote">“以精准设计与理性表达，策展学术卓越。”</string>
+    <string name="settings_about_quote"></string>
     <string name="settings_about_privacy_certified">数据隐私已认证</string>
     <string name="settings_about_ai_optimized">AI 排课已优化</string>
     <string name="settings_about_footer_copyright">© %1$d Xihao Zhang。</string>
@@ -241,6 +241,7 @@
     <string name="settings_cloud_sync_last_sync">最近云同步：%1$s</string>
     <string name="settings_cloud_sync_status">状态：%1$s</string>
     <string name="settings_cloud_sync_push_status">下发 Wear 配置：%1$s</string>
+    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear 端 WebDAV 信息已更新（以手机为准）。</string>
 
     <string name="empty_input_message">输入内容为空。</string>
     <string name="parse_success_preview_message">解析成功，预览到 %1$d 节课程，请确认后导入。</string>

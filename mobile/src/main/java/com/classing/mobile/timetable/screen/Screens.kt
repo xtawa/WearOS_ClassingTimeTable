@@ -197,6 +197,7 @@ fun MobileTimetableScreen() {
             cloudServerUrl = cloudServerUrl,
             cloudRemotePath = cloudRemotePath,
             cloudUsername = cloudUsername,
+            cloudConfigPushStatus = cloudConfigPushStatus,
             cloudLastResult = cloudSyncStatus,
             cloudLastSyncedAt = cloudLastSyncedAt,
         )
@@ -263,6 +264,7 @@ fun MobileTimetableScreen() {
                 val updated = MobilePrefsStore.loadSettings(context)
                 cloudSyncStatus = updated.cloudLastResult
                 cloudLastSyncedAt = updated.cloudLastSyncedAt
+                cloudConfigPushStatus = updated.cloudConfigPushStatus
             } else {
                 cloudSyncStatus = "Cloud sync failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
             }
@@ -451,6 +453,7 @@ fun MobileTimetableScreen() {
         cloudServerUrl = settings.cloudServerUrl
         cloudRemotePath = settings.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
         cloudUsername = settings.cloudUsername
+        cloudConfigPushStatus = settings.cloudConfigPushStatus
         cloudPassword = CloudCredentialStore.loadPassword(context)
         cloudSyncStatus = settings.cloudLastResult
         cloudLastSyncedAt = settings.cloudLastSyncedAt

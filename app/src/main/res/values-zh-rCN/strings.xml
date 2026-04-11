@@ -82,14 +82,24 @@
     <string name="settings_last_sync">最近同步：%1$s</string>
     <string name="settings_force_full_sync">蓝牙同步</string>
     <string name="settings_cloud_sync_title">云同步</string>
+    <string name="settings_cloud_sync_server_url">WebDAV 服务器地址</string>
+    <string name="settings_cloud_sync_remote_path">远端文件路径</string>
+    <string name="settings_cloud_sync_username">用户名</string>
+    <string name="settings_cloud_sync_password">密码</string>
+    <string name="settings_cloud_sync_save">保存</string>
     <string name="settings_cloud_sync_sync_now">立即同步</string>
     <string name="settings_cloud_sync_syncing">同步中</string>
     <string name="settings_cloud_sync_never">从未</string>
     <string name="settings_cloud_sync_config_ready">已收到手机下发的云同步配置。</string>
     <string name="settings_cloud_sync_config_missing">未收到云同步配置，请先在手机端配置 WebDAV。</string>
-    <string name="settings_cloud_sync_phone_only_hint">Wear 使用手机下发配置，仅执行云端拉取（只读）。</string>
+    <string name="settings_cloud_sync_phone_only_hint">Wear 支持本地编辑 WebDAV，但发生冲突时以手机配置为准。</string>
     <string name="settings_cloud_sync_wear_config_label">服务器：%1$s\n路径：%2$s\n用户：%3$s</string>
     <string name="settings_cloud_sync_wear_status_label">状态：%1$s\n最近同步：%2$s</string>
+    <string name="settings_cloud_sync_wear_config_update_label">%1$s\n更新时间：%2$s</string>
+    <string name="settings_cloud_sync_edit_button">编辑 WebDAV</string>
+    <string name="settings_cloud_sync_edit_title">编辑 WebDAV</string>
+    <string name="settings_cloud_sync_edit_desc">Wear 保存后会让手机校验，若不一致将由手机配置覆盖。</string>
+    <string name="settings_cloud_sync_wear_webdav_updated_from_mobile">Wear 端 WebDAV 信息已由手机更新。</string>
     <string name="tile_next_class_label">Classing 下一节课磁贴</string>
     <string name="complication_next_class_label">Classing 下一节课复杂功能</string>
 </resources>

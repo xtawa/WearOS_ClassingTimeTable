@@ -171,7 +171,7 @@
     <string name="settings_about_resources_title">資源</string>
     <string name="settings_about_mission_title">我們的使命</string>
     <string name="settings_about_mission_desc">將混亂的學生行程轉化為清晰且優雅的課程體驗。</string>
-    <string name="settings_about_quote">「以精準設計與理性表達，策展學術卓越。」</string>
+    <string name="settings_about_quote"></string>
     <string name="settings_about_privacy_certified">資料隱私已認證</string>
     <string name="settings_about_ai_optimized">AI 排課已最佳化</string>
     <string name="settings_about_footer_copyright">© %1$d Xihao Zhang。</string>
@@ -241,6 +241,7 @@
     <string name="settings_cloud_sync_last_sync">最近雲端同步：%1$s</string>
     <string name="settings_cloud_sync_status">狀態：%1$s</string>
     <string name="settings_cloud_sync_push_status">下發 Wear 設定：%1$s</string>
+    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear 端 WebDAV 資訊已更新（以手機為準）。</string>
 
     <string name="empty_input_message">輸入內容為空。</string>
     <string name="parse_success_preview_message">解析成功，預覽到 %1$d 節課程，請確認後匯入。</string>

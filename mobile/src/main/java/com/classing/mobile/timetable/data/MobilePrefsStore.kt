@@ -28,6 +28,7 @@ data class MobileSettings(
     val cloudServerUrl: String,
     val cloudRemotePath: String,
     val cloudUsername: String,
+    val cloudConfigPushStatus: String,
     val cloudLastResult: String,
     val cloudLastSyncedAt: Long,
 )
@@ -47,6 +48,7 @@ object MobilePrefsStore {
     private const val KEY_CLOUD_SERVER_URL = "cloud_server_url"
     private const val KEY_CLOUD_REMOTE_PATH = "cloud_remote_path"
     private const val KEY_CLOUD_USERNAME = "cloud_username"
+    private const val KEY_CLOUD_CONFIG_PUSH_STATUS = "cloud_config_push_status"
     private const val KEY_CLOUD_LAST_RESULT = "cloud_last_result"
     private const val KEY_CLOUD_LAST_SYNCED_AT = "cloud_last_synced_at"
     private const val KEY_LOCAL_TIMETABLE_UPDATED_AT = "local_timetable_updated_at"
@@ -73,6 +75,7 @@ object MobilePrefsStore {
             cloudServerUrl = p.getString(KEY_CLOUD_SERVER_URL, "") ?: "",
             cloudRemotePath = p.getString(KEY_CLOUD_REMOTE_PATH, "/classing/classing_sync.json") ?: "/classing/classing_sync.json",
             cloudUsername = p.getString(KEY_CLOUD_USERNAME, "") ?: "",
+            cloudConfigPushStatus = p.getString(KEY_CLOUD_CONFIG_PUSH_STATUS, "") ?: "",
             cloudLastResult = p.getString(KEY_CLOUD_LAST_RESULT, "") ?: "",
             cloudLastSyncedAt = p.getLong(KEY_CLOUD_LAST_SYNCED_AT, 0L),
         )
@@ -93,8 +96,15 @@ object MobilePrefsStore {
             .putString(KEY_CLOUD_SERVER_URL, settings.cloudServerUrl)
             .putString(KEY_CLOUD_REMOTE_PATH, settings.cloudRemotePath)
             .putString(KEY_CLOUD_USERNAME, settings.cloudUsername)
+            .putString(KEY_CLOUD_CONFIG_PUSH_STATUS, settings.cloudConfigPushStatus)
             .putString(KEY_CLOUD_LAST_RESULT, settings.cloudLastResult)
             .putLong(KEY_CLOUD_LAST_SYNCED_AT, settings.cloudLastSyncedAt)
+            .apply()
+    }
+
+    fun setCloudConfigPushStatus(context: Context, status: String) {
+        prefs(context).edit()
+            .putString(KEY_CLOUD_CONFIG_PUSH_STATUS, status)
             .apply()
     }
 

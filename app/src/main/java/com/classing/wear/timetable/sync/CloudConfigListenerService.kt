@@ -3,6 +3,7 @@ package com.classing.wear.timetable.sync
 import android.util.Log
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
+import com.classing.wear.timetable.R
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
@@ -41,6 +42,7 @@ class CloudConfigListenerService : WearableListenerService() {
     private fun applyConfigPayload(payload: String) {
         if (payload.isBlank()) return
         val parsed = runCatching { JSONObject(payload) }.getOrNull() ?: return
+        val current = WearCloudConfigStore.load(applicationContext)
         val config = WearCloudConfig(
             enabled = parsed.optBoolean("enabled", false),
             serverUrl = parsed.optString("serverUrl", ""),
@@ -50,6 +52,12 @@ class CloudConfigListenerService : WearableListenerService() {
             updatedAt = parsed.optLong(WearDataLayerContracts.KEY_UPDATED_AT, System.currentTimeMillis()),
         )
         WearCloudConfigStore.save(applicationContext, config)
+        if (current.normalized() != config.normalized()) {
+            WearCloudConfigStore.saveConfigUpdateStatus(
+                context = applicationContext,
+                message = applicationContext.getString(R.string.settings_cloud_sync_wear_webdav_updated_from_mobile),
+            )
+        }
         serviceScope.launch {
             val result = WearCloudSyncCoordinator.pullFromCloud(
                 context = applicationContext,
@@ -65,4 +73,25 @@ class CloudConfigListenerService : WearableListenerService() {
     companion object {
         private const val TAG = "CloudConfigListenerSvc"
     }
+}
+
+private data class NormalizedWearWebDav(
+    val enabled: Boolean,
+    val serverUrl: String,
+    val remotePath: String,
+    val username: String,
+    val password: String,
+)
+
+private fun WearCloudConfig.normalized(): NormalizedWearWebDav {
+    val normalizedServer = serverUrl.trim().trimEnd('/')
+    val rawPath = remotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
+    val normalizedPath = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
+    return NormalizedWearWebDav(
+        enabled = enabled,
+        serverUrl = normalizedServer,
+        remotePath = normalizedPath,
+        username = username.trim(),
+        password = password,
+    )
 }

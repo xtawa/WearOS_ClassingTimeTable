@@ -31,6 +31,8 @@ object WearCloudConfigStore {
     private const val KEY_UPDATED_AT = "updated_at"
     private const val KEY_LAST_SYNC_RESULT = "last_sync_result"
     private const val KEY_LAST_SYNC_AT = "last_sync_at"
+    private const val KEY_LAST_CONFIG_UPDATE_MESSAGE = "last_config_update_message"
+    private const val KEY_LAST_CONFIG_UPDATE_AT = "last_config_update_at"
     private const val KEY_LAST_TIMETABLE_UPDATED_AT = "last_timetable_updated_at"
     private const val KEY_LAST_WEAR_SETTINGS_UPDATED_AT = "last_wear_settings_updated_at"
 
@@ -80,6 +82,18 @@ object WearCloudConfigStore {
     fun loadSyncStatus(context: Context): Pair<String, Long> {
         val p = prefs(context)
         return p.getString(KEY_LAST_SYNC_RESULT, "").orEmpty() to p.getLong(KEY_LAST_SYNC_AT, 0L)
+    }
+
+    fun saveConfigUpdateStatus(context: Context, message: String, updatedAt: Long = System.currentTimeMillis()) {
+        prefs(context).edit()
+            .putString(KEY_LAST_CONFIG_UPDATE_MESSAGE, message)
+            .putLong(KEY_LAST_CONFIG_UPDATE_AT, updatedAt)
+            .apply()
+    }
+
+    fun loadConfigUpdateStatus(context: Context): Pair<String, Long> {
+        val p = prefs(context)
+        return p.getString(KEY_LAST_CONFIG_UPDATE_MESSAGE, "").orEmpty() to p.getLong(KEY_LAST_CONFIG_UPDATE_AT, 0L)
     }
 
     fun loadLastTimetableUpdatedAt(context: Context): Long {
