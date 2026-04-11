@@ -1,6 +1,10 @@
 package com.classing.wear.timetable.sync
 
 import android.content.Context
+import com.classing.shared.sync.SyncArbitrator
+import com.classing.shared.sync.SyncDomain
+import com.classing.shared.sync.SyncSource
+import com.classing.shared.sync.SyncStamp
 import com.classing.wear.timetable.ClassingTimetableApplication
 import com.classing.wear.timetable.data.sync.RemoteCourse
 import com.classing.wear.timetable.data.sync.RemoteException
@@ -63,17 +67,92 @@ object WearCloudSyncCoordinator {
         val settingsRepository = app.appContainer.settingsRepository
 
         val timetable = doc.timetable
-        if (timetable != null && timetable.updatedAt > WearCloudConfigStore.loadLastTimetableUpdatedAt(context)) {
-            val payload = buildPayloadFromCloudTimetable(timetable)
-            val applier = SyncPayloadApplier(app.appContainer.database)
-            applier.apply(payload, SyncMode.FULL)
-            WearCloudConfigStore.saveLastTimetableUpdatedAt(context, timetable.updatedAt)
-            WearSurfaceUpdateRequester.requestAll(context)
+        if (timetable != null) {
+            val currentStamp = WearSyncStampStore.load(context, SyncDomain.TIMETABLE)
+                ?: WearCloudConfigStore.loadLastTimetableUpdatedAt(context)
+                    .takeIf { it > 0L }
+                    ?.let {
+                        SyncStamp(
+                            revision = it,
+                            source = SyncSource.UNKNOWN,
+                            appliedAt = it,
+                        )
+                    }
+            val incomingStamp = SyncStamp(
+                revision = timetable.revision,
+                source = timetable.source,
+                appliedAt = timetable.updatedAt.takeIf { it > 0L } ?: timetable.revision,
+            )
+            if (SyncArbitrator.shouldApply(
+                    domain = SyncDomain.TIMETABLE,
+                    incoming = incomingStamp,
+                    current = currentStamp,
+                )
+            ) {
+                val payload = buildPayloadFromCloudTimetable(timetable)
+                val applier = SyncPayloadApplier(app.appContainer.database)
+                applier.apply(payload, SyncMode.FULL)
+                WearSyncStampStore.save(context, SyncDomain.TIMETABLE, incomingStamp)
+                WearSyncStampStore.saveDecision(
+                    context = context,
+                    domain = SyncDomain.TIMETABLE,
+                    decision = "applied",
+                    reason = "cloud timetable applied revision=${incomingStamp.revision} source=${incomingStamp.source.wireValue}",
+                )
+                WearCloudConfigStore.saveLastTimetableUpdatedAt(context, incomingStamp.revision)
+                WearSurfaceUpdateRequester.requestAll(context)
+            } else {
+                val reason = "stale_skipped: incoming=$incomingStamp current=$currentStamp"
+                WearSyncStampStore.saveDecision(
+                    context = context,
+                    domain = SyncDomain.TIMETABLE,
+                    decision = "stale_skipped",
+                    reason = reason,
+                )
+            }
         }
 
-        if (doc.wearSettingsPayload.isNotBlank() && doc.wearSettingsUpdatedAt > WearCloudConfigStore.loadLastWearSettingsUpdatedAt(context)) {
-            settingsRepository.applyWearSettingsSnapshot(doc.wearSettingsPayload)
-            WearCloudConfigStore.saveLastWearSettingsUpdatedAt(context, doc.wearSettingsUpdatedAt)
+        val wearSettings = doc.wearSettings
+        if (wearSettings != null && wearSettings.settingsPayload.isNotBlank()) {
+            val currentStamp = WearSyncStampStore.load(context, SyncDomain.WEAR_SETTINGS)
+                ?: WearCloudConfigStore.loadLastWearSettingsUpdatedAt(context)
+                    .takeIf { it > 0L }
+                    ?.let {
+                        SyncStamp(
+                            revision = it,
+                            source = SyncSource.UNKNOWN,
+                            appliedAt = it,
+                        )
+                    }
+            val incomingStamp = SyncStamp(
+                revision = wearSettings.revision,
+                source = wearSettings.source,
+                appliedAt = wearSettings.updatedAt.takeIf { it > 0L } ?: wearSettings.revision,
+            )
+            if (SyncArbitrator.shouldApply(
+                    domain = SyncDomain.WEAR_SETTINGS,
+                    incoming = incomingStamp,
+                    current = currentStamp,
+                )
+            ) {
+                settingsRepository.applyWearSettingsSnapshot(wearSettings.settingsPayload)
+                WearSyncStampStore.save(context, SyncDomain.WEAR_SETTINGS, incomingStamp)
+                WearSyncStampStore.saveDecision(
+                    context = context,
+                    domain = SyncDomain.WEAR_SETTINGS,
+                    decision = "applied",
+                    reason = "cloud wearSettings applied revision=${incomingStamp.revision} source=${incomingStamp.source.wireValue}",
+                )
+                WearCloudConfigStore.saveLastWearSettingsUpdatedAt(context, incomingStamp.revision)
+            } else {
+                val reason = "stale_skipped: incoming=$incomingStamp current=$currentStamp"
+                WearSyncStampStore.saveDecision(
+                    context = context,
+                    domain = SyncDomain.WEAR_SETTINGS,
+                    decision = "stale_skipped",
+                    reason = reason,
+                )
+            }
         }
     }
 

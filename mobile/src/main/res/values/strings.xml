@@ -151,6 +151,7 @@
     <string name="settings_week_mode_desc">Switch between natural weeks and semester weeks. Semester weeks are calculated every 7 days from the start date.</string>
     <string name="settings_week_mode_natural">Natural Week</string>
     <string name="settings_week_mode_semester">Semester Week</string>
+    <string name="settings_week_start_day_title">Week Starts On</string>
     <string name="settings_badge_week_mode">W</string>
     <string name="settings_badge_wear">W</string>
     <string name="settings_badge_cloud">C</string>

@@ -151,6 +151,7 @@
     <string name="settings_week_mode_desc">可切换自然周或学期周，学期周按起始日期每 7 天计算。</string>
     <string name="settings_week_mode_natural">自然周</string>
     <string name="settings_week_mode_semester">学期周</string>
+    <string name="settings_week_start_day_title">每周起始日</string>
     <string name="settings_badge_week_mode">周</string>
     <string name="settings_badge_wear">W</string>
     <string name="settings_badge_cloud">云</string>

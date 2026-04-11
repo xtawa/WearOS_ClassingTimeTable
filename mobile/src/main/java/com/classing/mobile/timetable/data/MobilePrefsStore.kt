@@ -23,6 +23,7 @@ data class MobileSettings(
     val wearSyncMode: String,
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
+    val weekStartDay: String,
     val cloudSyncEnabled: Boolean,
     val cloudServerUrl: String,
     val cloudRemotePath: String,
@@ -41,6 +42,7 @@ object MobilePrefsStore {
     private const val KEY_WEAR_SYNC_MODE = "wear_sync_mode"
     private const val KEY_WEEK_NUMBER_MODE = "week_number_mode"
     private const val KEY_SEMESTER_WEEK_START_DATE = "semester_week_start_date"
+    private const val KEY_WEEK_START_DAY = "week_start_day"
     private const val KEY_CLOUD_SYNC_ENABLED = "cloud_sync_enabled"
     private const val KEY_CLOUD_SERVER_URL = "cloud_server_url"
     private const val KEY_CLOUD_REMOTE_PATH = "cloud_remote_path"
@@ -66,6 +68,7 @@ object MobilePrefsStore {
             wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "WEARABLE_API") ?: "WEARABLE_API",
             weekNumberMode = p.getString(KEY_WEEK_NUMBER_MODE, "NATURAL") ?: "NATURAL",
             semesterWeekStartDate = p.getString(KEY_SEMESTER_WEEK_START_DATE, "") ?: "",
+            weekStartDay = p.getString(KEY_WEEK_START_DAY, "MONDAY") ?: "MONDAY",
             cloudSyncEnabled = p.getBoolean(KEY_CLOUD_SYNC_ENABLED, false),
             cloudServerUrl = p.getString(KEY_CLOUD_SERVER_URL, "") ?: "",
             cloudRemotePath = p.getString(KEY_CLOUD_REMOTE_PATH, "/classing/classing_sync.json") ?: "/classing/classing_sync.json",
@@ -85,6 +88,7 @@ object MobilePrefsStore {
             .putString(KEY_WEAR_SYNC_MODE, settings.wearSyncMode)
             .putString(KEY_WEEK_NUMBER_MODE, settings.weekNumberMode)
             .putString(KEY_SEMESTER_WEEK_START_DATE, settings.semesterWeekStartDate)
+            .putString(KEY_WEEK_START_DAY, settings.weekStartDay)
             .putBoolean(KEY_CLOUD_SYNC_ENABLED, settings.cloudSyncEnabled)
             .putString(KEY_CLOUD_SERVER_URL, settings.cloudServerUrl)
             .putString(KEY_CLOUD_REMOTE_PATH, settings.cloudRemotePath)

@@ -7,6 +7,7 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.reminder.ReminderScheduler
 import com.xtawa.classingtime.sync.WearSyncAckStore
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -39,6 +40,7 @@ internal fun persistSettings(
     wearSyncMode: WearSyncMode,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    weekStartDay: DayOfWeek,
     cloudSyncEnabled: Boolean,
     cloudServerUrl: String,
     cloudRemotePath: String,
@@ -57,6 +59,7 @@ internal fun persistSettings(
             wearSyncMode = wearSyncMode.name,
             weekNumberMode = weekNumberMode.name,
             semesterWeekStartDate = semesterWeekStartDate.toString(),
+            weekStartDay = weekStartDay.name,
             cloudSyncEnabled = cloudSyncEnabled,
             cloudServerUrl = cloudServerUrl,
             cloudRemotePath = cloudRemotePath,

@@ -1,6 +1,7 @@
 package com.classing.wear.timetable.sync
 
 import com.classing.shared.sync.CloudSyncContracts
+import com.classing.shared.sync.SyncSource
 import org.json.JSONObject
 
 data class WearCloudLesson(
@@ -14,15 +15,23 @@ data class WearCloudLesson(
 
 data class WearCloudTimetable(
     val updatedAt: Long,
+    val revision: Long,
+    val source: SyncSource,
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
     val lessons: List<WearCloudLesson>,
 )
 
+data class WearCloudNamespace(
+    val updatedAt: Long,
+    val revision: Long,
+    val source: SyncSource,
+    val settingsPayload: String,
+)
+
 data class WearCloudDocument(
     val timetable: WearCloudTimetable?,
-    val wearSettingsUpdatedAt: Long,
-    val wearSettingsPayload: String,
+    val wearSettings: WearCloudNamespace?,
 )
 
 object WearCloudDocumentParser {
@@ -49,6 +58,11 @@ object WearCloudDocumentParser {
             }
             WearCloudTimetable(
                 updatedAt = t.optLong(CloudSyncContracts.KEY_UPDATED_AT, 0L),
+                revision = t.optLong(
+                    CloudSyncContracts.KEY_REVISION,
+                    t.optLong(CloudSyncContracts.KEY_UPDATED_AT, 0L),
+                ),
+                source = SyncSource.fromWire(t.optString(CloudSyncContracts.KEY_SOURCE)),
                 weekNumberMode = t.optString(CloudSyncContracts.KEY_WEEK_NUMBER_MODE, "NATURAL"),
                 semesterWeekStartDate = t.optString(CloudSyncContracts.KEY_SEMESTER_WEEK_START_DATE, ""),
                 lessons = lessons,
@@ -56,16 +70,23 @@ object WearCloudDocumentParser {
         }
 
         val wearSettingsObject = root.optJSONObject(CloudSyncContracts.KEY_WEAR_SETTINGS)
-        val wearSettingsUpdatedAt = wearSettingsObject?.optLong(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, 0L) ?: 0L
-        val wearSettingsPayload = wearSettingsObject
-            ?.optJSONObject(CloudSyncContracts.KEY_SETTINGS_PAYLOAD)
-            ?.toString()
-            .orEmpty()
+        val wearSettings = wearSettingsObject?.let {
+            WearCloudNamespace(
+                updatedAt = it.optLong(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, 0L),
+                revision = it.optLong(
+                    CloudSyncContracts.KEY_REVISION,
+                    it.optLong(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, 0L),
+                ),
+                source = SyncSource.fromWire(it.optString(CloudSyncContracts.KEY_SOURCE)),
+                settingsPayload = it.optJSONObject(CloudSyncContracts.KEY_SETTINGS_PAYLOAD)
+                    ?.toString()
+                    .orEmpty(),
+            )
+        }
 
         return WearCloudDocument(
             timetable = timetable,
-            wearSettingsUpdatedAt = wearSettingsUpdatedAt,
-            wearSettingsPayload = wearSettingsPayload,
+            wearSettings = wearSettings,
         )
     }
 }

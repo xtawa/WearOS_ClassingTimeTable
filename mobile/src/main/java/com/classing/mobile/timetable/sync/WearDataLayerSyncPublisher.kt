@@ -52,6 +52,7 @@ object WearDataLayerSyncPublisher {
                 dataMap.putString(WearDataLayerContracts.KEY_FORMAT, "classingtime_mobile_sync_v1")
                 dataMap.putString(WearDataLayerContracts.KEY_TIMEZONE, zoneId.id)
                 dataMap.putString(WearDataLayerContracts.KEY_SOURCE, source)
+                dataMap.putLong(WearDataLayerContracts.KEY_REVISION, updatedAt)
                 dataMap.putString(
                     WearDataLayerContracts.KEY_GENERATED_AT,
                     LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
@@ -110,6 +111,7 @@ object WearDataLayerSyncPublisher {
             .put("timezone", zoneId.id)
             .put("generatedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
             .put("source", source)
+            .put("revision", updatedAt)
             .put("updatedAt", updatedAt)
             .put("weekNumberMode", weekNumberMode)
             .put("semesterWeekStartDate", semesterWeekStartDate.toString())

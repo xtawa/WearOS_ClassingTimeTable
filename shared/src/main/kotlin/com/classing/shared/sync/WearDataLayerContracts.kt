@@ -14,6 +14,7 @@ object WearDataLayerContracts {
     const val KEY_GENERATED_AT = "generatedAt"
     const val KEY_REQUESTED_AT = "requestedAt"
     const val KEY_UPDATED_AT = "updatedAt"
+    const val KEY_REVISION = "revision"
 
     const val KEY_SUCCESS = "success"
     const val KEY_REQUESTED_LESSON_COUNT = "requestedLessonCount"

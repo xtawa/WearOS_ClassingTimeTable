@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.sync
 
 import com.classing.shared.sync.CloudSyncContracts
+import com.classing.shared.sync.SyncSource
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
 import org.json.JSONArray
@@ -24,11 +25,15 @@ data class WebDavConfig(
 
 data class CloudNamespaceSnapshot(
     val updatedAt: Long,
+    val revision: Long,
+    val source: SyncSource,
     val settings: JSONObject,
 )
 
 data class CloudTimetableSnapshot(
     val updatedAt: Long,
+    val revision: Long,
+    val source: SyncSource,
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
     val lessons: List<PersistedLesson>,
@@ -62,6 +67,8 @@ data class CloudDocument(
                 CloudSyncContracts.KEY_TIMETABLE,
                 JSONObject()
                     .put(CloudSyncContracts.KEY_UPDATED_AT, table.updatedAt)
+                    .put(CloudSyncContracts.KEY_REVISION, table.revision)
+                    .put(CloudSyncContracts.KEY_SOURCE, table.source.wireValue)
                     .put(CloudSyncContracts.KEY_WEEK_NUMBER_MODE, table.weekNumberMode)
                     .put(CloudSyncContracts.KEY_SEMESTER_WEEK_START_DATE, table.semesterWeekStartDate)
                     .put(CloudSyncContracts.KEY_LESSONS, lessons),
@@ -73,6 +80,8 @@ data class CloudDocument(
                 CloudSyncContracts.KEY_MOBILE_SETTINGS,
                 JSONObject()
                     .put(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, snapshot.updatedAt)
+                    .put(CloudSyncContracts.KEY_REVISION, snapshot.revision)
+                    .put(CloudSyncContracts.KEY_SOURCE, snapshot.source.wireValue)
                     .put(CloudSyncContracts.KEY_SETTINGS_PAYLOAD, snapshot.settings),
             )
         }
@@ -81,6 +90,8 @@ data class CloudDocument(
                 CloudSyncContracts.KEY_WEAR_SETTINGS,
                 JSONObject()
                     .put(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, snapshot.updatedAt)
+                    .put(CloudSyncContracts.KEY_REVISION, snapshot.revision)
+                    .put(CloudSyncContracts.KEY_SOURCE, snapshot.source.wireValue)
                     .put(CloudSyncContracts.KEY_SETTINGS_PAYLOAD, snapshot.settings),
             )
         }
@@ -119,6 +130,11 @@ data class CloudDocument(
                 }
                 CloudTimetableSnapshot(
                     updatedAt = raw.optLong(CloudSyncContracts.KEY_UPDATED_AT, 0L),
+                    revision = raw.optLong(
+                        CloudSyncContracts.KEY_REVISION,
+                        raw.optLong(CloudSyncContracts.KEY_UPDATED_AT, 0L),
+                    ),
+                    source = SyncSource.fromWire(raw.optString(CloudSyncContracts.KEY_SOURCE)),
                     weekNumberMode = raw.optString(CloudSyncContracts.KEY_WEEK_NUMBER_MODE, "NATURAL"),
                     semesterWeekStartDate = raw.optString(CloudSyncContracts.KEY_SEMESTER_WEEK_START_DATE, ""),
                     lessons = lessons,
@@ -129,6 +145,11 @@ data class CloudDocument(
                 val obj = json.optJSONObject(name) ?: return null
                 return CloudNamespaceSnapshot(
                     updatedAt = obj.optLong(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, 0L),
+                    revision = obj.optLong(
+                        CloudSyncContracts.KEY_REVISION,
+                        obj.optLong(CloudSyncContracts.KEY_NAMESPACE_UPDATED_AT, 0L),
+                    ),
+                    source = SyncSource.fromWire(obj.optString(CloudSyncContracts.KEY_SOURCE)),
                     settings = obj.optJSONObject(CloudSyncContracts.KEY_SETTINGS_PAYLOAD) ?: JSONObject(),
                 )
             }
@@ -160,6 +181,7 @@ fun MobileSettings.toMobileSettingsSnapshotJson(): JSONObject {
         .put("wearSyncMode", wearSyncMode)
         .put("weekNumberMode", weekNumberMode)
         .put("semesterWeekStartDate", semesterWeekStartDate)
+        .put("weekStartDay", weekStartDay)
 }
 
 fun MobileSettings.toCloudConfigPayload(password: String): JSONObject {

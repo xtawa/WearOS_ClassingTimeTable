@@ -2,6 +2,10 @@ package com.classing.wear.timetable.sync
 
 import android.content.Context
 import android.util.Log
+import com.classing.shared.sync.SyncArbitrator
+import com.classing.shared.sync.SyncDomain
+import com.classing.shared.sync.SyncSource
+import com.classing.shared.sync.SyncStamp
 import com.classing.shared.sync.WearDataLayerContracts
 import com.classing.wear.timetable.ClassingTimetableApplication
 import com.classing.wear.timetable.data.sync.RemoteCourse
@@ -73,29 +77,83 @@ class MobileSyncListenerService : WearableListenerService() {
         if (payload.isBlank()) return
 
         val parsed = runCatching { JSONObject(payload) }.getOrNull() ?: return
-        val updatedAt = parsed.optLong(WearDataLayerContracts.KEY_UPDATED_AT, 0L)
-        if (updatedAt > 0L && isDuplicatePayload(updatedAt)) {
-            Log.i(TAG, "Ignore duplicated mobile sync payload updatedAt=$updatedAt")
-            return
-        }
-        if (updatedAt > 0L) markHandledPayload(updatedAt)
-
+        val incomingRevision = parsed.optLong(
+            WearDataLayerContracts.KEY_REVISION,
+            parsed.optLong(WearDataLayerContracts.KEY_UPDATED_AT, 0L),
+        ).takeIf { it > 0L } ?: System.currentTimeMillis()
+        val incomingAppliedAt = parsed.optLong(
+            WearDataLayerContracts.KEY_UPDATED_AT,
+            incomingRevision,
+        ).takeIf { it > 0L } ?: incomingRevision
         val lessonCount = parsed.optJSONArray("lessons")?.length() ?: 0
-        val source = parsed.optString(WearDataLayerContracts.KEY_SOURCE)
+        val source = SyncSource.fromWire(parsed.optString(WearDataLayerContracts.KEY_SOURCE))
+            .takeUnless { it == SyncSource.UNKNOWN }
+            ?: SyncSource.fromWire(sourceHint)
+                .takeUnless { it == SyncSource.UNKNOWN }
+            ?: SyncSource.PHONE_DIRECT
+        val ackSource = parsed.optString(WearDataLayerContracts.KEY_SOURCE)
             .ifBlank { sourceHint.orEmpty() }
             .ifBlank { WearDataLayerContracts.SOURCE_WEARABLE_API }
+        val incomingStamp = SyncStamp(
+            revision = incomingRevision,
+            source = source,
+            appliedAt = incomingAppliedAt,
+        )
+        val currentStamp = WearSyncStampStore.load(applicationContext, SyncDomain.TIMETABLE)
+        if (!SyncArbitrator.shouldApply(
+                domain = SyncDomain.TIMETABLE,
+                incoming = incomingStamp,
+                current = currentStamp,
+            )
+        ) {
+            val reason = "stale_skipped: incoming=$incomingStamp current=$currentStamp"
+            persistApplyStatus(
+                success = true,
+                lessonCount = lessonCount,
+                decision = "stale_skipped",
+                reason = reason,
+            )
+            WearSyncStampStore.saveDecision(
+                context = applicationContext,
+                domain = SyncDomain.TIMETABLE,
+                decision = "stale_skipped",
+                reason = reason,
+            )
+            sendSyncAckToMobile(
+                sourceNodeId = sourceNodeId,
+                requestedLessonCount = lessonCount,
+                result = ApplyResult(
+                    success = true,
+                    appliedLessonCount = 0,
+                    errorMessage = "stale_skipped",
+                ),
+                source = ackSource,
+            )
+            Log.i(TAG, "Skip stale mobile sync payload: $reason")
+            return
+        }
 
         serviceScope.launch {
             val result = applyPayloadToWearDb(parsed)
-            getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE).edit()
-                .putString(MobileSyncPrefs.KEY_LAST_PAYLOAD, payload)
-                .putInt(MobileSyncPrefs.KEY_LAST_LESSON_COUNT, lessonCount)
-                .putLong(MobileSyncPrefs.KEY_LAST_SYNC_AT, System.currentTimeMillis())
-                .putBoolean(MobileSyncPrefs.KEY_LAST_APPLY_SUCCESS, result.success)
-                .apply()
+            persistApplyStatus(
+                success = result.success,
+                lessonCount = lessonCount,
+                decision = if (result.success) "applied" else "apply_failed",
+                reason = result.errorMessage.orEmpty(),
+                payload = payload,
+            )
+            if (result.success) {
+                WearSyncStampStore.save(applicationContext, SyncDomain.TIMETABLE, incomingStamp)
+                WearSyncStampStore.saveDecision(
+                    context = applicationContext,
+                    domain = SyncDomain.TIMETABLE,
+                    decision = "applied",
+                    reason = "applied revision=${incomingStamp.revision} source=${incomingStamp.source.wireValue}",
+                )
+            }
 
             WearSurfaceUpdateRequester.requestAll(applicationContext)
-            sendSyncAckToMobile(sourceNodeId, lessonCount, result, source)
+            sendSyncAckToMobile(sourceNodeId, lessonCount, result, ackSource)
             Log.i(TAG, "Received mobile sync payload with $lessonCount lessons, applied=${result.success}")
         }
     }
@@ -260,19 +318,25 @@ class MobileSyncListenerService : WearableListenerService() {
             ?: runCatching { LocalTime.parse(text, java.time.format.DateTimeFormatter.ofPattern("H:mm")) }.getOrNull()
     }
 
-    private fun isDuplicatePayload(updatedAt: Long): Boolean {
-        return getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .getLong(MobileSyncPrefs.KEY_LAST_HANDLED_UPDATED_AT, 0L) == updatedAt
-    }
-
-    private fun markHandledPayload(updatedAt: Long) {
+    private fun persistApplyStatus(
+        success: Boolean,
+        lessonCount: Int,
+        decision: String,
+        reason: String,
+        payload: String = "",
+    ) {
+        val now = System.currentTimeMillis()
         getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE).edit()
-            .putLong(MobileSyncPrefs.KEY_LAST_HANDLED_UPDATED_AT, updatedAt)
+            .putString(MobileSyncPrefs.KEY_LAST_PAYLOAD, payload)
+            .putInt(MobileSyncPrefs.KEY_LAST_LESSON_COUNT, lessonCount)
+            .putLong(MobileSyncPrefs.KEY_LAST_SYNC_AT, now)
+            .putBoolean(MobileSyncPrefs.KEY_LAST_APPLY_SUCCESS, success)
+            .putString(MobileSyncPrefs.KEY_LAST_DECISION, decision)
+            .putString(MobileSyncPrefs.KEY_LAST_DECISION_REASON, reason)
             .apply()
     }
 
     companion object {
         private const val TAG = "MobileSyncListener"
-        private const val PREF_NAME = MobileSyncPrefs.PREF_NAME
     }
 }

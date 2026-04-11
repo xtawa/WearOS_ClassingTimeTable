@@ -136,6 +136,7 @@ fun MobileTimetableScreen() {
     var reminderMinutes by remember { mutableIntStateOf(15) }
     var weekNumberMode by remember { mutableStateOf(WeekNumberMode.NATURAL) }
     var semesterWeekStartDate by remember { mutableStateOf(LocalDate.now()) }
+    var weekStartDay by remember { mutableStateOf(DayOfWeek.MONDAY) }
     var rawIcs by remember { mutableStateOf("") }
     var rawJson by remember { mutableStateOf("") }
     var parseMessage by remember { mutableStateOf(context.getString(R.string.initial_parse_message)) }
@@ -191,6 +192,7 @@ fun MobileTimetableScreen() {
             wearSyncMode = wearSyncMode,
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
+            weekStartDay = weekStartDay,
             cloudSyncEnabled = cloudSyncEnabled,
             cloudServerUrl = cloudServerUrl,
             cloudRemotePath = cloudRemotePath,
@@ -444,6 +446,7 @@ fun MobileTimetableScreen() {
         wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.WEARABLE_API
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
+        weekStartDay = parseWeekStartDay(settings.weekStartDay)
         cloudSyncEnabled = settings.cloudSyncEnabled
         cloudServerUrl = settings.cloudServerUrl
         cloudRemotePath = settings.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
@@ -500,6 +503,8 @@ fun MobileTimetableScreen() {
         syncInProgress = wearSyncInProgress,
         syncMessage = wearSyncMessage,
         latestAck = latestWearAck,
+        wearConnectedCount = wearConnectedCount,
+        wearConnectionMessage = wearConnectionMessage,
     )
     val cloudSyncState = resolveCloudSyncIndicatorState(
         syncInProgress = cloudSyncInProgress,
@@ -833,12 +838,24 @@ fun MobileTimetableScreen() {
                     contentPadding = innerPadding,
                     weekNumberMode = weekNumberMode,
                     semesterWeekStartDate = semesterWeekStartDate,
+                    weekStartDay = weekStartDay,
                     onBack = {
                         settingsPageName = SettingsPage.Main.name
                     },
                     onWeekNumberModeChange = { mode ->
                         if (weekNumberMode != mode) {
                             weekNumberMode = mode
+                            persistSettings()
+                            scheduleWeekSettingsAutoSync()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
+                        }
+                    },
+                    onWeekStartDayChange = { day ->
+                        if (weekStartDay != day) {
+                            weekStartDay = day
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
                             requestCloudSync(
@@ -1072,6 +1089,14 @@ fun MobileTimetableScreen() {
     )
 }
 
+private fun parseWeekStartDay(raw: String): DayOfWeek {
+    return when (raw.uppercase()) {
+        DayOfWeek.SATURDAY.name -> DayOfWeek.SATURDAY
+        DayOfWeek.SUNDAY.name -> DayOfWeek.SUNDAY
+        else -> DayOfWeek.MONDAY
+    }
+}
+
 private enum class SyncIndicatorState {
     Idle,
     Syncing,
@@ -1083,8 +1108,12 @@ private fun resolveBluetoothSyncIndicatorState(
     syncInProgress: Boolean,
     syncMessage: String,
     latestAck: WearSyncAckInfo?,
+    wearConnectedCount: Int,
+    wearConnectionMessage: String,
 ): SyncIndicatorState {
     if (syncInProgress) return SyncIndicatorState.Syncing
+    if (wearConnectionMessage.containsWearConnectionCheckingKeyword()) return SyncIndicatorState.Idle
+    if (wearConnectedCount <= 0) return SyncIndicatorState.Failed
     if (syncMessage.containsSyncFailureKeyword()) return SyncIndicatorState.Failed
     return when (latestAck?.success) {
         true -> SyncIndicatorState.Success
@@ -1114,6 +1143,12 @@ private fun String.containsSyncSuccessKeyword(): Boolean {
     return contains("success", ignoreCase = true) ||
         contains("ok", ignoreCase = true) ||
         contains("成功")
+}
+
+private fun String.containsWearConnectionCheckingKeyword(): Boolean {
+    return contains("检测中") ||
+        contains("檢測中") ||
+        contains("checking", ignoreCase = true)
 }
 
 @Composable

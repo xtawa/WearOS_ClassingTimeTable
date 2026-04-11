@@ -2,6 +2,11 @@ package com.xtawa.classingtime.sync
 
 import android.content.Context
 import com.classing.shared.sync.CloudSyncContracts
+import com.classing.shared.sync.SyncArbitrator
+import com.classing.shared.sync.SyncDomain
+import com.classing.shared.sync.SyncSource
+import com.classing.shared.sync.SyncStamp
+import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import org.json.JSONObject
@@ -75,26 +80,46 @@ object MobileCloudSyncCoordinator {
                 val localMobileSettingsUpdatedAt = MobilePrefsStore.loadLocalMobileSettingsUpdatedAt(context)
                     .takeIf { it > 0L } ?: now
                 val localWearSettings = MobilePrefsStore.loadWearSettingsSnapshot(context)?.let { (json, updatedAt) ->
+                    val payload = runCatching { JSONObject(json) }.getOrDefault(JSONObject())
                     CloudNamespaceSnapshot(
                         updatedAt = updatedAt,
-                        settings = runCatching { JSONObject(json) }.getOrDefault(JSONObject()),
+                        revision = payload.optLong(
+                            CloudSyncContracts.KEY_REVISION,
+                            payload.optLong(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt),
+                        ),
+                        source = SyncSource.fromWire(payload.optString(CloudSyncContracts.KEY_SOURCE))
+                            .takeUnless { it == SyncSource.UNKNOWN }
+                            ?: SyncSource.WEAR_LOCAL,
+                        settings = payload,
                     )
                 }
 
                 val localTimetable = CloudTimetableSnapshot(
                     updatedAt = localTimetableUpdatedAt,
+                    revision = localTimetableUpdatedAt,
+                    source = SyncSource.PHONE_DIRECT,
                     weekNumberMode = current.weekNumberMode,
                     semesterWeekStartDate = current.semesterWeekStartDate,
                     lessons = MobilePrefsStore.loadLessons(context),
                 )
                 val localMobileSettings = CloudNamespaceSnapshot(
                     updatedAt = localMobileSettingsUpdatedAt,
+                    revision = localMobileSettingsUpdatedAt,
+                    source = SyncSource.PHONE_LOCAL,
                     settings = current.toMobileSettingsSnapshotJson(),
                 )
 
                 val mergedTimetable = newerTimetable(remote.timetable, localTimetable)
-                val mergedMobileSettings = newerNamespace(remote.mobileSettings, localMobileSettings)
-                val mergedWearSettings = newerNamespace(remote.wearSettings, localWearSettings)
+                val mergedMobileSettings = newerNamespace(
+                    domain = SyncDomain.MOBILE_SETTINGS,
+                    remote = remote.mobileSettings,
+                    local = localMobileSettings,
+                )
+                val mergedWearSettings = newerNamespace(
+                    domain = SyncDomain.WEAR_SETTINGS,
+                    remote = remote.wearSettings,
+                    local = localWearSettings,
+                )
 
                 val merged = CloudDocument(
                     timetable = mergedTimetable,
@@ -108,6 +133,7 @@ object MobileCloudSyncCoordinator {
                     remote = remote,
                     localTimetableUpdatedAt = localTimetableUpdatedAt,
                     localMobileSettingsUpdatedAt = localMobileSettingsUpdatedAt,
+                    localWearSettings = localWearSettings,
                 )
 
                 webDavClient.writeJson(config, merged.toJson().toString()).getOrElse { throw it }
@@ -138,15 +164,36 @@ object MobileCloudSyncCoordinator {
         remote: CloudDocument,
         localTimetableUpdatedAt: Long,
         localMobileSettingsUpdatedAt: Long,
+        localWearSettings: CloudNamespaceSnapshot?,
     ) {
         val remoteTable = remote.timetable
-        if (remoteTable != null && remoteTable.updatedAt > localTimetableUpdatedAt) {
+        val localTimetableStamp = SyncStamp(
+            revision = localTimetableUpdatedAt,
+            source = SyncSource.PHONE_DIRECT,
+            appliedAt = localTimetableUpdatedAt,
+        )
+        if (remoteTable != null && SyncArbitrator.shouldApply(
+                domain = SyncDomain.TIMETABLE,
+                incoming = remoteTable.toStamp(),
+                current = localTimetableStamp,
+            )
+        ) {
             MobilePrefsStore.saveLessons(context, remoteTable.lessons)
-            MobilePrefsStore.markLocalTimetableUpdated(context, remoteTable.updatedAt)
+            MobilePrefsStore.markLocalTimetableUpdated(context, remoteTable.revision)
         }
 
         val remoteMobileSettings = remote.mobileSettings
-        if (remoteMobileSettings != null && remoteMobileSettings.updatedAt > localMobileSettingsUpdatedAt) {
+        val localMobileStamp = SyncStamp(
+            revision = localMobileSettingsUpdatedAt,
+            source = SyncSource.PHONE_LOCAL,
+            appliedAt = localMobileSettingsUpdatedAt,
+        )
+        if (remoteMobileSettings != null && SyncArbitrator.shouldApply(
+                domain = SyncDomain.MOBILE_SETTINGS,
+                incoming = remoteMobileSettings.toStamp(),
+                current = localMobileStamp,
+            )
+        ) {
             val settingsObj = remoteMobileSettings.settings
             MobilePrefsStore.saveSettings(
                 context,
@@ -157,9 +204,31 @@ object MobileCloudSyncCoordinator {
                     wearSyncMode = settingsObj.optString("wearSyncMode", current.wearSyncMode),
                     weekNumberMode = settingsObj.optString("weekNumberMode", current.weekNumberMode),
                     semesterWeekStartDate = settingsObj.optString("semesterWeekStartDate", current.semesterWeekStartDate),
+                    weekStartDay = settingsObj.optString("weekStartDay", current.weekStartDay),
                 ),
             )
-            MobilePrefsStore.markLocalMobileSettingsUpdated(context, remoteMobileSettings.updatedAt)
+            MobilePrefsStore.markLocalMobileSettingsUpdated(context, remoteMobileSettings.revision)
+        }
+
+        val remoteWearSettings = remote.wearSettings
+        if (remoteWearSettings != null) {
+            val currentWearStamp = localWearSettings?.toStamp()
+            if (SyncArbitrator.shouldApply(
+                    domain = SyncDomain.WEAR_SETTINGS,
+                    incoming = remoteWearSettings.toStamp(),
+                    current = currentWearStamp,
+                )
+            ) {
+                val wrapped = JSONObject(remoteWearSettings.settings.toString())
+                    .put(CloudSyncContracts.KEY_SOURCE, remoteWearSettings.source.wireValue)
+                    .put(CloudSyncContracts.KEY_REVISION, remoteWearSettings.revision)
+                    .put(CloudSyncContracts.KEY_UPDATED_AT, remoteWearSettings.updatedAt)
+                MobilePrefsStore.saveWearSettingsSnapshot(
+                    context = context,
+                    snapshotJson = wrapped.toString(),
+                    updatedAt = remoteWearSettings.revision,
+                )
+            }
         }
     }
 
@@ -179,15 +248,42 @@ object MobileCloudSyncCoordinator {
     ): CloudTimetableSnapshot? {
         if (remote == null) return local
         if (local == null) return remote
-        return if (remote.updatedAt > local.updatedAt) remote else local
+        return if (SyncArbitrator.shouldApply(
+                domain = SyncDomain.TIMETABLE,
+                incoming = remote.toStamp(),
+                current = local.toStamp(),
+            )
+        ) remote else local
     }
 
     private fun newerNamespace(
+        domain: SyncDomain,
         remote: CloudNamespaceSnapshot?,
         local: CloudNamespaceSnapshot?,
     ): CloudNamespaceSnapshot? {
         if (remote == null) return local
         if (local == null) return remote
-        return if (remote.updatedAt > local.updatedAt) remote else local
+        return if (SyncArbitrator.shouldApply(
+                domain = domain,
+                incoming = remote.toStamp(),
+                current = local.toStamp(),
+            )
+        ) remote else local
+    }
+
+    private fun CloudTimetableSnapshot.toStamp(): SyncStamp {
+        return SyncStamp(
+            revision = revision,
+            source = source,
+            appliedAt = updatedAt,
+        )
+    }
+
+    private fun CloudNamespaceSnapshot.toStamp(): SyncStamp {
+        return SyncStamp(
+            revision = revision,
+            source = source,
+            appliedAt = updatedAt,
+        )
     }
 }

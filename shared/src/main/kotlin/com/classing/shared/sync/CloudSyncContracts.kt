@@ -12,6 +12,8 @@ object CloudSyncContracts {
 
     const val KEY_FORMAT = "format"
     const val KEY_UPDATED_AT = "updatedAt"
+    const val KEY_REVISION = "revision"
+    const val KEY_SOURCE = "source"
     const val KEY_TIMETABLE = "timetable"
     const val KEY_MOBILE_SETTINGS = "mobileSettings"
     const val KEY_WEAR_SETTINGS = "wearSettings"

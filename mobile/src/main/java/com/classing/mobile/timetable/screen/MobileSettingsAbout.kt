@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.Year
@@ -350,8 +351,10 @@ internal fun WeekModeSettingsPage(
     contentPadding: PaddingValues,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    weekStartDay: DayOfWeek,
     onBack: () -> Unit,
     onWeekNumberModeChange: (WeekNumberMode) -> Unit,
+    onWeekStartDayChange: (DayOfWeek) -> Unit,
     onSemesterWeekStartDateChange: (LocalDate) -> Unit,
 ) {
     val context = LocalContext.current
@@ -359,7 +362,10 @@ internal fun WeekModeSettingsPage(
     val currentSemesterWeek = (ChronoUnit.DAYS.between(semesterWeekStartDate, today) / 7L + 1L)
         .toInt()
         .coerceAtLeast(1)
-    val currentNaturalWeek = today.get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear())
+    val localeWeekFields = WeekFields.of(Locale.getDefault())
+    val currentNaturalWeek = today.get(
+        WeekFields.of(weekStartDay, localeWeekFields.minimalDaysInFirstWeek).weekOfWeekBasedYear(),
+    )
 
     Column(
         modifier = Modifier
@@ -408,6 +414,30 @@ internal fun WeekModeSettingsPage(
                 onClick = { onWeekNumberModeChange(WeekNumberMode.SEMESTER) },
                 label = { Text(stringResource(R.string.settings_week_mode_semester)) },
             )
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_week_start_day_title),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY).forEach { day ->
+                        FilterChip(
+                            selected = weekStartDay == day,
+                            onClick = { onWeekStartDayChange(day) },
+                            label = { Text(dayLabel(day, context)) },
+                        )
+                    }
+                }
+            }
         }
 
         if (weekNumberMode == WeekNumberMode.SEMESTER) {
