@@ -100,8 +100,10 @@ data class CloudDocument(
                 val lessons = buildList {
                     for (i in 0 until lessonsArray.length()) {
                         val item = lessonsArray.optJSONObject(i) ?: continue
-                        val id = item.optString("id").ifBlank { continue }
-                        val title = item.optString("title").ifBlank { continue }
+                        val id = item.optString("id")
+                        if (id.isBlank()) continue
+                        val title = item.optString("title")
+                        if (title.isBlank()) continue
                         add(
                             PersistedLesson(
                                 id = id,

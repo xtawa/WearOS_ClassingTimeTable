@@ -36,6 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -87,11 +88,15 @@ internal fun SettingsLayer(
             .fillMaxSize()
             .padding(contentPadding)
             .padding(horizontal = 16.dp)
+            .padding(vertical = 8.dp)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(
+            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 text = stringResource(R.string.ghost_title_settings),
                 style = MaterialTheme.typography.displayLarge,
