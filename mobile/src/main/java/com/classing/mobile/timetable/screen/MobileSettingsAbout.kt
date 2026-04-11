@@ -866,29 +866,7 @@ internal fun AboutLayer(
             val content = fetchPlainTextFromEndpoint(LATEST_VERSION_ENDPOINT_URL)
                 .fold(
                     onSuccess = { text ->
-                        val currentVersion = extractVersionToken(versionName).ifBlank {
-                            versionName.ifBlank { "-" }
-                        }
-                        val latestVersion = extractVersionToken(text)
-                        val summary = if (latestVersion.isBlank()) {
-                            context.getString(
-                                R.string.settings_about_check_update_parse_failed,
-                                currentVersion,
-                            )
-                        } else if (compareVersionName(currentVersion, latestVersion) < 0) {
-                            context.getString(
-                                R.string.settings_about_update_available,
-                                currentVersion,
-                                latestVersion,
-                            )
-                        } else {
-                            context.getString(
-                                R.string.settings_about_update_latest,
-                                currentVersion,
-                                latestVersion,
-                            )
-                        }
-                        if (text.isBlank()) summary else "$summary\n\n$text"
+                        text.ifBlank { context.getString(R.string.settings_about_notice_empty) }
                     },
                     onFailure = { error ->
                         context.getString(
@@ -1122,29 +1100,6 @@ private suspend fun fetchPlainTextFromEndpoint(url: String): Result<String> = wi
             connection.disconnect()
         }
     }
-}
-
-private fun extractVersionToken(text: String): String {
-    val exactKeyPattern = Regex(
-        pattern = "(当前版本|最新版本|current version|latest version)\\s*[:：]\\s*([0-9]+(?:\\.[0-9]+){1,3})",
-        options = setOf(RegexOption.IGNORE_CASE),
-    )
-    exactKeyPattern.find(text)?.groupValues?.getOrNull(2)?.let { return it }
-    val anyVersionPattern = Regex("[0-9]+(?:\\.[0-9]+){1,3}")
-    return anyVersionPattern.find(text)?.value.orEmpty()
-}
-
-private fun compareVersionName(current: String, latest: String): Int {
-    val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
-    val latestParts = latest.split('.').mapNotNull { it.toIntOrNull() }
-    if (currentParts.isEmpty() || latestParts.isEmpty()) return 0
-    val maxSize = maxOf(currentParts.size, latestParts.size)
-    for (index in 0 until maxSize) {
-        val left = currentParts.getOrElse(index) { 0 }
-        val right = latestParts.getOrElse(index) { 0 }
-        if (left != right) return left.compareTo(right)
-    }
-    return 0
 }
 
 @Composable
