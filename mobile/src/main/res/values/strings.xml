@@ -179,6 +179,14 @@
     <string name="settings_about_notice_empty">No announcements for now.</string>
     <string name="settings_about_notice_failed">Failed to load announcements: %1$s</string>
     <string name="settings_about_notice_refresh">Refresh announcements</string>
+    <string name="settings_about_check_update_title">Check Updates</string>
+    <string name="settings_about_check_update_loading">Checking latest version...</string>
+    <string name="settings_about_check_update_failed">Update check failed: %1$s</string>
+    <string name="settings_about_check_update_parse_failed">Current version %1$s, latest version not found.</string>
+    <string name="settings_about_update_available">Update available: current %1$s, latest %2$s.</string>
+    <string name="settings_about_update_latest">Up to date: current %1$s, latest %2$s.</string>
+    <string name="settings_about_wechat_support">WeChat Support</string>
+    <string name="settings_about_wechat_support_hint">Scan QR code to add WeChat for support and feedback.</string>
     <string name="settings_about_official_site">官方网站</string>
     <string name="settings_about_help_support">帮助与支持</string>
     <string name="settings_about_contact_us">联系我们</string>

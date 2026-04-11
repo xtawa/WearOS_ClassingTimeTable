@@ -127,15 +127,6 @@ fun HomeScreen(
             }
         }
 
-        item {
-            Button(
-                onClick = onRetrySync,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.home_action_sync_now))
-            }
-        }
     }
 }
 

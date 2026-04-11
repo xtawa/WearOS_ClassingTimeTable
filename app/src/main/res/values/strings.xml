@@ -80,7 +80,7 @@
     <string name="settings_tile_show_location">Show location</string>
     <string name="settings_tile_show_countdown">Show countdown</string>
     <string name="settings_last_sync">Last sync: %1$s</string>
-    <string name="settings_force_full_sync">Sync now</string>
+    <string name="settings_force_full_sync">Bluetooth sync</string>
     <string name="settings_cloud_sync_title">Cloud sync</string>
     <string name="settings_cloud_sync_sync_now">Sync now</string>
     <string name="settings_cloud_sync_syncing">Syncing</string>

@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
@@ -37,17 +36,23 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -65,6 +70,11 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.util.Locale
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun SettingsLayer(
@@ -809,23 +819,89 @@ internal fun AboutLayer(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
-    val openOfficialSite: () -> Unit = {
-        runCatching { uriHandler.openUri("https://lyxyy.notion.site/classing") }
-        Unit
-    }
-    val openHelpSupport: () -> Unit = {
-        runCatching { uriHandler.openUri("https://lyxyy.notion.site/classinghelp") }
-        Unit
-    }
-    val openContactUs: () -> Unit = {
-        runCatching { uriHandler.openUri("mailto:zeromostia@gmail.com") }
-        Unit
-    }
+    val scope = rememberCoroutineScope()
     val versionName = runCatching {
         @Suppress("DEPRECATION")
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     }.getOrDefault("")
+    var infoDialogTitle by remember { mutableStateOf<String?>(null) }
+    var infoDialogContent by remember { mutableStateOf("") }
+    var showWechatDialog by remember { mutableStateOf(false) }
+
+    fun showInfoDialog(title: String, content: String) {
+        infoDialogTitle = title
+        infoDialogContent = content
+    }
+
+    val openNotice: () -> Unit = {
+        scope.launch {
+            val title = context.getString(R.string.settings_about_notice_title)
+            showInfoDialog(
+                title = title,
+                content = context.getString(R.string.settings_about_notice_loading),
+            )
+            val content = fetchPlainTextFromEndpoint(NOTICE_ENDPOINT_URL)
+                .fold(
+                    onSuccess = { text ->
+                        text.ifBlank { context.getString(R.string.settings_about_notice_empty) }
+                    },
+                    onFailure = { error ->
+                        context.getString(
+                            R.string.settings_about_notice_failed,
+                            error.message ?: "unknown",
+                        )
+                    },
+                )
+            showInfoDialog(title = title, content = content)
+        }
+    }
+
+    val checkLatestVersion: () -> Unit = {
+        scope.launch {
+            val title = context.getString(R.string.settings_about_check_update_title)
+            showInfoDialog(
+                title = title,
+                content = context.getString(R.string.settings_about_check_update_loading),
+            )
+            val content = fetchPlainTextFromEndpoint(LATEST_VERSION_ENDPOINT_URL)
+                .fold(
+                    onSuccess = { text ->
+                        val currentVersion = extractVersionToken(versionName).ifBlank {
+                            versionName.ifBlank { "-" }
+                        }
+                        val latestVersion = extractVersionToken(text)
+                        val summary = if (latestVersion.isBlank()) {
+                            context.getString(
+                                R.string.settings_about_check_update_parse_failed,
+                                currentVersion,
+                            )
+                        } else if (compareVersionName(currentVersion, latestVersion) < 0) {
+                            context.getString(
+                                R.string.settings_about_update_available,
+                                currentVersion,
+                                latestVersion,
+                            )
+                        } else {
+                            context.getString(
+                                R.string.settings_about_update_latest,
+                                currentVersion,
+                                latestVersion,
+                            )
+                        }
+                        if (text.isBlank()) summary else "$summary\n\n$text"
+                    },
+                    onFailure = { error ->
+                        context.getString(
+                            R.string.settings_about_check_update_failed,
+                            error.message ?: "unknown",
+                        )
+                    },
+                )
+            showInfoDialog(title = title, content = content)
+        }
+    }
+
+    val openWechatSupport: () -> Unit = { showWechatDialog = true }
 
     Column(
         modifier = Modifier
@@ -916,25 +992,22 @@ internal fun AboutLayer(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     AboutResourceRow(
-                        icon = Icons.Filled.Language,
-                        title = stringResource(R.string.settings_about_official_site),
-                        trailing = Icons.Filled.OpenInNew,
+                        icon = Icons.Filled.HelpOutline,
+                        title = stringResource(R.string.settings_about_notice_title),
                         showDivider = true,
-                        onClick = openOfficialSite,
+                        onClick = openNotice,
                     )
                     AboutResourceRow(
-                        icon = Icons.Filled.HelpOutline,
-                        title = stringResource(R.string.settings_about_help_support),
-                        trailing = Icons.Filled.KeyboardArrowRight,
+                        icon = Icons.Filled.OpenInNew,
+                        title = stringResource(R.string.settings_about_check_update_title),
                         showDivider = true,
-                        onClick = openHelpSupport,
+                        onClick = checkLatestVersion,
                     )
                     AboutResourceRow(
                         icon = Icons.Filled.MailOutline,
-                        title = stringResource(R.string.settings_about_contact_us),
-                        trailing = Icons.Filled.KeyboardArrowRight,
+                        title = stringResource(R.string.settings_about_wechat_support),
                         showDivider = false,
-                        onClick = openContactUs,
+                        onClick = openWechatSupport,
                     )
                 }
             }
@@ -978,13 +1051,106 @@ internal fun AboutLayer(
             }
         }
     }
+
+    infoDialogTitle?.let { title ->
+        AlertDialog(
+            onDismissRequest = { infoDialogTitle = null },
+            title = { Text(title) },
+            text = {
+                Text(
+                    text = infoDialogContent,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { infoDialogTitle = null }) {
+                    Text(text = context.getString(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    if (showWechatDialog) {
+        AlertDialog(
+            onDismissRequest = { showWechatDialog = false },
+            title = { Text(stringResource(R.string.settings_about_wechat_support)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Image(
+                        painter = painterResource(id = R.drawable.wechat_support_qr),
+                        contentDescription = stringResource(R.string.settings_about_wechat_support),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_about_wechat_support_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWechatDialog = false }) {
+                    Text(text = context.getString(android.R.string.ok))
+                }
+            },
+        )
+    }
+}
+
+private const val NOTICE_ENDPOINT_URL = "https://api.classing.underflo.ink/api/getNotice"
+private const val LATEST_VERSION_ENDPOINT_URL = "https://api.classing.underflo.ink/api/getLatestVer"
+
+private suspend fun fetchPlainTextFromEndpoint(url: String): Result<String> = withContext(Dispatchers.IO) {
+    runCatching {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 8_000
+            connection.setRequestProperty("Accept", "text/plain, application/json, */*")
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) {
+                error("HTTP $code ${body.take(120)}".trim())
+            }
+            body.trimStart('\uFEFF').trim()
+        } finally {
+            connection.disconnect()
+        }
+    }
+}
+
+private fun extractVersionToken(text: String): String {
+    val exactKeyPattern = Regex(
+        pattern = "(当前版本|最新版本|current version|latest version)\\s*[:：]\\s*([0-9]+(?:\\.[0-9]+){1,3})",
+        options = setOf(RegexOption.IGNORE_CASE),
+    )
+    exactKeyPattern.find(text)?.groupValues?.getOrNull(2)?.let { return it }
+    val anyVersionPattern = Regex("[0-9]+(?:\\.[0-9]+){1,3}")
+    return anyVersionPattern.find(text)?.value.orEmpty()
+}
+
+private fun compareVersionName(current: String, latest: String): Int {
+    val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
+    val latestParts = latest.split('.').mapNotNull { it.toIntOrNull() }
+    if (currentParts.isEmpty() || latestParts.isEmpty()) return 0
+    val maxSize = maxOf(currentParts.size, latestParts.size)
+    for (index in 0 until maxSize) {
+        val left = currentParts.getOrElse(index) { 0 }
+        val right = latestParts.getOrElse(index) { 0 }
+        if (left != right) return left.compareTo(right)
+    }
+    return 0
 }
 
 @Composable
 private fun AboutResourceRow(
     icon: ImageVector,
     title: String,
-    trailing: ImageVector,
     showDivider: Boolean,
     onClick: () -> Unit,
 ) {
@@ -1013,7 +1179,7 @@ private fun AboutResourceRow(
                 modifier = Modifier.weight(1f),
             )
             Icon(
-                imageVector = trailing,
+                imageVector = Icons.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(18.dp),
@@ -1094,6 +1260,9 @@ private fun SettingsSwitchCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -1108,9 +1277,22 @@ private fun SettingsSwitchCard(
                 ) {
                     Text(badge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
-                Column {
-                    Text(title, fontWeight = FontWeight.SemiBold)
-                    Text(desc, style = MaterialTheme.typography.bodySmall)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)

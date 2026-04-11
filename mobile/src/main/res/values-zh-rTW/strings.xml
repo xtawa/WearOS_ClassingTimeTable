@@ -179,6 +179,14 @@
     <string name="settings_about_notice_empty">暫無公告。</string>
     <string name="settings_about_notice_failed">公告載入失敗：%1$s</string>
     <string name="settings_about_notice_refresh">重新整理公告</string>
+    <string name="settings_about_check_update_title">檢測更新</string>
+    <string name="settings_about_check_update_loading">正在檢測最新版本...</string>
+    <string name="settings_about_check_update_failed">檢測更新失敗：%1$s</string>
+    <string name="settings_about_check_update_parse_failed">目前版本 %1$s，無法解析最新版本號。</string>
+    <string name="settings_about_update_available">發現新版本：目前 %1$s，最新 %2$s。</string>
+    <string name="settings_about_update_latest">已是最新版本：目前 %1$s，最新 %2$s。</string>
+    <string name="settings_about_wechat_support">支援微信</string>
+    <string name="settings_about_wechat_support_hint">掃碼添加微信，取得支援與回饋。</string>
     <string name="settings_about_official_site">官方網站</string>
     <string name="settings_about_help_support">幫助與支援</string>
     <string name="settings_about_contact_us">聯絡我們</string>

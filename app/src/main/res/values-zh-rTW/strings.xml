@@ -80,7 +80,7 @@
     <string name="settings_tile_show_location">顯示地點</string>
     <string name="settings_tile_show_countdown">顯示倒數</string>
     <string name="settings_last_sync">最近同步：%1$s</string>
-    <string name="settings_force_full_sync">立即同步</string>
+    <string name="settings_force_full_sync">藍牙同步</string>
     <string name="settings_cloud_sync_title">雲端同步</string>
     <string name="settings_cloud_sync_sync_now">立即同步</string>
     <string name="settings_cloud_sync_syncing">同步中</string>

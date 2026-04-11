@@ -33,9 +33,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -490,6 +495,16 @@ fun MobileTimetableScreen() {
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
     val visibleDays = if (showWeekend) DayOfWeek.values().toList() else DayOfWeek.values().filter { it.value <= 5 }
     val lessonsByDay = lessons.groupBy { it.dayOfWeek }
+    val latestWearAck = remember(latestWearAckAtMillis) { WearSyncAckStore.load(context) }
+    val bluetoothSyncState = resolveBluetoothSyncIndicatorState(
+        syncInProgress = wearSyncInProgress,
+        syncMessage = wearSyncMessage,
+        latestAck = latestWearAck,
+    )
+    val cloudSyncState = resolveCloudSyncIndicatorState(
+        syncInProgress = cloudSyncInProgress,
+        syncStatus = cloudSyncStatus,
+    )
     val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
         ImportLayer(
             contentPadding = innerPadding,
@@ -657,19 +672,10 @@ fun MobileTimetableScreen() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Surface(
-                            modifier = Modifier.size(32.dp),
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Filled.Person,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
-                        }
+                        SyncStatusGroup(
+                            bluetoothState = bluetoothSyncState,
+                            cloudState = cloudSyncState,
+                        )
                     }
                 }
             }
@@ -1064,5 +1070,141 @@ fun MobileTimetableScreen() {
             persistSettings()
         },
     )
+}
+
+private enum class SyncIndicatorState {
+    Idle,
+    Syncing,
+    Success,
+    Failed,
+}
+
+private fun resolveBluetoothSyncIndicatorState(
+    syncInProgress: Boolean,
+    syncMessage: String,
+    latestAck: WearSyncAckInfo?,
+): SyncIndicatorState {
+    if (syncInProgress) return SyncIndicatorState.Syncing
+    if (syncMessage.containsSyncFailureKeyword()) return SyncIndicatorState.Failed
+    return when (latestAck?.success) {
+        true -> SyncIndicatorState.Success
+        false -> SyncIndicatorState.Failed
+        null -> SyncIndicatorState.Idle
+    }
+}
+
+private fun resolveCloudSyncIndicatorState(
+    syncInProgress: Boolean,
+    syncStatus: String,
+): SyncIndicatorState {
+    if (syncInProgress) return SyncIndicatorState.Syncing
+    if (syncStatus.containsSyncFailureKeyword()) return SyncIndicatorState.Failed
+    if (syncStatus.containsSyncSuccessKeyword()) return SyncIndicatorState.Success
+    return SyncIndicatorState.Idle
+}
+
+private fun String.containsSyncFailureKeyword(): Boolean {
+    return contains("fail", ignoreCase = true) ||
+        contains("error", ignoreCase = true) ||
+        contains("失败") ||
+        contains("失敗")
+}
+
+private fun String.containsSyncSuccessKeyword(): Boolean {
+    return contains("success", ignoreCase = true) ||
+        contains("ok", ignoreCase = true) ||
+        contains("成功")
+}
+
+@Composable
+private fun SyncStatusGroup(
+    bluetoothState: SyncIndicatorState,
+    cloudState: SyncIndicatorState,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SyncStatusBadge(
+            baseIcon = Icons.Filled.Bluetooth,
+            state = bluetoothState,
+        )
+        SyncStatusBadge(
+            baseIcon = Icons.Filled.Cloud,
+            state = cloudState,
+        )
+    }
+}
+
+@Composable
+private fun SyncStatusBadge(
+    baseIcon: ImageVector,
+    state: SyncIndicatorState,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = when (state) {
+        SyncIndicatorState.Success -> MaterialTheme.colorScheme.primaryContainer
+        SyncIndicatorState.Failed -> MaterialTheme.colorScheme.errorContainer
+        SyncIndicatorState.Syncing -> MaterialTheme.colorScheme.tertiaryContainer
+        SyncIndicatorState.Idle -> MaterialTheme.colorScheme.secondaryContainer
+    }
+    val baseIconTint = when (state) {
+        SyncIndicatorState.Success -> MaterialTheme.colorScheme.primary
+        SyncIndicatorState.Failed -> MaterialTheme.colorScheme.error
+        SyncIndicatorState.Syncing -> MaterialTheme.colorScheme.tertiary
+        SyncIndicatorState.Idle -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val badgeIcon = when (state) {
+        SyncIndicatorState.Success -> Icons.Filled.Check
+        SyncIndicatorState.Failed -> Icons.Filled.Close
+        SyncIndicatorState.Syncing -> Icons.Filled.Sync
+        SyncIndicatorState.Idle -> null
+    }
+    val badgeColor = when (state) {
+        SyncIndicatorState.Success -> MaterialTheme.colorScheme.primary
+        SyncIndicatorState.Failed -> MaterialTheme.colorScheme.error
+        SyncIndicatorState.Syncing -> MaterialTheme.colorScheme.tertiary
+        SyncIndicatorState.Idle -> Color.Transparent
+    }
+    val badgeIconTint = when (state) {
+        SyncIndicatorState.Success -> MaterialTheme.colorScheme.onPrimary
+        SyncIndicatorState.Failed -> MaterialTheme.colorScheme.onError
+        SyncIndicatorState.Syncing -> MaterialTheme.colorScheme.onTertiary
+        SyncIndicatorState.Idle -> Color.Transparent
+    }
+
+    Surface(
+        modifier = modifier.size(32.dp),
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = baseIcon,
+                contentDescription = null,
+                tint = baseIconTint,
+            )
+            if (badgeIcon != null) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(14.dp),
+                    shape = RoundedCornerShape(999.dp),
+                    color = badgeColor,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = badgeIcon,
+                            contentDescription = null,
+                            tint = badgeIconTint,
+                            modifier = Modifier.size(10.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
