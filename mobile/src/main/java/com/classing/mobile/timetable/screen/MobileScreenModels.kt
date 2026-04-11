@@ -16,6 +16,7 @@ internal enum class SettingsPage {
     BackupRestore,
     WeekMode,
     WearCommunication,
+    CloudSync,
     About,
 }
 

@@ -81,6 +81,15 @@
     <string name="settings_tile_show_countdown">Show countdown</string>
     <string name="settings_last_sync">Last sync: %1$s</string>
     <string name="settings_force_full_sync">Sync now</string>
+    <string name="settings_cloud_sync_title">Cloud sync</string>
+    <string name="settings_cloud_sync_sync_now">Sync now</string>
+    <string name="settings_cloud_sync_syncing">Syncing</string>
+    <string name="settings_cloud_sync_never">Never</string>
+    <string name="settings_cloud_sync_config_ready">Cloud config received from phone.</string>
+    <string name="settings_cloud_sync_config_missing">No cloud config. Configure WebDAV on phone first.</string>
+    <string name="settings_cloud_sync_phone_only_hint">Wear uses phone-provisioned config and does read-only cloud pull.</string>
+    <string name="settings_cloud_sync_wear_config_label">Server: %1$s\nPath: %2$s\nUser: %3$s</string>
+    <string name="settings_cloud_sync_wear_status_label">Status: %1$s\nLast sync: %2$s</string>
     <string name="tile_next_class_label">Classing Next Class Tile</string>
     <string name="complication_next_class_label">Classing Next Class Complication</string>
 </resources>

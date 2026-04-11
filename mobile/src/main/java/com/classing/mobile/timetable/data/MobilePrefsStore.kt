@@ -23,6 +23,12 @@ data class MobileSettings(
     val wearSyncMode: String,
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
+    val cloudSyncEnabled: Boolean,
+    val cloudServerUrl: String,
+    val cloudRemotePath: String,
+    val cloudUsername: String,
+    val cloudLastResult: String,
+    val cloudLastSyncedAt: Long,
 )
 
 object MobilePrefsStore {
@@ -35,6 +41,16 @@ object MobilePrefsStore {
     private const val KEY_WEAR_SYNC_MODE = "wear_sync_mode"
     private const val KEY_WEEK_NUMBER_MODE = "week_number_mode"
     private const val KEY_SEMESTER_WEEK_START_DATE = "semester_week_start_date"
+    private const val KEY_CLOUD_SYNC_ENABLED = "cloud_sync_enabled"
+    private const val KEY_CLOUD_SERVER_URL = "cloud_server_url"
+    private const val KEY_CLOUD_REMOTE_PATH = "cloud_remote_path"
+    private const val KEY_CLOUD_USERNAME = "cloud_username"
+    private const val KEY_CLOUD_LAST_RESULT = "cloud_last_result"
+    private const val KEY_CLOUD_LAST_SYNCED_AT = "cloud_last_synced_at"
+    private const val KEY_LOCAL_TIMETABLE_UPDATED_AT = "local_timetable_updated_at"
+    private const val KEY_LOCAL_MOBILE_SETTINGS_UPDATED_AT = "local_mobile_settings_updated_at"
+    private const val KEY_WEAR_SETTINGS_SNAPSHOT = "wear_settings_snapshot"
+    private const val KEY_WEAR_SETTINGS_UPDATED_AT = "wear_settings_updated_at"
     private const val KEY_LESSONS_JSON = "lessons_json"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -50,6 +66,12 @@ object MobilePrefsStore {
             wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "WEARABLE_API") ?: "WEARABLE_API",
             weekNumberMode = p.getString(KEY_WEEK_NUMBER_MODE, "NATURAL") ?: "NATURAL",
             semesterWeekStartDate = p.getString(KEY_SEMESTER_WEEK_START_DATE, "") ?: "",
+            cloudSyncEnabled = p.getBoolean(KEY_CLOUD_SYNC_ENABLED, false),
+            cloudServerUrl = p.getString(KEY_CLOUD_SERVER_URL, "") ?: "",
+            cloudRemotePath = p.getString(KEY_CLOUD_REMOTE_PATH, "/classing/classing_sync.json") ?: "/classing/classing_sync.json",
+            cloudUsername = p.getString(KEY_CLOUD_USERNAME, "") ?: "",
+            cloudLastResult = p.getString(KEY_CLOUD_LAST_RESULT, "") ?: "",
+            cloudLastSyncedAt = p.getLong(KEY_CLOUD_LAST_SYNCED_AT, 0L),
         )
     }
 
@@ -63,7 +85,28 @@ object MobilePrefsStore {
             .putString(KEY_WEAR_SYNC_MODE, settings.wearSyncMode)
             .putString(KEY_WEEK_NUMBER_MODE, settings.weekNumberMode)
             .putString(KEY_SEMESTER_WEEK_START_DATE, settings.semesterWeekStartDate)
+            .putBoolean(KEY_CLOUD_SYNC_ENABLED, settings.cloudSyncEnabled)
+            .putString(KEY_CLOUD_SERVER_URL, settings.cloudServerUrl)
+            .putString(KEY_CLOUD_REMOTE_PATH, settings.cloudRemotePath)
+            .putString(KEY_CLOUD_USERNAME, settings.cloudUsername)
+            .putString(KEY_CLOUD_LAST_RESULT, settings.cloudLastResult)
+            .putLong(KEY_CLOUD_LAST_SYNCED_AT, settings.cloudLastSyncedAt)
             .apply()
+    }
+
+    fun saveWearSettingsSnapshot(context: Context, snapshotJson: String, updatedAt: Long) {
+        prefs(context).edit()
+            .putString(KEY_WEAR_SETTINGS_SNAPSHOT, snapshotJson)
+            .putLong(KEY_WEAR_SETTINGS_UPDATED_AT, updatedAt)
+            .apply()
+    }
+
+    fun loadWearSettingsSnapshot(context: Context): Pair<String, Long>? {
+        val p = prefs(context)
+        val snapshot = p.getString(KEY_WEAR_SETTINGS_SNAPSHOT, "").orEmpty()
+        val updatedAt = p.getLong(KEY_WEAR_SETTINGS_UPDATED_AT, 0L)
+        if (snapshot.isBlank() || updatedAt <= 0L) return null
+        return snapshot to updatedAt
     }
 
     fun loadLessons(context: Context): List<PersistedLesson> {
@@ -107,6 +150,22 @@ object MobilePrefsStore {
             )
         }
         prefs(context).edit().putString(KEY_LESSONS_JSON, arr.toString()).apply()
+    }
+
+    fun markLocalTimetableUpdated(context: Context, updatedAt: Long = System.currentTimeMillis()) {
+        prefs(context).edit().putLong(KEY_LOCAL_TIMETABLE_UPDATED_AT, updatedAt).apply()
+    }
+
+    fun markLocalMobileSettingsUpdated(context: Context, updatedAt: Long = System.currentTimeMillis()) {
+        prefs(context).edit().putLong(KEY_LOCAL_MOBILE_SETTINGS_UPDATED_AT, updatedAt).apply()
+    }
+
+    fun loadLocalTimetableUpdatedAt(context: Context): Long {
+        return prefs(context).getLong(KEY_LOCAL_TIMETABLE_UPDATED_AT, 0L)
+    }
+
+    fun loadLocalMobileSettingsUpdatedAt(context: Context): Long {
+        return prefs(context).getLong(KEY_LOCAL_MOBILE_SETTINGS_UPDATED_AT, 0L)
     }
 }
 

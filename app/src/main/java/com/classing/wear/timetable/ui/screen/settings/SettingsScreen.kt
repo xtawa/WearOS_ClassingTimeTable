@@ -45,6 +45,7 @@ fun SettingsScreen(
     onToggleTileShowCurrentWeek: (Boolean) -> Unit,
     onToggleTileShowTimeRange: (Boolean) -> Unit,
     onForceFullSync: () -> Unit,
+    onOpenCloudSync: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
     val haptic = LocalHapticFeedback.current
@@ -199,6 +200,18 @@ fun SettingsScreen(
                 Text(stringResource(R.string.settings_force_full_sync))
             }
         }
+        item {
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onOpenCloudSync()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(stringResource(R.string.settings_cloud_sync_title))
+            }
+        }
     }
 }
 
@@ -256,6 +269,7 @@ private fun SettingsScreenPreview() {
             onToggleTileShowCurrentWeek = {},
             onToggleTileShowTimeRange = {},
             onForceFullSync = {},
+            onOpenCloudSync = {},
         )
     }
 }

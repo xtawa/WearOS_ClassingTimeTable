@@ -13,6 +13,7 @@
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
     <string name="ghost_title_wear">WEAR</string>
+    <string name="ghost_title_cloud">CLOUD</string>
     <string name="ghost_title_ai">AI</string>
     <string name="common_copied">Copied</string>
 
@@ -152,6 +153,7 @@
     <string name="settings_week_mode_semester">Semester Week</string>
     <string name="settings_badge_week_mode">W</string>
     <string name="settings_badge_wear">W</string>
+    <string name="settings_badge_cloud">C</string>
     <string name="settings_current_week_badge">CURRENT</string>
     <string name="settings_semester_start_date_value">Semester Start Date: %1$s</string>
     <string name="settings_semester_current_week_value">Current Semester Week: Week %1$d</string>
@@ -214,6 +216,22 @@
     <string name="wear_sync_queued_via_wearos_app">Sync queued via WearOS app: %1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">WearOS app opened (%1$s). Complete sync in app.</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS app sync failed: %1$s</string>
+    <string name="settings_cloud_sync_title">Cloud Sync</string>
+    <string name="settings_cloud_sync_desc">Configure WebDAV on phone and sync to cloud. Wear receives config from phone.</string>
+    <string name="settings_cloud_sync_enable_title">Enable cloud sync</string>
+    <string name="settings_cloud_sync_enable_desc">Sync on app start, foreground every 2 minutes, and settings changes.</string>
+    <string name="settings_cloud_sync_server_url">WebDAV server URL</string>
+    <string name="settings_cloud_sync_remote_path">Remote file path</string>
+    <string name="settings_cloud_sync_username">Username</string>
+    <string name="settings_cloud_sync_password">Password</string>
+    <string name="settings_cloud_sync_save">Save</string>
+    <string name="settings_cloud_sync_test">Test</string>
+    <string name="settings_cloud_sync_sync_now">Sync now</string>
+    <string name="settings_cloud_sync_syncing">Syncing...</string>
+    <string name="settings_cloud_sync_never">Never</string>
+    <string name="settings_cloud_sync_last_sync">Last cloud sync: %1$s</string>
+    <string name="settings_cloud_sync_status">Status: %1$s</string>
+    <string name="settings_cloud_sync_push_status">Wear config push: %1$s</string>
 
     <string name="empty_input_message">Input is empty.</string>
     <string name="parse_success_preview_message">Parsed successfully. Preview contains %1$d classes. Confirm to import.</string>

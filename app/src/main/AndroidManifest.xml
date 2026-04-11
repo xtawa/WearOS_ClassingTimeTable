@@ -68,6 +68,19 @@
         </service>
 
         <service
+            android:name=".sync.CloudConfigListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/classing/cloud_config" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".tile.NextClassTileService"
             android:label="@string/tile_next_class_label"
             android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER"

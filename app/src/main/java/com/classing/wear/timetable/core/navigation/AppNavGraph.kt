@@ -17,6 +17,7 @@ import com.classing.wear.timetable.ui.screen.detail.CourseDetailScreen
 import com.classing.wear.timetable.ui.screen.detail.CourseDetailViewModel
 import com.classing.wear.timetable.ui.screen.home.HomeScreen
 import com.classing.wear.timetable.ui.screen.home.HomeViewModel
+import com.classing.wear.timetable.ui.screen.settings.CloudSyncScreen
 import com.classing.wear.timetable.ui.screen.settings.SettingsScreen
 import com.classing.wear.timetable.ui.screen.settings.SettingsViewModel
 import com.classing.wear.timetable.ui.screen.week.WeekScreen
@@ -123,6 +124,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                         SettingsViewModel(
                             settingsRepository = appContainer.settingsRepository,
                             mobileSyncRequester = appContainer.mobileSyncRequester,
+                            wearCloudBridgeSender = appContainer.wearCloudBridgeSender,
                             autoSyncController = appContainer.autoSyncController,
                             reminderWorkController = appContainer.reminderWorkController,
                         )
@@ -144,6 +146,14 @@ fun AppNavGraph(appContainer: AppContainer) {
                 onToggleTileShowCurrentWeek = vm::toggleTileShowCurrentWeek,
                 onToggleTileShowTimeRange = vm::toggleTileShowTimeRange,
                 onForceFullSync = vm::forceFullSync,
+                onOpenCloudSync = { navController.navigate(Destinations.CloudSync.route) },
+            )
+        }
+
+        composable(Destinations.CloudSync.route) {
+            CloudSyncScreen(
+                settingsRepository = appContainer.settingsRepository,
+                onBack = { navController.popBackStack() },
             )
         }
     }

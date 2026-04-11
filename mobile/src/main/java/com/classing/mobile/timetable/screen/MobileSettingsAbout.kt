@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.Year
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -74,6 +75,7 @@ internal fun SettingsLayer(
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
     onOpenWearCommunicationPage: () -> Unit,
+    onOpenCloudSyncPage: () -> Unit,
     onOpenAboutPage: () -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
     onToggleReminder: (Boolean) -> Unit,
@@ -165,6 +167,13 @@ internal fun SettingsLayer(
             title = stringResource(R.string.settings_wear_comm_title),
             desc = stringResource(R.string.settings_wear_comm_desc),
             onClick = onOpenWearCommunicationPage,
+        )
+
+        SettingsEntryCard(
+            badge = stringResource(R.string.settings_badge_cloud),
+            title = stringResource(R.string.settings_cloud_sync_title),
+            desc = stringResource(R.string.settings_cloud_sync_desc),
+            onClick = onOpenCloudSyncPage,
         )
 
         SettingsEntryCard(
@@ -612,6 +621,177 @@ internal fun WearCommunicationSettingsPage(
                             },
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CloudSyncSettingsPage(
+    contentPadding: PaddingValues,
+    enabled: Boolean,
+    serverUrl: String,
+    remotePath: String,
+    username: String,
+    password: String,
+    syncStatus: String,
+    configPushStatus: String,
+    lastSyncedAt: Long,
+    syncInProgress: Boolean,
+    onBack: () -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onServerUrlChange: (String) -> Unit,
+    onRemotePathChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onTestConnection: () -> Unit,
+    onSyncNow: () -> Unit,
+) {
+    val lastSyncedText = if (lastSyncedAt > 0L) {
+        LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(lastSyncedAt), java.time.ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+    } else {
+        stringResource(R.string.settings_cloud_sync_never)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = stringResource(R.string.settings_cloud_sync_title),
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_about_back_button),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.ghost_title_cloud),
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                text = stringResource(R.string.settings_cloud_sync_title),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.settings_cloud_sync_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        SettingsSwitchCard(
+            badge = stringResource(R.string.settings_badge_cloud),
+            title = stringResource(R.string.settings_cloud_sync_enable_title),
+            desc = stringResource(R.string.settings_cloud_sync_enable_desc),
+            checked = enabled,
+            onCheckedChange = onEnabledChange,
+        )
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedTextField(
+                    value = serverUrl,
+                    onValueChange = onServerUrlChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.settings_cloud_sync_server_url)) },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = remotePath,
+                    onValueChange = onRemotePathChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.settings_cloud_sync_remote_path)) },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = onUsernameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.settings_cloud_sync_username)) },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.settings_cloud_sync_password)) },
+                    singleLine = true,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onSave,
+                        enabled = !syncInProgress,
+                        shape = RoundedCornerShape(999.dp),
+                    ) {
+                        Text(stringResource(R.string.settings_cloud_sync_save))
+                    }
+                    Button(
+                        onClick = onTestConnection,
+                        enabled = !syncInProgress,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Text(stringResource(R.string.settings_cloud_sync_test))
+                    }
+                }
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_cloud_sync_last_sync, lastSyncedText),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_cloud_sync_status, syncStatus.ifBlank { "-" }),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (configPushStatus.isNotBlank()) {
+                    Text(
+                        text = stringResource(R.string.settings_cloud_sync_push_status, configPushStatus),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Button(
+                    onClick = onSyncNow,
+                    enabled = !syncInProgress,
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(
+                        if (syncInProgress) {
+                            stringResource(R.string.settings_cloud_sync_syncing)
+                        } else {
+                            stringResource(R.string.settings_cloud_sync_sync_now)
+                        },
+                    )
                 }
             }
         }

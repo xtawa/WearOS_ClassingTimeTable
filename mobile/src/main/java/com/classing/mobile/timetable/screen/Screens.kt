@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -78,12 +79,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
 import com.xtawa.classingtime.reminder.ReminderScheduler
+import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
+import com.xtawa.classingtime.sync.CloudCredentialStore
+import com.xtawa.classingtime.sync.MobileCloudSyncCoordinator
 import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
@@ -113,6 +118,7 @@ import org.json.JSONObject
 @Composable
 fun MobileTimetableScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val zoneId = remember { ZoneId.systemDefault() }
     val parser = remember { IcsImportParser() }
     val adapter = remember { ScheduleImportAdapter() }
@@ -155,6 +161,15 @@ fun MobileTimetableScreen() {
     var latestWearAckAtMillis by remember { mutableStateOf(WearSyncAckStore.load(context)?.syncedAtMillis ?: 0L) }
     var wearSyncInProgress by remember { mutableStateOf(false) }
     var wearSyncMode by remember { mutableStateOf(WearSyncMode.WEARABLE_API) }
+    var cloudSyncEnabled by remember { mutableStateOf(false) }
+    var cloudServerUrl by remember { mutableStateOf("") }
+    var cloudRemotePath by remember { mutableStateOf(CloudSyncContracts.DEFAULT_REMOTE_PATH) }
+    var cloudUsername by remember { mutableStateOf("") }
+    var cloudPassword by remember { mutableStateOf("") }
+    var cloudSyncStatus by remember { mutableStateOf("") }
+    var cloudLastSyncedAt by remember { mutableStateOf(0L) }
+    var cloudSyncInProgress by remember { mutableStateOf(false) }
+    var cloudConfigPushStatus by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     val wearSyncMutex = remember { Mutex() }
     var weekSettingsAutoSyncPending by remember { mutableStateOf(false) }
@@ -171,6 +186,12 @@ fun MobileTimetableScreen() {
             wearSyncMode = wearSyncMode,
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
+            cloudSyncEnabled = cloudSyncEnabled,
+            cloudServerUrl = cloudServerUrl,
+            cloudRemotePath = cloudRemotePath,
+            cloudUsername = cloudUsername,
+            cloudLastResult = cloudSyncStatus,
+            cloudLastSyncedAt = cloudLastSyncedAt,
         )
     }
 
@@ -212,6 +233,42 @@ fun MobileTimetableScreen() {
 
     fun syncReminderWork() {
         com.xtawa.classingtime.screen.syncReminderWork(context, reminderEnabled)
+    }
+
+    suspend fun runCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
+        cloudSyncInProgress = true
+        try {
+            val result = MobileCloudSyncCoordinator.requestCloudSync(
+                context = context,
+                trigger = trigger,
+                force = force,
+                alsoPushConfigToWear = alsoPushConfigToWear,
+            )
+            if (result.isSuccess) {
+                val outcome = result.getOrThrow()
+                cloudSyncStatus = outcome.message
+                cloudLastSyncedAt = outcome.syncedAt
+                cloudConfigPushStatus = if (outcome.pushedConfigNodes > 0) {
+                    "Config pushed to ${outcome.pushedConfigNodes} wear node(s)"
+                } else {
+                    cloudConfigPushStatus
+                }
+                val updated = MobilePrefsStore.loadSettings(context)
+                cloudSyncStatus = updated.cloudLastResult
+                cloudLastSyncedAt = updated.cloudLastSyncedAt
+            } else {
+                cloudSyncStatus = "Cloud sync failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+            }
+            persistSettings()
+        } finally {
+            cloudSyncInProgress = false
+        }
+    }
+
+    fun requestCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
+        coroutineScope.launch {
+            runCloudSync(trigger = trigger, force = force, alsoPushConfigToWear = alsoPushConfigToWear)
+        }
     }
 
     fun refreshWearSyncAckStatus(force: Boolean = false) {
@@ -301,6 +358,10 @@ fun MobileTimetableScreen() {
         }
         persistSettings()
         syncReminderWork()
+        requestCloudSync(
+            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+            alsoPushConfigToWear = false,
+        )
     }
 
     val exportBackupLauncher = rememberLauncherForActivityResult(
@@ -378,6 +439,13 @@ fun MobileTimetableScreen() {
         wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.WEARABLE_API
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
+        cloudSyncEnabled = settings.cloudSyncEnabled
+        cloudServerUrl = settings.cloudServerUrl
+        cloudRemotePath = settings.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
+        cloudUsername = settings.cloudUsername
+        cloudPassword = CloudCredentialStore.loadPassword(context)
+        cloudSyncStatus = settings.cloudLastResult
+        cloudLastSyncedAt = settings.cloudLastSyncedAt
 
         if (storedLessons.isNotEmpty()) {
             lessons = storedLessons.map { it.toLessonUi() }
@@ -390,6 +458,21 @@ fun MobileTimetableScreen() {
         syncReminderWork()
         refreshWearSyncAckStatus(force = true)
         refreshWearConnectionStatus()
+        runCloudSync(trigger = CloudSyncContracts.TRIGGER_APP_START, force = true)
+    }
+
+    LaunchedEffect(initialized, cloudSyncEnabled, lifecycleOwner) {
+        if (!initialized) return@LaunchedEffect
+        while (true) {
+            if (cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                runCloudSync(
+                    trigger = CloudSyncContracts.TRIGGER_FOREGROUND_TICK,
+                    force = false,
+                    alsoPushConfigToWear = false,
+                )
+            }
+            delay(120_000L)
+        }
     }
 
     if (!initialized) {
@@ -672,12 +755,19 @@ fun MobileTimetableScreen() {
                     onOpenWearCommunicationPage = {
                         settingsPageName = SettingsPage.WearCommunication.name
                     },
+                    onOpenCloudSyncPage = {
+                        settingsPageName = SettingsPage.CloudSync.name
+                    },
                     onOpenAboutPage = {
                         settingsPageName = SettingsPage.About.name
                     },
                     onToggleWeekend = {
                         showWeekend = it
                         persistSettings()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            alsoPushConfigToWear = false,
+                        )
                     },
                     onToggleReminder = { enabled ->
                         if (!enabled) {
@@ -685,11 +775,19 @@ fun MobileTimetableScreen() {
                             parseMessage = context.getString(R.string.message_reminder_disabled)
                             persistSettings()
                             syncReminderWork()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
                         } else if (hasNotificationPermission(context)) {
                             reminderEnabled = true
                             parseMessage = context.getString(R.string.message_reminder_enabled)
                             persistSettings()
                             syncReminderWork()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
                         } else {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
@@ -698,6 +796,10 @@ fun MobileTimetableScreen() {
                         reminderMinutes = it
                         persistSettings()
                         if (reminderEnabled) syncReminderWork()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            alsoPushConfigToWear = false,
+                        )
                     },
                     onClearAllSchedules = {
                         showClearAllConfirmDialog = true
@@ -733,6 +835,10 @@ fun MobileTimetableScreen() {
                             weekNumberMode = mode
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
                         }
                     },
                     onSemesterWeekStartDateChange = { date ->
@@ -740,6 +846,10 @@ fun MobileTimetableScreen() {
                             semesterWeekStartDate = date
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
                         }
                     },
                 )
@@ -756,6 +866,10 @@ fun MobileTimetableScreen() {
                     onWearSyncModeChange = { mode ->
                         wearSyncMode = mode
                         persistSettings()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            alsoPushConfigToWear = false,
+                        )
                         coroutineScope.launch {
                             refreshWearConnectionStatus()
                         }
@@ -769,6 +883,66 @@ fun MobileTimetableScreen() {
                         coroutineScope.launch {
                             runManualWearSync()
                         }
+                    },
+                )
+
+                SettingsPage.CloudSync -> CloudSyncSettingsPage(
+                    contentPadding = innerPadding,
+                    enabled = cloudSyncEnabled,
+                    serverUrl = cloudServerUrl,
+                    remotePath = cloudRemotePath,
+                    username = cloudUsername,
+                    password = cloudPassword,
+                    syncStatus = cloudSyncStatus,
+                    configPushStatus = cloudConfigPushStatus,
+                    lastSyncedAt = cloudLastSyncedAt,
+                    syncInProgress = cloudSyncInProgress,
+                    onBack = {
+                        settingsPageName = SettingsPage.Main.name
+                    },
+                    onEnabledChange = {
+                        cloudSyncEnabled = it
+                    },
+                    onServerUrlChange = { cloudServerUrl = it },
+                    onRemotePathChange = { cloudRemotePath = it },
+                    onUsernameChange = { cloudUsername = it },
+                    onPasswordChange = { cloudPassword = it },
+                    onSave = {
+                        CloudCredentialStore.savePassword(context, cloudPassword)
+                        cloudConfigPushStatus = ""
+                        persistSettings()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            force = true,
+                            alsoPushConfigToWear = true,
+                        )
+                    },
+                    onTestConnection = {
+                        coroutineScope.launch {
+                            cloudSyncInProgress = true
+                            try {
+                                CloudCredentialStore.savePassword(context, cloudPassword)
+                                persistSettings()
+                                val result = MobileCloudSyncCoordinator.testConnection(context)
+                                cloudSyncStatus = if (result.isSuccess) {
+                                    "WebDAV connection OK"
+                                } else {
+                                    "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                }
+                                persistSettings()
+                            } finally {
+                                cloudSyncInProgress = false
+                            }
+                        }
+                    },
+                    onSyncNow = {
+                        CloudCredentialStore.savePassword(context, cloudPassword)
+                        persistSettings()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_MANUAL,
+                            force = true,
+                            alsoPushConfigToWear = true,
+                        )
                     },
                 )
 

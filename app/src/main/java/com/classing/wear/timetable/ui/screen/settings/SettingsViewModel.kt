@@ -2,9 +2,11 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.classing.shared.sync.CloudSyncContracts
 import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
+import com.classing.wear.timetable.sync.WearCloudBridgeSender
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.worker.AutoSyncController
 import com.classing.wear.timetable.worker.ReminderWorkController
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val mobileSyncRequester: MobileSyncRequester,
+    private val wearCloudBridgeSender: WearCloudBridgeSender,
     private val autoSyncController: AutoSyncController,
     private val reminderWorkController: ReminderWorkController,
 ) : ViewModel() {
@@ -42,13 +45,17 @@ class SettingsViewModel(
     }
 
     fun toggleDynamicColor(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setDynamicColor(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setDynamicColor(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleReminder(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setReminderEnabled(enabled)
             reminderWorkController.setEnabled(enabled)
+            notifyCloudSettingsChanged()
         }
     }
 
@@ -56,39 +63,64 @@ class SettingsViewModel(
         viewModelScope.launch {
             settingsRepository.setAutoSync(enabled)
             autoSyncController.setEnabled(enabled)
+            notifyCloudSettingsChanged()
         }
     }
 
     fun toggleWeekend(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setShowWeekend(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setShowWeekend(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleShowCompletedToday(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setShowCompletedToday(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setShowCompletedToday(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleTileShowTeacher(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTileShowTeacher(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setTileShowTeacher(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleTileShowLocation(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTileShowLocation(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setTileShowLocation(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleTileShowCountdown(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTileShowCountdown(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setTileShowCountdown(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleTileShowCourseName(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTileShowCourseName(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setTileShowCourseName(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleTileShowCurrentWeek(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTileShowCurrentWeek(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setTileShowCurrentWeek(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun toggleTileShowTimeRange(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTileShowTimeRange(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setTileShowTimeRange(enabled)
+            notifyCloudSettingsChanged()
+        }
     }
 
     fun forceFullSync() {
@@ -101,6 +133,11 @@ class SettingsViewModel(
                 WearI18n.syncRequestFailed(result.exceptionOrNull()?.message ?: "unknown")
             }
         }
+    }
+
+    private suspend fun notifyCloudSettingsChanged() {
+        wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+        wearCloudBridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
     }
 }
 

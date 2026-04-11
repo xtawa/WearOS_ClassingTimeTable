@@ -39,6 +39,12 @@ internal fun persistSettings(
     wearSyncMode: WearSyncMode,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    cloudSyncEnabled: Boolean,
+    cloudServerUrl: String,
+    cloudRemotePath: String,
+    cloudUsername: String,
+    cloudLastResult: String,
+    cloudLastSyncedAt: Long,
 ) {
     MobilePrefsStore.saveSettings(
         context,
@@ -51,12 +57,20 @@ internal fun persistSettings(
             wearSyncMode = wearSyncMode.name,
             weekNumberMode = weekNumberMode.name,
             semesterWeekStartDate = semesterWeekStartDate.toString(),
+            cloudSyncEnabled = cloudSyncEnabled,
+            cloudServerUrl = cloudServerUrl,
+            cloudRemotePath = cloudRemotePath,
+            cloudUsername = cloudUsername,
+            cloudLastResult = cloudLastResult,
+            cloudLastSyncedAt = cloudLastSyncedAt,
         ),
     )
+    MobilePrefsStore.markLocalMobileSettingsUpdated(context)
 }
 
 internal fun persistLessons(context: Context, lessons: List<LessonUi>) {
     MobilePrefsStore.saveLessons(context, lessons.map { it.toPersistedLesson() })
+    MobilePrefsStore.markLocalTimetableUpdated(context)
 }
 
 internal fun applyImportedLessons(importLessons: List<LessonUi>): List<LessonUi> {

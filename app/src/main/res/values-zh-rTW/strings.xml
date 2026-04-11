@@ -81,6 +81,15 @@
     <string name="settings_tile_show_countdown">顯示倒數</string>
     <string name="settings_last_sync">最近同步：%1$s</string>
     <string name="settings_force_full_sync">立即同步</string>
+    <string name="settings_cloud_sync_title">雲端同步</string>
+    <string name="settings_cloud_sync_sync_now">立即同步</string>
+    <string name="settings_cloud_sync_syncing">同步中</string>
+    <string name="settings_cloud_sync_never">從未</string>
+    <string name="settings_cloud_sync_config_ready">已收到手機下發的雲端同步設定。</string>
+    <string name="settings_cloud_sync_config_missing">尚未收到雲端設定，請先在手機端設定 WebDAV。</string>
+    <string name="settings_cloud_sync_phone_only_hint">Wear 使用手機下發設定，僅執行雲端拉取（唯讀）。</string>
+    <string name="settings_cloud_sync_wear_config_label">伺服器：%1$s\n路徑：%2$s\n使用者：%3$s</string>
+    <string name="settings_cloud_sync_wear_status_label">狀態：%1$s\n最近同步：%2$s</string>
     <string name="tile_next_class_label">Classing 下一節課磁貼</string>
     <string name="complication_next_class_label">Classing 下一節課複雜功能</string>
 </resources>

@@ -18,6 +18,8 @@ data class UserPreferences(
 
 interface SettingsRepository {
     fun observePreferences(): Flow<UserPreferences>
+    suspend fun exportWearSettingsSnapshot(): String
+    suspend fun applyWearSettingsSnapshot(snapshotJson: String)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setReminderEnabled(enabled: Boolean)
     suspend fun setAutoSync(enabled: Boolean)

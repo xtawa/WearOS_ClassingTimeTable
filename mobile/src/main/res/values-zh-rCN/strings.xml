@@ -13,6 +13,7 @@
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
     <string name="ghost_title_wear">Wear</string>
+    <string name="ghost_title_cloud">CLOUD</string>
     <string name="ghost_title_ai">AI</string>
     <string name="common_copied">已复制</string>
 
@@ -152,6 +153,7 @@
     <string name="settings_week_mode_semester">学期周</string>
     <string name="settings_badge_week_mode">周</string>
     <string name="settings_badge_wear">W</string>
+    <string name="settings_badge_cloud">云</string>
     <string name="settings_current_week_badge">当前</string>
     <string name="settings_semester_start_date_value">学期起始日：%1$s</string>
     <string name="settings_semester_current_week_value">当前学期周：第 %1$d 周</string>
@@ -214,6 +216,22 @@
     <string name="wear_sync_queued_via_wearos_app">已通过 WearOS App 排队同步：%1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">已唤起 WearOS App（%1$s），请在 App 内完成同步。</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS App 同步失败：%1$s</string>
+    <string name="settings_cloud_sync_title">云同步</string>
+    <string name="settings_cloud_sync_desc">在手机端配置 WebDAV 并与云端同步。Wear 端会自动接收配置。</string>
+    <string name="settings_cloud_sync_enable_title">启用云同步</string>
+    <string name="settings_cloud_sync_enable_desc">应用启动、前台每 2 分钟、设置修改后自动同步。</string>
+    <string name="settings_cloud_sync_server_url">WebDAV 服务器地址</string>
+    <string name="settings_cloud_sync_remote_path">远端文件路径</string>
+    <string name="settings_cloud_sync_username">用户名</string>
+    <string name="settings_cloud_sync_password">密码</string>
+    <string name="settings_cloud_sync_save">保存配置</string>
+    <string name="settings_cloud_sync_test">测试连接</string>
+    <string name="settings_cloud_sync_sync_now">立即同步</string>
+    <string name="settings_cloud_sync_syncing">同步中...</string>
+    <string name="settings_cloud_sync_never">从未</string>
+    <string name="settings_cloud_sync_last_sync">最近云同步：%1$s</string>
+    <string name="settings_cloud_sync_status">状态：%1$s</string>
+    <string name="settings_cloud_sync_push_status">下发 Wear 配置：%1$s</string>
 
     <string name="empty_input_message">输入内容为空。</string>
     <string name="parse_success_preview_message">解析成功，预览到 %1$d 节课程，请确认后导入。</string>
