@@ -82,13 +82,15 @@ class CloudBridgeListenerService : WearableListenerService() {
         val trigger = parsed?.optString(WearDataLayerContracts.KEY_TRIGGER).orEmpty().ifBlank { fallbackTrigger }
         val incomingWearSnapshot = parsed?.optJSONObject(WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT)
             ?.let { WearWebDavSnapshot.fromJson(it) }
-        if (incomingWearSnapshot != null) {
-            handleWearWebDavConflictIfNeeded(incomingWearSnapshot, trigger)
+        serviceScope.launch {
+            if (incomingWearSnapshot != null) {
+                handleWearWebDavConflictIfNeeded(incomingWearSnapshot, trigger)
+            }
+            triggerPhoneCloudSyncInternal(trigger)
         }
-        triggerPhoneCloudSync(trigger)
     }
 
-    private fun handleWearWebDavConflictIfNeeded(incomingWearSnapshot: WearWebDavSnapshot, trigger: String) {
+    private suspend fun handleWearWebDavConflictIfNeeded(incomingWearSnapshot: WearWebDavSnapshot, trigger: String) {
         val settings = MobilePrefsStore.loadSettings(applicationContext)
         val password = CloudCredentialStore.loadPassword(applicationContext)
         val mobileSnapshot = WearWebDavSnapshot.fromMobile(settings, password)
@@ -115,15 +117,19 @@ class CloudBridgeListenerService : WearableListenerService() {
 
     private fun triggerPhoneCloudSync(trigger: String) {
         serviceScope.launch {
-            val result = MobileCloudSyncCoordinator.requestCloudSync(
-                context = applicationContext,
-                trigger = trigger,
-                force = true,
-                alsoPushConfigToWear = false,
-            )
-            if (result.isFailure) {
-                Log.w(TAG, "Cloud sync trigger failed: ${result.exceptionOrNull()?.message}")
-            }
+            triggerPhoneCloudSyncInternal(trigger)
+        }
+    }
+
+    private suspend fun triggerPhoneCloudSyncInternal(trigger: String) {
+        val result = MobileCloudSyncCoordinator.requestCloudSync(
+            context = applicationContext,
+            trigger = trigger,
+            force = true,
+            alsoPushConfigToWear = false,
+        )
+        if (result.isFailure) {
+            Log.w(TAG, "Cloud sync trigger failed: ${result.exceptionOrNull()?.message}")
         }
     }
 
