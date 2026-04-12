@@ -11,6 +11,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -1357,6 +1358,10 @@ private fun SyncStatusBadge(
         SyncIndicatorState.Syncing -> MaterialTheme.colorScheme.onTertiary
         SyncIndicatorState.Idle -> Color.Transparent
     }
+    val badgeBorder = when (state) {
+        SyncIndicatorState.Idle -> null
+        else -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface)
+    }
 
     Surface(
         modifier = modifier.size(32.dp),
@@ -1373,16 +1378,17 @@ private fun SyncStatusBadge(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .size(14.dp),
+                        .size(16.dp),
                     shape = RoundedCornerShape(999.dp),
                     color = badgeColor,
+                    border = badgeBorder,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = badgeIcon,
                             contentDescription = null,
                             tint = badgeIconTint,
-                            modifier = Modifier.size(10.dp),
+                            modifier = Modifier.size(11.dp),
                         )
                     }
                 }

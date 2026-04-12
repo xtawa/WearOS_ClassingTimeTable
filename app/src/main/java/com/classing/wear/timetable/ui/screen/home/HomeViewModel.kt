@@ -6,10 +6,14 @@ import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
+import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.LessonStatus
+import com.classing.wear.timetable.domain.model.NextLessonHint
+import com.classing.wear.timetable.domain.model.Semester
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
+import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
@@ -45,27 +49,34 @@ class HomeViewModel(
                 scheduleRepository.observeNextLesson(timeProvider.today()),
                 settingsRepository.observePreferences(),
                 syncState,
-                minuteTicker(),
-            ) { semester, lessons, next, preferences, syncState, _ ->
+            ) { semester, lessons, next, preferences, syncState ->
+                HomeSnapshot(
+                    semester = semester,
+                    lessons = lessons,
+                    next = next,
+                    preferences = preferences,
+                    syncState = syncState,
+                )
+            }.combine(minuteTicker()) { snapshot, _ ->
                 val today = timeProvider.today()
-                val weekLabel = semester?.let {
+                val weekLabel = snapshot.semester?.let {
                     WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
                 } ?: WearI18n.semesterNotSet()
-                val visibleLessons = if (preferences.showCompletedToday) {
-                    lessons
+                val visibleLessons = if (snapshot.preferences.showCompletedToday) {
+                    snapshot.lessons
                 } else {
-                    lessons.filter { it.status != LessonStatus.FINISHED }
+                    snapshot.lessons.filter { it.status != LessonStatus.FINISHED }
                 }
 
                 HomeUiState(
                     isLoading = false,
-                    hasSchedule = semester != null,
+                    hasSchedule = snapshot.semester != null,
                     dateLabel = TimeFormatters.formatDate(today),
                     weekLabel = weekLabel,
-                    syncState = syncState,
-                    nextLesson = next,
+                    syncState = snapshot.syncState,
+                    nextLesson = snapshot.next,
                     todayLessons = visibleLessons,
-                    errorMessage = (syncState as? SyncState.Failed)?.message,
+                    errorMessage = (snapshot.syncState as? SyncState.Failed)?.message,
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -97,5 +108,13 @@ class HomeViewModel(
             delay(delayMillis)
         }
     }
+
+    private data class HomeSnapshot(
+        val semester: Semester?,
+        val lessons: List<LessonOccurrence>,
+        val next: NextLessonHint,
+        val preferences: UserPreferences,
+        val syncState: SyncState,
+    )
 }
 
