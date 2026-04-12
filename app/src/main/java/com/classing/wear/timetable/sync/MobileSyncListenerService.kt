@@ -220,11 +220,14 @@ class MobileSyncListenerService : WearableListenerService() {
             }
 
             val courseRemoteId = "mobile-course-$index"
+            val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
+            val endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30)
+            val weekParity = parseWeekParity(item.optString("weekParity", "ALL"))
             courses += RemoteCourse(
                 remoteId = courseRemoteId,
                 semesterRemoteId = semesterRemoteId,
                 name = title,
-                teacher = "",
+                teacher = item.optString("teacher"),
                 classroom = item.optString("location"),
                 note = item.optString("note"),
                 colorLabel = "teal",
@@ -238,9 +241,9 @@ class MobileSyncListenerService : WearableListenerService() {
                 courseRemoteId = courseRemoteId,
                 dayOfWeek = dayOfWeek,
                 timeSlotRemoteId = slot.remoteId,
-                startWeek = 1,
-                endWeek = semesterTotalWeeks,
-                weekParity = "ALL",
+                startWeek = startWeek,
+                endWeek = endWeek,
+                weekParity = weekParity,
                 version = System.currentTimeMillis(),
             )
         }
@@ -316,6 +319,14 @@ class MobileSyncListenerService : WearableListenerService() {
         if (text.isBlank()) return null
         return runCatching { LocalTime.parse(text) }.getOrNull()
             ?: runCatching { LocalTime.parse(text, java.time.format.DateTimeFormatter.ofPattern("H:mm")) }.getOrNull()
+    }
+
+    private fun parseWeekParity(raw: String): String {
+        return when (raw.trim().uppercase()) {
+            "ODD" -> "ODD"
+            "EVEN" -> "EVEN"
+            else -> "ALL"
+        }
     }
 
     private fun persistApplyStatus(

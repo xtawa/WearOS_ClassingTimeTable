@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -130,7 +131,9 @@ fun MobileTimetableScreen() {
 
     var initialized by remember { mutableStateOf(false) }
     var layerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
+    var previousMainLayerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
     var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
+    var showImportJsonPromptPage by remember { mutableStateOf(false) }
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
@@ -180,6 +183,30 @@ fun MobileTimetableScreen() {
     val wearSyncMutex = remember { Mutex() }
     var weekSettingsAutoSyncPending by remember { mutableStateOf(false) }
     var weekSettingsAutoSyncJob by remember { mutableStateOf<Job?>(null) }
+
+    fun goToSettingsRoot() {
+        settingsPageName = SettingsPage.Main.name
+        showImportJsonPromptPage = false
+    }
+
+    fun openSettingsPage(page: SettingsPage) {
+        settingsPageName = page.name
+        showImportJsonPromptPage = false
+    }
+
+    fun handleBackNavigation(): Boolean {
+        val current = MobileBackState(
+            layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule,
+            settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main,
+            previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Schedule,
+            showImportJsonPromptPage = showImportJsonPromptPage,
+        )
+        val reduced = reduceBackState(current) ?: return false
+        layerName = reduced.layer.name
+        settingsPageName = reduced.settingsPage.name
+        showImportJsonPromptPage = reduced.showImportJsonPromptPage
+        return true
+    }
 
     fun persistSettings() {
         com.xtawa.classingtime.screen.persistSettings(
@@ -499,6 +526,9 @@ fun MobileTimetableScreen() {
 
     val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
+    BackHandler(enabled = layer == MobileLayer.Settings) {
+        handleBackNavigation()
+    }
     val visibleDays = if (showWeekend) DayOfWeek.values().toList() else DayOfWeek.values().filter { it.value <= 5 }
     val lessonsByDay = lessons.groupBy { it.dayOfWeek }
     val latestWearAck = remember(latestWearAckAtMillis) { WearSyncAckStore.load(context) }
@@ -516,7 +546,10 @@ fun MobileTimetableScreen() {
     val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
         ImportLayer(
             contentPadding = innerPadding,
-            onBackToSettings = { settingsPageName = SettingsPage.Main.name },
+            onBackToSettings = { handleBackNavigation() },
+            showJsonPromptPage = showImportJsonPromptPage,
+            onBackFromJsonPromptPage = { handleBackNavigation() },
+            onOpenJsonPromptPage = { showImportJsonPromptPage = true },
             rawIcs = rawIcs,
             rawJson = rawJson,
             parseMessage = parseMessage,
@@ -539,7 +572,15 @@ fun MobileTimetableScreen() {
                 persistSettings()
             },
             onParsePreview = {
-                val result = parseToLessons(rawIcs, parser, adapter, zoneId, context)
+                val result = parseToLessons(
+                    raw = rawIcs,
+                    parser = parser,
+                    adapter = adapter,
+                    zoneId = zoneId,
+                    weekNumberMode = weekNumberMode,
+                    semesterWeekStartDate = semesterWeekStartDate,
+                    context = context,
+                )
                 pendingImportLessons = result.lessons
                 draftPreview = result.drafts
                 jsonPreview = emptyList()
@@ -584,12 +625,15 @@ fun MobileTimetableScreen() {
                 parseMessage = context.getString(R.string.import_preview_canceled_message)
                 persistSettings()
             },
-            onManualImport = { title, location, note, dayOfWeek, startRaw, endRaw ->
+            onManualImport = { title, teacher, location, note, dayOfWeek, startRaw, endRaw, startWeekRaw, endWeekRaw, weekParity ->
                 val safeTitle = title.trim()
+                val safeTeacher = teacher.trim().ifBlank { null }
                 val safeLocation = location.trim().ifBlank { null }
                 val safeNote = note.trim().ifBlank { null }
                 val start = parseManualTime(startRaw)
                 val end = parseManualTime(endRaw)
+                val startWeek = startWeekRaw.trim().toIntOrNull()
+                val endWeek = endWeekRaw.trim().toIntOrNull()
                 when {
                     safeTitle.isBlank() -> {
                         parseMessage = context.getString(R.string.manual_import_title_required_message)
@@ -609,15 +653,31 @@ fun MobileTimetableScreen() {
                         false
                     }
 
+                    startWeek == null || startWeek !in DEFAULT_START_WEEK..DEFAULT_END_WEEK -> {
+                        parseMessage = context.getString(R.string.week_rule_invalid_start_week_message)
+                        persistSettings()
+                        false
+                    }
+
+                    endWeek == null || endWeek !in startWeek..DEFAULT_END_WEEK -> {
+                        parseMessage = context.getString(R.string.week_rule_invalid_end_week_message)
+                        persistSettings()
+                        false
+                    }
+
                     else -> {
                         val newLesson = LessonUi(
                             id = "manual-${System.currentTimeMillis()}-${safeTitle.hashCode()}",
                             title = safeTitle,
+                            teacher = safeTeacher,
                             location = safeLocation,
                             note = safeNote,
                             dayOfWeek = dayOfWeek,
                             startTime = start,
                             endTime = end,
+                            startWeek = startWeek,
+                            endWeek = endWeek,
+                            weekParity = weekParity,
                         )
                         val conflicts = findConflictsWithExisting(newLesson, lessons)
                         if (conflicts.isEmpty()) {
@@ -712,9 +772,12 @@ fun MobileTimetableScreen() {
                         NavigationBarItem(
                             selected = item == layer,
                             onClick = {
+                                if (item == MobileLayer.Settings && layer != MobileLayer.Settings) {
+                                    previousMainLayerName = layer.name
+                                }
                                 layerName = item.name
                                 if (item != MobileLayer.Settings) {
-                                    settingsPageName = SettingsPage.Main.name
+                                    goToSettingsRoot()
                                 }
                             },
                             icon = { Icon(imageVector = icon, contentDescription = null) },
@@ -758,22 +821,22 @@ fun MobileTimetableScreen() {
                     reminderEnabled = reminderEnabled,
                     reminderMinutes = reminderMinutes,
                     onOpenImportPage = {
-                        settingsPageName = SettingsPage.Import.name
+                        openSettingsPage(SettingsPage.Import)
                     },
                     onOpenBackupRestorePage = {
-                        settingsPageName = SettingsPage.BackupRestore.name
+                        openSettingsPage(SettingsPage.BackupRestore)
                     },
                     onOpenWeekModePage = {
-                        settingsPageName = SettingsPage.WeekMode.name
+                        openSettingsPage(SettingsPage.WeekMode)
                     },
                     onOpenWearCommunicationPage = {
-                        settingsPageName = SettingsPage.WearCommunication.name
+                        openSettingsPage(SettingsPage.WearCommunication)
                     },
                     onOpenCloudSyncPage = {
-                        settingsPageName = SettingsPage.CloudSync.name
+                        openSettingsPage(SettingsPage.CloudSync)
                     },
                     onOpenAboutPage = {
-                        settingsPageName = SettingsPage.About.name
+                        openSettingsPage(SettingsPage.About)
                     },
                     onToggleWeekend = {
                         showWeekend = it
@@ -825,7 +888,7 @@ fun MobileTimetableScreen() {
                 SettingsPage.BackupRestore -> BackupRestoreSettingsPage(
                     contentPadding = innerPadding,
                     onBack = {
-                        settingsPageName = SettingsPage.Main.name
+                        handleBackNavigation()
                     },
                     onExportBackup = {
                         pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
@@ -843,7 +906,7 @@ fun MobileTimetableScreen() {
                     semesterWeekStartDate = semesterWeekStartDate,
                     weekStartDay = weekStartDay,
                     onBack = {
-                        settingsPageName = SettingsPage.Main.name
+                        handleBackNavigation()
                     },
                     onWeekNumberModeChange = { mode ->
                         if (weekNumberMode != mode) {
@@ -887,7 +950,7 @@ fun MobileTimetableScreen() {
                     wearSyncMessage = wearSyncMessage,
                     wearSyncInProgress = wearSyncInProgress,
                     onBack = {
-                        settingsPageName = SettingsPage.Main.name
+                        handleBackNavigation()
                     },
                     onWearSyncModeChange = { mode ->
                         wearSyncMode = mode
@@ -924,7 +987,7 @@ fun MobileTimetableScreen() {
                     lastSyncedAt = cloudLastSyncedAt,
                     syncInProgress = cloudSyncInProgress,
                     onBack = {
-                        settingsPageName = SettingsPage.Main.name
+                        handleBackNavigation()
                     },
                     onEnabledChange = {
                         cloudSyncEnabled = it
@@ -975,7 +1038,7 @@ fun MobileTimetableScreen() {
                 SettingsPage.About -> AboutLayer(
                     contentPadding = innerPadding,
                     onBack = {
-                        settingsPageName = SettingsPage.Main.name
+                        handleBackNavigation()
                     },
                 )
             }

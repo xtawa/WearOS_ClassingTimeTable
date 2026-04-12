@@ -56,11 +56,15 @@ data class CloudDocument(
                     JSONObject()
                         .put("id", lesson.id)
                         .put("title", lesson.title)
+                        .put("teacher", lesson.teacher.orEmpty())
                         .put("location", lesson.location.orEmpty())
                         .put("note", lesson.note.orEmpty())
                         .put("dayOfWeek", lesson.dayOfWeek)
                         .put("startMinute", lesson.startMinute)
-                        .put("endMinute", lesson.endMinute),
+                        .put("endMinute", lesson.endMinute)
+                        .put("startWeek", lesson.startWeek.coerceIn(1, 30))
+                        .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                        .put("weekParity", lesson.weekParity),
                 )
             }
             root.put(
@@ -115,15 +119,22 @@ data class CloudDocument(
                         if (id.isBlank()) continue
                         val title = item.optString("title")
                         if (title.isBlank()) continue
+                        val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
                         add(
                             PersistedLesson(
                                 id = id,
                                 title = title,
+                                teacher = item.optString("teacher").ifBlank { null },
                                 location = item.optString("location").ifBlank { null },
                                 note = item.optString("note").ifBlank { null },
                                 dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
                                 startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
                                 endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
+                                startWeek = startWeek,
+                                endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30),
+                                weekParity = item.optString("weekParity", "ALL").uppercase().let {
+                                    if (it == "ODD" || it == "EVEN") it else "ALL"
+                                },
                             ),
                         )
                     }

@@ -74,7 +74,7 @@
     <string name="json_prompt_page_label">轉譯 Prompt</string>
     <string name="json_prompt_back_button">返回匯入頁</string>
     <string name="json_prompt_usage_steps">1. 複製 Prompt  2. 貼到 AI 並附上課表  3. 將 JSON 結果貼回匯入頁</string>
-    <string name="json_prompt_content">你是課表 JSON 轉譯助手。\n請把使用者提供的課表文字，轉換為可被行動應用匯入的 JSON。\n只輸出 JSON，不要輸出 Markdown 或解釋。\n\n必須嚴格使用以下結構：\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"課程名稱\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"location\": \"選填\",\n      \"note\": \"選填\"\n    }\n  ]\n}\n\n規則：\n1. dayOfWeek 取值 1-7（1=週一，7=週日）。\n2. startTime/endTime 必須為 24 小時制 HH:mm。\n3. 必填欄位：title、dayOfWeek、startTime、endTime。\n4. location/note 不確定時可填空字串。\n5. 不要把不同時段的課程合併成一筆。</string>
+    <string name="json_prompt_content">你是課表 JSON 轉譯助手。\n請把使用者提供的課表文字，轉換為可被行動應用匯入的 JSON。\n只輸出 JSON，不要輸出 Markdown 或解釋。\n\n必須嚴格使用以下結構：\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"課程名稱\",\n      \"teacher\": \"選填\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"startWeek\": 1,\n      \"endWeek\": 16,\n      \"weekParity\": \"ALL\",\n      \"location\": \"選填\",\n      \"note\": \"選填\"\n    }\n  ]\n}\n\n規則：\n1. dayOfWeek 取值 1-7（1=週一，7=週日）。\n2. startTime/endTime 必須為 24 小時制 HH:mm。\n3. startWeek/endWeek 必須是 1-30 的整數，且 endWeek &gt;= startWeek。\n4. weekParity 僅允許 ALL、ODD、EVEN。\n5. 必填欄位：title、dayOfWeek、startTime、endTime，其餘欄位可為空字串。\n6. 不要把不同時段的課程合併成一筆。</string>
 
     <string name="status_title">狀態</string>
     <string name="status_warning_prefix">提示：%1$s</string>
@@ -95,12 +95,18 @@
     <string name="manual_import_title">手動輸入課程</string>
     <string name="manual_import_desc">沒有 ICS 時可手動輸入單節課程。</string>
     <string name="manual_input_title_label">課程名稱</string>
+    <string name="manual_input_teacher_label">授課教師（選填）</string>
     <string name="manual_input_start_time_label">開始時間（HH:mm）</string>
     <string name="manual_input_end_time_label">結束時間（HH:mm）</string>
     <string name="manual_input_start_time_placeholder">08:00</string>
     <string name="manual_input_end_time_placeholder">09:40</string>
+    <string name="manual_input_start_week_label">起始週（1-30）</string>
+    <string name="manual_input_end_week_label">結束週（1-30）</string>
     <string name="manual_input_location_label">上課地點（選填）</string>
     <string name="manual_input_note_label">備註（選填）</string>
+    <string name="week_parity_all">每週</string>
+    <string name="week_parity_odd">單週</string>
+    <string name="week_parity_even">雙週</string>
     <string name="manual_import_button">新增並匯入</string>
     <string name="manual_import_conflict_detected_message">偵測到與現有課程衝突 %1$d 處，請確認是否繼續新增。</string>
     <string name="manual_conflict_dialog_title">手動匯入衝突</string>
@@ -258,12 +264,17 @@
     <string name="json_warning_invalid_day">第 %1$d 筆 dayOfWeek 無效。</string>
     <string name="json_warning_invalid_time">第 %1$d 筆時間格式無效。</string>
     <string name="json_warning_time_order">第 %1$d 筆結束時間必須晚於開始時間。</string>
+    <string name="json_warning_invalid_start_week">第 %1$d 筆 startWeek 無效。</string>
+    <string name="json_warning_invalid_end_week">第 %1$d 筆 endWeek 無效。</string>
+    <string name="json_warning_invalid_week_parity">第 %1$d 筆 weekParity 無效。</string>
     <string name="no_pending_import_message">目前沒有可匯入的預覽內容，請先解析 ICS 或 JSON。</string>
     <string name="import_confirmed_message">匯入完成，已更新 %1$d 節課程。</string>
     <string name="import_preview_canceled_message">已取消匯入預覽。</string>
     <string name="manual_import_title_required_message">手動匯入失敗：課程名稱不可為空。</string>
     <string name="manual_import_time_format_message">手動匯入失敗：時間請使用 HH:mm 格式。</string>
     <string name="manual_import_time_order_message">手動匯入失敗：結束時間必須晚於開始時間。</string>
+    <string name="week_rule_invalid_start_week_message">週次規則無效：startWeek 必須介於 1 到 30。</string>
+    <string name="week_rule_invalid_end_week_message">週次規則無效：endWeek 必須介於 startWeek 到 30。</string>
     <string name="manual_import_success_message">手動匯入完成：%1$s</string>
     <string name="backup_export_success_message">備份匯出成功。</string>
     <string name="backup_export_failed_message">備份匯出失敗，請重試。</string>

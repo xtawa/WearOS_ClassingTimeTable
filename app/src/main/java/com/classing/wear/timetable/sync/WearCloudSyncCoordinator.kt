@@ -202,7 +202,7 @@ object WearCloudSyncCoordinator {
                 remoteId = courseId,
                 semesterRemoteId = semesterRemoteId,
                 name = lesson.title,
-                teacher = "",
+                teacher = lesson.teacher,
                 classroom = lesson.location,
                 note = lesson.note,
                 colorLabel = "teal",
@@ -215,9 +215,9 @@ object WearCloudSyncCoordinator {
                 courseRemoteId = courseId,
                 dayOfWeek = lesson.dayOfWeek,
                 timeSlotRemoteId = slot.remoteId,
-                startWeek = 1,
-                endWeek = semesterTotalWeeks,
-                weekParity = "ALL",
+                startWeek = lesson.startWeek,
+                endWeek = lesson.endWeek,
+                weekParity = lesson.weekParity,
                 version = System.currentTimeMillis(),
             )
         }

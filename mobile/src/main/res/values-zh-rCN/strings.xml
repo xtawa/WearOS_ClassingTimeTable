@@ -74,7 +74,7 @@
     <string name="json_prompt_page_label">转译 Prompt</string>
     <string name="json_prompt_back_button">返回导入页</string>
     <string name="json_prompt_usage_steps">1. 复制 Prompt  2. 粘贴到 AI 并附上课表  3. 将 JSON 结果粘贴回导入页</string>
-    <string name="json_prompt_content">你是课表 JSON 转译助手。\n请把用户提供的课表文本，转换为移动应用可导入的 JSON。\n只输出 JSON，不要输出 Markdown 或解释。\n\n必须严格使用以下结构：\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"课程名\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"location\": \"可选\",\n      \"note\": \"可选\"\n    }\n  ]\n}\n\n规则：\n1. dayOfWeek 取值 1-7（1=周一，7=周日）。\n2. startTime/endTime 必须为 24 小时制 HH:mm。\n3. 必填字段：title、dayOfWeek、startTime、endTime。\n4. location/note 不确定时可填空字符串。\n5. 不要把不同时间段的课程合并成一条。</string>
+    <string name="json_prompt_content">你是课表 JSON 转译助手。\n请把用户提供的课表文本，转换为移动应用可导入的 JSON。\n只输出 JSON，不要输出 Markdown 或解释。\n\n必须严格使用以下结构：\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"课程名\",\n      \"teacher\": \"可选\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"startWeek\": 1,\n      \"endWeek\": 16,\n      \"weekParity\": \"ALL\",\n      \"location\": \"可选\",\n      \"note\": \"可选\"\n    }\n  ]\n}\n\n规则：\n1. dayOfWeek 取值 1-7（1=周一，7=周日）。\n2. startTime/endTime 必须为 24 小时制 HH:mm。\n3. startWeek/endWeek 必须是 1-30 的整数，且 endWeek >= startWeek。\n4. weekParity 仅允许 ALL、ODD、EVEN。\n5. 必填字段：title、dayOfWeek、startTime、endTime。其余字段可为空字符串。\n6. 不要把不同时间段的课程合并成一条。</string>
 
     <string name="status_title">状态</string>
     <string name="status_warning_prefix">提示：%1$s</string>
@@ -95,12 +95,18 @@
     <string name="manual_import_title">手动录入课程</string>
     <string name="manual_import_desc">没有 ICS 时可手动录入单节课程。</string>
     <string name="manual_input_title_label">课程名称</string>
+    <string name="manual_input_teacher_label">授课教师（可选）</string>
     <string name="manual_input_start_time_label">开始时间（HH:mm）</string>
     <string name="manual_input_end_time_label">结束时间（HH:mm）</string>
     <string name="manual_input_start_time_placeholder">08:00</string>
     <string name="manual_input_end_time_placeholder">09:40</string>
+    <string name="manual_input_start_week_label">起始周（1-30）</string>
+    <string name="manual_input_end_week_label">结束周（1-30）</string>
     <string name="manual_input_location_label">上课地点（可选）</string>
     <string name="manual_input_note_label">备注（可选）</string>
+    <string name="week_parity_all">每周</string>
+    <string name="week_parity_odd">单周</string>
+    <string name="week_parity_even">双周</string>
     <string name="manual_import_button">添加并导入</string>
     <string name="manual_import_conflict_detected_message">检测到与现有课程冲突 %1$d 处，请确认是否继续添加。</string>
     <string name="manual_conflict_dialog_title">手动导入冲突</string>
@@ -258,12 +264,17 @@
     <string name="json_warning_invalid_day">第 %1$d 条 dayOfWeek 无效。</string>
     <string name="json_warning_invalid_time">第 %1$d 条时间格式无效。</string>
     <string name="json_warning_time_order">第 %1$d 条结束时间必须晚于开始时间。</string>
+    <string name="json_warning_invalid_start_week">第 %1$d 条 startWeek 无效。</string>
+    <string name="json_warning_invalid_end_week">第 %1$d 条 endWeek 无效。</string>
+    <string name="json_warning_invalid_week_parity">第 %1$d 条 weekParity 无效。</string>
     <string name="no_pending_import_message">当前没有可导入的预览内容，请先解析 ICS 或 JSON。</string>
     <string name="import_confirmed_message">导入完成，已更新 %1$d 节课程。</string>
     <string name="import_preview_canceled_message">已取消导入预览。</string>
     <string name="manual_import_title_required_message">手动导入失败：课程名称不能为空。</string>
     <string name="manual_import_time_format_message">手动导入失败：时间请使用 HH:mm 格式。</string>
     <string name="manual_import_time_order_message">手动导入失败：结束时间必须晚于开始时间。</string>
+    <string name="week_rule_invalid_start_week_message">周次规则无效：startWeek 必须在 1 到 30 之间。</string>
+    <string name="week_rule_invalid_end_week_message">周次规则无效：endWeek 必须在 startWeek 到 30 之间。</string>
     <string name="manual_import_success_message">手动导入完成：%1$s</string>
     <string name="backup_export_success_message">备份导出成功。</string>
     <string name="backup_export_failed_message">备份导出失败，请重试。</string>

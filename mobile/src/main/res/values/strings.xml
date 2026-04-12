@@ -74,7 +74,7 @@
     <string name="json_prompt_page_label">Conversion Prompt</string>
     <string name="json_prompt_back_button">Back to Import</string>
     <string name="json_prompt_usage_steps">1. Copy prompt  2. Paste into AI with your schedule  3. Paste returned JSON back to import page</string>
-    <string name="json_prompt_content">You are a timetable JSON converter.\nConvert the user\'s timetable text into valid JSON for a mobile app.\nOnly output JSON. Do not output markdown or explanations.\n\nUse exactly this schema:\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"Course Name\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"location\": \"Optional\",\n      \"note\": \"Optional\"\n    }\n  ]\n}\n\nRules:\n1. dayOfWeek must be 1-7 (1=Monday, 7=Sunday).\n2. startTime/endTime must be 24h HH:mm.\n3. Required fields: title, dayOfWeek, startTime, endTime.\n4. location/note can be empty string if unknown.\n5. Keep all course entries, do not merge different time slots.</string>
+    <string name="json_prompt_content">You are a timetable JSON converter.\nConvert the user\'s timetable text into valid JSON for a mobile app.\nOnly output JSON. Do not output markdown or explanations.\n\nUse exactly this schema:\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"Course Name\",\n      \"teacher\": \"Optional\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"startWeek\": 1,\n      \"endWeek\": 16,\n      \"weekParity\": \"ALL\",\n      \"location\": \"Optional\",\n      \"note\": \"Optional\"\n    }\n  ]\n}\n\nRules:\n1. dayOfWeek must be 1-7 (1=Monday, 7=Sunday).\n2. startTime/endTime must be 24h HH:mm.\n3. startWeek/endWeek must be integers in range 1-30, and endWeek &gt;= startWeek.\n4. weekParity must be one of ALL, ODD, EVEN.\n5. Required fields: title, dayOfWeek, startTime, endTime. Optional fields may be empty strings.\n6. Keep all course entries, do not merge different time slots.</string>
 
     <string name="status_title">Status</string>
     <string name="status_warning_prefix">Notice: %1$s</string>
@@ -95,12 +95,18 @@
     <string name="manual_import_title">Manual Course Entry</string>
     <string name="manual_import_desc">Add one class manually when ICS is unavailable.</string>
     <string name="manual_input_title_label">Course name</string>
+    <string name="manual_input_teacher_label">Teacher (optional)</string>
     <string name="manual_input_start_time_label">Start (HH:mm)</string>
     <string name="manual_input_end_time_label">End (HH:mm)</string>
     <string name="manual_input_start_time_placeholder">08:00</string>
     <string name="manual_input_end_time_placeholder">09:40</string>
+    <string name="manual_input_start_week_label">Start Week (1-30)</string>
+    <string name="manual_input_end_week_label">End Week (1-30)</string>
     <string name="manual_input_location_label">Location (optional)</string>
     <string name="manual_input_note_label">Note (optional)</string>
+    <string name="week_parity_all">Every Week</string>
+    <string name="week_parity_odd">Odd Weeks</string>
+    <string name="week_parity_even">Even Weeks</string>
     <string name="manual_import_button">Add and Import</string>
     <string name="manual_import_conflict_detected_message">Detected %1$d conflicts with existing classes. Confirm whether to continue.</string>
     <string name="manual_conflict_dialog_title">Manual Import Conflict</string>
@@ -258,12 +264,17 @@
     <string name="json_warning_invalid_day">Entry #%1$d has invalid dayOfWeek.</string>
     <string name="json_warning_invalid_time">Entry #%1$d has invalid time format.</string>
     <string name="json_warning_time_order">Entry #%1$d endTime must be later than startTime.</string>
+    <string name="json_warning_invalid_start_week">Entry #%1$d has invalid startWeek.</string>
+    <string name="json_warning_invalid_end_week">Entry #%1$d has invalid endWeek.</string>
+    <string name="json_warning_invalid_week_parity">Entry #%1$d has invalid weekParity.</string>
     <string name="no_pending_import_message">No preview to import. Parse ICS or JSON first.</string>
     <string name="import_confirmed_message">Import complete. %1$d classes updated.</string>
     <string name="import_preview_canceled_message">Import preview canceled.</string>
     <string name="manual_import_title_required_message">Manual import failed: course name is required.</string>
     <string name="manual_import_time_format_message">Manual import failed: use HH:mm for time.</string>
     <string name="manual_import_time_order_message">Manual import failed: end time must be later than start time.</string>
+    <string name="week_rule_invalid_start_week_message">Week rule invalid: startWeek must be between 1 and 30.</string>
+    <string name="week_rule_invalid_end_week_message">Week rule invalid: endWeek must be between startWeek and 30.</string>
     <string name="manual_import_success_message">Manual import complete: %1$s</string>
     <string name="backup_export_success_message">Backup exported successfully.</string>
     <string name="backup_export_failed_message">Backup export failed. Please try again.</string>

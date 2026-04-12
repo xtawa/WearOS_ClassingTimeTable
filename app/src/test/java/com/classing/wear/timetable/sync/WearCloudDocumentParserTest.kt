@@ -20,9 +20,13 @@ class WearCloudDocumentParserTest {
                 "lessons":[
                   {
                     "title":"Math",
+                    "teacher":"Alice",
                     "dayOfWeek":1,
                     "startMinute":480,
                     "endMinute":570,
+                    "startWeek":2,
+                    "endWeek":16,
+                    "weekParity":"ODD",
                     "location":"Room 101",
                     "note":"Bring notebook"
                   }
@@ -51,6 +55,10 @@ class WearCloudDocumentParserTest {
         assertEquals("2026-03-02", timetable?.semesterWeekStartDate)
         assertEquals(1, timetable?.lessons?.size)
         assertEquals("Math", timetable?.lessons?.first()?.title)
+        assertEquals("Alice", timetable?.lessons?.first()?.teacher)
+        assertEquals(2, timetable?.lessons?.first()?.startWeek)
+        assertEquals(16, timetable?.lessons?.first()?.endWeek)
+        assertEquals("ODD", timetable?.lessons?.first()?.weekParity)
         assertEquals(5678L, parsed.wearSettings?.updatedAt)
         assertEquals(6678L, parsed.wearSettings?.revision)
         assertEquals(SyncSource.WEAR_LOCAL, parsed.wearSettings?.source)
@@ -76,6 +84,7 @@ class WearCloudDocumentParserTest {
 
         assertEquals(1234L, parsed.timetable?.revision)
         assertEquals(SyncSource.UNKNOWN, parsed.timetable?.source)
+        assertEquals(0, parsed.timetable?.lessons?.size)
         assertEquals(5678L, parsed.wearSettings?.revision)
         assertEquals(SyncSource.UNKNOWN, parsed.wearSettings?.source)
     }

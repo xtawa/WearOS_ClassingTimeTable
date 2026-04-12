@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -256,6 +257,9 @@ internal fun WeekBoardLayer(
 internal fun ImportLayer(
     contentPadding: PaddingValues,
     onBackToSettings: (() -> Unit)? = null,
+    showJsonPromptPage: Boolean,
+    onBackFromJsonPromptPage: () -> Unit,
+    onOpenJsonPromptPage: () -> Unit,
     rawIcs: String,
     rawJson: String,
     parseMessage: String,
@@ -270,17 +274,31 @@ internal fun ImportLayer(
     onParseJsonPreview: () -> Unit,
     onConfirmImport: () -> Unit,
     onCancelPreview: () -> Unit,
-    onManualImport: (title: String, location: String, note: String, dayOfWeek: DayOfWeek, startRaw: String, endRaw: String) -> Boolean,
+    onManualImport: (
+        title: String,
+        teacher: String,
+        location: String,
+        note: String,
+        dayOfWeek: DayOfWeek,
+        startRaw: String,
+        endRaw: String,
+        startWeekRaw: String,
+        endWeekRaw: String,
+        weekParity: LessonWeekParity,
+    ) -> Boolean,
 ) {
     val context = LocalContext.current
     val untitled = stringResource(R.string.untitled_course)
     var manualTitle by remember { mutableStateOf("") }
+    var manualTeacher by remember { mutableStateOf("") }
     var manualLocation by remember { mutableStateOf("") }
     var manualNote by remember { mutableStateOf("") }
     var manualStart by remember { mutableStateOf("08:00") }
     var manualEnd by remember { mutableStateOf("09:40") }
+    var manualStartWeek by remember { mutableStateOf(DEFAULT_START_WEEK.toString()) }
+    var manualEndWeek by remember { mutableStateOf(DEFAULT_END_WEEK.toString()) }
+    var manualWeekParity by remember { mutableStateOf(LessonWeekParity.ALL) }
     var manualDay by remember { mutableIntStateOf(DayOfWeek.MONDAY.value) }
-    var showJsonPromptPage by remember { mutableStateOf(false) }
     val previewCollapseThreshold = 8
     var expandIcsPreview by remember(preview.size) { mutableStateOf(preview.size <= previewCollapseThreshold) }
     var expandJsonPreview by remember(jsonPreview.size) { mutableStateOf(jsonPreview.size <= previewCollapseThreshold) }
@@ -288,7 +306,7 @@ internal fun ImportLayer(
     if (showJsonPromptPage) {
         JsonPromptPage(
             contentPadding = contentPadding,
-            onBack = { showJsonPromptPage = false },
+            onBack = onBackFromJsonPromptPage,
         )
         return
     }
@@ -442,7 +460,7 @@ internal fun ImportLayer(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Button(onClick = onParseJsonPreview) { Text(stringResource(R.string.json_button_parse_preview)) }
-            Button(onClick = { showJsonPromptPage = true }) { Text(stringResource(R.string.json_button_prompt_page)) }
+            Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
         }
         Text(stringResource(R.string.json_preview_title, jsonPreview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
         val collapsedJson = jsonPreview.size > previewCollapseThreshold
@@ -504,6 +522,13 @@ internal fun ImportLayer(
             label = { Text(stringResource(R.string.manual_input_title_label)) },
             singleLine = true,
         )
+        OutlinedTextField(
+            value = manualTeacher,
+            onValueChange = { manualTeacher = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.manual_input_teacher_label)) },
+            singleLine = true,
+        )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(DayOfWeek.values()) { day ->
                 FilterChip(
@@ -536,6 +561,36 @@ internal fun ImportLayer(
             label = { Text(stringResource(R.string.manual_input_location_label)) },
             singleLine = true,
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = manualStartWeek,
+                onValueChange = { manualStartWeek = it },
+                modifier = Modifier.weight(1f),
+                label = { Text(stringResource(R.string.manual_input_start_week_label)) },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = manualEndWeek,
+                onValueChange = { manualEndWeek = it },
+                modifier = Modifier.weight(1f),
+                label = { Text(stringResource(R.string.manual_input_end_week_label)) },
+                singleLine = true,
+            )
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(LessonWeekParity.entries) { parity ->
+                val labelRes = when (parity) {
+                    LessonWeekParity.ALL -> R.string.week_parity_all
+                    LessonWeekParity.ODD -> R.string.week_parity_odd
+                    LessonWeekParity.EVEN -> R.string.week_parity_even
+                }
+                FilterChip(
+                    selected = manualWeekParity == parity,
+                    onClick = { manualWeekParity = parity },
+                    label = { Text(stringResource(labelRes)) },
+                )
+            }
+        }
         OutlinedTextField(
             value = manualNote,
             onValueChange = { manualNote = it },
@@ -549,14 +604,19 @@ internal fun ImportLayer(
             onClick = {
                 val imported = onManualImport(
                     manualTitle,
+                    manualTeacher,
                     manualLocation,
                     manualNote,
                     DayOfWeek.of(manualDay),
                     manualStart,
                     manualEnd,
+                    manualStartWeek,
+                    manualEndWeek,
+                    manualWeekParity,
                 )
                 if (imported) {
                     manualTitle = ""
+                    manualTeacher = ""
                     manualLocation = ""
                     manualNote = ""
                 }

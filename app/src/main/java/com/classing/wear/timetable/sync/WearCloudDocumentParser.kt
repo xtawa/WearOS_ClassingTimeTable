@@ -6,9 +6,13 @@ import org.json.JSONObject
 
 data class WearCloudLesson(
     val title: String,
+    val teacher: String,
     val dayOfWeek: Int,
     val startMinute: Int,
     val endMinute: Int,
+    val startWeek: Int,
+    val endWeek: Int,
+    val weekParity: String,
     val location: String,
     val note: String,
 )
@@ -46,9 +50,15 @@ object WearCloudDocumentParser {
                         add(
                             WearCloudLesson(
                                 title = item.optString("title").ifBlank { "Course-${i + 1}" },
+                                teacher = item.optString("teacher", ""),
                                 dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
                                 startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
                                 endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
+                                startWeek = item.optInt("startWeek", 1).coerceIn(1, 30),
+                                endWeek = item.optInt("endWeek", 30).coerceIn(item.optInt("startWeek", 1).coerceIn(1, 30), 30),
+                                weekParity = item.optString("weekParity", "ALL").uppercase().let {
+                                    if (it == "ODD" || it == "EVEN") it else "ALL"
+                                },
                                 location = item.optString("location", ""),
                                 note = item.optString("note", ""),
                             ),

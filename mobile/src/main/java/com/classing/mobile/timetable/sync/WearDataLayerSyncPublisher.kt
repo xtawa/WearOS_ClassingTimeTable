@@ -98,11 +98,20 @@ object WearDataLayerSyncPublisher {
                 JSONObject()
                     .put("id", lesson.id)
                     .put("title", lesson.title)
+                    .put("teacher", lesson.teacher ?: "")
                     .put("dayOfWeek", lesson.dayOfWeek)
                     .put("startTime", start.format(timeFormatter))
                     .put("endTime", end.format(timeFormatter))
                     .put("location", lesson.location ?: "")
-                    .put("note", lesson.note ?: ""),
+                    .put("note", lesson.note ?: "")
+                    .put("startWeek", lesson.startWeek.coerceIn(1, 30))
+                    .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                    .put(
+                        "weekParity",
+                        lesson.weekParity.uppercase().let {
+                            if (it == "ODD" || it == "EVEN") it else "ALL"
+                        },
+                    ),
             )
         }
 

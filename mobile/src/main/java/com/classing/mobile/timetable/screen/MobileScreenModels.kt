@@ -35,14 +35,64 @@ internal enum class WearSyncMode {
     WEAROS_APP,
 }
 
+internal data class MobileBackState(
+    val layer: MobileLayer,
+    val settingsPage: SettingsPage,
+    val previousMainLayer: MobileLayer,
+    val showImportJsonPromptPage: Boolean,
+)
+
+internal fun reduceBackState(state: MobileBackState): MobileBackState? {
+    if (state.layer != MobileLayer.Settings) return null
+    if (state.settingsPage == SettingsPage.Import && state.showImportJsonPromptPage) {
+        return state.copy(showImportJsonPromptPage = false)
+    }
+    if (state.settingsPage != SettingsPage.Main) {
+        return state.copy(
+            settingsPage = SettingsPage.Main,
+            showImportJsonPromptPage = false,
+        )
+    }
+    val targetMain = if (state.previousMainLayer == MobileLayer.Settings) {
+        MobileLayer.Schedule
+    } else {
+        state.previousMainLayer
+    }
+    return state.copy(
+        layer = targetMain,
+        settingsPage = SettingsPage.Main,
+        showImportJsonPromptPage = false,
+    )
+}
+
+internal const val DEFAULT_START_WEEK = 1
+internal const val DEFAULT_END_WEEK = 30
+
+internal enum class LessonWeekParity {
+    ALL,
+    ODD,
+    EVEN,
+    ;
+
+    companion object {
+        fun fromRaw(raw: String?): LessonWeekParity {
+            return entries.firstOrNull { it.name == raw?.trim()?.uppercase() } ?: ALL
+        }
+    }
+}
+
 internal data class LessonUi(
     val id: String,
     val title: String,
+    val teacher: String? = null,
     val location: String?,
     val note: String?,
     val dayOfWeek: DayOfWeek,
     val startTime: LocalTime,
     val endTime: LocalTime,
+    val startWeek: Int = DEFAULT_START_WEEK,
+    val endWeek: Int = DEFAULT_END_WEEK,
+    val weekParity: LessonWeekParity = LessonWeekParity.ALL,
 )
 
 internal data class ParseOutcome(

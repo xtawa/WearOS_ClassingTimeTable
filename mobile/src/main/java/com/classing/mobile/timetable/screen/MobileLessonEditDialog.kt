@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -103,11 +104,15 @@ internal fun LessonEditDialog(
 ) {
     val context = LocalContext.current
     var title by remember(lesson.id) { mutableStateOf(lesson.title) }
+    var teacher by remember(lesson.id) { mutableStateOf(lesson.teacher.orEmpty()) }
     var location by remember(lesson.id) { mutableStateOf(lesson.location.orEmpty()) }
     var note by remember(lesson.id) { mutableStateOf(lesson.note.orEmpty()) }
     var dayValue by remember(lesson.id) { mutableIntStateOf(lesson.dayOfWeek.value) }
     var startRaw by remember(lesson.id) { mutableStateOf(lesson.startTime.format(clockFormatter)) }
     var endRaw by remember(lesson.id) { mutableStateOf(lesson.endTime.format(clockFormatter)) }
+    var startWeekRaw by remember(lesson.id) { mutableStateOf(lesson.startWeek.toString()) }
+    var endWeekRaw by remember(lesson.id) { mutableStateOf(lesson.endWeek.toString()) }
+    var weekParity by remember(lesson.id) { mutableStateOf(lesson.weekParity) }
     var scope by remember(lesson.id) { mutableStateOf(ChangeScope.Persistent) }
     var validationMessage by remember(lesson.id) { mutableStateOf<String?>(null) }
 
@@ -147,6 +152,13 @@ internal fun LessonEditDialog(
                     label = { Text(stringResource(R.string.manual_input_title_label)) },
                     singleLine = true,
                 )
+                OutlinedTextField(
+                    value = teacher,
+                    onValueChange = { teacher = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.manual_input_teacher_label)) },
+                    singleLine = true,
+                )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(DayOfWeek.values()) { day ->
                         FilterChip(
@@ -177,6 +189,36 @@ internal fun LessonEditDialog(
                     label = { Text(stringResource(R.string.manual_input_location_label)) },
                     singleLine = true,
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startWeekRaw,
+                        onValueChange = { startWeekRaw = it },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.manual_input_start_week_label)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = endWeekRaw,
+                        onValueChange = { endWeekRaw = it },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.manual_input_end_week_label)) },
+                        singleLine = true,
+                    )
+                }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(LessonWeekParity.entries) { parity ->
+                        val labelRes = when (parity) {
+                            LessonWeekParity.ALL -> R.string.week_parity_all
+                            LessonWeekParity.ODD -> R.string.week_parity_odd
+                            LessonWeekParity.EVEN -> R.string.week_parity_even
+                        }
+                        FilterChip(
+                            selected = weekParity == parity,
+                            onClick = { weekParity = parity },
+                            label = { Text(stringResource(labelRes)) },
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
@@ -200,6 +242,8 @@ internal fun LessonEditDialog(
                     val safeTitle = title.trim()
                     val start = parseManualTime(startRaw)
                     val end = parseManualTime(endRaw)
+                    val startWeek = startWeekRaw.trim().toIntOrNull()
+                    val endWeek = endWeekRaw.trim().toIntOrNull()
                     when {
                         safeTitle.isBlank() -> {
                             validationMessage = context.getString(R.string.manual_import_title_required_message)
@@ -213,15 +257,27 @@ internal fun LessonEditDialog(
                             validationMessage = context.getString(R.string.manual_import_time_order_message)
                         }
 
+                        startWeek == null || startWeek !in DEFAULT_START_WEEK..DEFAULT_END_WEEK -> {
+                            validationMessage = context.getString(R.string.week_rule_invalid_start_week_message)
+                        }
+
+                        endWeek == null || endWeek !in startWeek..DEFAULT_END_WEEK -> {
+                            validationMessage = context.getString(R.string.week_rule_invalid_end_week_message)
+                        }
+
                         else -> {
                             onSave(
                                 lesson.copy(
                                     title = safeTitle,
+                                    teacher = teacher.trim().ifBlank { null },
                                     location = location.trim().ifBlank { null },
                                     note = note.trim().ifBlank { null },
                                     dayOfWeek = DayOfWeek.of(dayValue),
                                     startTime = start,
                                     endTime = end,
+                                    startWeek = startWeek,
+                                    endWeek = endWeek,
+                                    weekParity = weekParity,
                                 ),
                                 scope,
                             )

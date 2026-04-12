@@ -17,7 +17,19 @@ class MobileCloudSyncModelsTest {
                 "updatedAt":1234,
                 "weekNumberMode":"NATURAL",
                 "semesterWeekStartDate":"",
-                "lessons":[]
+                "lessons":[
+                  {
+                    "id":"c1",
+                    "title":"Math",
+                    "teacher":"Alice",
+                    "dayOfWeek":1,
+                    "startMinute":480,
+                    "endMinute":570,
+                    "startWeek":2,
+                    "endWeek":18,
+                    "weekParity":"EVEN"
+                  }
+                ]
               },
               "mobileSettings":{
                 "settingsUpdatedAt":5678,
@@ -32,6 +44,10 @@ class MobileCloudSyncModelsTest {
         assertNotNull(doc.timetable)
         assertEquals(1234L, doc.timetable?.revision)
         assertEquals(SyncSource.UNKNOWN, doc.timetable?.source)
+        assertEquals("Alice", doc.timetable?.lessons?.firstOrNull()?.teacher)
+        assertEquals(2, doc.timetable?.lessons?.firstOrNull()?.startWeek)
+        assertEquals(18, doc.timetable?.lessons?.firstOrNull()?.endWeek)
+        assertEquals("EVEN", doc.timetable?.lessons?.firstOrNull()?.weekParity)
         assertEquals(5678L, doc.mobileSettings?.revision)
         assertEquals(SyncSource.UNKNOWN, doc.mobileSettings?.source)
     }

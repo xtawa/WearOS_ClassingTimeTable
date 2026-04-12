@@ -84,8 +84,14 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneOffset
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
+import java.time.temporal.WeekFields
+import kotlin.math.max
+import kotlin.math.min
+import java.lang.Math.floorDiv
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -155,6 +161,8 @@ internal fun parseToLessons(
     parser: IcsImportParser,
     adapter: ScheduleImportAdapter,
     zoneId: ZoneId,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
     context: Context,
 ): ParseOutcome {
     val untitled = context.getString(R.string.untitled_course)
@@ -169,7 +177,15 @@ internal fun parseToLessons(
 
     val result = parser.parse(raw)
     val drafts = adapter.toDrafts(result)
-    val lessons = drafts.mapIndexedNotNull { index, draft -> draft.toLessonUi(index, zoneId, untitled) }
+    val lessons = drafts.mapIndexedNotNull { index, draft ->
+        draft.toLessonUi(
+            index = index,
+            zoneId = zoneId,
+            untitled = untitled,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        )
+    }
         .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
 
     if (drafts.isNotEmpty() && lessons.isEmpty()) {
@@ -209,39 +225,169 @@ internal fun LessonUi.toPersistedLesson(): PersistedLesson {
     return PersistedLesson(
         id = id,
         title = title,
+        teacher = teacher,
         location = location,
         note = note,
         dayOfWeek = dayOfWeek.value,
         startMinute = startTime.hour * 60 + startTime.minute,
         endMinute = endTime.hour * 60 + endTime.minute,
+        startWeek = startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK),
+        endWeek = endWeek.coerceIn(startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK), DEFAULT_END_WEEK),
+        weekParity = weekParity.name,
     )
 }
 
 internal fun PersistedLesson.toLessonUi(): LessonUi {
     val safeEnd = if (endMinute > startMinute) endMinute else (startMinute + 90).coerceAtMost(23 * 60 + 59)
+    val safeStartWeek = startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK)
+    val safeEndWeek = endWeek.coerceIn(safeStartWeek, DEFAULT_END_WEEK)
     return LessonUi(
         id = id,
         title = title,
+        teacher = teacher,
         location = location,
         note = note,
         dayOfWeek = DayOfWeek.of(dayOfWeek.coerceIn(1, 7)),
         startTime = LocalTime.of(startMinute / 60, startMinute % 60),
         endTime = LocalTime.of(safeEnd / 60, safeEnd % 60),
+        startWeek = safeStartWeek,
+        endWeek = safeEndWeek,
+        weekParity = LessonWeekParity.fromRaw(weekParity),
     )
 }
 
-internal fun CourseDraft.toLessonUi(index: Int, zoneId: ZoneId, untitled: String): LessonUi? {
+internal data class DraftWeekRule(
+    val startWeek: Int,
+    val endWeek: Int,
+    val weekParity: LessonWeekParity,
+)
+
+internal fun CourseDraft.toLessonUi(
+    index: Int,
+    zoneId: ZoneId,
+    untitled: String,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+): LessonUi? {
     val startLocal = start?.atZone(zoneId)?.toLocalDateTime() ?: return null
     val endLocal = end?.atZone(zoneId)?.toLocalDateTime() ?: startLocal.plusMinutes(100)
+    val weekRule = inferWeekRuleFromDraft(
+        draft = this,
+        startDate = startLocal.toLocalDate(),
+        zoneId = zoneId,
+        weekNumberMode = weekNumberMode,
+        semesterWeekStartDate = semesterWeekStartDate,
+    )
     return LessonUi(
         id = "$index-${title.ifBlank { "class" }}-${startLocal.toLocalDate()}",
         title = title.ifBlank { untitled },
+        teacher = sourceRaw["X-TEACHER"]?.ifBlank { null },
         location = location,
         note = note,
         dayOfWeek = startLocal.dayOfWeek,
         startTime = startLocal.toLocalTime(),
         endTime = endLocal.toLocalTime(),
+        startWeek = weekRule.startWeek,
+        endWeek = weekRule.endWeek,
+        weekParity = weekRule.weekParity,
     )
+}
+
+internal fun inferWeekRuleFromDraft(
+    draft: CourseDraft,
+    startDate: LocalDate,
+    zoneId: ZoneId,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+): DraftWeekRule {
+    val startWeekByMode = weekIndexForMode(
+        date = startDate,
+        mode = weekNumberMode,
+        semesterWeekStartDate = semesterWeekStartDate,
+    ).coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK)
+    val recurrence = draft.recurrence.orEmpty()
+    if (recurrence.isBlank()) {
+        return DraftWeekRule(
+            startWeek = DEFAULT_START_WEEK,
+            endWeek = DEFAULT_END_WEEK,
+            weekParity = LessonWeekParity.ALL,
+        )
+    }
+
+    val properties = parseRRuleProperties(recurrence)
+    val untilDate = parseRRuleUntilDate(properties["UNTIL"], zoneId)
+    val endWeekByUntil = untilDate?.let {
+        weekIndexForMode(
+            date = it,
+            mode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        )
+    } ?: DEFAULT_END_WEEK
+    val clampedStart = startWeekByMode.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK)
+    val clampedEnd = endWeekByUntil.coerceIn(clampedStart, DEFAULT_END_WEEK)
+
+    val parity = if (
+        properties["FREQ"]?.uppercase() == "WEEKLY" &&
+        properties["INTERVAL"]?.toIntOrNull() == 2
+    ) {
+        if (clampedStart % 2 == 0) LessonWeekParity.EVEN else LessonWeekParity.ODD
+    } else {
+        LessonWeekParity.ALL
+    }
+
+    return DraftWeekRule(
+        startWeek = clampedStart,
+        endWeek = clampedEnd,
+        weekParity = parity,
+    )
+}
+
+internal fun parseRRuleProperties(rrule: String): Map<String, String> {
+    return rrule.split(';')
+        .mapNotNull { token ->
+            val key = token.substringBefore('=').trim().uppercase()
+            val value = token.substringAfter('=', "").trim()
+            if (key.isBlank() || value.isBlank()) null else key to value
+        }
+        .toMap()
+}
+
+internal fun parseRRuleUntilDate(raw: String?, zoneId: ZoneId): LocalDate? {
+    val text = raw?.trim().orEmpty()
+    if (text.isBlank()) return null
+    if (text.length == 8 && text.all { it.isDigit() }) {
+        return runCatching {
+            LocalDate.parse(text, DateTimeFormatter.BASIC_ISO_DATE)
+        }.getOrNull()
+    }
+
+    if (text.length >= 15 && text.contains('T')) {
+        val compact = text.removeSuffix("Z")
+        val normalized = compact.take(15)
+        val localDateTime = runCatching {
+            LocalDateTime.parse(normalized, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))
+        }.getOrNull() ?: return null
+        return if (text.endsWith("Z", ignoreCase = true)) {
+            localDateTime.atOffset(ZoneOffset.UTC).atZoneSameInstant(zoneId).toLocalDate()
+        } else {
+            localDateTime.toLocalDate()
+        }
+    }
+    return null
+}
+
+internal fun weekIndexForMode(
+    date: LocalDate,
+    mode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+): Int {
+    val anchor = when (mode) {
+        WeekNumberMode.SEMESTER -> semesterWeekStartDate
+        WeekNumberMode.NATURAL -> LocalDate.of(date.get(WeekFields.ISO.weekBasedYear()), 1, 4)
+            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+    val dayOffset = java.time.temporal.ChronoUnit.DAYS.between(anchor, date)
+    return floorDiv(dayOffset, 7).toInt() + 1
 }
 
 internal fun parseManualTime(raw: String): LocalTime? {

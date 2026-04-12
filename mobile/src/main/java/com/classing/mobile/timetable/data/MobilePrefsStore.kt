@@ -7,11 +7,15 @@ import org.json.JSONObject
 data class PersistedLesson(
     val id: String,
     val title: String,
+    val teacher: String?,
     val location: String?,
     val note: String?,
     val dayOfWeek: Int,
     val startMinute: Int,
     val endMinute: Int,
+    val startWeek: Int,
+    val endWeek: Int,
+    val weekParity: String,
 )
 
 data class MobileSettings(
@@ -133,15 +137,22 @@ object MobilePrefsStore {
                     val id = item.optString("id")
                     val title = item.optString("title")
                     if (id.isBlank() || title.isBlank()) continue
+                    val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
                     add(
                         PersistedLesson(
                             id = id,
                             title = title,
+                            teacher = item.optString("teacher").ifBlank { null },
                             location = item.optString("location").ifBlank { null },
                             note = item.optString("note").ifBlank { null },
                             dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
                             startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
                             endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
+                            startWeek = startWeek,
+                            endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30),
+                            weekParity = item.optString("weekParity", "ALL").uppercase().let {
+                                if (it == "ODD" || it == "EVEN") it else "ALL"
+                            },
                         ),
                     )
                 }
@@ -156,11 +167,15 @@ object MobilePrefsStore {
                 JSONObject()
                     .put("id", lesson.id)
                     .put("title", lesson.title)
+                    .put("teacher", lesson.teacher ?: "")
                     .put("location", lesson.location ?: "")
                     .put("note", lesson.note ?: "")
                     .put("dayOfWeek", lesson.dayOfWeek)
                     .put("startMinute", lesson.startMinute)
-                    .put("endMinute", lesson.endMinute),
+                    .put("endMinute", lesson.endMinute)
+                    .put("startWeek", lesson.startWeek.coerceIn(1, 30))
+                    .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                    .put("weekParity", lesson.weekParity),
             )
         }
         prefs(context).edit().putString(KEY_LESSONS_JSON, arr.toString()).apply()

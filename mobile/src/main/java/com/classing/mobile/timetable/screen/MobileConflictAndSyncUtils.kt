@@ -122,7 +122,8 @@ internal fun findConflictsWithExisting(candidate: LessonUi, existing: List<Lesso
 
 internal fun lessonsOverlap(first: LessonUi, second: LessonUi): Boolean {
     if (first.dayOfWeek != second.dayOfWeek) return false
-    return first.startTime < second.endTime && second.startTime < first.endTime
+    if (!(first.startTime < second.endTime && second.startTime < first.endTime)) return false
+    return weekRulesOverlap(first, second)
 }
 
 internal fun formatLessonConflict(conflict: LessonConflict, context: Context): String {
@@ -150,11 +151,15 @@ internal fun buildScheduleBackupJson(lessons: List<LessonUi>, zoneId: ZoneId): S
             JSONObject()
                 .put("id", lesson.id)
                 .put("title", lesson.title)
+                .put("teacher", lesson.teacher ?: "")
                 .put("dayOfWeek", lesson.dayOfWeek.value)
                 .put("startTime", lesson.startTime.format(clockFormatter))
                 .put("endTime", lesson.endTime.format(clockFormatter))
                 .put("location", lesson.location ?: "")
-                .put("note", lesson.note ?: ""),
+                .put("note", lesson.note ?: "")
+                .put("startWeek", lesson.startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK))
+                .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK), DEFAULT_END_WEEK))
+                .put("weekParity", lesson.weekParity.name),
         )
     }
     return JSONObject()
@@ -358,6 +363,11 @@ internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome
             val dayOfWeek = parseJsonDayOfWeek(item.opt("dayOfWeek") ?: item.opt("day") ?: item.opt("weekday"))
             val start = parseFlexibleTime(item.optString("startTime").ifBlank { item.optString("start") })
             val end = parseFlexibleTime(item.optString("endTime").ifBlank { item.optString("end") })
+            val teacher = item.optString("teacher").ifBlank { item.optString("instructor") }.trim().ifBlank { null }
+            val parsedStartWeek = parseWeekNumber(item.opt("startWeek") ?: item.opt("weekStart") ?: item.opt("fromWeek"))
+            val parsedEndWeek = parseWeekNumber(item.opt("endWeek") ?: item.opt("weekEnd") ?: item.opt("toWeek"))
+            val rawParity = item.opt("weekParity") ?: item.opt("parity") ?: item.opt("oddEven")
+            val weekParity = parseWeekParity(rawParity)
 
             if (title.isBlank()) {
                 warnings += context.getString(R.string.json_warning_missing_title, index + 1)
@@ -375,16 +385,32 @@ internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome
                 warnings += context.getString(R.string.json_warning_time_order, index + 1)
                 continue
             }
+            if (parsedStartWeek == null && hasJsonField(item, "startWeek", "weekStart", "fromWeek")) {
+                warnings += context.getString(R.string.json_warning_invalid_start_week, index + 1)
+            }
+            if (parsedEndWeek == null && hasJsonField(item, "endWeek", "weekEnd", "toWeek")) {
+                warnings += context.getString(R.string.json_warning_invalid_end_week, index + 1)
+            }
+            if (weekParity == null && hasJsonField(item, "weekParity", "parity", "oddEven")) {
+                warnings += context.getString(R.string.json_warning_invalid_week_parity, index + 1)
+            }
+
+            val safeStartWeek = (parsedStartWeek ?: DEFAULT_START_WEEK).coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK)
+            val safeEndWeek = (parsedEndWeek ?: DEFAULT_END_WEEK).coerceIn(safeStartWeek, DEFAULT_END_WEEK)
 
             add(
                 LessonUi(
                     id = "json-${System.currentTimeMillis()}-$index-${title.hashCode()}",
                     title = title,
+                    teacher = teacher,
                     location = item.optString("location").ifBlank { item.optString("classroom") }.ifBlank { null },
                     note = item.optString("note").ifBlank { item.optString("description") }.ifBlank { null },
                     dayOfWeek = dayOfWeek,
                     startTime = start,
                     endTime = end,
+                    startWeek = safeStartWeek,
+                    endWeek = safeEndWeek,
+                    weekParity = weekParity ?: LessonWeekParity.ALL,
                 ),
             )
         }
@@ -410,6 +436,42 @@ internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome
         message = message,
         warnings = warnings.take(8),
     )
+}
+
+private fun hasJsonField(item: JSONObject, vararg names: String): Boolean {
+    return names.any { item.has(it) }
+}
+
+private fun parseWeekNumber(raw: Any?): Int? {
+    return when (raw) {
+        is Number -> raw.toInt()
+        is String -> raw.trim().toIntOrNull()
+        else -> null
+    }
+}
+
+private fun parseWeekParity(raw: Any?): LessonWeekParity? {
+    val normalized = when (raw) {
+        is Number -> when (raw.toInt()) {
+            1 -> "ODD"
+            2 -> "EVEN"
+            else -> "ALL"
+        }
+        is String -> raw.trim().uppercase()
+        else -> return null
+    }
+    return when (normalized) {
+        "ALL", "BOTH", "FULL", "每周", "每週", "全部" -> LessonWeekParity.ALL
+        "ODD", "SINGLE", "奇数周", "奇數週", "单周", "單週" -> LessonWeekParity.ODD
+        "EVEN", "DOUBLE", "偶数周", "偶數週", "双周", "雙週" -> LessonWeekParity.EVEN
+        else -> null
+    }
+}
+
+private fun weekRulesOverlap(first: LessonUi, second: LessonUi): Boolean {
+    if (first.endWeek < second.startWeek || second.endWeek < first.startWeek) return false
+    if (first.weekParity == LessonWeekParity.ALL || second.weekParity == LessonWeekParity.ALL) return true
+    return first.weekParity == second.weekParity
 }
 
 
