@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.reminder.KeepAliveLevel
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -83,6 +84,9 @@ internal fun SettingsLayer(
     showWeekend: Boolean,
     reminderEnabled: Boolean,
     reminderMinutes: Int,
+    keepAliveLevel: KeepAliveLevel,
+    experimentalAccessibilityKeepAliveEnabled: Boolean,
+    keepAliveStatus: String,
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
@@ -92,6 +96,12 @@ internal fun SettingsLayer(
     onToggleWeekend: (Boolean) -> Unit,
     onToggleReminder: (Boolean) -> Unit,
     onReminderMinutesChange: (Int) -> Unit,
+    onKeepAliveLevelChange: (KeepAliveLevel) -> Unit,
+    onToggleExperimentalAccessibilityKeepAlive: (Boolean) -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onOpenBatteryOptimizationSettings: () -> Unit,
+    onOpenExactAlarmSettings: () -> Unit,
+    onRefreshKeepAliveStatus: () -> Unit,
     onClearAllSchedules: () -> Unit,
 ) {
     Column(
@@ -154,6 +164,90 @@ internal fun SettingsLayer(
                     onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
                     valueRange = 5f..60f,
                 )
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "提醒保活强度",
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = keepAliveLevel == KeepAliveLevel.ECO,
+                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.ECO) },
+                        label = { Text("省电") },
+                    )
+                    FilterChip(
+                        selected = keepAliveLevel == KeepAliveLevel.BALANCED,
+                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.BALANCED) },
+                        label = { Text("均衡") },
+                    )
+                    FilterChip(
+                        selected = keepAliveLevel == KeepAliveLevel.AGGRESSIVE,
+                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.AGGRESSIVE) },
+                        label = { Text("增强") },
+                    )
+                }
+                Text(
+                    text = keepAliveStatus,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "实验功能：无障碍保活仅用于内测/侧载，请勿用于 Play 上架版本。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("启用实验无障碍保活", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = experimentalAccessibilityKeepAliveEnabled,
+                        onCheckedChange = onToggleExperimentalAccessibilityKeepAlive,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onOpenAccessibilitySettings,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) { Text("无障碍设置") }
+                    Button(
+                        onClick = onRefreshKeepAliveStatus,
+                        shape = RoundedCornerShape(999.dp),
+                    ) { Text("刷新状态") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onOpenBatteryOptimizationSettings,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) { Text("电池白名单") }
+                    Button(
+                        onClick = onOpenExactAlarmSettings,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) { Text("精确闹钟") }
+                }
             }
         }
 

@@ -33,6 +33,7 @@ import java.time.temporal.WeekFields
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -150,6 +151,16 @@ class MobileSyncListenerService : WearableListenerService() {
                     decision = "applied",
                     reason = "applied revision=${incomingStamp.revision} source=${incomingStamp.source.wireValue}",
                 )
+                val app = applicationContext as? ClassingTimetableApplication
+                val pref = app?.appContainer?.settingsRepository?.observePreferences()
+                val current = pref?.firstOrNull()
+                if (current != null) {
+                    com.classing.wear.timetable.worker.WearReminderAlarmScheduler.refresh(
+                        context = applicationContext,
+                        enabled = current.remindersEnabled,
+                        level = current.keepAliveLevel,
+                    )
+                }
             }
 
             WearSurfaceUpdateRequester.requestAll(applicationContext)

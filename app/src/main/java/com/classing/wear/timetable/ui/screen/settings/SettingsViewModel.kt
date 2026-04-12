@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.wear.timetable.core.i18n.WearI18n
+import com.classing.wear.timetable.domain.model.KeepAliveLevel
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
@@ -54,7 +55,24 @@ class SettingsViewModel(
     fun toggleReminder(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setReminderEnabled(enabled)
-            reminderWorkController.setEnabled(enabled)
+            val level = _uiState.value.preferences.keepAliveLevel
+            reminderWorkController.setPolicy(enabled = enabled, level = level)
+            notifyCloudSettingsChanged()
+        }
+    }
+
+    fun setKeepAliveLevel(level: KeepAliveLevel) {
+        viewModelScope.launch {
+            settingsRepository.setKeepAliveLevel(level)
+            val remindersEnabled = _uiState.value.preferences.remindersEnabled
+            reminderWorkController.setPolicy(enabled = remindersEnabled, level = level)
+            notifyCloudSettingsChanged()
+        }
+    }
+
+    fun setExperimentalAccessibilityKeepAliveEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setExperimentalAccessibilityKeepAliveEnabled(enabled)
             notifyCloudSettingsChanged()
         }
     }

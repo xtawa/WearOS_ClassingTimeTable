@@ -89,6 +89,14 @@ object WearI18n {
         }
     }
 
+    fun countdownInProgress(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "进行中"
+            Lang.ZH_TW -> "進行中"
+            Lang.EN -> "In progress"
+        }
+    }
+
     fun countdownInHoursAndMinutes(hours: Long, minutes: Long): String {
         return when (currentLang()) {
             Lang.ZH_CN -> "${hours}小时${minutes}分后"

@@ -107,6 +107,7 @@ internal fun parseLessonArray(raw: String): JSONArray? {
             root.optJSONArray("courses")
                 ?: root.optJSONArray("lessons")
                 ?: root.optJSONArray("events")
+                ?: root.optJSONObject("timetable")?.optJSONArray("lessons")
         }.getOrNull()
 }
 

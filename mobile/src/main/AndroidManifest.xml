@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <queries>
         <package android:name="com.google.android.wearable.app" />
         <package android:name="com.google.android.wearable.app.cn" />
@@ -25,6 +27,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".reminder.LessonReminderAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
 
         <service
             android:name=".sync.MobileSyncAckListenerService"
@@ -67,6 +74,19 @@
                     android:host="*"
                     android:pathPrefix="/classing/phone_cloud_sync_request" />
             </intent-filter>
+        </service>
+
+        <service
+            android:name=".accessibility.KeepAliveAccessibilityService"
+            android:enabled="true"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/keepalive_accessibility_service" />
         </service>
     </application>
 </manifest>

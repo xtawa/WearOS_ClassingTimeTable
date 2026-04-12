@@ -20,6 +20,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -136,6 +137,11 @@ object WearCloudSyncCoordinator {
                 )
             ) {
                 settingsRepository.applyWearSettingsSnapshot(wearSettings.settingsPayload)
+                val pref = settingsRepository.observePreferences().first()
+                app.appContainer.reminderWorkController.setPolicy(
+                    enabled = pref.remindersEnabled,
+                    level = pref.keepAliveLevel,
+                )
                 WearSyncStampStore.save(context, SyncDomain.WEAR_SETTINGS, incomingStamp)
                 WearSyncStampStore.saveDecision(
                     context = context,

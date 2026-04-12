@@ -22,6 +22,8 @@ data class MobileSettings(
     val showWeekend: Boolean,
     val reminderEnabled: Boolean,
     val reminderMinutes: Int,
+    val keepAliveLevel: String,
+    val experimentalAccessibilityKeepAliveEnabled: Boolean,
     val rawIcs: String,
     val parseMessage: String,
     val wearSyncMode: String,
@@ -42,6 +44,8 @@ object MobilePrefsStore {
     private const val KEY_SHOW_WEEKEND = "show_weekend"
     private const val KEY_REMINDER_ENABLED = "reminder_enabled"
     private const val KEY_REMINDER_MINUTES = "reminder_minutes"
+    private const val KEY_KEEP_ALIVE_LEVEL = "keep_alive_level"
+    private const val KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED = "experimental_accessibility_keep_alive_enabled"
     private const val KEY_RAW_ICS = "raw_ics"
     private const val KEY_PARSE_MESSAGE = "parse_message"
     private const val KEY_WEAR_SYNC_MODE = "wear_sync_mode"
@@ -69,6 +73,8 @@ object MobilePrefsStore {
             showWeekend = p.getBoolean(KEY_SHOW_WEEKEND, true),
             reminderEnabled = p.getBoolean(KEY_REMINDER_ENABLED, false),
             reminderMinutes = p.getInt(KEY_REMINDER_MINUTES, 15).coerceIn(5, 60),
+            keepAliveLevel = p.getString(KEY_KEEP_ALIVE_LEVEL, "BALANCED") ?: "BALANCED",
+            experimentalAccessibilityKeepAliveEnabled = p.getBoolean(KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED, false),
             rawIcs = p.getString(KEY_RAW_ICS, "") ?: "",
             parseMessage = p.getString(KEY_PARSE_MESSAGE, "") ?: "",
             wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "WEARABLE_API") ?: "WEARABLE_API",
@@ -90,6 +96,8 @@ object MobilePrefsStore {
             .putBoolean(KEY_SHOW_WEEKEND, settings.showWeekend)
             .putBoolean(KEY_REMINDER_ENABLED, settings.reminderEnabled)
             .putInt(KEY_REMINDER_MINUTES, settings.reminderMinutes.coerceIn(5, 60))
+            .putString(KEY_KEEP_ALIVE_LEVEL, settings.keepAliveLevel)
+            .putBoolean(KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED, settings.experimentalAccessibilityKeepAliveEnabled)
             .putString(KEY_RAW_ICS, settings.rawIcs)
             .putString(KEY_PARSE_MESSAGE, settings.parseMessage)
             .putString(KEY_WEAR_SYNC_MODE, settings.wearSyncMode)

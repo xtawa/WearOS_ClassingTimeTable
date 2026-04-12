@@ -15,12 +15,15 @@ import com.classing.wear.timetable.domain.model.Semester
 import com.classing.wear.timetable.domain.model.WeekSchedule
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.usecase.ScheduleAssembler
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class DefaultScheduleRepository(
     private val semesterDao: SemesterDao,
@@ -39,10 +42,10 @@ class DefaultScheduleRepository(
     override fun observeTodayLessons(today: LocalDate): Flow<List<LessonOccurrence>> {
         return observeActiveSemester().flatMapLatest { semester ->
             if (semester == null) return@flatMapLatest flowOf(emptyList())
-            observeScheduleContext(semester).map { ctx ->
+            combine(observeScheduleContext(semester), minuteTicker()) { ctx, now ->
                 assembler.buildDayOccurrences(
-                    date = today,
-                    now = timeProvider.nowDateTime(),
+                    date = now.toLocalDate(),
+                    now = now,
                     semester = semester,
                     courses = ctx.courses,
                     sessions = ctx.sessions,
@@ -80,9 +83,9 @@ class DefaultScheduleRepository(
     override fun observeNextLesson(nowDate: LocalDate): Flow<NextLessonHint> {
         return observeActiveSemester().flatMapLatest { semester ->
             if (semester == null) return@flatMapLatest flowOf(NextLessonHint(null, null))
-            observeScheduleContext(semester).map { ctx ->
+            combine(observeScheduleContext(semester), minuteTicker()) { ctx, now ->
                 assembler.findNextLessonHint(
-                    now = timeProvider.nowDateTime(),
+                    now = now,
                     semester = semester,
                     courses = ctx.courses,
                     sessions = ctx.sessions,
@@ -102,6 +105,15 @@ class DefaultScheduleRepository(
 
     override fun observeCourseDetail(courseId: Long): Flow<Course?> {
         return courseDao.observeById(courseId).map { it?.asDomain() }
+    }
+
+    private fun minuteTicker(): Flow<LocalDateTime> = flow {
+        while (true) {
+            val now = timeProvider.nowDateTime()
+            emit(now)
+            val delayMillis = (60 - now.second).coerceAtLeast(1) * 1_000L
+            delay(delayMillis)
+        }
     }
 
     private fun observeScheduleContext(semester: Semester): Flow<ScheduleContext> {

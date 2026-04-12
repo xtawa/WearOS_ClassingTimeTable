@@ -1,5 +1,6 @@
-﻿package com.classing.wear.timetable.domain.repository
+package com.classing.wear.timetable.domain.repository
 
+import com.classing.wear.timetable.domain.model.KeepAliveLevel
 import kotlinx.coroutines.flow.Flow
 
 data class UserPreferences(
@@ -8,6 +9,8 @@ data class UserPreferences(
     val autoSync: Boolean = true,
     val showWeekend: Boolean = true,
     val showCompletedToday: Boolean = false,
+    val keepAliveLevel: KeepAliveLevel = KeepAliveLevel.BALANCED,
+    val experimentalAccessibilityKeepAliveEnabled: Boolean = false,
     val tileShowTeacher: Boolean = true,
     val tileShowLocation: Boolean = true,
     val tileShowCountdown: Boolean = true,
@@ -25,6 +28,8 @@ interface SettingsRepository {
     suspend fun setAutoSync(enabled: Boolean)
     suspend fun setShowWeekend(enabled: Boolean)
     suspend fun setShowCompletedToday(enabled: Boolean)
+    suspend fun setKeepAliveLevel(level: KeepAliveLevel)
+    suspend fun setExperimentalAccessibilityKeepAliveEnabled(enabled: Boolean)
     suspend fun setTileShowTeacher(enabled: Boolean)
     suspend fun setTileShowLocation(enabled: Boolean)
     suspend fun setTileShowCountdown(enabled: Boolean)

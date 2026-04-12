@@ -189,6 +189,8 @@ fun MobileSettings.toMobileSettingsSnapshotJson(): JSONObject {
         .put("showWeekend", showWeekend)
         .put("reminderEnabled", reminderEnabled)
         .put("reminderMinutes", reminderMinutes)
+        .put("keepAliveLevel", keepAliveLevel)
+        .put("experimentalAccessibilityKeepAliveEnabled", experimentalAccessibilityKeepAliveEnabled)
         .put("wearSyncMode", wearSyncMode)
         .put("weekNumberMode", weekNumberMode)
         .put("semesterWeekStartDate", semesterWeekStartDate)

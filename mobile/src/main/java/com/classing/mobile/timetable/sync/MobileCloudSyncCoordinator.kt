@@ -9,6 +9,8 @@ import com.classing.shared.sync.SyncStamp
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
+import com.xtawa.classingtime.reminder.KeepAliveLevel
+import com.xtawa.classingtime.reminder.ReminderScheduler
 import org.json.JSONObject
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -201,6 +203,11 @@ object MobileCloudSyncCoordinator {
                     showWeekend = settingsObj.optBoolean("showWeekend", current.showWeekend),
                     reminderEnabled = settingsObj.optBoolean("reminderEnabled", current.reminderEnabled),
                     reminderMinutes = settingsObj.optInt("reminderMinutes", current.reminderMinutes),
+                    keepAliveLevel = settingsObj.optString("keepAliveLevel", current.keepAliveLevel),
+                    experimentalAccessibilityKeepAliveEnabled = settingsObj.optBoolean(
+                        "experimentalAccessibilityKeepAliveEnabled",
+                        current.experimentalAccessibilityKeepAliveEnabled,
+                    ),
                     wearSyncMode = settingsObj.optString("wearSyncMode", current.wearSyncMode),
                     weekNumberMode = settingsObj.optString("weekNumberMode", current.weekNumberMode),
                     semesterWeekStartDate = settingsObj.optString("semesterWeekStartDate", current.semesterWeekStartDate),
@@ -208,6 +215,13 @@ object MobileCloudSyncCoordinator {
                 ),
             )
             MobilePrefsStore.markLocalMobileSettingsUpdated(context, remoteMobileSettings.revision)
+            val applied = MobilePrefsStore.loadSettings(context)
+            ReminderScheduler.sync(
+                context = context,
+                enabled = applied.reminderEnabled,
+                keepAliveLevel = KeepAliveLevel.fromRaw(applied.keepAliveLevel),
+                reminderMinutes = applied.reminderMinutes,
+            )
         }
 
         val remoteWearSettings = remote.wearSettings

@@ -206,7 +206,7 @@ private fun HeaderInfoCard(
 @Composable
 private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
     val lesson = hint.lesson
-    val countdown = TimeFormatters.formatCountdown(hint.countdown)
+    val countdown = TimeFormatters.formatCountdown(hint.countdown, lesson?.status)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)),
     ) {

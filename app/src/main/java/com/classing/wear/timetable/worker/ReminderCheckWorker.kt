@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -37,8 +38,38 @@ class ReminderCheckWorker(
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
         val notified = loadNotifiedSet(today).toMutableSet()
+        val directReminderKey = inputData.getString(KEY_DIRECT_REMINDER_KEY).orEmpty()
+        val directLessonId = inputData.getString(KEY_DIRECT_LESSON_ID).orEmpty()
+        val directTitle = inputData.getString(KEY_DIRECT_LESSON_TITLE).orEmpty()
+        val directStartMinute = inputData.getInt(KEY_DIRECT_START_MINUTE, -1)
+        val directLocation = inputData.getString(KEY_DIRECT_LESSON_LOCATION)
+        if (directReminderKey.isNotBlank() &&
+            directLessonId.isNotBlank() &&
+            directTitle.isNotBlank() &&
+            directStartMinute >= 0 &&
+            directReminderKey !in notified
+        ) {
+            if (!canNotify()) return Result.success()
+            ensureChannel()
+            postNotification(
+                lesson = SyncedLesson(
+                    id = directLessonId,
+                    title = directTitle,
+                    dayOfWeek = now.dayOfWeek.value,
+                    startTime = LocalTime.of(directStartMinute / 60, directStartMinute % 60),
+                    location = directLocation,
+                ),
+                notificationId = directReminderKey.hashCode(),
+            )
+            notified += directReminderKey
+            saveNotifiedSet(today, notified)
+        }
+
         val due = ReminderCheckLogic.dueLessons(lessons, now, notified)
-        if (due.isEmpty()) return Result.success()
+        if (due.isEmpty()) {
+            refreshAlarm()
+            return Result.success()
+        }
 
         if (!canNotify()) return Result.success()
         ensureChannel()
@@ -49,6 +80,7 @@ class ReminderCheckWorker(
             notified += key
         }
         saveNotifiedSet(today, notified)
+        refreshAlarm()
         return Result.success()
     }
 
@@ -155,5 +187,23 @@ class ReminderCheckWorker(
         private const val PREF_NAME = "wear_reminder_check"
         private const val KEY_NOTIFIED_DATE = "notified_date"
         private const val KEY_NOTIFIED_KEYS = "notified_keys"
+
+        const val KEY_DIRECT_REMINDER_KEY = "direct_reminder_key"
+        const val KEY_DIRECT_LESSON_ID = "direct_lesson_id"
+        const val KEY_DIRECT_LESSON_TITLE = "direct_lesson_title"
+        const val KEY_DIRECT_LESSON_LOCATION = "direct_lesson_location"
+        const val KEY_DIRECT_START_MINUTE = "direct_start_minute"
+    }
+
+    private fun refreshAlarm() {
+        val app = applicationContext as? com.classing.wear.timetable.ClassingTimetableApplication ?: return
+        val pref = runCatching {
+            kotlinx.coroutines.runBlocking { app.appContainer.settingsRepository.observePreferences().first() }
+        }.getOrNull() ?: return
+        WearReminderAlarmScheduler.refresh(
+            context = applicationContext,
+            enabled = pref.remindersEnabled,
+            level = pref.keepAliveLevel,
+        )
     }
 }

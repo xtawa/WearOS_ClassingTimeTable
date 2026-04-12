@@ -13,8 +13,8 @@ data class SyncedLesson(
 )
 
 object ReminderCheckLogic {
-    private const val LEAD_MINUTES = 15
-    private const val WINDOW_MINUTES = 15
+    internal const val LEAD_MINUTES = 15
+    internal const val WINDOW_MINUTES = 15
 
     fun dueLessons(
         lessons: List<SyncedLesson>,

@@ -3,6 +3,7 @@ package com.classing.wear.timetable.widget
 import com.classing.wear.timetable.core.AppContainer
 import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeFormatters
+import com.classing.wear.timetable.domain.model.LessonStatus
 import kotlinx.coroutines.flow.first
 import java.time.Duration
 import java.time.LocalTime
@@ -64,7 +65,7 @@ class NextClassSnapshotProvider(
             ""
         }
         val countdown = if (preferences.tileShowCountdown) {
-            formatCountdown(next.countdown)
+            formatCountdown(next.countdown, lesson.status)
         } else {
             ""
         }
@@ -73,6 +74,7 @@ class NextClassSnapshotProvider(
             title = lesson.course.name,
             timeRange = timeRange,
             countdown = next.countdown,
+            status = lesson.status,
             preferCountdown = preferences.tileShowCountdown,
         )
         val detailParts = buildList {
@@ -113,10 +115,11 @@ class NextClassSnapshotProvider(
         title: String,
         timeRange: String,
         countdown: Duration?,
+        status: LessonStatus,
         preferCountdown: Boolean,
     ): String {
         if (preferCountdown) {
-            val shortCountdown = formatShortCountdown(countdown)
+            val shortCountdown = formatShortCountdown(countdown, status)
             if (shortCountdown.isNotBlank()) return "$shortCountdown ${title.take(6)}"
         }
         if (timeRange.isNotBlank()) {
@@ -126,7 +129,8 @@ class NextClassSnapshotProvider(
         return "$timeText ${title.take(8)}"
     }
 
-    private fun formatCountdown(countdown: Duration?): String {
+    private fun formatCountdown(countdown: Duration?, status: LessonStatus): String {
+        if (status == LessonStatus.IN_PROGRESS) return WearI18n.countdownInProgress()
         val minutes = (countdown?.toMinutes() ?: 0L).coerceAtLeast(0L)
         if (minutes <= 0L) return WearI18n.countdownSoon()
         if (minutes >= 60L) {
@@ -137,7 +141,8 @@ class NextClassSnapshotProvider(
         return WearI18n.countdownInMinutes(minutes)
     }
 
-    private fun formatShortCountdown(countdown: Duration?): String {
+    private fun formatShortCountdown(countdown: Duration?, status: LessonStatus): String {
+        if (status == LessonStatus.IN_PROGRESS) return WearI18n.countdownInProgress()
         val minutes = (countdown?.toMinutes() ?: 0L).coerceAtLeast(0L)
         if (minutes <= 0L) return "0m"
         if (minutes >= 60L) {

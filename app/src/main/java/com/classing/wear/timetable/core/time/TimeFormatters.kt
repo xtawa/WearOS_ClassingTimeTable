@@ -1,6 +1,7 @@
 ﻿package com.classing.wear.timetable.core.time
 
 import com.classing.wear.timetable.core.i18n.WearI18n
+import com.classing.wear.timetable.domain.model.LessonStatus
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -49,8 +50,9 @@ object TimeFormatters {
         return "$trimmed $timeRange"
     }
 
-    fun formatCountdown(duration: Duration?): String {
+    fun formatCountdown(duration: Duration?, status: LessonStatus? = null): String {
         if (duration == null) return ""
+        if (status == LessonStatus.IN_PROGRESS) return WearI18n.countdownInProgress()
         val minutes = duration.toMinutes()
         if (minutes <= 0) return WearI18n.countdownSoon()
         val h = minutes / 60

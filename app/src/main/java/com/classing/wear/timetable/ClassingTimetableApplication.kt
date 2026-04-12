@@ -21,7 +21,10 @@ class ClassingTimetableApplication : Application(), Configuration.Provider {
         appScope.launch {
             val preferences = appContainer.settingsRepository.observePreferences().first()
             appContainer.autoSyncController.setEnabled(preferences.autoSync)
-            appContainer.reminderWorkController.setEnabled(preferences.remindersEnabled)
+            appContainer.reminderWorkController.setPolicy(
+                enabled = preferences.remindersEnabled,
+                level = preferences.keepAliveLevel,
+            )
         }
     }
 

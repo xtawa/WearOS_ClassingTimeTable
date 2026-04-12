@@ -18,7 +18,6 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import org.json.JSONArray
 
 class LessonReminderWorker(
     appContext: Context,
@@ -34,17 +33,40 @@ class LessonReminderWorker(
 
         val now = LocalDateTime.now()
         val nowMinute = now.hour * 60 + now.minute
-        val today = now.dayOfWeek.value
         val todayKey = now.toLocalDate().toString()
-        val alreadyNotified = loadNotifiedSet(applicationContext, todayKey).toMutableSet()
+        val alreadyNotified = ReminderDedupStore.load(applicationContext, todayKey).toMutableSet()
 
         var sent = 0
+        val directReminderKey = inputData.getString(KEY_DIRECT_REMINDER_KEY).orEmpty()
+        val directLessonId = inputData.getString(KEY_DIRECT_LESSON_ID).orEmpty()
+        val directTitle = inputData.getString(KEY_DIRECT_LESSON_TITLE).orEmpty()
+        val directStartMinute = inputData.getInt(KEY_DIRECT_START_MINUTE, -1)
+        val directLocation = inputData.getString(KEY_DIRECT_LESSON_LOCATION)
+        if (directReminderKey.isNotBlank() &&
+            directLessonId.isNotBlank() &&
+            directTitle.isNotBlank() &&
+            directStartMinute >= 0 &&
+            directReminderKey !in alreadyNotified
+        ) {
+            postNotification(
+                context = applicationContext,
+                title = directTitle,
+                location = directLocation,
+                startMinute = directStartMinute,
+                leadMinutes = settings.reminderMinutes,
+                notificationId = directReminderKey.hashCode(),
+            )
+            alreadyNotified += directReminderKey
+            sent += 1
+        }
+
+        val today = now.dayOfWeek.value
         lessons.filter { it.dayOfWeek == today }.forEach { lesson ->
             val triggerMinute = lesson.startMinute - settings.reminderMinutes
             if (triggerMinute < 0) return@forEach
 
             val inWindow = nowMinute in triggerMinute until (triggerMinute + CHECK_WINDOW_MINUTES)
-            val uniqueKey = "$todayKey:${lesson.id}:${lesson.startMinute}"
+            val uniqueKey = ReminderRuntime.reminderKey(now.toLocalDate(), lesson.id, lesson.startMinute)
             if (!inWindow || alreadyNotified.contains(uniqueKey)) return@forEach
 
             postNotification(
@@ -59,7 +81,12 @@ class LessonReminderWorker(
             sent += 1
         }
 
-        saveNotifiedSet(applicationContext, todayKey, alreadyNotified)
+        ReminderDedupStore.save(applicationContext, todayKey, alreadyNotified)
+        ReminderScheduler.refreshNextAlarm(
+            context = applicationContext,
+            keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel),
+            reminderMinutes = settings.reminderMinutes,
+        )
         return if (sent >= 0) Result.success() else Result.retry()
     }
 
@@ -123,40 +150,16 @@ class LessonReminderWorker(
         manager.createNotificationChannel(channel)
     }
 
-    private fun loadNotifiedSet(context: Context, todayKey: String): Set<String> {
-        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        val date = prefs.getString(KEY_NOTIFIED_DATE, null)
-        if (date != todayKey) return emptySet()
-
-        val raw = prefs.getString(KEY_NOTIFIED_KEYS, null) ?: return emptySet()
-        return runCatching {
-            val arr = JSONArray(raw)
-            buildSet {
-                for (i in 0 until arr.length()) {
-                    add(arr.optString(i))
-                }
-            }
-        }.getOrDefault(emptySet())
-    }
-
-    private fun saveNotifiedSet(context: Context, todayKey: String, keys: Set<String>) {
-        val arr = JSONArray()
-        keys.forEach { arr.put(it) }
-        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_NOTIFIED_DATE, todayKey)
-            .putString(KEY_NOTIFIED_KEYS, arr.toString())
-            .apply()
-    }
-
     companion object {
         private const val CHANNEL_ID = "course_reminder_channel"
         private const val CHECK_WINDOW_MINUTES = 15
         private val clockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-        private const val PREF_NAME = "mobile_timetable_prefs"
-        private const val KEY_NOTIFIED_DATE = "reminder_notified_date"
-        private const val KEY_NOTIFIED_KEYS = "reminder_notified_keys"
+        const val KEY_DIRECT_REMINDER_KEY = "direct_reminder_key"
+        const val KEY_DIRECT_LESSON_ID = "direct_lesson_id"
+        const val KEY_DIRECT_LESSON_TITLE = "direct_lesson_title"
+        const val KEY_DIRECT_LESSON_LOCATION = "direct_lesson_location"
+        const val KEY_DIRECT_START_MINUTE = "direct_start_minute"
     }
 }
 

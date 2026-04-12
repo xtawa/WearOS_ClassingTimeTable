@@ -6,6 +6,7 @@ import com.xtawa.classingtime.R
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.reminder.ReminderScheduler
+import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -35,6 +36,8 @@ internal fun persistSettings(
     showWeekend: Boolean,
     reminderEnabled: Boolean,
     reminderMinutes: Int,
+    keepAliveLevel: KeepAliveLevel,
+    experimentalAccessibilityKeepAliveEnabled: Boolean,
     rawIcs: String,
     parseMessage: String,
     wearSyncMode: WearSyncMode,
@@ -55,6 +58,8 @@ internal fun persistSettings(
             showWeekend = showWeekend,
             reminderEnabled = reminderEnabled,
             reminderMinutes = reminderMinutes,
+            keepAliveLevel = keepAliveLevel.name,
+            experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
             rawIcs = rawIcs,
             parseMessage = parseMessage,
             wearSyncMode = wearSyncMode.name,
@@ -76,6 +81,13 @@ internal fun persistSettings(
 internal fun persistLessons(context: Context, lessons: List<LessonUi>) {
     MobilePrefsStore.saveLessons(context, lessons.map { it.toPersistedLesson() })
     MobilePrefsStore.markLocalTimetableUpdated(context)
+    val settings = MobilePrefsStore.loadSettings(context)
+    ReminderScheduler.sync(
+        context = context,
+        enabled = settings.reminderEnabled,
+        keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel),
+        reminderMinutes = settings.reminderMinutes,
+    )
 }
 
 internal fun applyImportedLessons(importLessons: List<LessonUi>): List<LessonUi> {
@@ -96,7 +108,13 @@ internal fun removeLesson(lessons: List<LessonUi>, targetLesson: LessonUi): List
 }
 
 internal fun syncReminderWork(context: Context, reminderEnabled: Boolean) {
-    ReminderScheduler.sync(context, reminderEnabled)
+    val settings = MobilePrefsStore.loadSettings(context)
+    ReminderScheduler.sync(
+        context = context,
+        enabled = reminderEnabled,
+        keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel),
+        reminderMinutes = settings.reminderMinutes,
+    )
 }
 
 internal fun resolveSyncAckUpdate(

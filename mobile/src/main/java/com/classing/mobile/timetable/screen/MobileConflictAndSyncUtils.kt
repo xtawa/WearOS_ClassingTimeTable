@@ -361,8 +361,10 @@ internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome
                 item.optString("name").ifBlank { item.optString("courseName") }
             }.trim()
             val dayOfWeek = parseJsonDayOfWeek(item.opt("dayOfWeek") ?: item.opt("day") ?: item.opt("weekday"))
-            val start = parseFlexibleTime(item.optString("startTime").ifBlank { item.optString("start") })
-            val end = parseFlexibleTime(item.optString("endTime").ifBlank { item.optString("end") })
+            val startRaw = item.optString("startTime").ifBlank { item.optString("start") }
+            val endRaw = item.optString("endTime").ifBlank { item.optString("end") }
+            val start = parseFlexibleTimeWithMinuteFallback(startRaw, item.opt("startMinute"))
+            val end = parseFlexibleTimeWithMinuteFallback(endRaw, item.opt("endMinute"))
             val teacher = item.optString("teacher").ifBlank { item.optString("instructor") }.trim().ifBlank { null }
             val parsedStartWeek = parseWeekNumber(item.opt("startWeek") ?: item.opt("weekStart") ?: item.opt("fromWeek"))
             val parsedEndWeek = parseWeekNumber(item.opt("endWeek") ?: item.opt("weekEnd") ?: item.opt("toWeek"))
@@ -448,6 +450,24 @@ private fun parseWeekNumber(raw: Any?): Int? {
         is String -> raw.trim().toIntOrNull()
         else -> null
     }
+}
+
+private fun parseFlexibleTimeWithMinuteFallback(primaryRaw: String, minuteRaw: Any?): LocalTime? {
+    parseFlexibleTime(primaryRaw)?.let { return it }
+    val minuteOfDay = parseMinuteOfDay(minuteRaw) ?: return null
+    val hour = minuteOfDay / 60
+    val minute = minuteOfDay % 60
+    val fallbackText = "%02d:%02d".format(hour, minute)
+    return parseFlexibleTime(fallbackText)
+}
+
+private fun parseMinuteOfDay(raw: Any?): Int? {
+    val parsed = when (raw) {
+        is Number -> raw.toInt()
+        is String -> raw.trim().toIntOrNull()
+        else -> null
+    } ?: return null
+    return parsed.takeIf { it in 0 until (24 * 60) }
 }
 
 private fun parseWeekParity(raw: Any?): LessonWeekParity? {

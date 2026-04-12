@@ -4,7 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -90,6 +92,8 @@ import com.xtawa.classingtime.R
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
+import com.xtawa.classingtime.reminder.KeepAliveLevel
+import com.xtawa.classingtime.reminder.ReminderRuntime
 import com.xtawa.classingtime.reminder.ReminderScheduler
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
@@ -137,6 +141,9 @@ fun MobileTimetableScreen() {
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
+    var keepAliveLevel by remember { mutableStateOf(KeepAliveLevel.BALANCED) }
+    var experimentalAccessibilityKeepAliveEnabled by remember { mutableStateOf(false) }
+    var keepAliveStatusTick by remember { mutableIntStateOf(0) }
     var weekNumberMode by remember { mutableStateOf(WeekNumberMode.NATURAL) }
     var semesterWeekStartDate by remember { mutableStateOf(LocalDate.now()) }
     var weekStartDay by remember { mutableStateOf(DayOfWeek.MONDAY) }
@@ -214,6 +221,8 @@ fun MobileTimetableScreen() {
             showWeekend = showWeekend,
             reminderEnabled = reminderEnabled,
             reminderMinutes = reminderMinutes,
+            keepAliveLevel = keepAliveLevel,
+            experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
             rawIcs = rawIcs,
             parseMessage = parseMessage,
             wearSyncMode = wearSyncMode,
@@ -267,7 +276,12 @@ fun MobileTimetableScreen() {
     }
 
     fun syncReminderWork() {
-        com.xtawa.classingtime.screen.syncReminderWork(context, reminderEnabled)
+        ReminderScheduler.sync(
+            context = context,
+            enabled = reminderEnabled,
+            keepAliveLevel = keepAliveLevel,
+            reminderMinutes = reminderMinutes,
+        )
     }
 
     suspend fun runCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
@@ -470,6 +484,8 @@ fun MobileTimetableScreen() {
         showWeekend = settings.showWeekend
         reminderEnabled = settings.reminderEnabled
         reminderMinutes = settings.reminderMinutes
+        keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel)
+        experimentalAccessibilityKeepAliveEnabled = settings.experimentalAccessibilityKeepAliveEnabled
         rawIcs = settings.rawIcs.takeUnless { it.contains("PRODID:-//Classing//Schedule Demo//EN") }.orEmpty()
         parseMessage = settings.parseMessage.ifBlank { context.getString(R.string.initial_parse_message) }
         wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.WEARABLE_API
@@ -543,6 +559,23 @@ fun MobileTimetableScreen() {
         syncInProgress = cloudSyncInProgress,
         syncStatus = cloudSyncStatus,
     )
+    val keepAliveRuntimeStatus = remember(
+        keepAliveLevel,
+        experimentalAccessibilityKeepAliveEnabled,
+        reminderEnabled,
+        reminderMinutes,
+        keepAliveStatusTick,
+    ) {
+        ReminderRuntime.resolveStatus(context)
+    }
+    val keepAliveStatusText = buildString {
+        append("精确闹钟: ")
+        append(if (keepAliveRuntimeStatus.canScheduleExactAlarm) "已授权" else "未授权")
+        append(" · 电池优化白名单: ")
+        append(if (keepAliveRuntimeStatus.ignoringBatteryOptimizations) "已加入" else "未加入")
+        append(" · 无障碍服务: ")
+        append(if (keepAliveRuntimeStatus.accessibilityServiceEnabled) "已启用" else "未启用")
+    }
     val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
         ImportLayer(
             contentPadding = innerPadding,
@@ -820,6 +853,9 @@ fun MobileTimetableScreen() {
                     showWeekend = showWeekend,
                     reminderEnabled = reminderEnabled,
                     reminderMinutes = reminderMinutes,
+                    keepAliveLevel = keepAliveLevel,
+                    experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
+                    keepAliveStatus = keepAliveStatusText,
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
                     },
@@ -872,7 +908,53 @@ fun MobileTimetableScreen() {
                     onReminderMinutesChange = {
                         reminderMinutes = it
                         persistSettings()
-                        if (reminderEnabled) syncReminderWork()
+                        syncReminderWork()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            alsoPushConfigToWear = false,
+                        )
+                    },
+                    onKeepAliveLevelChange = {
+                        keepAliveLevel = it
+                        persistSettings()
+                        syncReminderWork()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            alsoPushConfigToWear = false,
+                        )
+                    },
+                    onToggleExperimentalAccessibilityKeepAlive = {
+                        experimentalAccessibilityKeepAliveEnabled = it
+                        persistSettings()
+                        syncReminderWork()
+                    },
+                    onOpenAccessibilitySettings = {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    },
+                    onOpenBatteryOptimizationSettings = {
+                        val requestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        runCatching { context.startActivity(requestIntent) }
+                            .onFailure { context.startActivity(fallback) }
+                    },
+                    onOpenExactAlarmSettings = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            runCatching { context.startActivity(intent) }
+                        }
+                    },
+                    onRefreshKeepAliveStatus = {
+                        keepAliveStatusTick += 1
+                        syncReminderWork()
                         requestCloudSync(
                             trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
                             alsoPushConfigToWear = false,

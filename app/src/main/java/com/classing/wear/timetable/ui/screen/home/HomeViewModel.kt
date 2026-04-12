@@ -13,10 +13,13 @@ import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -31,8 +34,6 @@ class HomeViewModel(
     private val syncState = MutableStateFlow<SyncState>(SyncState.Idle)
 
     init {
-        val today = timeProvider.today()
-
         viewModelScope.launch {
             requestSyncFromPhone()
         }
@@ -40,11 +41,13 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(
                 scheduleRepository.observeActiveSemester(),
-                scheduleRepository.observeTodayLessons(today),
-                scheduleRepository.observeNextLesson(today),
+                scheduleRepository.observeTodayLessons(timeProvider.today()),
+                scheduleRepository.observeNextLesson(timeProvider.today()),
                 settingsRepository.observePreferences(),
                 syncState,
-            ) { semester, lessons, next, preferences, syncState ->
+                minuteTicker(),
+            ) { semester, lessons, next, preferences, syncState, _ ->
+                val today = timeProvider.today()
                 val weekLabel = semester?.let {
                     WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
                 } ?: WearI18n.semesterNotSet()
@@ -83,6 +86,15 @@ class HomeViewModel(
             SyncState.Success(Instant.now())
         } else {
             SyncState.Failed(result.exceptionOrNull()?.message ?: "sync request failed")
+        }
+    }
+
+    private fun minuteTicker(): Flow<Long> = flow {
+        while (true) {
+            val now = timeProvider.nowDateTime()
+            emit(now.toEpochSecond(java.time.ZoneOffset.UTC))
+            val delayMillis = (60 - now.second).coerceAtLeast(1) * 1_000L
+            delay(delayMillis)
         }
     }
 }

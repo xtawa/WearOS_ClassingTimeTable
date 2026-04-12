@@ -26,6 +26,14 @@ class LessonStatusResolverTest {
     }
 
     @Test
+    fun resolve_returns_in_progress_when_now_equals_start() {
+        val start = LocalDateTime.of(2026, 3, 13, 10, 0)
+        val end = LocalDateTime.of(2026, 3, 13, 11, 35)
+
+        assertEquals(LessonStatus.IN_PROGRESS, LessonStatusResolver.resolve(start, start, end))
+    }
+
+    @Test
     fun resolve_returns_finished_after_end() {
         val start = LocalDateTime.of(2026, 3, 13, 10, 0)
         val end = LocalDateTime.of(2026, 3, 13, 11, 35)
