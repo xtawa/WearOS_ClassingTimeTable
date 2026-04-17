@@ -220,6 +220,45 @@ internal suspend fun syncLessonsViaWearOsApp(
     )
 }
 
+internal fun detectWearAutoSyncPlan(companion: WearOsCompanionInfo?): WearAutoDetectionResult {
+    if (companion == null) {
+        return WearAutoDetectionResult(
+            companionInfo = null,
+            variant = WearAutoVariant.UNKNOWN,
+            effectiveMode = WearSyncMode.WEARABLE_API,
+        )
+    }
+    return if (companion.isChinaOrLe) {
+        WearAutoDetectionResult(
+            companionInfo = companion,
+            variant = WearAutoVariant.CN_LE,
+            effectiveMode = WearSyncMode.WEAROS_APP,
+        )
+    } else {
+        WearAutoDetectionResult(
+            companionInfo = companion,
+            variant = WearAutoVariant.GLOBAL,
+            effectiveMode = WearSyncMode.WEARABLE_API,
+        )
+    }
+}
+
+internal fun resolveWearSyncMode(context: Context, selectedMode: WearSyncMode): WearSyncModeResolution {
+    if (selectedMode != WearSyncMode.AUTO) {
+        return WearSyncModeResolution(
+            selectedMode = selectedMode,
+            effectiveMode = selectedMode,
+            autoDetection = null,
+        )
+    }
+    val detection = detectWearAutoSyncPlan(findWearOsCompanionInfo(context))
+    return WearSyncModeResolution(
+        selectedMode = selectedMode,
+        effectiveMode = detection.effectiveMode,
+        autoDetection = detection,
+    )
+}
+
 internal fun findWearOsCompanionInfo(context: Context): WearOsCompanionInfo? {
     val packageManager = context.packageManager
     val candidates = listOf(
@@ -247,6 +286,22 @@ internal fun findWearOsCompanionInfo(context: Context): WearOsCompanionInfo? {
 
 internal fun isLeVersion(versionName: String): Boolean {
     return Regex("(^|[._-])le($|[._-])", RegexOption.IGNORE_CASE).containsMatchIn(versionName)
+}
+
+internal fun wearSyncModeLabel(context: Context, mode: WearSyncMode): String {
+    return when (mode) {
+        WearSyncMode.AUTO -> context.getString(R.string.settings_wear_sync_mode_auto)
+        WearSyncMode.WEARABLE_API -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
+        WearSyncMode.WEAROS_APP -> context.getString(R.string.settings_wear_sync_mode_wearos_app)
+    }
+}
+
+internal fun wearAutoVariantLabel(context: Context, variant: WearAutoVariant): String {
+    return when (variant) {
+        WearAutoVariant.CN_LE -> context.getString(R.string.settings_wear_auto_variant_cnle)
+        WearAutoVariant.GLOBAL -> context.getString(R.string.settings_wear_auto_variant_global)
+        WearAutoVariant.UNKNOWN -> context.getString(R.string.settings_wear_auto_variant_unknown)
+    }
 }
 
 internal fun WearOsCompanionInfo.toDisplayLabel(): String {

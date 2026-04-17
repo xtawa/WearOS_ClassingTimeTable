@@ -31,6 +31,7 @@ internal enum class ChangeScope {
 }
 
 internal enum class WearSyncMode {
+    AUTO,
     WEARABLE_API,
     WEAROS_APP,
 }
@@ -117,4 +118,22 @@ internal data class WearOsCompanionInfo(
     val packageName: String,
     val versionName: String,
     val isChinaOrLe: Boolean,
+)
+
+internal enum class WearAutoVariant {
+    CN_LE,
+    GLOBAL,
+    UNKNOWN,
+}
+
+internal data class WearAutoDetectionResult(
+    val companionInfo: WearOsCompanionInfo?,
+    val variant: WearAutoVariant,
+    val effectiveMode: WearSyncMode,
+)
+
+internal data class WearSyncModeResolution(
+    val selectedMode: WearSyncMode,
+    val effectiveMode: WearSyncMode,
+    val autoDetection: WearAutoDetectionResult?,
 )

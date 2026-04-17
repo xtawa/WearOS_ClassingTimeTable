@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Import Your Schedule - Classing</title>
+<!-- Google Fonts: Plus Jakarta Sans for Headers, Inter for Body -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration (Design System Tokens) -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "surface": "#fbf8ff",
+                        "secondary-fixed-dim": "#bec4f2",
+                        "inverse-surface": "#2f3037",
+                        "surface-dim": "#dbd9e2",
+                        "on-surface": "#1a1b22",
+                        "on-secondary-fixed": "#12183d",
+                        "on-secondary-container": "#51577f",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e3e1ea",
+                        "tertiary-container": "#8f4700",
+                        "inverse-primary": "#bac3ff",
+                        "tertiary": "#6c3400",
+                        "surface-container-high": "#e9e7f0",
+                        "on-primary-fixed-variant": "#293ca0",
+                        "secondary": "#565c84",
+                        "outline-variant": "#c5c5d4",
+                        "inverse-on-surface": "#f2eff9",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#00105c",
+                        "surface-variant": "#e3e1ea",
+                        "background": "#fbf8ff",
+                        "primary-fixed": "#dee0ff",
+                        "on-surface-variant": "#454652",
+                        "on-secondary-fixed-variant": "#3e446b",
+                        "on-background": "#1a1b22",
+                        "tertiary-fixed": "#ffdcc6",
+                        "surface-bright": "#fbf8ff",
+                        "on-primary-container": "#cacfff",
+                        "error-container": "#ffdad6",
+                        "primary-container": "#3f51b5",
+                        "on-tertiary-fixed": "#301400",
+                        "surface-tint": "#4355b9",
+                        "secondary-container": "#c9cffd",
+                        "secondary-fixed": "#dee0ff",
+                        "outline": "#757684",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "on-tertiary-container": "#ffc7a2",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f4f2fc",
+                        "surface-container": "#efedf6",
+                        "error": "#ba1a1a",
+                        "primary": "#24389c",
+                        "tertiary-fixed-dim": "#ffb784",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {},
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-low text-on-surface font-body antialiased min-h-screen flex flex-col">
+<!-- TopAppBar from JSON -->
+<header class="bg-[#fbf8ff] flex justify-between items-center px-6 py-4 w-full top-0 sticky z-40 w-full top-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#24389c] text-2xl" data-icon="school" data-weight="fill" style="font-variation-settings: 'FILL' 1;">school</span>
+<span class="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#24389c] tracking-tight">Classing</span>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col w-full max-w-2xl mx-auto px-6 pt-8 pb-40">
+<!-- Organic Brutalism Header: Oversized, slightly offset -->
+<div class="mb-10">
+<h1 class="font-headline text-[2.5rem] leading-[1.1] font-extrabold text-primary tracking-tight mb-3">
+                Import Your Schedule
+            </h1>
+<p class="text-on-surface-variant text-base max-w-sm">
+                Choose a method to seamlessly populate your academic timetable.
+            </p>
+</div>
+<!-- Options Container: Tonal Layering, No Lines -->
+<div class="flex flex-col gap-5">
+<!-- Card 1: Import from ICS -->
+<button class="w-full bg-surface-container-lowest rounded-lg p-5 flex items-start sm:items-center gap-5 text-left group transition-all duration-200 hover:bg-surface-container active:scale-[0.98] border-none outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low">
+<div class="shrink-0 w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors duration-300 shadow-sm">
+<span class="material-symbols-outlined text-2xl" data-icon="calendar_month">calendar_month</span>
+</div>
+<div class="flex-1 pt-1 sm:pt-0">
+<h3 class="font-headline font-semibold text-lg text-on-surface mb-1">Import from ICS</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Upload a standard calendar file (.ics) provided by your university portal.</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors hidden sm:block">chevron_right</span>
+</button>
+<!-- Card 2: Import from JSON -->
+<button class="w-full bg-surface-container-lowest rounded-lg p-5 flex items-start sm:items-center gap-5 text-left group transition-all duration-200 hover:bg-surface-container active:scale-[0.98] border-none outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low">
+<div class="shrink-0 w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors duration-300 shadow-sm">
+<span class="material-symbols-outlined text-2xl" data-icon="data_object">data_object</span>
+</div>
+<div class="flex-1 pt-1 sm:pt-0">
+<h3 class="font-headline font-semibold text-lg text-on-surface mb-1">Import from JSON</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Restore a previously exported Classing schedule data file.</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors hidden sm:block">chevron_right</span>
+</button>
+<!-- Card 3: Cloud Sync -->
+<button class="w-full bg-surface-container-lowest rounded-lg p-5 flex items-start sm:items-center gap-5 text-left group transition-all duration-200 hover:bg-surface-container active:scale-[0.98] border-none outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low">
+<div class="shrink-0 w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors duration-300 shadow-sm">
+<span class="material-symbols-outlined text-2xl" data-icon="cloud_sync">cloud_sync</span>
+</div>
+<div class="flex-1 pt-1 sm:pt-0">
+<h3 class="font-headline font-semibold text-lg text-on-surface mb-1">Cloud Sync</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Connect to your institution's approved integration service.</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors hidden sm:block">chevron_right</span>
+</button>
+<!-- Card 4: Backup & Restore -->
+<button class="w-full bg-surface-container-lowest rounded-lg p-5 flex items-start sm:items-center gap-5 text-left group transition-all duration-200 hover:bg-surface-container active:scale-[0.98] border-none outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low">
+<div class="shrink-0 w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors duration-300 shadow-sm">
+<span class="material-symbols-outlined text-2xl" data-icon="settings_backup_restore">settings_backup_restore</span>
+</div>
+<div class="flex-1 pt-1 sm:pt-0">
+<h3 class="font-headline font-semibold text-lg text-on-surface mb-1">Backup &amp; Restore</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Recover schedules saved to your personal Google Drive or iCloud.</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors hidden sm:block">chevron_right</span>
+</button>
+<!-- Card 5: Manual Entry -->
+<button class="w-full bg-surface-container-lowest rounded-lg p-5 flex items-start sm:items-center gap-5 text-left group transition-all duration-200 hover:bg-surface-container active:scale-[0.98] border-none outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low">
+<div class="shrink-0 w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors duration-300 shadow-sm">
+<span class="material-symbols-outlined text-2xl" data-icon="edit_document">edit_document</span>
+</div>
+<div class="flex-1 pt-1 sm:pt-0">
+<h3 class="font-headline font-semibold text-lg text-on-surface mb-1">Manual Entry</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Build your week from scratch by adding classes individually.</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors hidden sm:block">chevron_right</span>
+</button>
+</div>
+</main>
+<!-- BottomNavBar from JSON -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-8 pb-8 pt-4 bg-[#fbf8ff]/80 backdrop-blur-xl rounded-t-[2rem] shadow-[0_-4px_32px_rgba(26,27,34,0.04)]">
+<!-- Skip Action (Inactive State) -->
+<button class="flex flex-col items-center justify-center text-[#454652] px-6 py-3 hover:opacity-90 transition-opacity font-['Plus_Jakarta_Sans'] font-medium text-[11px] gap-1 group">
+<span class="material-symbols-outlined text-2xl group-hover:scale-95 transition-transform" data-icon="close">close</span>
+<span class="tracking-wide">Skip</span>
+</button>
+<!-- Next Action (Active State - Glassmorphism Primary) -->
+<button class="flex flex-row items-center justify-center gap-2 bg-gradient-to-br from-[#24389c] to-[#3f51b5] text-white rounded-full px-8 py-3 hover:opacity-90 transition-opacity active:scale-98 transition-transform duration-200 font-['Plus_Jakarta_Sans'] font-semibold text-sm shadow-md">
+<span>Next</span>
+<span class="material-symbols-outlined text-lg" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</nav>
+</body></html>

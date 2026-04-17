@@ -638,6 +638,9 @@ internal fun WeekModeSettingsPage(
 internal fun WearCommunicationSettingsPage(
     contentPadding: PaddingValues,
     wearSyncMode: WearSyncMode,
+    autoDetectedLabel: String,
+    autoEffectiveLabel: String,
+    autoFallbackHint: String,
     wearConnectionMessage: String,
     wearSyncMessage: String,
     wearSyncInProgress: Boolean,
@@ -696,6 +699,11 @@ internal fun WearCommunicationSettingsPage(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
+                        selected = wearSyncMode == WearSyncMode.AUTO,
+                        onClick = { onWearSyncModeChange(WearSyncMode.AUTO) },
+                        label = { Text(stringResource(R.string.settings_wear_sync_mode_auto)) },
+                    )
+                    FilterChip(
                         selected = wearSyncMode == WearSyncMode.WEARABLE_API,
                         onClick = { onWearSyncModeChange(WearSyncMode.WEARABLE_API) },
                         label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
@@ -705,6 +713,25 @@ internal fun WearCommunicationSettingsPage(
                         onClick = { onWearSyncModeChange(WearSyncMode.WEAROS_APP) },
                         label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
                     )
+                }
+                if (wearSyncMode == WearSyncMode.AUTO) {
+                    Text(
+                        text = autoDetectedLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = autoEffectiveLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (autoFallbackHint.isNotBlank()) {
+                        Text(
+                            text = autoFallbackHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

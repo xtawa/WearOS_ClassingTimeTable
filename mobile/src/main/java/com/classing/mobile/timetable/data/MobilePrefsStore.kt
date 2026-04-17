@@ -64,6 +64,7 @@ object MobilePrefsStore {
     private const val KEY_WEAR_SETTINGS_SNAPSHOT = "wear_settings_snapshot"
     private const val KEY_WEAR_SETTINGS_UPDATED_AT = "wear_settings_updated_at"
     private const val KEY_LESSONS_JSON = "lessons_json"
+    private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
@@ -77,7 +78,7 @@ object MobilePrefsStore {
             experimentalAccessibilityKeepAliveEnabled = p.getBoolean(KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED, false),
             rawIcs = p.getString(KEY_RAW_ICS, "") ?: "",
             parseMessage = p.getString(KEY_PARSE_MESSAGE, "") ?: "",
-            wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "WEARABLE_API") ?: "WEARABLE_API",
+            wearSyncMode = p.getString(KEY_WEAR_SYNC_MODE, "AUTO") ?: "AUTO",
             weekNumberMode = p.getString(KEY_WEEK_NUMBER_MODE, "NATURAL") ?: "NATURAL",
             semesterWeekStartDate = p.getString(KEY_SEMESTER_WEEK_START_DATE, "") ?: "",
             weekStartDay = p.getString(KEY_WEEK_START_DAY, "MONDAY") ?: "MONDAY",
@@ -203,6 +204,33 @@ object MobilePrefsStore {
 
     fun loadLocalMobileSettingsUpdatedAt(context: Context): Long {
         return prefs(context).getLong(KEY_LOCAL_MOBILE_SETTINGS_UPDATED_AT, 0L)
+    }
+
+    fun isOnboardingCompleted(context: Context): Boolean {
+        return prefs(context).getBoolean(KEY_ONBOARDING_COMPLETED, false)
+    }
+
+    fun setOnboardingCompleted(context: Context, completed: Boolean = true) {
+        prefs(context).edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+    }
+
+    fun ensureOnboardingCompletedForLegacyUser(context: Context): Boolean {
+        val p = prefs(context)
+        if (p.getBoolean(KEY_ONBOARDING_COMPLETED, false)) return false
+        val hasLegacyData = hasLegacyUserData(p)
+        if (!hasLegacyData) return false
+        p.edit().putBoolean(KEY_ONBOARDING_COMPLETED, true).apply()
+        return true
+    }
+
+    private fun hasLegacyUserData(p: android.content.SharedPreferences): Boolean {
+        val lessonsJson = p.getString(KEY_LESSONS_JSON, null).orEmpty()
+        if (lessonsJson.isNotBlank() && lessonsJson != "[]") return true
+        if (p.getString(KEY_RAW_ICS, "").orEmpty().isNotBlank()) return true
+        if (p.getString(KEY_CLOUD_SERVER_URL, "").orEmpty().isNotBlank()) return true
+        if (p.getString(KEY_CLOUD_USERNAME, "").orEmpty().isNotBlank()) return true
+        if (p.contains(KEY_PARSE_MESSAGE) && p.getString(KEY_PARSE_MESSAGE, "").orEmpty().isNotBlank()) return true
+        return false
     }
 }
 

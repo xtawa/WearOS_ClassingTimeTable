@@ -177,7 +177,8 @@ fun MobileTimetableScreen() {
     }
     var latestWearAckAtMillis by remember { mutableStateOf(WearSyncAckStore.load(context)?.syncedAtMillis ?: 0L) }
     var wearSyncInProgress by remember { mutableStateOf(false) }
-    var wearSyncMode by remember { mutableStateOf(WearSyncMode.WEARABLE_API) }
+    var wearSyncMode by remember { mutableStateOf(WearSyncMode.AUTO) }
+    var showOnboarding by remember { mutableStateOf(false) }
     var cloudSyncEnabled by remember { mutableStateOf(false) }
     var cloudServerUrl by remember { mutableStateOf("") }
     var cloudRemotePath by remember { mutableStateOf(CloudSyncContracts.DEFAULT_REMOTE_PATH) }
@@ -489,7 +490,7 @@ fun MobileTimetableScreen() {
         experimentalAccessibilityKeepAliveEnabled = settings.experimentalAccessibilityKeepAliveEnabled
         rawIcs = settings.rawIcs.takeUnless { it.contains("PRODID:-//Classing//Schedule Demo//EN") }.orEmpty()
         parseMessage = settings.parseMessage.ifBlank { context.getString(R.string.initial_parse_message) }
-        wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.WEARABLE_API
+        wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.AUTO
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
         weekStartDay = parseWeekStartDay(settings.weekStartDay)
@@ -508,18 +509,22 @@ fun MobileTimetableScreen() {
             lessons = emptyList()
             persistLessons()
         }
+        MobilePrefsStore.ensureOnboardingCompletedForLegacyUser(context)
+        showOnboarding = !MobilePrefsStore.isOnboardingCompleted(context)
 
         initialized = true
-        syncReminderWork()
-        refreshWearSyncAckStatus(force = true)
-        refreshWearConnectionStatus()
-        runCloudSync(trigger = CloudSyncContracts.TRIGGER_APP_START, force = true)
+        if (!showOnboarding) {
+            syncReminderWork()
+            refreshWearSyncAckStatus(force = true)
+            refreshWearConnectionStatus()
+            runCloudSync(trigger = CloudSyncContracts.TRIGGER_APP_START, force = true)
+        }
     }
 
-    LaunchedEffect(initialized, cloudSyncEnabled, lifecycleOwner) {
+    LaunchedEffect(initialized, cloudSyncEnabled, lifecycleOwner, showOnboarding) {
         if (!initialized) return@LaunchedEffect
         while (true) {
-            if (cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            if (!showOnboarding && cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 runCloudSync(
                     trigger = CloudSyncContracts.TRIGGER_FOREGROUND_TICK,
                     force = false,
@@ -538,6 +543,65 @@ fun MobileTimetableScreen() {
         ) {
             Text(stringResource(R.string.loading_message), style = MaterialTheme.typography.bodyLarge)
         }
+        return
+    }
+    if (showOnboarding) {
+        MobileOnboardingFlow(
+            initialShowWeekend = showWeekend,
+            initialReminderEnabled = reminderEnabled,
+            initialSemesterWeekStartDate = semesterWeekStartDate,
+            initialWearSyncMode = wearSyncMode,
+            onComplete = { completion ->
+                showWeekend = completion.showWeekend
+                semesterWeekStartDate = completion.semesterWeekStartDate
+                wearSyncMode = completion.wearSyncMode
+                reminderEnabled = completion.reminderEnabled
+                if (completion.reminderEnabled &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    reminderEnabled = false
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+
+                MobilePrefsStore.setOnboardingCompleted(context, completed = true)
+                showOnboarding = false
+                persistSettings()
+                syncReminderWork()
+                requestCloudSync(
+                    trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                    alsoPushConfigToWear = false,
+                )
+
+                val targetSettingsPage = when {
+                    completion.openCloudSyncSettingsAfterFinish ||
+                        completion.importTarget == OnboardingImportTarget.CLOUD_SYNC -> SettingsPage.CloudSync
+
+                    completion.importTarget == OnboardingImportTarget.BACKUP_RESTORE -> SettingsPage.BackupRestore
+
+                    completion.importTarget == OnboardingImportTarget.ICS ||
+                        completion.importTarget == OnboardingImportTarget.JSON ||
+                        completion.importTarget == OnboardingImportTarget.MANUAL_ENTRY -> SettingsPage.Import
+
+                    completion.openSettingsHomeAfterFinish -> SettingsPage.Main
+                    else -> null
+                }
+
+                if (targetSettingsPage == null) {
+                    layerName = MobileLayer.Schedule.name
+                    settingsPageName = SettingsPage.Main.name
+                    showImportJsonPromptPage = false
+                } else {
+                    previousMainLayerName = MobileLayer.Schedule.name
+                    layerName = MobileLayer.Settings.name
+                    settingsPageName = targetSettingsPage.name
+                    showImportJsonPromptPage = completion.importTarget == OnboardingImportTarget.JSON
+                }
+                coroutineScope.launch {
+                    refreshWearConnectionStatus()
+                }
+            },
+        )
         return
     }
 
@@ -576,6 +640,22 @@ fun MobileTimetableScreen() {
         append(if (keepAliveRuntimeStatus.ignoringBatteryOptimizations) "已加入" else "未加入")
         append(" · 无障碍服务: ")
         append(if (keepAliveRuntimeStatus.accessibilityServiceEnabled) "已启用" else "未启用")
+    }
+    val autoDetection = remember {
+        detectWearAutoSyncPlan(findWearOsCompanionInfo(context))
+    }
+    val autoDetectedLabel = stringResource(
+        R.string.settings_wear_auto_detected_label,
+        wearAutoVariantLabel(context, autoDetection.variant),
+    )
+    val autoEffectiveLabel = stringResource(
+        R.string.settings_wear_auto_effective_label,
+        wearSyncModeLabel(context, autoDetection.effectiveMode),
+    )
+    val autoFallbackHint = if (autoDetection.variant == WearAutoVariant.UNKNOWN) {
+        stringResource(R.string.settings_wear_auto_unknown_hint)
+    } else {
+        ""
     }
     val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
         ImportLayer(
@@ -1029,6 +1109,9 @@ fun MobileTimetableScreen() {
                 SettingsPage.WearCommunication -> WearCommunicationSettingsPage(
                     contentPadding = innerPadding,
                     wearSyncMode = wearSyncMode,
+                    autoDetectedLabel = autoDetectedLabel,
+                    autoEffectiveLabel = autoEffectiveLabel,
+                    autoFallbackHint = autoFallbackHint,
                     wearConnectionMessage = wearConnectionMessage,
                     wearSyncMessage = wearSyncMessage,
                     wearSyncInProgress = wearSyncInProgress,

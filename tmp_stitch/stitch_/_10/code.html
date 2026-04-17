@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>General Preferences</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#3a4376",
+                        "on-secondary-container": "#b1b3cd",
+                        "surface-tint": "#bac3ff",
+                        "outline-variant": "#46464f",
+                        "on-error": "#690005",
+                        "on-background": "#e3e1eb",
+                        "surface-container-highest": "#33343c",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c3c5df",
+                        "on-primary": "#232c5e",
+                        "on-tertiary-container": "#664f03",
+                        "surface-dim": "#12131a",
+                        "surface-container": "#1e1f26",
+                        "on-surface-variant": "#c6c5d0",
+                        "error": "#ffb4ab",
+                        "primary-fixed-dim": "#bac3ff",
+                        "primary": "#dee0ff",
+                        "on-secondary-fixed": "#171a2e",
+                        "surface-container-high": "#292931",
+                        "on-tertiary": "#3d2e00",
+                        "on-surface": "#e3e1eb",
+                        "inverse-surface": "#e3e1eb",
+                        "surface-container-lowest": "#0d0e14",
+                        "on-primary-container": "#464f83",
+                        "tertiary-fixed": "#ffdf90",
+                        "surface-bright": "#383940",
+                        "secondary-container": "#42455b",
+                        "primary-fixed": "#dee0ff",
+                        "outline": "#90909a",
+                        "inverse-primary": "#525b90",
+                        "on-primary-fixed": "#0c1649",
+                        "inverse-on-surface": "#2f3037",
+                        "tertiary-fixed-dim": "#e3c370",
+                        "surface-variant": "#33343c",
+                        "secondary-fixed": "#dfe1fc",
+                        "on-tertiary-fixed-variant": "#584400",
+                        "on-tertiary-fixed": "#241a00",
+                        "on-secondary-fixed-variant": "#42455b",
+                        "surface": "#12131a",
+                        "tertiary": "#ffdf8f",
+                        "tertiary-container": "#e3c370",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#1a1b22",
+                        "secondary": "#c3c5df",
+                        "on-secondary": "#2c2f44",
+                        "background": "#12131a",
+                        "primary-container": "#bac3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {},
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #12131a;
+            color: #e3e1eb;
+            -webkit-font-smoothing: antialiased;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        /* Custom Toggle Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #bac3ff;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #bac3ff;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 w-full bg-[#12131a] dark:bg-[#12131a] no-line tonal-depth-transition flat no shadows">
+<button class="text-[#bac3ff] hover:bg-[#1e1f26] transition-colors rounded-full p-2 scale-95 duration-200 focus:outline-none">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-['Plus_Jakarta_Sans'] tracking-[-0.02em] font-bold text-lg text-[#bac3ff]">Setup Wizard</h1>
+<div class="w-10"></div> <!-- Spacer for center alignment -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-24 px-6 pb-32">
+<div class="max-w-2xl mx-auto space-y-8">
+<!-- Section Header -->
+<div class="space-y-2">
+<h2 class="text-3xl font-bold tracking-[-0.02em] text-primary">General Preferences</h2>
+<p class="text-on-surface-variant text-sm font-medium">Customize your academic curator experience.</p>
+</div>
+<!-- Toggles Card -->
+<div class="bg-surface-container-low rounded-xl p-6 space-y-6">
+<!-- Enable Notifications Toggle -->
+<div class="flex items-center justify-between">
+<div class="space-y-1">
+<label class="text-base font-semibold text-on-surface block">Enable Notifications</label>
+<p class="text-xs text-on-surface-variant block">Receive alerts for upcoming classes and deadlines.</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-dim border-4 border-outline appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out left-0 top-0 checked:translate-x-full checked:bg-on-primary checked:border-primary-container" id="notifications-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer border border-outline-variant/15" for="notifications-toggle"></label>
+</div>
+</div>
+<!-- Spacer instead of divider -->
+<div class="h-4"></div>
+<!-- Show Weekends Toggle -->
+<div class="flex items-center justify-between">
+<div class="space-y-1">
+<label class="text-base font-semibold text-on-surface block">Show Weekends</label>
+<p class="text-xs text-on-surface-variant block">Include Saturday and Sunday in your schedule view.</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-dim border-4 border-outline appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out left-0 top-0 checked:translate-x-full checked:bg-on-primary checked:border-primary-container" id="weekends-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary-container cursor-pointer" for="weekends-toggle"></label>
+</div>
+</div>
+</div>
+<!-- Date Picker Card -->
+<div class="bg-surface-container-low rounded-xl p-6">
+<div class="space-y-4">
+<div class="space-y-1">
+<label class="text-base font-semibold text-on-surface block">Semester Start Date</label>
+<p class="text-xs text-on-surface-variant block">When does your academic term officially begin?</p>
+</div>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 0;">calendar_today</span>
+</div>
+<input class="bg-surface-container-highest text-on-surface text-sm rounded-full block w-full pl-12 p-3 border-none focus:ring-2 focus:ring-primary focus:outline-none transition-shadow" type="date" value="2024-09-02"/>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<div class="pt-8">
+<button class="w-full rounded-full py-4 px-6 text-on-primary font-bold tracking-wide text-sm bg-gradient-to-r from-primary to-primary-container hover:from-primary-fixed hover:to-primary-fixed-dim transition-all shadow-[0px_8px_16px_rgba(186,195,255,0.1)] hover:shadow-[0px_12px_24px_rgba(186,195,255,0.2)] active:scale-[0.98]">
+                    Next
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on this transactional screen as per Semantic Shell Mandate) -->
+<!-- Suppressed for Linear/Transactional flow -->
+</body></html>

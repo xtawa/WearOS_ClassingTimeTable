@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Import Schedule Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#3a4376",
+                        "on-secondary-container": "#b1b3cd",
+                        "surface-tint": "#bac3ff",
+                        "outline-variant": "#46464f",
+                        "on-error": "#690005",
+                        "on-background": "#e3e1eb",
+                        "surface-container-highest": "#33343c",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c3c5df",
+                        "on-primary": "#232c5e",
+                        "on-tertiary-container": "#664f03",
+                        "surface-dim": "#12131a",
+                        "surface-container": "#1e1f26",
+                        "on-surface-variant": "#c6c5d0",
+                        "error": "#ffb4ab",
+                        "primary-fixed-dim": "#bac3ff",
+                        "primary": "#dee0ff",
+                        "on-secondary-fixed": "#171a2e",
+                        "surface-container-high": "#292931",
+                        "on-tertiary": "#3d2e00",
+                        "on-surface": "#e3e1eb",
+                        "inverse-surface": "#e3e1eb",
+                        "surface-container-lowest": "#0d0e14",
+                        "on-primary-container": "#464f83",
+                        "tertiary-fixed": "#ffdf90",
+                        "surface-bright": "#383940",
+                        "secondary-container": "#42455b",
+                        "primary-fixed": "#dee0ff",
+                        "outline": "#90909a",
+                        "inverse-primary": "#525b90",
+                        "on-primary-fixed": "#0c1649",
+                        "inverse-on-surface": "#2f3037",
+                        "tertiary-fixed-dim": "#e3c370",
+                        "surface-variant": "#33343c",
+                        "secondary-fixed": "#dfe1fc",
+                        "on-tertiary-fixed-variant": "#584400",
+                        "on-tertiary-fixed": "#241a00",
+                        "on-secondary-fixed-variant": "#42455b",
+                        "surface": "#12131a",
+                        "tertiary": "#ffdf8f",
+                        "tertiary-container": "#e3c370",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#1a1b22",
+                        "secondary": "#c3c5df",
+                        "on-secondary": "#2c2f44",
+                        "background": "#12131a",
+                        "primary-container": "#bac3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {},
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #12131a; /* surface */
+            color: #e3e1eb; /* on-surface */
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Ambient shadow for buttons */
+        .ambient-shadow {
+            box-shadow: 0px 24px 48px rgba(12, 22, 73, 0.08);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen relative pb-32">
+<!-- TopAppBar -->
+<header class="bg-[#12131a] dark:bg-[#12131a] text-[#bac3ff] font-['Plus_Jakarta_Sans'] tracking-[-0.02em] font-bold fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 transition-colors duration-300">
+<button class="text-[#bac3ff] hover:bg-[#1e1f26] transition-colors scale-95 duration-200 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight text-[#bac3ff]">Setup Wizard</h1>
+<div class="w-10"></div> <!-- Spacer for center alignment -->
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-6 md:px-12 max-w-4xl mx-auto flex flex-col gap-10 relative z-10">
+<!-- Hero Section -->
+<section class="flex flex-col gap-4">
+<h2 class="text-4xl md:text-5xl font-extrabold tracking-[-0.02em] text-on-surface">
+                Data Source
+            </h2>
+<p class="text-on-surface-variant text-lg max-w-xl leading-relaxed">
+                Choose how you want to bring your academic life into the curator. You can import existing files or start fresh.
+            </p>
+</section>
+<!-- Import Options Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- ICS Card (Active/Selected State Example) -->
+<button class="group flex flex-col gap-4 p-6 bg-surface-container rounded-lg text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02] ring-2 ring-primary-container ring-offset-2 ring-offset-surface">
+<div class="absolute inset-0 bg-gradient-to-br from-surface-tint/10 to-transparent opacity-100 pointer-events-none"></div>
+<div class="flex items-center justify-between w-full relative z-10">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined icon-fill text-2xl" data-icon="calendar_month">calendar_month</span>
+</div>
+<div class="w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center bg-primary text-on-primary">
+<span class="material-symbols-outlined text-sm icon-fill" data-icon="check">check</span>
+</div>
+</div>
+<div class="relative z-10 mt-2">
+<h3 class="text-xl font-bold text-primary mb-1">Apple/Google Calendar</h3>
+<p class="text-sm text-on-surface-variant">Import an .ics file from your existing calendar application.</p>
+</div>
+</button>
+<!-- JSON Card -->
+<button class="group flex flex-col gap-4 p-6 bg-surface-container-low hover:bg-surface-container rounded-lg text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02]">
+<div class="flex items-center justify-between w-full relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl" data-icon="data_object">data_object</span>
+</div>
+</div>
+<div class="relative z-10 mt-2">
+<h3 class="text-xl font-bold text-on-surface group-hover:text-primary transition-colors mb-1">JSON Format</h3>
+<p class="text-sm text-on-surface-variant">Upload a structured .json file exported from a previous session.</p>
+</div>
+</button>
+<!-- Cloud Sync Card -->
+<button class="group flex flex-col gap-4 p-6 bg-surface-container-low hover:bg-surface-container rounded-lg text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02]">
+<div class="flex items-center justify-between w-full relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl" data-icon="cloud_sync">cloud_sync</span>
+</div>
+</div>
+<div class="relative z-10 mt-2">
+<h3 class="text-xl font-bold text-on-surface group-hover:text-primary transition-colors mb-1">Cloud Sync</h3>
+<p class="text-sm text-on-surface-variant">Connect to your university portal to automatically fetch courses.</p>
+</div>
+</button>
+<!-- Backup & Restore Card -->
+<button class="group flex flex-col gap-4 p-6 bg-surface-container-low hover:bg-surface-container rounded-lg text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02]">
+<div class="flex items-center justify-between w-full relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl" data-icon="settings_backup_restore">settings_backup_restore</span>
+</div>
+</div>
+<div class="relative z-10 mt-2">
+<h3 class="text-xl font-bold text-on-surface group-hover:text-primary transition-colors mb-1">Backup Vault</h3>
+<p class="text-sm text-on-surface-variant">Restore an encrypted backup from your local device storage.</p>
+</div>
+</button>
+<!-- Manual Entry Card -->
+<button class="group flex flex-col gap-4 p-6 bg-surface-container-low hover:bg-surface-container rounded-lg text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02] md:col-span-2">
+<div class="flex items-center gap-6 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-2xl" data-icon="edit_document">edit_document</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-on-surface group-hover:text-primary transition-colors mb-1">Manual Entry</h3>
+<p class="text-sm text-on-surface-variant">Start with a blank slate and build your schedule piece by piece.</p>
+</div>
+</div>
+</button>
+</section>
+<!-- Primary Action Area -->
+<section class="mt-8 flex justify-end">
+<button class="flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-4 px-8 rounded-full ambient-shadow hover:brightness-110 transition-all active:scale-95">
+<span>Next Step</span>
+<span class="material-symbols-outlined text-xl" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-[#12131a]/80 dark:bg-[#12131a]/80 backdrop-blur-xl font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 pb-safe shadow-2xl rounded-t-none">
+<button class="flex flex-col items-center justify-center bg-[#bac3ff]/10 text-[#bac3ff] rounded-full px-5 py-1 scale-98 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined mb-1 icon-fill text-xl" data-icon="clock_loader_40">clock_loader_40</span>
+<span>Progress</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#c6c5d0] px-5 py-1 hover:text-[#dee0ff] transition-all scale-98 active:opacity-80">
+<span class="material-symbols-outlined mb-1 text-xl" data-icon="help_outline">help_outline</span>
+<span>Help</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#c6c5d0] px-5 py-1 hover:text-[#dee0ff] transition-all scale-98 active:opacity-80">
+<span class="material-symbols-outlined mb-1 text-xl" data-icon="close">close</span>
+<span>Cancel</span>
+</button>
+</nav>
+</body></html>

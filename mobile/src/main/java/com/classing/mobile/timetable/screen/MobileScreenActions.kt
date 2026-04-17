@@ -137,7 +137,8 @@ internal suspend fun computeWearConnectionStatus(
     latestWearAckAtMillis: Long,
     currentWearSyncMessage: String,
 ): WearConnectionStatus {
-    val (connectedCount, connectionMessage) = when (wearSyncMode) {
+    val resolvedMode = resolveWearSyncMode(context, wearSyncMode)
+    val (connectedCount, baseConnectionMessage) = when (resolvedMode.effectiveMode) {
         WearSyncMode.WEARABLE_API -> {
             val result = fetchConnectedWearNodeCount(context)
             val nodeCount = result.getOrDefault(0)
@@ -170,6 +171,24 @@ internal suspend fun computeWearConnectionStatus(
             }
             nodeCount to message
         }
+
+        WearSyncMode.AUTO -> {
+            0 to context.getString(R.string.wear_connection_error, "AUTO unresolved")
+        }
+    }
+
+    val connectionMessage = if (wearSyncMode == WearSyncMode.AUTO) {
+        val auto = resolvedMode.autoDetection
+        val variantLabel = wearAutoVariantLabel(context, auto?.variant ?: WearAutoVariant.UNKNOWN)
+        val effectiveLabel = wearSyncModeLabel(context, resolvedMode.effectiveMode)
+        context.getString(
+            R.string.settings_wear_auto_connection_summary,
+            variantLabel,
+            effectiveLabel,
+            baseConnectionMessage,
+        )
+    } else {
+        baseConnectionMessage
     }
 
     val syncUpdate = resolveSyncAckUpdate(context, latestWearAckAtMillis)
@@ -192,7 +211,8 @@ internal suspend fun executeManualWearSync(
 ): ManualWearSyncResult {
     val startedAtMillis = System.currentTimeMillis()
     var nextLatestAckAt = latestWearAckAtMillis
-    val syncMessage = when (wearSyncMode) {
+    val resolvedMode = resolveWearSyncMode(context, wearSyncMode)
+    val syncMessage = when (resolvedMode.effectiveMode) {
         WearSyncMode.WEARABLE_API -> {
             val result = syncLessonsToWear(
                 context = context,
@@ -252,13 +272,32 @@ internal suspend fun executeManualWearSync(
                 },
             )
         }
+
+        WearSyncMode.AUTO -> {
+            context.getString(R.string.wear_sync_failed, "AUTO unresolved")
+        }
+    }
+    val resolvedSyncMessage = if (wearSyncMode == WearSyncMode.AUTO) {
+        val variantLabel = wearAutoVariantLabel(
+            context,
+            resolvedMode.autoDetection?.variant ?: WearAutoVariant.UNKNOWN,
+        )
+        val effectiveLabel = wearSyncModeLabel(context, resolvedMode.effectiveMode)
+        context.getString(
+            R.string.settings_wear_auto_sync_summary,
+            variantLabel,
+            effectiveLabel,
+            syncMessage,
+        )
+    } else {
+        syncMessage
     }
 
     val connectionStatus = computeWearConnectionStatus(
         context = context,
         wearSyncMode = wearSyncMode,
         latestWearAckAtMillis = nextLatestAckAt,
-        currentWearSyncMessage = syncMessage,
+        currentWearSyncMessage = resolvedSyncMessage,
     )
     return ManualWearSyncResult(
         wearSyncMessage = connectionStatus.wearSyncMessage,
