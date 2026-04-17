@@ -115,17 +115,21 @@ fun CloudSyncEditScreen(
                         saving = true
                         try {
                             val updatedConfig = WearCloudConfig(
+                                provider = initial.provider,
                                 enabled = true,
                                 serverUrl = serverUrl.trim(),
                                 remotePath = remotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH },
                                 username = username.trim(),
                                 password = password,
+                                driveFileName = initial.driveFileName,
+                                driveAccessToken = initial.driveAccessToken,
+                                driveAccessTokenExpireAt = initial.driveAccessTokenExpireAt,
                                 updatedAt = System.currentTimeMillis(),
                             )
                             WearCloudConfigStore.save(context, updatedConfig)
                             bridgeSender.requestPhoneCloudSync(
                                 trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
-                                wearWebDavSnapshot = updatedConfig,
+                                wearCloudSnapshot = updatedConfig,
                             )
                             onBack()
                         } finally {

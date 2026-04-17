@@ -91,11 +91,14 @@
     <string name="settings_cloud_sync_syncing">Syncing</string>
     <string name="settings_cloud_sync_never">Never</string>
     <string name="settings_cloud_sync_config_ready">Cloud config received from phone.</string>
-    <string name="settings_cloud_sync_config_missing">No cloud config. Configure WebDAV on phone first.</string>
+    <string name="settings_cloud_sync_config_missing">No cloud config. Configure cloud sync on phone first.</string>
     <string name="settings_cloud_sync_phone_only_hint">Wear supports local WebDAV editing, but phone config is authoritative when conflicts happen.</string>
     <string name="settings_cloud_sync_wear_config_label">Server: %1$s\nPath: %2$s\nUser: %3$s</string>
     <string name="settings_cloud_sync_wear_status_label">Status: %1$s\nLast sync: %2$s</string>
     <string name="settings_cloud_sync_wear_config_update_label">%1$s\nUpdated at: %2$s</string>
+    <string name="settings_cloud_sync_provider_wear">Provider: %1$s</string>
+    <string name="settings_cloud_sync_wear_drive_hint">Google Drive auth is managed on phone. Wear uses pushed short-lived token.</string>
+    <string name="settings_cloud_sync_wear_drive_status_label">Drive file: %1$s\nToken expires: %2$s</string>
     <string name="settings_cloud_sync_edit_button">Edit WebDAV</string>
     <string name="settings_cloud_sync_edit_title">Edit WebDAV</string>
     <string name="settings_cloud_sync_edit_desc">Save on Wear, then phone will verify and override on mismatch.</string>

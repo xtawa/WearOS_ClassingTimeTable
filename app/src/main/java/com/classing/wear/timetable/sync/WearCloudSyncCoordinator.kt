@@ -1,10 +1,13 @@
 package com.classing.wear.timetable.sync
 
 import android.content.Context
+import com.classing.shared.sync.CloudProvider
+import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.SyncArbitrator
 import com.classing.shared.sync.SyncDomain
 import com.classing.shared.sync.SyncSource
 import com.classing.shared.sync.SyncStamp
+import com.classing.shared.sync.WearDataLayerContracts
 import com.classing.wear.timetable.ClassingTimetableApplication
 import com.classing.wear.timetable.data.sync.RemoteCourse
 import com.classing.wear.timetable.data.sync.RemoteException
@@ -15,6 +18,9 @@ import com.classing.wear.timetable.data.sync.RemoteTimeSlot
 import com.classing.wear.timetable.data.sync.SyncPayloadApplier
 import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.widget.WearSurfaceUpdateRequester
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
+import java.nio.charset.StandardCharsets
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -23,12 +29,15 @@ import java.time.temporal.WeekFields
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
 
 object WearCloudSyncCoordinator {
     private const val THROTTLE_MS = 5_000L
     private val mutex = Mutex()
     private var lastRunAt = 0L
-    private val client = WearWebDavClient()
+    private val webDavStorageClient: WearCloudStorageClient = WearWebDavStorageClient()
+    private val googleDriveStorageClient: WearCloudStorageClient = WearGoogleDriveStorageClient()
 
     suspend fun pullFromCloud(context: Context, trigger: String, force: Boolean = false): Result<String> {
         return mutex.withLock {
@@ -39,12 +48,16 @@ object WearCloudSyncCoordinator {
                 }
                 val config = WearCloudConfigStore.load(context)
                 if (!config.isComplete()) {
-                    val message = "Cloud config incomplete. Configure on phone first."
+                    val message = when (config.provider) {
+                        CloudProvider.WEBDAV -> "Cloud config incomplete. Configure on phone first."
+                        CloudProvider.GOOGLE_DRIVE -> "Google Drive token missing/expired. Refresh on phone."
+                    }
                     WearCloudConfigStore.saveSyncStatus(context, message, now)
                     lastRunAt = now
                     return@runCatching message
                 }
 
+                val client = storageClient(config.provider)
                 val raw = client.readJson(config).getOrElse { throw it }
                 if (raw.isNullOrBlank()) {
                     val message = "Cloud document not found"
@@ -55,11 +68,49 @@ object WearCloudSyncCoordinator {
 
                 val doc = WearCloudDocumentParser.parse(raw)
                 applyCloudDocument(context, doc)
-                val message = "Cloud pull success ($trigger)"
+                val message = "Cloud pull success (${config.provider.wireValue}:$trigger)"
                 WearCloudConfigStore.saveSyncStatus(context, message, now)
                 lastRunAt = now
                 message
+            }.recoverCatching { error ->
+                if (error is WearCloudAuthExpiredException) {
+                    requestPhoneCloudSyncForTokenRefresh(context, trigger = CloudSyncContracts.TRIGGER_WEAR_REQUEST)
+                    val message = "Google Drive token expired on Wear. Requested refresh from phone."
+                    WearCloudConfigStore.saveSyncStatus(context, message, System.currentTimeMillis())
+                    message
+                } else {
+                    throw error
+                }
             }
+        }
+    }
+
+    private suspend fun requestPhoneCloudSyncForTokenRefresh(context: Context, trigger: String) {
+        val requestedAt = System.currentTimeMillis()
+        val payloadObject = JSONObject()
+            .put(WearDataLayerContracts.KEY_TRIGGER, trigger)
+            .put(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
+        val payload = payloadObject.toString().toByteArray(StandardCharsets.UTF_8)
+        val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_PHONE_CLOUD_SYNC_REQUEST).apply {
+            dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
+            dataMap.putString(WearDataLayerContracts.KEY_TRIGGER, trigger)
+            dataMap.putString(WearDataLayerContracts.KEY_REQUEST_PAYLOAD, payloadObject.toString())
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(context).putDataItem(request).await()
+        val nodes = Wearable.getNodeClient(context).connectedNodes.await()
+        nodes.forEach { node ->
+            runCatching {
+                Wearable.getMessageClient(context)
+                    .sendMessage(node.id, WearDataLayerContracts.PATH_PHONE_CLOUD_SYNC_REQUEST, payload)
+                    .await()
+            }
+        }
+    }
+
+    private fun storageClient(provider: CloudProvider): WearCloudStorageClient {
+        return when (provider) {
+            CloudProvider.WEBDAV -> webDavStorageClient
+            CloudProvider.GOOGLE_DRIVE -> googleDriveStorageClient
         }
     }
 

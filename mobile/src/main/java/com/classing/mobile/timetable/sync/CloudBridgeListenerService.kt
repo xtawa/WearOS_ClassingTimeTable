@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.sync
 
 import android.util.Log
+import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.R
@@ -80,28 +81,45 @@ class CloudBridgeListenerService : WearableListenerService() {
     private fun handlePhoneCloudSyncRequestPayload(payload: String, fallbackTrigger: String) {
         val parsed = runCatching { JSONObject(payload) }.getOrNull()
         val trigger = parsed?.optString(WearDataLayerContracts.KEY_TRIGGER).orEmpty().ifBlank { fallbackTrigger }
-        val incomingWearSnapshot = parsed?.optJSONObject(WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT)
-            ?.let { WearWebDavSnapshot.fromJson(it) }
+        val incomingWearSnapshot = parsed?.optJSONObject(WearDataLayerContracts.KEY_WEAR_CLOUD_SNAPSHOT)
+            ?.let { WearCloudSnapshot.fromJson(it) }
+            ?: parsed?.optJSONObject(WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT)
+                ?.let { WearCloudSnapshot.fromJson(it) }
         serviceScope.launch {
             if (incomingWearSnapshot != null) {
-                handleWearWebDavConflictIfNeeded(incomingWearSnapshot, trigger)
+                handleWearCloudConflictIfNeeded(incomingWearSnapshot, trigger)
             }
             triggerPhoneCloudSyncInternal(trigger)
         }
     }
 
-    private suspend fun handleWearWebDavConflictIfNeeded(incomingWearSnapshot: WearWebDavSnapshot, trigger: String) {
+    private suspend fun handleWearCloudConflictIfNeeded(incomingWearSnapshot: WearCloudSnapshot, trigger: String) {
         val settings = MobilePrefsStore.loadSettings(applicationContext)
         val password = CloudCredentialStore.loadPassword(applicationContext)
-        val mobileSnapshot = WearWebDavSnapshot.fromMobile(settings, password)
-        if (mobileSnapshot.normalized() == incomingWearSnapshot.normalized()) {
+        val driveToken = CloudCredentialStore.loadDriveAccessToken(applicationContext)
+        val driveTokenExpireAt = CloudCredentialStore.loadDriveAccessTokenExpireAt(applicationContext)
+        val mobileSnapshot = WearCloudSnapshot.fromMobile(
+            settings = settings,
+            password = password,
+            driveAccessToken = driveToken,
+            driveAccessTokenExpireAt = driveTokenExpireAt,
+        )
+
+        if (mobileSnapshot.provider != CloudProvider.WEBDAV || incomingWearSnapshot.provider != CloudProvider.WEBDAV) {
+            return
+        }
+        if (mobileSnapshot.normalizedWebDav() == incomingWearSnapshot.normalizedWebDav()) {
             return
         }
 
         val pushResult = runCatching {
             CloudConfigPublisher.publishToWear(
                 context = applicationContext,
-                payload = settings.toCloudConfigPayload(password),
+                payload = settings.toCloudConfigPayload(
+                    password = password,
+                    driveAccessToken = driveToken,
+                    driveAccessTokenExpireAt = driveTokenExpireAt,
+                ),
                 trigger = trigger,
             ).getOrThrow()
         }
@@ -138,14 +156,18 @@ class CloudBridgeListenerService : WearableListenerService() {
     }
 }
 
-private data class WearWebDavSnapshot(
+private data class WearCloudSnapshot(
+    val provider: CloudProvider,
     val enabled: Boolean,
     val serverUrl: String,
     val remotePath: String,
     val username: String,
     val password: String,
+    val driveFileName: String,
+    val driveAccessToken: String,
+    val driveAccessTokenExpireAt: Long,
 ) {
-    fun normalized(): NormalizedWebDavSnapshot {
+    fun normalizedWebDav(): NormalizedWebDavSnapshot {
         val normalizedServer = serverUrl.trim().trimEnd('/')
         val rawPath = remotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
         val normalizedPath = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
@@ -159,23 +181,41 @@ private data class WearWebDavSnapshot(
     }
 
     companion object {
-        fun fromJson(json: JSONObject): WearWebDavSnapshot {
-            return WearWebDavSnapshot(
+        fun fromJson(json: JSONObject): WearCloudSnapshot {
+            return WearCloudSnapshot(
+                provider = CloudProvider.fromWire(
+                    json.optString(
+                        CloudSyncContracts.KEY_CLOUD_PROVIDER,
+                        json.optString(WearDataLayerContracts.KEY_CLOUD_PROVIDER, CloudProvider.WEBDAV.wireValue),
+                    ),
+                ),
                 enabled = json.optBoolean("enabled", false),
                 serverUrl = json.optString("serverUrl", ""),
                 remotePath = json.optString("remotePath", CloudSyncContracts.DEFAULT_REMOTE_PATH),
                 username = json.optString("username", ""),
                 password = json.optString("password", ""),
+                driveFileName = json.optString(CloudSyncContracts.KEY_DRIVE_FILE_NAME, CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME),
+                driveAccessToken = json.optString(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN, ""),
+                driveAccessTokenExpireAt = json.optLong(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, 0L),
             )
         }
 
-        fun fromMobile(settings: com.xtawa.classingtime.data.MobileSettings, password: String): WearWebDavSnapshot {
-            return WearWebDavSnapshot(
+        fun fromMobile(
+            settings: com.xtawa.classingtime.data.MobileSettings,
+            password: String,
+            driveAccessToken: String,
+            driveAccessTokenExpireAt: Long,
+        ): WearCloudSnapshot {
+            return WearCloudSnapshot(
+                provider = CloudProvider.fromWire(settings.cloudProvider),
                 enabled = settings.cloudSyncEnabled,
                 serverUrl = settings.cloudServerUrl,
                 remotePath = settings.cloudRemotePath,
                 username = settings.cloudUsername,
                 password = password,
+                driveFileName = settings.cloudDriveFileName,
+                driveAccessToken = driveAccessToken,
+                driveAccessTokenExpireAt = driveAccessTokenExpireAt,
             )
         }
     }

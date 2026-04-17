@@ -3,6 +3,23 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val localProps = java.util.Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+val driveOauthClientId = (
+    localProps.getProperty("DRIVE_OAUTH_CLIENT_ID")
+        ?: (project.findProperty("DRIVE_OAUTH_CLIENT_ID") as String?)
+        ?: ""
+    ).trim()
+val driveOauthRedirectScheme = (
+    localProps.getProperty("DRIVE_OAUTH_REDIRECT_SCHEME")
+        ?: (project.findProperty("DRIVE_OAUTH_REDIRECT_SCHEME") as String?)
+        ?: ""
+    ).trim()
+
 android {
     namespace = "com.xtawa.classingtime"
     compileSdk = 35
@@ -13,6 +30,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.3"
+        buildConfigField("String", "DRIVE_OAUTH_CLIENT_ID", "\"$driveOauthClientId\"")
+        buildConfigField("String", "DRIVE_OAUTH_REDIRECT_SCHEME", "\"$driveOauthRedirectScheme\"")
     }
 
     buildTypes {
@@ -36,6 +55,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -64,6 +84,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.6.1")

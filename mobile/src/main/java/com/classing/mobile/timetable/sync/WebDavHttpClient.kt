@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class WebDavHttpClient {
-    suspend fun testConnection(config: WebDavConfig): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun testConnection(config: CloudRuntimeConfig): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = openConnection(config, "OPTIONS")
             connection.connectTimeout = CONNECT_TIMEOUT_MS
@@ -22,7 +22,7 @@ class WebDavHttpClient {
         }
     }
 
-    suspend fun readJson(config: WebDavConfig): Result<String?> = withContext(Dispatchers.IO) {
+    suspend fun readJson(config: CloudRuntimeConfig): Result<String?> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = openConnection(config, "GET")
             connection.connectTimeout = CONNECT_TIMEOUT_MS
@@ -43,7 +43,7 @@ class WebDavHttpClient {
         }
     }
 
-    suspend fun writeJson(config: WebDavConfig, payload: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun writeJson(config: CloudRuntimeConfig, payload: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = openConnection(config, "PUT")
             connection.connectTimeout = CONNECT_TIMEOUT_MS
@@ -61,7 +61,7 @@ class WebDavHttpClient {
         }
     }
 
-    private fun openConnection(config: WebDavConfig, method: String): HttpURLConnection {
+    private fun openConnection(config: CloudRuntimeConfig, method: String): HttpURLConnection {
         val url = resolveTargetUrl(config.serverUrl, config.remotePath)
         val connection = (url.openConnection() as? HttpURLConnection)
             ?: throw IOException("Unable to open connection")

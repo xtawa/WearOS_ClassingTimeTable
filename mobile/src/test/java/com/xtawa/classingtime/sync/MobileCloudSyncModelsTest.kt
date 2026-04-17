@@ -1,9 +1,11 @@
 package com.xtawa.classingtime.sync
 
 import com.classing.shared.sync.SyncSource
+import com.xtawa.classingtime.data.MobileSettings
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MobileCloudSyncModelsTest {
@@ -50,5 +52,60 @@ class MobileCloudSyncModelsTest {
         assertEquals("EVEN", doc.timetable?.lessons?.firstOrNull()?.weekParity)
         assertEquals(5678L, doc.mobileSettings?.revision)
         assertEquals(SyncSource.UNKNOWN, doc.mobileSettings?.source)
+    }
+
+    @Test
+    fun toCloudConfigPayload_includesProviderAndDriveFields() {
+        val settings = MobileSettings(
+            showWeekend = true,
+            reminderEnabled = false,
+            reminderMinutes = 15,
+            keepAliveLevel = "BALANCED",
+            experimentalAccessibilityKeepAliveEnabled = false,
+            rawIcs = "",
+            parseMessage = "",
+            wearSyncMode = "AUTO",
+            weekNumberMode = "NATURAL",
+            semesterWeekStartDate = "",
+            weekStartDay = "MONDAY",
+            cloudProvider = "GOOGLE_DRIVE",
+            cloudSyncEnabled = true,
+            cloudServerUrl = "",
+            cloudRemotePath = "/classing/classing_sync.json",
+            cloudUsername = "",
+            cloudDriveFileName = "classing_sync.json",
+            cloudDriveTokenExpireAt = 0L,
+            cloudConfigPushStatus = "",
+            cloudLastResult = "",
+            cloudLastSyncedAt = 0L,
+        )
+
+        val payload = settings.toCloudConfigPayload(
+            password = "",
+            driveAccessToken = "token-123",
+            driveAccessTokenExpireAt = 12345L,
+        )
+
+        assertEquals("GOOGLE_DRIVE", payload.optString("cloudProvider"))
+        assertEquals("classing_sync.json", payload.optString("driveFileName"))
+        assertEquals("token-123", payload.optString("driveAccessToken"))
+        assertEquals(12345L, payload.optLong("driveAccessTokenExpireAt"))
+    }
+
+    @Test
+    fun runtimeConfig_googleDriveCompletenessDependsOnTokenExpiry() {
+        val config = CloudRuntimeConfig(
+            provider = com.classing.shared.sync.CloudProvider.GOOGLE_DRIVE,
+            enabled = true,
+            serverUrl = "",
+            remotePath = "",
+            username = "",
+            password = "",
+            driveFileName = "classing_sync.json",
+            driveAccessToken = "abc",
+            driveAccessTokenExpireAt = System.currentTimeMillis() + 120_000L,
+        )
+
+        assertTrue(config.isComplete())
     }
 }

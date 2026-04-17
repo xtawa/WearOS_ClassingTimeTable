@@ -38,6 +38,11 @@ internal enum class WearSyncMode {
     WEAROS_APP,
 }
 
+internal enum class CloudProviderUi {
+    WEBDAV,
+    GOOGLE_DRIVE,
+}
+
 internal data class MobileBackState(
     val layer: MobileLayer,
     val settingsPage: SettingsPage,

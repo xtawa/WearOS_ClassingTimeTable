@@ -65,22 +65,26 @@ class WearCloudBridgeSender(
         }
     }
 
-    suspend fun requestPhoneCloudSync(trigger: String, wearWebDavSnapshot: WearCloudConfig? = null): Result<Int> {
+    suspend fun requestPhoneCloudSync(trigger: String, wearCloudSnapshot: WearCloudConfig? = null): Result<Int> {
         return runCatching {
             val requestedAt = System.currentTimeMillis()
             val payloadObject = JSONObject()
                 .put(WearDataLayerContracts.KEY_TRIGGER, trigger)
                 .put(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
-            wearWebDavSnapshot?.let {
-                payloadObject.put(
-                    WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT,
-                    JSONObject()
-                        .put("enabled", it.enabled)
-                        .put("serverUrl", it.serverUrl)
-                        .put("remotePath", it.remotePath)
-                        .put("username", it.username)
-                        .put("password", it.password),
-                )
+            wearCloudSnapshot?.let {
+                val snapshot = JSONObject()
+                    .put("enabled", it.enabled)
+                    .put(WearDataLayerContracts.KEY_CLOUD_PROVIDER, it.provider.wireValue)
+                    .put("serverUrl", it.serverUrl)
+                    .put("remotePath", it.remotePath)
+                    .put("username", it.username)
+                    .put("password", it.password)
+                    .put(WearDataLayerContracts.KEY_DRIVE_FILE_NAME, it.driveFileName)
+                    .put(WearDataLayerContracts.KEY_DRIVE_ACCESS_TOKEN, it.driveAccessToken)
+                    .put(WearDataLayerContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, it.driveAccessTokenExpireAt)
+                payloadObject.put(WearDataLayerContracts.KEY_WEAR_CLOUD_SNAPSHOT, snapshot)
+                // Backward compatible key for older mobile builds.
+                payloadObject.put(WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT, JSONObject(snapshot.toString()))
             }
             val payload = payloadObject
                 .toString()

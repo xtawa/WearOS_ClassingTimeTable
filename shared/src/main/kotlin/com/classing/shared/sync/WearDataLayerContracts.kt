@@ -27,6 +27,12 @@ object WearDataLayerContracts {
     const val KEY_SETTINGS_PAYLOAD = "settingsPayload"
     const val KEY_REQUEST_PAYLOAD = "requestPayload"
     const val KEY_WEAR_WEBDAV_SNAPSHOT = "wearWebdavSnapshot"
+    const val KEY_WEAR_CLOUD_SNAPSHOT = "wearCloudSnapshot"
+
+    const val KEY_CLOUD_PROVIDER = "cloudProvider"
+    const val KEY_DRIVE_FILE_NAME = "driveFileName"
+    const val KEY_DRIVE_ACCESS_TOKEN = "driveAccessToken"
+    const val KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT = "driveAccessTokenExpireAt"
 
     const val SOURCE_WEARABLE_API = "WEARABLE_API"
     const val SOURCE_WEAROS_APP = "WEAROS_APP"

@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.sync
 
 import android.content.Context
+import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.SyncArbitrator
 import com.classing.shared.sync.SyncDomain
@@ -11,9 +12,9 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.reminder.ReminderScheduler
-import org.json.JSONObject
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONObject
 
 data class CloudSyncOutcome(
     val success: Boolean,
@@ -26,7 +27,8 @@ object MobileCloudSyncCoordinator {
     private const val THROTTLE_MS = 5_000L
     private val mutex = Mutex()
     private var lastRunAt = 0L
-    private val webDavClient = WebDavHttpClient()
+    private val webDavStorageClient: MobileCloudStorageClient = WebDavCloudStorageClient()
+    private val googleDriveStorageClient: MobileCloudStorageClient = GoogleDriveCloudStorageClient()
 
     suspend fun requestCloudSync(
         context: Context,
@@ -47,13 +49,15 @@ object MobileCloudSyncCoordinator {
                 }
 
                 val current = MobilePrefsStore.loadSettings(context)
-                val password = CloudCredentialStore.loadPassword(context)
-                val config = current.toWebDavConfig(password)
-
+                val config = resolveRuntimeConfig(context, current, allowSilentDriveRefresh = true)
                 val pushedNodes = if (alsoPushConfigToWear) {
                     CloudConfigPublisher.publishToWear(
                         context = context,
-                        payload = current.toCloudConfigPayload(password),
+                        payload = current.toCloudConfigPayload(
+                            password = config.password,
+                            driveAccessToken = config.driveAccessToken,
+                            driveAccessTokenExpireAt = config.driveAccessTokenExpireAt,
+                        ),
                         trigger = trigger,
                     ).getOrDefault(0)
                 } else {
@@ -61,7 +65,10 @@ object MobileCloudSyncCoordinator {
                 }
 
                 if (!config.isComplete()) {
-                    val message = "Cloud sync disabled or config incomplete"
+                    val message = when (config.provider) {
+                        CloudProvider.WEBDAV -> "Cloud sync disabled or WebDAV config incomplete"
+                        CloudProvider.GOOGLE_DRIVE -> "Cloud sync disabled or Google Drive auth missing/expired"
+                    }
                     saveCloudStatus(context, current, message, now)
                     lastRunAt = now
                     return@runCatching CloudSyncOutcome(
@@ -72,7 +79,8 @@ object MobileCloudSyncCoordinator {
                     )
                 }
 
-                val remoteJson = webDavClient.readJson(config).getOrElse { throw it }
+                val client = storageClient(config.provider)
+                val remoteJson = client.readJson(config).getOrElse { throw it }
                 val remote = remoteJson?.let {
                     runCatching { CloudDocument.fromJson(JSONObject(it)) }.getOrDefault(CloudDocument.empty())
                 } ?: CloudDocument.empty()
@@ -138,9 +146,9 @@ object MobileCloudSyncCoordinator {
                     localWearSettings = localWearSettings,
                 )
 
-                webDavClient.writeJson(config, merged.toJson().toString()).getOrElse { throw it }
+                client.writeJson(config, merged.toJson().toString()).getOrElse { throw it }
 
-                val message = "Cloud sync success ($trigger)"
+                val message = "Cloud sync success (${config.provider.wireValue}:$trigger)"
                 saveCloudStatus(context, MobilePrefsStore.loadSettings(context), message, now)
                 lastRunAt = now
                 CloudSyncOutcome(
@@ -149,15 +157,60 @@ object MobileCloudSyncCoordinator {
                     syncedAt = now,
                     pushedConfigNodes = pushedNodes,
                 )
+            }.recoverCatching { error ->
+                if (error is CloudAuthExpiredException) {
+                    CloudCredentialStore.clearDriveAccessToken(context)
+                    val current = MobilePrefsStore.loadSettings(context)
+                    saveCloudStatus(context, current, "Google Drive token expired. Reconnect required.", System.currentTimeMillis())
+                }
+                throw error
             }
         }
     }
 
     suspend fun testConnection(context: Context): Result<Unit> {
         val settings = MobilePrefsStore.loadSettings(context)
-        val config = settings.toWebDavConfig(CloudCredentialStore.loadPassword(context))
+        val config = resolveRuntimeConfig(context, settings, allowSilentDriveRefresh = true)
         if (!config.isComplete()) return Result.failure(IllegalStateException("Cloud config incomplete"))
-        return webDavClient.testConnection(config)
+        return storageClient(config.provider).testConnection(config)
+    }
+
+    private suspend fun resolveRuntimeConfig(
+        context: Context,
+        settings: MobileSettings,
+        allowSilentDriveRefresh: Boolean,
+    ): CloudRuntimeConfig {
+        val password = CloudCredentialStore.loadPassword(context)
+        var driveToken = CloudCredentialStore.loadDriveAccessToken(context)
+        var driveTokenExpireAt = CloudCredentialStore.loadDriveAccessTokenExpireAt(context)
+        val provider = CloudProvider.fromWire(settings.cloudProvider)
+        val needsDriveRefresh = provider == CloudProvider.GOOGLE_DRIVE && (
+            driveToken.isBlank() || driveTokenExpireAt <= System.currentTimeMillis() + 60_000L
+            )
+        if (allowSilentDriveRefresh && needsDriveRefresh) {
+            val refreshed = GoogleDriveAuthManager.tryRefreshAccessTokenSilently(context).getOrNull()
+            if (refreshed != null) {
+                driveToken = refreshed.token
+                driveTokenExpireAt = refreshed.expireAt
+                CloudCredentialStore.saveDriveAccessToken(context, refreshed.token, refreshed.expireAt)
+                MobilePrefsStore.saveSettings(
+                    context,
+                    settings.copy(cloudDriveTokenExpireAt = refreshed.expireAt),
+                )
+            }
+        }
+        return settings.toCloudRuntimeConfig(
+            password = password,
+            driveAccessToken = driveToken,
+            driveAccessTokenExpireAt = driveTokenExpireAt,
+        )
+    }
+
+    private fun storageClient(provider: CloudProvider): MobileCloudStorageClient {
+        return when (provider) {
+            CloudProvider.WEBDAV -> webDavStorageClient
+            CloudProvider.GOOGLE_DRIVE -> googleDriveStorageClient
+        }
     }
 
     private fun applyRemoteToLocalIfNeeded(
@@ -212,6 +265,11 @@ object MobileCloudSyncCoordinator {
                     weekNumberMode = settingsObj.optString("weekNumberMode", current.weekNumberMode),
                     semesterWeekStartDate = settingsObj.optString("semesterWeekStartDate", current.semesterWeekStartDate),
                     weekStartDay = settingsObj.optString("weekStartDay", current.weekStartDay),
+                    cloudProvider = settingsObj.optString(CloudSyncContracts.KEY_CLOUD_PROVIDER, current.cloudProvider),
+                    cloudDriveFileName = settingsObj.optString(
+                        CloudSyncContracts.KEY_DRIVE_FILE_NAME,
+                        current.cloudDriveFileName.ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME },
+                    ),
                 ),
             )
             MobilePrefsStore.markLocalMobileSettingsUpdated(context, remoteMobileSettings.revision)

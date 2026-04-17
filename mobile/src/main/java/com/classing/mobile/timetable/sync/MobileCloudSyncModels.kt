@@ -1,25 +1,48 @@
 package com.xtawa.classingtime.sync
 
+import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.SyncSource
+import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class WebDavConfig(
+data class CloudRuntimeConfig(
+    val provider: CloudProvider,
     val enabled: Boolean,
     val serverUrl: String,
     val remotePath: String,
     val username: String,
     val password: String,
+    val driveFileName: String,
+    val driveAccessToken: String,
+    val driveAccessTokenExpireAt: Long,
 ) {
     fun isComplete(): Boolean {
-        return enabled &&
-            serverUrl.startsWith("https://", ignoreCase = true) &&
-            remotePath.isNotBlank() &&
-            username.isNotBlank() &&
-            password.isNotBlank()
+        if (!enabled) return false
+        return when (provider) {
+            CloudProvider.WEBDAV -> {
+                serverUrl.startsWith("https://", ignoreCase = true) &&
+                    remotePath.isNotBlank() &&
+                    username.isNotBlank() &&
+                    password.isNotBlank()
+            }
+
+            CloudProvider.GOOGLE_DRIVE -> {
+                driveFileName.isNotBlank() &&
+                    driveAccessToken.isNotBlank() &&
+                    !isDriveTokenExpired()
+            }
+        }
+    }
+
+    fun isDriveTokenExpired(
+        now: Long = System.currentTimeMillis(),
+        skewMs: Long = 60_000L,
+    ): Boolean {
+        return driveAccessTokenExpireAt <= 0L || now + skewMs >= driveAccessTokenExpireAt
     }
 }
 
@@ -174,13 +197,21 @@ data class CloudDocument(
     }
 }
 
-fun MobileSettings.toWebDavConfig(password: String): WebDavConfig {
-    return WebDavConfig(
+fun MobileSettings.toCloudRuntimeConfig(
+    password: String,
+    driveAccessToken: String,
+    driveAccessTokenExpireAt: Long,
+): CloudRuntimeConfig {
+    return CloudRuntimeConfig(
+        provider = CloudProvider.fromWire(cloudProvider),
         enabled = cloudSyncEnabled,
         serverUrl = cloudServerUrl.trim(),
         remotePath = cloudRemotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH },
         username = cloudUsername.trim(),
         password = password,
+        driveFileName = cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME },
+        driveAccessToken = driveAccessToken,
+        driveAccessTokenExpireAt = driveAccessTokenExpireAt,
     )
 }
 
@@ -195,13 +226,41 @@ fun MobileSettings.toMobileSettingsSnapshotJson(): JSONObject {
         .put("weekNumberMode", weekNumberMode)
         .put("semesterWeekStartDate", semesterWeekStartDate)
         .put("weekStartDay", weekStartDay)
+        .put(CloudSyncContracts.KEY_CLOUD_PROVIDER, cloudProvider)
+        .put(CloudSyncContracts.KEY_DRIVE_FILE_NAME, cloudDriveFileName)
 }
 
-fun MobileSettings.toCloudConfigPayload(password: String): JSONObject {
+fun MobileSettings.toCloudConfigPayload(
+    password: String,
+    driveAccessToken: String,
+    driveAccessTokenExpireAt: Long,
+): JSONObject {
     return JSONObject()
         .put("enabled", cloudSyncEnabled)
+        .put(CloudSyncContracts.KEY_CLOUD_PROVIDER, cloudProvider)
         .put("serverUrl", cloudServerUrl.trim())
         .put("remotePath", cloudRemotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH })
         .put("username", cloudUsername.trim())
         .put("password", password)
+        .put(CloudSyncContracts.KEY_DRIVE_FILE_NAME, cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME })
+        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN, driveAccessToken)
+        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, driveAccessTokenExpireAt)
+}
+
+fun MobileSettings.toWearCloudSnapshot(
+    password: String,
+    driveAccessToken: String,
+    driveAccessTokenExpireAt: Long,
+): JSONObject {
+    return JSONObject()
+        .put("enabled", cloudSyncEnabled)
+        .put(CloudSyncContracts.KEY_CLOUD_PROVIDER, cloudProvider)
+        .put("serverUrl", cloudServerUrl.trim())
+        .put("remotePath", cloudRemotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH })
+        .put("username", cloudUsername.trim())
+        .put("password", password)
+        .put(CloudSyncContracts.KEY_DRIVE_FILE_NAME, cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME })
+        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN, driveAccessToken)
+        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, driveAccessTokenExpireAt)
+        .put(WearDataLayerContracts.KEY_CLOUD_PROVIDER, cloudProvider)
 }

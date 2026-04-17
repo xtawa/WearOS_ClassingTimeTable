@@ -1,6 +1,7 @@
 package com.classing.wear.timetable.sync
 
 import android.util.Log
+import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
 import com.classing.wear.timetable.R
@@ -44,15 +45,27 @@ class CloudConfigListenerService : WearableListenerService() {
         val parsed = runCatching { JSONObject(payload) }.getOrNull() ?: return
         val current = WearCloudConfigStore.load(applicationContext)
         val config = WearCloudConfig(
+            provider = CloudProvider.fromWire(
+                parsed.optString(
+                    CloudSyncContracts.KEY_CLOUD_PROVIDER,
+                    parsed.optString(WearDataLayerContracts.KEY_CLOUD_PROVIDER, CloudProvider.WEBDAV.wireValue),
+                ),
+            ),
             enabled = parsed.optBoolean("enabled", false),
             serverUrl = parsed.optString("serverUrl", ""),
             remotePath = parsed.optString("remotePath", CloudSyncContracts.DEFAULT_REMOTE_PATH),
             username = parsed.optString("username", ""),
             password = parsed.optString("password", ""),
+            driveFileName = parsed.optString(CloudSyncContracts.KEY_DRIVE_FILE_NAME, CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME),
+            driveAccessToken = parsed.optString(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN, ""),
+            driveAccessTokenExpireAt = parsed.optLong(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, 0L),
             updatedAt = parsed.optLong(WearDataLayerContracts.KEY_UPDATED_AT, System.currentTimeMillis()),
         )
         WearCloudConfigStore.save(applicationContext, config)
-        if (current.normalized() != config.normalized()) {
+        if (current.provider == CloudProvider.WEBDAV &&
+            config.provider == CloudProvider.WEBDAV &&
+            current.normalized() != config.normalized()
+        ) {
             WearCloudConfigStore.saveConfigUpdateStatus(
                 context = applicationContext,
                 message = applicationContext.getString(R.string.settings_cloud_sync_wear_webdav_updated_from_mobile),

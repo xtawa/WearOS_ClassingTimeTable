@@ -30,10 +30,13 @@ data class MobileSettings(
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
     val weekStartDay: String,
+    val cloudProvider: String,
     val cloudSyncEnabled: Boolean,
     val cloudServerUrl: String,
     val cloudRemotePath: String,
     val cloudUsername: String,
+    val cloudDriveFileName: String,
+    val cloudDriveTokenExpireAt: Long,
     val cloudConfigPushStatus: String,
     val cloudLastResult: String,
     val cloudLastSyncedAt: Long,
@@ -52,10 +55,13 @@ object MobilePrefsStore {
     private const val KEY_WEEK_NUMBER_MODE = "week_number_mode"
     private const val KEY_SEMESTER_WEEK_START_DATE = "semester_week_start_date"
     private const val KEY_WEEK_START_DAY = "week_start_day"
+    private const val KEY_CLOUD_PROVIDER = "cloud_provider"
     private const val KEY_CLOUD_SYNC_ENABLED = "cloud_sync_enabled"
     private const val KEY_CLOUD_SERVER_URL = "cloud_server_url"
     private const val KEY_CLOUD_REMOTE_PATH = "cloud_remote_path"
     private const val KEY_CLOUD_USERNAME = "cloud_username"
+    private const val KEY_CLOUD_DRIVE_FILE_NAME = "cloud_drive_file_name"
+    private const val KEY_CLOUD_DRIVE_TOKEN_EXPIRE_AT = "cloud_drive_token_expire_at"
     private const val KEY_CLOUD_CONFIG_PUSH_STATUS = "cloud_config_push_status"
     private const val KEY_CLOUD_LAST_RESULT = "cloud_last_result"
     private const val KEY_CLOUD_LAST_SYNCED_AT = "cloud_last_synced_at"
@@ -82,10 +88,13 @@ object MobilePrefsStore {
             weekNumberMode = p.getString(KEY_WEEK_NUMBER_MODE, "NATURAL") ?: "NATURAL",
             semesterWeekStartDate = p.getString(KEY_SEMESTER_WEEK_START_DATE, "") ?: "",
             weekStartDay = p.getString(KEY_WEEK_START_DAY, "MONDAY") ?: "MONDAY",
+            cloudProvider = p.getString(KEY_CLOUD_PROVIDER, "WEBDAV") ?: "WEBDAV",
             cloudSyncEnabled = p.getBoolean(KEY_CLOUD_SYNC_ENABLED, false),
             cloudServerUrl = p.getString(KEY_CLOUD_SERVER_URL, "") ?: "",
             cloudRemotePath = p.getString(KEY_CLOUD_REMOTE_PATH, "/classing/classing_sync.json") ?: "/classing/classing_sync.json",
             cloudUsername = p.getString(KEY_CLOUD_USERNAME, "") ?: "",
+            cloudDriveFileName = p.getString(KEY_CLOUD_DRIVE_FILE_NAME, "classing_sync.json") ?: "classing_sync.json",
+            cloudDriveTokenExpireAt = p.getLong(KEY_CLOUD_DRIVE_TOKEN_EXPIRE_AT, 0L),
             cloudConfigPushStatus = p.getString(KEY_CLOUD_CONFIG_PUSH_STATUS, "") ?: "",
             cloudLastResult = p.getString(KEY_CLOUD_LAST_RESULT, "") ?: "",
             cloudLastSyncedAt = p.getLong(KEY_CLOUD_LAST_SYNCED_AT, 0L),
@@ -105,10 +114,13 @@ object MobilePrefsStore {
             .putString(KEY_WEEK_NUMBER_MODE, settings.weekNumberMode)
             .putString(KEY_SEMESTER_WEEK_START_DATE, settings.semesterWeekStartDate)
             .putString(KEY_WEEK_START_DAY, settings.weekStartDay)
+            .putString(KEY_CLOUD_PROVIDER, settings.cloudProvider)
             .putBoolean(KEY_CLOUD_SYNC_ENABLED, settings.cloudSyncEnabled)
             .putString(KEY_CLOUD_SERVER_URL, settings.cloudServerUrl)
             .putString(KEY_CLOUD_REMOTE_PATH, settings.cloudRemotePath)
             .putString(KEY_CLOUD_USERNAME, settings.cloudUsername)
+            .putString(KEY_CLOUD_DRIVE_FILE_NAME, settings.cloudDriveFileName)
+            .putLong(KEY_CLOUD_DRIVE_TOKEN_EXPIRE_AT, settings.cloudDriveTokenExpireAt)
             .putString(KEY_CLOUD_CONFIG_PUSH_STATUS, settings.cloudConfigPushStatus)
             .putString(KEY_CLOUD_LAST_RESULT, settings.cloudLastResult)
             .putLong(KEY_CLOUD_LAST_SYNCED_AT, settings.cloudLastSyncedAt)

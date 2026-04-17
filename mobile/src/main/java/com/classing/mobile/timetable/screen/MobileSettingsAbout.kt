@@ -898,21 +898,30 @@ internal fun WearCommunicationSettingsPage(
 @Composable
 internal fun CloudSyncSettingsPage(
     contentPadding: PaddingValues,
+    provider: CloudProviderUi,
     enabled: Boolean,
     serverUrl: String,
     remotePath: String,
     username: String,
     password: String,
+    driveFileName: String,
+    driveConnected: Boolean,
+    driveTokenExpireText: String,
+    showDriveCnWarning: Boolean,
     syncStatus: String,
     configPushStatus: String,
     lastSyncedAt: Long,
     syncInProgress: Boolean,
     onBack: () -> Unit,
+    onProviderChange: (CloudProviderUi) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
     onServerUrlChange: (String) -> Unit,
     onRemotePathChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onDriveFileNameChange: (String) -> Unit,
+    onConnectDrive: () -> Unit,
+    onDisconnectDrive: () -> Unit,
     onSave: () -> Unit,
     onTestConnection: () -> Unit,
     onSyncNow: () -> Unit,
@@ -975,34 +984,101 @@ internal fun CloudSyncSettingsPage(
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                OutlinedTextField(
-                    value = serverUrl,
-                    onValueChange = onServerUrlChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.settings_cloud_sync_server_url)) },
-                    singleLine = true,
+                Text(
+                    text = stringResource(R.string.settings_cloud_sync_provider),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
                 )
-                OutlinedTextField(
-                    value = remotePath,
-                    onValueChange = onRemotePathChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.settings_cloud_sync_remote_path)) },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = onUsernameChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.settings_cloud_sync_username)) },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = onPasswordChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.settings_cloud_sync_password)) },
-                    singleLine = true,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = provider == CloudProviderUi.WEBDAV,
+                        onClick = { onProviderChange(CloudProviderUi.WEBDAV) },
+                        label = { Text("WebDAV") },
+                    )
+                    FilterChip(
+                        selected = provider == CloudProviderUi.GOOGLE_DRIVE,
+                        onClick = { onProviderChange(CloudProviderUi.GOOGLE_DRIVE) },
+                        label = { Text("Google Drive") },
+                    )
+                }
+                if (provider == CloudProviderUi.WEBDAV) {
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = onServerUrlChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_cloud_sync_server_url)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = remotePath,
+                        onValueChange = onRemotePathChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_cloud_sync_remote_path)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = onUsernameChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_cloud_sync_username)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = onPasswordChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_cloud_sync_password)) },
+                        singleLine = true,
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = driveFileName,
+                        onValueChange = onDriveFileNameChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_cloud_sync_drive_file_name)) },
+                        singleLine = true,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_cloud_sync_drive_status,
+                            if (driveConnected) {
+                                stringResource(R.string.settings_cloud_sync_drive_connected)
+                            } else {
+                                stringResource(R.string.settings_cloud_sync_drive_not_connected)
+                            },
+                            driveTokenExpireText,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onConnectDrive,
+                            enabled = !syncInProgress,
+                            shape = RoundedCornerShape(999.dp),
+                        ) {
+                            Text(stringResource(R.string.settings_cloud_sync_drive_connect))
+                        }
+                        Button(
+                            onClick = onDisconnectDrive,
+                            enabled = !syncInProgress && driveConnected,
+                            shape = RoundedCornerShape(999.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                        ) {
+                            Text(stringResource(R.string.settings_cloud_sync_drive_disconnect))
+                        }
+                    }
+                    if (showDriveCnWarning) {
+                        Text(
+                            text = stringResource(R.string.settings_cloud_sync_drive_cn_warning),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = onSave,

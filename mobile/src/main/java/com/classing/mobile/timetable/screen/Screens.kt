@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
@@ -89,6 +90,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
@@ -99,6 +101,7 @@ import com.xtawa.classingtime.reminder.ReminderScheduler
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.sync.CloudCredentialStore
+import com.xtawa.classingtime.sync.GoogleDriveAuthManager
 import com.xtawa.classingtime.sync.MobileCloudSyncCoordinator
 import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
@@ -179,11 +182,15 @@ fun MobileTimetableScreen() {
     var wearSyncInProgress by remember { mutableStateOf(false) }
     var wearSyncMode by remember { mutableStateOf(WearSyncMode.AUTO) }
     var showOnboarding by remember { mutableStateOf(false) }
+    var cloudProvider by remember { mutableStateOf(CloudProviderUi.WEBDAV) }
     var cloudSyncEnabled by remember { mutableStateOf(false) }
     var cloudServerUrl by remember { mutableStateOf("") }
     var cloudRemotePath by remember { mutableStateOf(CloudSyncContracts.DEFAULT_REMOTE_PATH) }
     var cloudUsername by remember { mutableStateOf("") }
     var cloudPassword by remember { mutableStateOf("") }
+    var cloudDriveFileName by remember { mutableStateOf(CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME) }
+    var cloudDriveTokenExpireAt by remember { mutableStateOf(0L) }
+    var cloudDriveAccessToken by remember { mutableStateOf("") }
     var cloudSyncStatus by remember { mutableStateOf("") }
     var cloudLastSyncedAt by remember { mutableStateOf(0L) }
     var cloudSyncInProgress by remember { mutableStateOf(false) }
@@ -231,10 +238,13 @@ fun MobileTimetableScreen() {
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
             weekStartDay = weekStartDay,
+            cloudProvider = cloudProvider,
             cloudSyncEnabled = cloudSyncEnabled,
             cloudServerUrl = cloudServerUrl,
             cloudRemotePath = cloudRemotePath,
             cloudUsername = cloudUsername,
+            cloudDriveFileName = cloudDriveFileName,
+            cloudDriveTokenExpireAt = cloudDriveTokenExpireAt,
             cloudConfigPushStatus = cloudConfigPushStatus,
             cloudLastResult = cloudSyncStatus,
             cloudLastSyncedAt = cloudLastSyncedAt,
@@ -416,6 +426,43 @@ fun MobileTimetableScreen() {
         )
     }
 
+    val driveAuthorizationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        val data = result.data
+        if (data == null) {
+            cloudSyncInProgress = false
+            cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_auth_canceled)
+            persistSettings()
+            return@rememberLauncherForActivityResult
+        }
+        val authResult = GoogleDriveAuthManager.getAuthorizationResultFromIntent(context, data).getOrNull()
+            ?: run {
+                cloudSyncInProgress = false
+                cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_auth_failed, "authorization result error")
+                persistSettings()
+                return@rememberLauncherForActivityResult
+            }
+        val token = GoogleDriveAuthManager.parseAccessToken(authResult).getOrNull() ?: run {
+            cloudSyncInProgress = false
+            cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_auth_failed, "empty token")
+            persistSettings()
+            return@rememberLauncherForActivityResult
+        }
+        cloudDriveAccessToken = token.token
+        cloudDriveTokenExpireAt = token.expireAt
+        CloudCredentialStore.saveDriveAccessToken(context, token.token, token.expireAt)
+        cloudConfigPushStatus = ""
+        cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_connected)
+        cloudSyncInProgress = false
+        persistSettings()
+        requestCloudSync(
+            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+            force = true,
+            alsoPushConfigToWear = true,
+        )
+    }
+
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
@@ -494,12 +541,19 @@ fun MobileTimetableScreen() {
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
         weekStartDay = parseWeekStartDay(settings.weekStartDay)
+        cloudProvider = CloudProviderUi.entries.firstOrNull { it.name == settings.cloudProvider } ?: CloudProviderUi.WEBDAV
         cloudSyncEnabled = settings.cloudSyncEnabled
         cloudServerUrl = settings.cloudServerUrl
         cloudRemotePath = settings.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
         cloudUsername = settings.cloudUsername
+        cloudDriveFileName = settings.cloudDriveFileName.ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME }
+        cloudDriveTokenExpireAt = maxOf(
+            settings.cloudDriveTokenExpireAt,
+            CloudCredentialStore.loadDriveAccessTokenExpireAt(context),
+        )
         cloudConfigPushStatus = settings.cloudConfigPushStatus
         cloudPassword = CloudCredentialStore.loadPassword(context)
+        cloudDriveAccessToken = CloudCredentialStore.loadDriveAccessToken(context)
         cloudSyncStatus = settings.cloudLastResult
         cloudLastSyncedAt = settings.cloudLastSyncedAt
 
@@ -657,6 +711,18 @@ fun MobileTimetableScreen() {
     } else {
         ""
     }
+    val showDriveCnWarning = cloudProvider == CloudProviderUi.GOOGLE_DRIVE &&
+        autoDetection.variant == WearAutoVariant.CN_LE
+    val driveTokenExpireText = if (cloudDriveTokenExpireAt > 0L) {
+        LocalDateTime.ofInstant(
+            Instant.ofEpochMilli(cloudDriveTokenExpireAt),
+            ZoneId.systemDefault(),
+        ).format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+    } else {
+        stringResource(R.string.settings_cloud_sync_never)
+    }
+    val driveConnected = cloudDriveAccessToken.isNotBlank() &&
+        cloudDriveTokenExpireAt > System.currentTimeMillis() + 60_000L
     val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
         ImportLayer(
             contentPadding = innerPadding,
@@ -1163,11 +1229,16 @@ fun MobileTimetableScreen() {
 
                 SettingsPage.CloudSync -> CloudSyncSettingsPage(
                     contentPadding = innerPadding,
+                    provider = cloudProvider,
                     enabled = cloudSyncEnabled,
                     serverUrl = cloudServerUrl,
                     remotePath = cloudRemotePath,
                     username = cloudUsername,
                     password = cloudPassword,
+                    driveFileName = cloudDriveFileName,
+                    driveConnected = driveConnected,
+                    driveTokenExpireText = driveTokenExpireText,
+                    showDriveCnWarning = showDriveCnWarning,
                     syncStatus = cloudSyncStatus,
                     configPushStatus = cloudConfigPushStatus,
                     lastSyncedAt = cloudLastSyncedAt,
@@ -1175,6 +1246,7 @@ fun MobileTimetableScreen() {
                     onBack = {
                         handleBackNavigation()
                     },
+                    onProviderChange = { cloudProvider = it },
                     onEnabledChange = {
                         cloudSyncEnabled = it
                     },
@@ -1182,8 +1254,83 @@ fun MobileTimetableScreen() {
                     onRemotePathChange = { cloudRemotePath = it },
                     onUsernameChange = { cloudUsername = it },
                     onPasswordChange = { cloudPassword = it },
+                    onDriveFileNameChange = { cloudDriveFileName = it },
+                    onConnectDrive = {
+                        coroutineScope.launch {
+                            cloudSyncInProgress = true
+                            try {
+                                if (BuildConfig.DRIVE_OAUTH_CLIENT_ID.isBlank()) {
+                                    cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_config_missing)
+                                    persistSettings()
+                                    return@launch
+                                }
+                                val authorization = GoogleDriveAuthManager.authorize(context)
+                                if (authorization.isFailure) {
+                                    cloudSyncStatus = context.getString(
+                                        R.string.settings_cloud_sync_drive_auth_failed,
+                                        authorization.exceptionOrNull()?.message ?: "unknown",
+                                    )
+                                    persistSettings()
+                                    return@launch
+                                }
+                                val authResult = authorization.getOrThrow()
+                                if (authResult.hasResolution()) {
+                                    val pendingIntent = authResult.pendingIntent
+                                    if (pendingIntent != null) {
+                                        driveAuthorizationLauncher.launch(
+                                            IntentSenderRequest.Builder(pendingIntent.intentSender).build(),
+                                        )
+                                        return@launch
+                                    }
+                                }
+                                val token = GoogleDriveAuthManager.parseAccessToken(authResult).getOrThrow()
+                                cloudDriveAccessToken = token.token
+                                cloudDriveTokenExpireAt = token.expireAt
+                                CloudCredentialStore.saveDriveAccessToken(context, token.token, token.expireAt)
+                                cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_connected)
+                                cloudConfigPushStatus = ""
+                                persistSettings()
+                                requestCloudSync(
+                                    trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                    force = true,
+                                    alsoPushConfigToWear = true,
+                                )
+                            } catch (error: Throwable) {
+                                cloudSyncStatus = context.getString(
+                                    R.string.settings_cloud_sync_drive_auth_failed,
+                                    error.message ?: "unknown",
+                                )
+                                persistSettings()
+                            } finally {
+                                cloudSyncInProgress = false
+                            }
+                        }
+                    },
+                    onDisconnectDrive = {
+                        coroutineScope.launch {
+                            cloudSyncInProgress = true
+                            try {
+                                GoogleDriveAuthManager.clearToken(context, cloudDriveAccessToken)
+                                CloudCredentialStore.clearDriveAccessToken(context)
+                                cloudDriveAccessToken = ""
+                                cloudDriveTokenExpireAt = 0L
+                                cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_disconnected)
+                                cloudConfigPushStatus = ""
+                                persistSettings()
+                                requestCloudSync(
+                                    trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                    force = true,
+                                    alsoPushConfigToWear = true,
+                                )
+                            } finally {
+                                cloudSyncInProgress = false
+                            }
+                        }
+                    },
                     onSave = {
-                        CloudCredentialStore.savePassword(context, cloudPassword)
+                        if (cloudProvider == CloudProviderUi.WEBDAV) {
+                            CloudCredentialStore.savePassword(context, cloudPassword)
+                        }
                         cloudConfigPushStatus = ""
                         persistSettings()
                         requestCloudSync(
@@ -1196,13 +1343,16 @@ fun MobileTimetableScreen() {
                         coroutineScope.launch {
                             cloudSyncInProgress = true
                             try {
-                                CloudCredentialStore.savePassword(context, cloudPassword)
+                                if (cloudProvider == CloudProviderUi.WEBDAV) {
+                                    CloudCredentialStore.savePassword(context, cloudPassword)
+                                }
                                 persistSettings()
                                 val result = MobileCloudSyncCoordinator.testConnection(context)
-                                cloudSyncStatus = if (result.isSuccess) {
-                                    "WebDAV connection OK"
-                                } else {
-                                    "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                cloudSyncStatus = when {
+                                    result.isSuccess && cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection OK"
+                                    result.isSuccess && cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection OK"
+                                    cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                    else -> "Google Drive connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
                                 }
                                 persistSettings()
                             } finally {
@@ -1211,7 +1361,9 @@ fun MobileTimetableScreen() {
                         }
                     },
                     onSyncNow = {
-                        CloudCredentialStore.savePassword(context, cloudPassword)
+                        if (cloudProvider == CloudProviderUi.WEBDAV) {
+                            CloudCredentialStore.savePassword(context, cloudPassword)
+                        }
                         persistSettings()
                         requestCloudSync(
                             trigger = CloudSyncContracts.TRIGGER_MANUAL,

@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.repository.SettingsRepository
@@ -80,6 +81,12 @@ fun CloudSyncScreen(
     } else {
         stringResource(R.string.settings_cloud_sync_never)
     }
+    val driveExpireText = if (config.driveAccessTokenExpireAt > 0L) {
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(config.driveAccessTokenExpireAt), ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+    } else {
+        stringResource(R.string.settings_cloud_sync_never)
+    }
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -110,7 +117,10 @@ fun CloudSyncScreen(
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Text(
-                    text = stringResource(R.string.settings_cloud_sync_phone_only_hint),
+                    text = stringResource(
+                        R.string.settings_cloud_sync_provider_wear,
+                        if (config.provider == CloudProvider.GOOGLE_DRIVE) "Google Drive" else "WebDAV",
+                    ),
                     modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -119,15 +129,44 @@ fun CloudSyncScreen(
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Text(
-                    text = stringResource(
-                        R.string.settings_cloud_sync_wear_config_label,
-                        config.serverUrl.ifBlank { "-" },
-                        config.remotePath.ifBlank { "-" },
-                        config.username.ifBlank { "-" },
-                    ),
+                    text = if (config.provider == CloudProvider.WEBDAV) {
+                        stringResource(R.string.settings_cloud_sync_phone_only_hint)
+                    } else {
+                        stringResource(R.string.settings_cloud_sync_wear_drive_hint)
+                    },
                     modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+        if (config.provider == CloudProvider.WEBDAV) {
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Text(
+                        text = stringResource(
+                            R.string.settings_cloud_sync_wear_config_label,
+                            config.serverUrl.ifBlank { "-" },
+                            config.remotePath.ifBlank { "-" },
+                            config.username.ifBlank { "-" },
+                        ),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        } else {
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Text(
+                        text = stringResource(
+                            R.string.settings_cloud_sync_wear_drive_status_label,
+                            config.driveFileName.ifBlank { "-" },
+                            driveExpireText,
+                        ),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
         item {
@@ -158,13 +197,15 @@ fun CloudSyncScreen(
                 }
             }
         }
-        item {
-            Button(
-                onClick = onOpenEdit,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.settings_cloud_sync_edit_button))
+        if (config.provider == CloudProvider.WEBDAV) {
+            item {
+                Button(
+                    onClick = onOpenEdit,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(stringResource(R.string.settings_cloud_sync_edit_button))
+                }
             }
         }
         item {
