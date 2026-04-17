@@ -12,6 +12,7 @@
     <string name="ghost_title_backup">BACKUP</string>
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
+    <string name="ghost_title_sync">SYNC</string>
     <string name="ghost_title_wear">Wear</string>
     <string name="ghost_title_cloud">CLOUD</string>
     <string name="ghost_title_ai">AI</string>
@@ -159,6 +160,7 @@
     <string name="settings_week_mode_semester">学期周</string>
     <string name="settings_week_start_day_title">每周起始日</string>
     <string name="settings_badge_week_mode">周</string>
+    <string name="settings_badge_sync_comm">同</string>
     <string name="settings_badge_wear">W</string>
     <string name="settings_badge_cloud">云</string>
     <string name="settings_current_week_badge">当前</string>
@@ -203,6 +205,8 @@
     <string name="settings_danger_title">Danger Zone</string>
     <string name="settings_danger_desc">删除本设备上的全部课表数据。</string>
     <string name="settings_danger_clear_button">删除全部课表</string>
+    <string name="settings_sync_comm_title">同步与通信</string>
+    <string name="settings_sync_comm_desc">统一管理云同步与 Wear 通信。</string>
     <string name="settings_wear_comm_title">Wear 通信</string>
     <string name="settings_wear_comm_desc">检查 Wear 连接状态，并手动同步课表。国行三星/CN/LE 设备建议使用 WearOS App 模式，通过伴侣应用和 Data Layer 排队同步。</string>
     <string name="settings_wear_sync_mode_label">同步方式</string>

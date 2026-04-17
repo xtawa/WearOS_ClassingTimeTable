@@ -946,11 +946,8 @@ fun MobileTimetableScreen() {
                     onOpenWeekModePage = {
                         openSettingsPage(SettingsPage.WeekMode)
                     },
-                    onOpenWearCommunicationPage = {
-                        openSettingsPage(SettingsPage.WearCommunication)
-                    },
-                    onOpenCloudSyncPage = {
-                        openSettingsPage(SettingsPage.CloudSync)
+                    onOpenSyncCommunicationPage = {
+                        openSettingsPage(SettingsPage.SyncCommunication)
                     },
                     onOpenAboutPage = {
                         openSettingsPage(SettingsPage.About)
@@ -1103,6 +1100,19 @@ fun MobileTimetableScreen() {
                                 alsoPushConfigToWear = false,
                             )
                         }
+                    },
+                )
+
+                SettingsPage.SyncCommunication -> SyncCommunicationSettingsPage(
+                    contentPadding = innerPadding,
+                    onBack = {
+                        handleBackNavigation()
+                    },
+                    onOpenWearCommunicationPage = {
+                        openSettingsPage(SettingsPage.WearCommunication)
+                    },
+                    onOpenCloudSyncPage = {
+                        openSettingsPage(SettingsPage.CloudSync)
                     },
                 )
 

@@ -12,6 +12,7 @@
     <string name="ghost_title_backup">BACKUP</string>
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
+    <string name="ghost_title_sync">SYNC</string>
     <string name="ghost_title_wear">WEAR</string>
     <string name="ghost_title_cloud">CLOUD</string>
     <string name="ghost_title_ai">AI</string>
@@ -159,6 +160,7 @@
     <string name="settings_week_mode_semester">Semester Week</string>
     <string name="settings_week_start_day_title">Week Starts On</string>
     <string name="settings_badge_week_mode">W</string>
+    <string name="settings_badge_sync_comm">S</string>
     <string name="settings_badge_wear">W</string>
     <string name="settings_badge_cloud">C</string>
     <string name="settings_current_week_badge">CURRENT</string>
@@ -203,6 +205,8 @@
     <string name="settings_danger_title">Danger Zone</string>
     <string name="settings_danger_desc">Delete all timetable data from this device.</string>
     <string name="settings_danger_clear_button">Delete All Timetables</string>
+    <string name="settings_sync_comm_title">Sync &amp; Communication</string>
+    <string name="settings_sync_comm_desc">Manage cloud sync and Wear communication in one place.</string>
     <string name="settings_wear_comm_title">Wear Communication</string>
     <string name="settings_wear_comm_desc">Check Wear connection and sync timetable manually. On Samsung CN/LE devices, WearOS App mode queues sync through the companion app and Data Layer.</string>
     <string name="settings_wear_sync_mode_label">Sync method</string>

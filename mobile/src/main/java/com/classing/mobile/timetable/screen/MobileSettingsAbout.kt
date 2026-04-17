@@ -90,8 +90,7 @@ internal fun SettingsLayer(
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
-    onOpenWearCommunicationPage: () -> Unit,
-    onOpenCloudSyncPage: () -> Unit,
+    onOpenSyncCommunicationPage: () -> Unit,
     onOpenAboutPage: () -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
     onToggleReminder: (Boolean) -> Unit,
@@ -273,17 +272,10 @@ internal fun SettingsLayer(
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_wear),
-            title = stringResource(R.string.settings_wear_comm_title),
-            desc = stringResource(R.string.settings_wear_comm_desc),
-            onClick = onOpenWearCommunicationPage,
-        )
-
-        SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_cloud),
-            title = stringResource(R.string.settings_cloud_sync_title),
-            desc = stringResource(R.string.settings_cloud_sync_desc),
-            onClick = onOpenCloudSyncPage,
+            badge = stringResource(R.string.settings_badge_sync_comm),
+            title = stringResource(R.string.settings_sync_comm_title),
+            desc = stringResource(R.string.settings_sync_comm_desc),
+            onClick = onOpenSyncCommunicationPage,
         )
 
         SettingsEntryCard(
@@ -631,6 +623,65 @@ internal fun WeekModeSettingsPage(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun SyncCommunicationSettingsPage(
+    contentPadding: PaddingValues,
+    onBack: () -> Unit,
+    onOpenWearCommunicationPage: () -> Unit,
+    onOpenCloudSyncPage: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = stringResource(R.string.settings_sync_comm_title),
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_about_back_button),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.ghost_title_sync),
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                text = stringResource(R.string.settings_sync_comm_title),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.settings_sync_comm_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        SettingsEntryCard(
+            badge = stringResource(R.string.settings_badge_wear),
+            title = stringResource(R.string.settings_wear_comm_title),
+            desc = stringResource(R.string.settings_wear_comm_desc),
+            onClick = onOpenWearCommunicationPage,
+        )
+
+        SettingsEntryCard(
+            badge = stringResource(R.string.settings_badge_cloud),
+            title = stringResource(R.string.settings_cloud_sync_title),
+            desc = stringResource(R.string.settings_cloud_sync_desc),
+            onClick = onOpenCloudSyncPage,
+        )
     }
 }
 

@@ -12,6 +12,7 @@
     <string name="ghost_title_backup">BACKUP</string>
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
+    <string name="ghost_title_sync">SYNC</string>
     <string name="ghost_title_wear">Wear</string>
     <string name="ghost_title_cloud">CLOUD</string>
     <string name="ghost_title_ai">AI</string>
@@ -159,6 +160,7 @@
     <string name="settings_week_mode_semester">學期週</string>
     <string name="settings_week_start_day_title">每週起始日</string>
     <string name="settings_badge_week_mode">週</string>
+    <string name="settings_badge_sync_comm">同</string>
     <string name="settings_badge_wear">W</string>
     <string name="settings_badge_cloud">雲</string>
     <string name="settings_current_week_badge">目前</string>
@@ -203,6 +205,8 @@
     <string name="settings_danger_title">Danger Zone</string>
     <string name="settings_danger_desc">刪除此裝置上的全部課表資料。</string>
     <string name="settings_danger_clear_button">刪除全部課表</string>
+    <string name="settings_sync_comm_title">同步與通訊</string>
+    <string name="settings_sync_comm_desc">統一管理雲端同步與 Wear 通訊。</string>
     <string name="settings_wear_comm_title">Wear 通訊</string>
     <string name="settings_wear_comm_desc">檢查 Wear 連線狀態，並手動同步課表。國行三星/CN/LE 裝置建議使用 WearOS App 模式，透過伴侶應用與 Data Layer 排隊同步。</string>
     <string name="settings_wear_sync_mode_label">同步方式</string>
