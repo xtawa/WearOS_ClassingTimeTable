@@ -66,10 +66,10 @@ class DefaultScheduleRepository(
                     ),
                 )
             }
-            observeScheduleContext(semester).map { ctx ->
+            combine(observeScheduleContext(semester), minuteTicker()) { ctx, now ->
                 assembler.buildWeekSchedule(
                     weekStart = weekStart,
-                    now = timeProvider.nowDateTime(),
+                    now = now,
                     semester = semester,
                     courses = ctx.courses,
                     sessions = ctx.sessions,
@@ -111,8 +111,8 @@ class DefaultScheduleRepository(
         while (true) {
             val now = timeProvider.nowDateTime()
             emit(now)
-            val delayMillis = (60 - now.second).coerceAtLeast(1) * 1_000L
-            delay(delayMillis)
+            val delayMillis = ((60 - now.second) * 1_000L) - (now.nano / 1_000_000L)
+            delay(delayMillis.coerceAtLeast(1L))
         }
     }
 

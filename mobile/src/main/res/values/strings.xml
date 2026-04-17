@@ -12,6 +12,7 @@
     <string name="ghost_title_backup">BACKUP</string>
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
+    <string name="ghost_title_reminder">REMIND</string>
     <string name="ghost_title_sync">SYNC</string>
     <string name="ghost_title_wear">WEAR</string>
     <string name="ghost_title_cloud">CLOUD</string>
@@ -52,6 +53,13 @@
     <string name="no_classes">No classes</string>
     <string name="time_range_text">%1$s-%2$s</string>
     <string name="week_long_press_hint">Long press a class to edit or delete.</string>
+    <string name="schedule_next_lesson_title">Next class</string>
+    <string name="schedule_next_lesson_empty">No more classes today</string>
+    <string name="schedule_next_lesson_no_data">No timetable data yet</string>
+    <string name="schedule_next_lesson_countdown_in_progress">In progress</string>
+    <string name="schedule_next_lesson_countdown_soon">Starting soon</string>
+    <string name="schedule_next_lesson_countdown_in_minutes">In %1$d min</string>
+    <string name="schedule_next_lesson_countdown_in_hours_minutes">In %1$dh %2$dm</string>
 
     <string name="import_title">iCalendar (ICS) Import</string>
     <string name="import_page_title">Import Center</string>
@@ -144,6 +152,8 @@
     <string name="settings_reminder_toggle_desc">Notify before class starts.</string>
     <string name="settings_badge_reminder">R</string>
     <string name="settings_reminder_lead_title">Lead time: %1$d min</string>
+    <string name="settings_reminder_keepalive_title">Reminder &amp; Keep Alive</string>
+    <string name="settings_reminder_keepalive_desc">Configure class reminders and reminder keep-alive intensity.</string>
     <string name="settings_backup_title">Backup &amp; Restore</string>
     <string name="settings_backup_desc">Export current timetable to JSON or restore from a JSON backup file.</string>
     <string name="settings_backup_button">Export Timetable JSON</string>

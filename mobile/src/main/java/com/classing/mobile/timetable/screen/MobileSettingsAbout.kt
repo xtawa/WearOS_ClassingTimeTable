@@ -82,25 +82,13 @@ import kotlinx.coroutines.withContext
 internal fun SettingsLayer(
     contentPadding: PaddingValues,
     showWeekend: Boolean,
-    reminderEnabled: Boolean,
-    reminderMinutes: Int,
-    keepAliveLevel: KeepAliveLevel,
-    experimentalAccessibilityKeepAliveEnabled: Boolean,
-    keepAliveStatus: String,
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
+    onOpenReminderKeepAlivePage: () -> Unit,
     onOpenSyncCommunicationPage: () -> Unit,
     onOpenAboutPage: () -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
-    onToggleReminder: (Boolean) -> Unit,
-    onReminderMinutesChange: (Int) -> Unit,
-    onKeepAliveLevelChange: (KeepAliveLevel) -> Unit,
-    onToggleExperimentalAccessibilityKeepAlive: (Boolean) -> Unit,
-    onOpenAccessibilitySettings: () -> Unit,
-    onOpenBatteryOptimizationSettings: () -> Unit,
-    onOpenExactAlarmSettings: () -> Unit,
-    onRefreshKeepAliveStatus: () -> Unit,
     onClearAllSchedules: () -> Unit,
 ) {
     Column(
@@ -139,116 +127,12 @@ internal fun SettingsLayer(
             onCheckedChange = onToggleWeekend,
         )
 
-        SettingsSwitchCard(
+        SettingsEntryCard(
             badge = stringResource(R.string.settings_badge_reminder),
-            title = stringResource(R.string.settings_reminder_toggle_title),
-            desc = stringResource(R.string.settings_reminder_toggle_desc),
-            checked = reminderEnabled,
-            onCheckedChange = onToggleReminder,
+            title = stringResource(R.string.settings_reminder_keepalive_title),
+            desc = stringResource(R.string.settings_reminder_keepalive_desc),
+            onClick = onOpenReminderKeepAlivePage,
         )
-
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_reminder_lead_title, reminderMinutes),
-                    fontWeight = FontWeight.SemiBold,
-                )
-                androidx.compose.material3.Slider(
-                    value = reminderMinutes.toFloat(),
-                    onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
-                    valueRange = 5f..60f,
-                )
-            }
-        }
-
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = "提醒保活强度",
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = keepAliveLevel == KeepAliveLevel.ECO,
-                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.ECO) },
-                        label = { Text("省电") },
-                    )
-                    FilterChip(
-                        selected = keepAliveLevel == KeepAliveLevel.BALANCED,
-                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.BALANCED) },
-                        label = { Text("均衡") },
-                    )
-                    FilterChip(
-                        selected = keepAliveLevel == KeepAliveLevel.AGGRESSIVE,
-                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.AGGRESSIVE) },
-                        label = { Text("增强") },
-                    )
-                }
-                Text(
-                    text = keepAliveStatus,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "实验功能：无障碍保活仅用于内测/侧载，请勿用于 Play 上架版本。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("启用实验无障碍保活", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = experimentalAccessibilityKeepAliveEnabled,
-                        onCheckedChange = onToggleExperimentalAccessibilityKeepAlive,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onOpenAccessibilitySettings,
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) { Text("无障碍设置") }
-                    Button(
-                        onClick = onRefreshKeepAliveStatus,
-                        shape = RoundedCornerShape(999.dp),
-                    ) { Text("刷新状态") }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onOpenBatteryOptimizationSettings,
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) { Text("电池白名单") }
-                    Button(
-                        onClick = onOpenExactAlarmSettings,
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) { Text("精确闹钟") }
-                }
-            }
-        }
 
         SettingsEntryCard(
             badge = stringResource(R.string.settings_badge_import),
@@ -620,6 +504,173 @@ internal fun WeekModeSettingsPage(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ReminderKeepAliveSettingsPage(
+    contentPadding: PaddingValues,
+    reminderEnabled: Boolean,
+    reminderMinutes: Int,
+    keepAliveLevel: KeepAliveLevel,
+    experimentalAccessibilityKeepAliveEnabled: Boolean,
+    keepAliveStatus: String,
+    onBack: () -> Unit,
+    onToggleReminder: (Boolean) -> Unit,
+    onReminderMinutesChange: (Int) -> Unit,
+    onKeepAliveLevelChange: (KeepAliveLevel) -> Unit,
+    onToggleExperimentalAccessibilityKeepAlive: (Boolean) -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onOpenBatteryOptimizationSettings: () -> Unit,
+    onOpenExactAlarmSettings: () -> Unit,
+    onRefreshKeepAliveStatus: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = stringResource(R.string.settings_reminder_keepalive_title),
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_about_back_button),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.ghost_title_reminder),
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                text = stringResource(R.string.settings_reminder_keepalive_title),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(R.string.settings_reminder_keepalive_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        SettingsSwitchCard(
+            badge = stringResource(R.string.settings_badge_reminder),
+            title = stringResource(R.string.settings_reminder_toggle_title),
+            desc = stringResource(R.string.settings_reminder_toggle_desc),
+            checked = reminderEnabled,
+            onCheckedChange = onToggleReminder,
+        )
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_reminder_lead_title, reminderMinutes),
+                    fontWeight = FontWeight.SemiBold,
+                )
+                androidx.compose.material3.Slider(
+                    value = reminderMinutes.toFloat(),
+                    onValueChange = { onReminderMinutesChange(it.toInt().coerceIn(5, 60)) },
+                    valueRange = 5f..60f,
+                )
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "提醒保活强度",
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = keepAliveLevel == KeepAliveLevel.ECO,
+                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.ECO) },
+                        label = { Text("省电") },
+                    )
+                    FilterChip(
+                        selected = keepAliveLevel == KeepAliveLevel.BALANCED,
+                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.BALANCED) },
+                        label = { Text("均衡") },
+                    )
+                    FilterChip(
+                        selected = keepAliveLevel == KeepAliveLevel.AGGRESSIVE,
+                        onClick = { onKeepAliveLevelChange(KeepAliveLevel.AGGRESSIVE) },
+                        label = { Text("增强") },
+                    )
+                }
+                Text(
+                    text = keepAliveStatus,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "实验功能：无障碍保活仅用于内测/侧载，请勿用于 Play 上架版本。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("启用实验无障碍保活", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = experimentalAccessibilityKeepAliveEnabled,
+                        onCheckedChange = onToggleExperimentalAccessibilityKeepAlive,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onOpenAccessibilitySettings,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) { Text("无障碍设置") }
+                    Button(
+                        onClick = onRefreshKeepAliveStatus,
+                        shape = RoundedCornerShape(999.dp),
+                    ) { Text("刷新状态") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onOpenBatteryOptimizationSettings,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) { Text("电池白名单") }
+                    Button(
+                        onClick = onOpenExactAlarmSettings,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) { Text("精确闹钟") }
                 }
             }
         }

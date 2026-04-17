@@ -104,8 +104,8 @@ class HomeViewModel(
         while (true) {
             val now = timeProvider.nowDateTime()
             emit(now.toEpochSecond(java.time.ZoneOffset.UTC))
-            val delayMillis = (60 - now.second).coerceAtLeast(1) * 1_000L
-            delay(delayMillis)
+            val delayMillis = ((60 - now.second) * 1_000L) - (now.nano / 1_000_000L)
+            delay(delayMillis.coerceAtLeast(1L))
         }
     }
 

@@ -15,6 +15,7 @@ internal enum class SettingsPage {
     Import,
     BackupRestore,
     WeekMode,
+    ReminderKeepAlive,
     SyncCommunication,
     WearCommunication,
     CloudSync,

@@ -105,6 +105,15 @@ internal fun WeekBoardLayer(
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val current = LocalDateTime.now()
+            now = current
+            val delayMillis = ((60 - current.second) * 1_000L) - (current.nano / 1_000_000L)
+            delay(delayMillis.coerceAtLeast(1L))
+        }
+    }
     val todayDay = LocalDate.now().dayOfWeek
     val prioritizedDays = remember(visibleDays, todayDay) {
         if (visibleDays.contains(todayDay)) {
@@ -113,6 +122,8 @@ internal fun WeekBoardLayer(
             visibleDays
         }
     }
+    val nextLesson = remember(lessonsByDay, now) { resolveNextLessonForBoard(lessonsByDay, now) }
+    val hasSchedule = remember(lessonsByDay) { lessonsByDay.values.any { it.isNotEmpty() } }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -143,6 +154,13 @@ internal fun WeekBoardLayer(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        item {
+            MobileNextLessonHeroCard(
+                nextLesson = nextLesson,
+                hasSchedule = hasSchedule,
+                now = now,
+            )
         }
         items(prioritizedDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
@@ -250,6 +268,120 @@ internal fun WeekBoardLayer(
             }
         }
     }
+}
+
+@Composable
+private fun MobileNextLessonHeroCard(
+    nextLesson: UpcomingLessonForBoard?,
+    hasSchedule: Boolean,
+    now: LocalDateTime,
+) {
+    val context = LocalContext.current
+    val countdown = if (nextLesson == null) {
+        ""
+    } else if (!now.isBefore(nextLesson.startAt) && now.isBefore(nextLesson.endAt)) {
+        stringResource(R.string.schedule_next_lesson_countdown_in_progress)
+    } else {
+        val minutes = java.time.Duration.between(now, nextLesson.startAt).toMinutes().coerceAtLeast(0L)
+        when {
+            minutes <= 0L -> stringResource(R.string.schedule_next_lesson_countdown_soon)
+            minutes >= 60L -> {
+                val h = minutes / 60L
+                val m = minutes % 60L
+                stringResource(R.string.schedule_next_lesson_countdown_in_hours_minutes, h, m)
+            }
+
+            else -> stringResource(R.string.schedule_next_lesson_countdown_in_minutes, minutes)
+        }
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.schedule_next_lesson_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            if (nextLesson == null) {
+                Text(
+                    text = if (hasSchedule) {
+                        stringResource(R.string.schedule_next_lesson_empty)
+                    } else {
+                        stringResource(R.string.schedule_next_lesson_no_data)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                val dayText = dayLabel(nextLesson.startAt.dayOfWeek, context)
+                val timeRange = stringResource(
+                    R.string.time_range_text,
+                    nextLesson.lesson.startTime.format(clockFormatter),
+                    nextLesson.lesson.endTime.format(clockFormatter),
+                )
+                Text(
+                    text = nextLesson.lesson.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                )
+                Text(
+                    text = "$dayText · $timeRange",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (countdown.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                shape = RoundedCornerShape(999.dp),
+                            )
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = countdown,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class UpcomingLessonForBoard(
+    val lesson: LessonUi,
+    val startAt: LocalDateTime,
+    val endAt: LocalDateTime,
+)
+
+private fun resolveNextLessonForBoard(
+    lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    now: LocalDateTime,
+): UpcomingLessonForBoard? {
+    if (lessonsByDay.values.none { it.isNotEmpty() }) return null
+
+    val candidates = (0..7).asSequence().flatMap { offset ->
+        val date = now.toLocalDate().plusDays(offset.toLong())
+        lessonsByDay[date.dayOfWeek].orEmpty().asSequence().map { lesson ->
+            val startAt = LocalDateTime.of(date, lesson.startTime)
+            val endAt = LocalDateTime.of(date, lesson.endTime)
+            UpcomingLessonForBoard(lesson = lesson, startAt = startAt, endAt = endAt)
+        }
+    }
+
+    return candidates
+        .filter { it.endAt.isAfter(now) }
+        .sortedBy { it.startAt }
+        .firstOrNull()
 }
 
 @Composable

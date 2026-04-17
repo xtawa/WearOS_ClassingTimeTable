@@ -932,11 +932,6 @@ fun MobileTimetableScreen() {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
                     showWeekend = showWeekend,
-                    reminderEnabled = reminderEnabled,
-                    reminderMinutes = reminderMinutes,
-                    keepAliveLevel = keepAliveLevel,
-                    experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
-                    keepAliveStatus = keepAliveStatusText,
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
                     },
@@ -945,6 +940,9 @@ fun MobileTimetableScreen() {
                     },
                     onOpenWeekModePage = {
                         openSettingsPage(SettingsPage.WeekMode)
+                    },
+                    onOpenReminderKeepAlivePage = {
+                        openSettingsPage(SettingsPage.ReminderKeepAlive)
                     },
                     onOpenSyncCommunicationPage = {
                         openSettingsPage(SettingsPage.SyncCommunication)
@@ -959,6 +957,81 @@ fun MobileTimetableScreen() {
                             trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
                             alsoPushConfigToWear = false,
                         )
+                    },
+                    onClearAllSchedules = {
+                        showClearAllConfirmDialog = true
+                    },
+                )
+
+                SettingsPage.Import -> importContent(innerPadding)
+
+                SettingsPage.BackupRestore -> BackupRestoreSettingsPage(
+                    contentPadding = innerPadding,
+                    onBack = {
+                        handleBackNavigation()
+                    },
+                    onExportBackup = {
+                        pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
+                        val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
+                        exportBackupLauncher.launch(name)
+                    },
+                    onRestoreBackup = {
+                        restoreBackupLauncher.launch(arrayOf("application/json", "text/plain"))
+                    },
+                )
+
+                SettingsPage.WeekMode -> WeekModeSettingsPage(
+                    contentPadding = innerPadding,
+                    weekNumberMode = weekNumberMode,
+                    semesterWeekStartDate = semesterWeekStartDate,
+                    weekStartDay = weekStartDay,
+                    onBack = {
+                        handleBackNavigation()
+                    },
+                    onWeekNumberModeChange = { mode ->
+                        if (weekNumberMode != mode) {
+                            weekNumberMode = mode
+                            persistSettings()
+                            scheduleWeekSettingsAutoSync()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
+                        }
+                    },
+                    onWeekStartDayChange = { day ->
+                        if (weekStartDay != day) {
+                            weekStartDay = day
+                            persistSettings()
+                            scheduleWeekSettingsAutoSync()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
+                        }
+                    },
+                    onSemesterWeekStartDateChange = { date ->
+                        if (semesterWeekStartDate != date) {
+                            semesterWeekStartDate = date
+                            persistSettings()
+                            scheduleWeekSettingsAutoSync()
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
+                        }
+                    },
+                )
+
+                SettingsPage.ReminderKeepAlive -> ReminderKeepAliveSettingsPage(
+                    contentPadding = innerPadding,
+                    reminderEnabled = reminderEnabled,
+                    reminderMinutes = reminderMinutes,
+                    keepAliveLevel = keepAliveLevel,
+                    experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
+                    keepAliveStatus = keepAliveStatusText,
+                    onBack = {
+                        handleBackNavigation()
                     },
                     onToggleReminder = { enabled ->
                         if (!enabled) {
@@ -1037,69 +1110,6 @@ fun MobileTimetableScreen() {
                             trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
                             alsoPushConfigToWear = false,
                         )
-                    },
-                    onClearAllSchedules = {
-                        showClearAllConfirmDialog = true
-                    },
-                )
-
-                SettingsPage.Import -> importContent(innerPadding)
-
-                SettingsPage.BackupRestore -> BackupRestoreSettingsPage(
-                    contentPadding = innerPadding,
-                    onBack = {
-                        handleBackNavigation()
-                    },
-                    onExportBackup = {
-                        pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
-                        val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
-                        exportBackupLauncher.launch(name)
-                    },
-                    onRestoreBackup = {
-                        restoreBackupLauncher.launch(arrayOf("application/json", "text/plain"))
-                    },
-                )
-
-                SettingsPage.WeekMode -> WeekModeSettingsPage(
-                    contentPadding = innerPadding,
-                    weekNumberMode = weekNumberMode,
-                    semesterWeekStartDate = semesterWeekStartDate,
-                    weekStartDay = weekStartDay,
-                    onBack = {
-                        handleBackNavigation()
-                    },
-                    onWeekNumberModeChange = { mode ->
-                        if (weekNumberMode != mode) {
-                            weekNumberMode = mode
-                            persistSettings()
-                            scheduleWeekSettingsAutoSync()
-                            requestCloudSync(
-                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
-                                alsoPushConfigToWear = false,
-                            )
-                        }
-                    },
-                    onWeekStartDayChange = { day ->
-                        if (weekStartDay != day) {
-                            weekStartDay = day
-                            persistSettings()
-                            scheduleWeekSettingsAutoSync()
-                            requestCloudSync(
-                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
-                                alsoPushConfigToWear = false,
-                            )
-                        }
-                    },
-                    onSemesterWeekStartDateChange = { date ->
-                        if (semesterWeekStartDate != date) {
-                            semesterWeekStartDate = date
-                            persistSettings()
-                            scheduleWeekSettingsAutoSync()
-                            requestCloudSync(
-                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
-                                alsoPushConfigToWear = false,
-                            )
-                        }
                     },
                 )
 

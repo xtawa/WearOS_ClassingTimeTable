@@ -12,6 +12,7 @@
     <string name="ghost_title_backup">BACKUP</string>
     <string name="ghost_title_settings">SETTINGS</string>
     <string name="ghost_title_week">WEEK</string>
+    <string name="ghost_title_reminder">REMIND</string>
     <string name="ghost_title_sync">SYNC</string>
     <string name="ghost_title_wear">Wear</string>
     <string name="ghost_title_cloud">CLOUD</string>
@@ -52,6 +53,13 @@
     <string name="no_classes">無課程</string>
     <string name="time_range_text">%1$s-%2$s</string>
     <string name="week_long_press_hint">長按課程可編輯或刪除。</string>
+    <string name="schedule_next_lesson_title">下一節課</string>
+    <string name="schedule_next_lesson_empty">今天沒有後續課程</string>
+    <string name="schedule_next_lesson_no_data">暫無課表資料</string>
+    <string name="schedule_next_lesson_countdown_in_progress">進行中</string>
+    <string name="schedule_next_lesson_countdown_soon">即將開始</string>
+    <string name="schedule_next_lesson_countdown_in_minutes">%1$d 分鐘後</string>
+    <string name="schedule_next_lesson_countdown_in_hours_minutes">%1$d 小時 %2$d 分鐘後</string>
 
     <string name="import_title">iCalendar (ICS) 匯入</string>
     <string name="import_page_title">匯入中心</string>
@@ -144,6 +152,8 @@
     <string name="settings_reminder_toggle_desc">在課程開始前發送提醒。</string>
     <string name="settings_badge_reminder">鈴</string>
     <string name="settings_reminder_lead_title">提前提醒：%1$d 分鐘</string>
+    <string name="settings_reminder_keepalive_title">提醒與保活</string>
+    <string name="settings_reminder_keepalive_desc">設定課程提醒與提醒保活強度。</string>
     <string name="settings_backup_title">備份與還原</string>
     <string name="settings_backup_desc">將目前課表匯出為 JSON，或從 JSON 備份檔還原。</string>
     <string name="settings_backup_button">匯出課表 JSON</string>
