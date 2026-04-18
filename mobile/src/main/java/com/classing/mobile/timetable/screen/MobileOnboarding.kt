@@ -24,7 +24,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.DataObject
-import androidx.compose.material.icons.filled.EditDocument
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Watch
@@ -35,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -53,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -70,6 +72,13 @@ internal data class OnboardingCompletion(
     val importTarget: OnboardingImportTarget,
     val wearSyncMode: WearSyncMode,
     val openCloudSyncSettingsAfterFinish: Boolean,
+    val cloudProvider: CloudProviderUi,
+    val cloudSyncEnabled: Boolean,
+    val cloudServerUrl: String,
+    val cloudRemotePath: String,
+    val cloudUsername: String,
+    val cloudPassword: String,
+    val cloudDriveFileName: String,
     val reminderEnabled: Boolean,
     val showWeekend: Boolean,
     val semesterWeekStartDate: LocalDate,
@@ -82,6 +91,13 @@ internal fun MobileOnboardingFlow(
     initialReminderEnabled: Boolean,
     initialSemesterWeekStartDate: LocalDate,
     initialWearSyncMode: WearSyncMode,
+    initialCloudProvider: CloudProviderUi,
+    initialCloudSyncEnabled: Boolean,
+    initialCloudServerUrl: String,
+    initialCloudRemotePath: String,
+    initialCloudUsername: String,
+    initialCloudPassword: String,
+    initialCloudDriveFileName: String,
     onComplete: (OnboardingCompletion) -> Unit,
 ) {
     val context = LocalContext.current
@@ -93,6 +109,17 @@ internal fun MobileOnboardingFlow(
         )
     }
     var openCloudSyncSettingsAfterFinish by remember { mutableStateOf(false) }
+    var cloudProvider by remember { mutableStateOf(initialCloudProvider) }
+    var cloudSyncEnabled by remember { mutableStateOf(initialCloudSyncEnabled) }
+    var cloudServerUrl by remember { mutableStateOf(initialCloudServerUrl) }
+    var cloudRemotePath by remember {
+        mutableStateOf(initialCloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH })
+    }
+    var cloudUsername by remember { mutableStateOf(initialCloudUsername) }
+    var cloudPassword by remember { mutableStateOf(initialCloudPassword) }
+    var cloudDriveFileName by remember {
+        mutableStateOf(initialCloudDriveFileName.ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME })
+    }
     var reminderEnabled by remember { mutableStateOf(initialReminderEnabled) }
     var showWeekend by remember { mutableStateOf(initialShowWeekend) }
     var semesterWeekStartDate by remember { mutableStateOf(initialSemesterWeekStartDate) }
@@ -110,6 +137,13 @@ internal fun MobileOnboardingFlow(
                 importTarget = importTarget,
                 wearSyncMode = wearSyncMode,
                 openCloudSyncSettingsAfterFinish = openCloudSyncSettingsAfterFinish,
+                cloudProvider = cloudProvider,
+                cloudSyncEnabled = cloudSyncEnabled,
+                cloudServerUrl = cloudServerUrl.trim(),
+                cloudRemotePath = cloudRemotePath.trim(),
+                cloudUsername = cloudUsername.trim(),
+                cloudPassword = cloudPassword,
+                cloudDriveFileName = cloudDriveFileName.trim(),
                 reminderEnabled = reminderEnabled,
                 showWeekend = showWeekend,
                 semesterWeekStartDate = semesterWeekStartDate,
@@ -177,7 +211,9 @@ internal fun MobileOnboardingFlow(
                             Text(stringResource(R.string.onboarding_skip))
                         }
                         Button(
-                            onClick = { if (nextEnabled) stepIndex += 1 },
+                            onClick = {
+                                if (nextEnabled) stepIndex += 1
+                            },
                             shape = RoundedCornerShape(999.dp),
                             modifier = Modifier.weight(1f),
                         ) {
@@ -303,7 +339,7 @@ internal fun MobileOnboardingFlow(
                         title = stringResource(R.string.onboarding_import_option_manual),
                         desc = stringResource(R.string.onboarding_import_option_manual_desc),
                         selected = importTarget == OnboardingImportTarget.MANUAL_ENTRY,
-                        icon = Icons.Filled.EditDocument,
+                        icon = Icons.Filled.Edit,
                         onClick = { importTarget = OnboardingImportTarget.MANUAL_ENTRY },
                     )
                     OnboardingOptionCard(
@@ -316,6 +352,135 @@ internal fun MobileOnboardingFlow(
                 }
 
                 2 -> {
+                    Text(
+                        text = stringResource(R.string.onboarding_import_title),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Text(
+                        text = when (importTarget) {
+                            OnboardingImportTarget.CLOUD_SYNC -> stringResource(R.string.onboarding_import_option_cloud_desc)
+                            OnboardingImportTarget.ICS -> stringResource(R.string.onboarding_import_option_ics_desc)
+                            OnboardingImportTarget.JSON -> stringResource(R.string.onboarding_import_option_json_desc)
+                            OnboardingImportTarget.BACKUP_RESTORE -> stringResource(R.string.onboarding_import_option_backup_desc)
+                            OnboardingImportTarget.MANUAL_ENTRY -> stringResource(R.string.onboarding_import_option_manual_desc)
+                            OnboardingImportTarget.NONE -> stringResource(R.string.onboarding_import_option_later_desc)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            when (importTarget) {
+                                OnboardingImportTarget.CLOUD_SYNC -> {
+                                    Text(
+                                        text = stringResource(R.string.settings_cloud_sync_title),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.settings_cloud_sync_enable_title),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Switch(
+                                            checked = cloudSyncEnabled,
+                                            onCheckedChange = { cloudSyncEnabled = it },
+                                        )
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        FilterChip(
+                                            selected = cloudProvider == CloudProviderUi.WEBDAV,
+                                            onClick = { cloudProvider = CloudProviderUi.WEBDAV },
+                                            label = { Text("WebDAV") },
+                                        )
+                                        FilterChip(
+                                            selected = cloudProvider == CloudProviderUi.GOOGLE_DRIVE,
+                                            onClick = { cloudProvider = CloudProviderUi.GOOGLE_DRIVE },
+                                            label = { Text("Google Drive") },
+                                        )
+                                    }
+                                    if (cloudProvider == CloudProviderUi.WEBDAV) {
+                                        OutlinedTextField(
+                                            value = cloudServerUrl,
+                                            onValueChange = { cloudServerUrl = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            label = { Text(stringResource(R.string.settings_cloud_sync_server_url)) },
+                                            singleLine = true,
+                                        )
+                                        OutlinedTextField(
+                                            value = cloudRemotePath,
+                                            onValueChange = { cloudRemotePath = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            label = { Text(stringResource(R.string.settings_cloud_sync_remote_path)) },
+                                            singleLine = true,
+                                        )
+                                        OutlinedTextField(
+                                            value = cloudUsername,
+                                            onValueChange = { cloudUsername = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            label = { Text(stringResource(R.string.settings_cloud_sync_username)) },
+                                            singleLine = true,
+                                        )
+                                        OutlinedTextField(
+                                            value = cloudPassword,
+                                            onValueChange = { cloudPassword = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            label = { Text(stringResource(R.string.settings_cloud_sync_password)) },
+                                            singleLine = true,
+                                        )
+                                    } else {
+                                        OutlinedTextField(
+                                            value = cloudDriveFileName,
+                                            onValueChange = { cloudDriveFileName = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            label = { Text(stringResource(R.string.settings_cloud_sync_drive_file_name)) },
+                                            singleLine = true,
+                                        )
+                                    }
+                                }
+
+                                OnboardingImportTarget.NONE -> {
+                                    Text(
+                                        text = stringResource(R.string.onboarding_import_option_later_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+
+                                else -> {
+                                    Text(
+                                        text = stringResource(R.string.import_page_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.settings_import_entry_title),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.settings_import_entry_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                3 -> {
                     Text(
                         text = stringResource(R.string.onboarding_device_title),
                         style = MaterialTheme.typography.headlineLarge,
@@ -403,50 +568,6 @@ internal fun MobileOnboardingFlow(
                                         ?: stringResource(R.string.wearos_app_unavailable),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                3 -> {
-                    Text(
-                        text = stringResource(R.string.onboarding_cloud_title),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                    )
-                    Text(
-                        text = stringResource(R.string.onboarding_cloud_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.onboarding_cloud_open_webdav),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.onboarding_cloud_hint),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                Switch(
-                                    checked = openCloudSyncSettingsAfterFinish,
-                                    onCheckedChange = { openCloudSyncSettingsAfterFinish = it },
                                 )
                             }
                         }

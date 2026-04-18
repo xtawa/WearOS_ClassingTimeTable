@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,9 +29,12 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -384,6 +388,7 @@ private fun resolveNextLessonForBoard(
         .firstOrNull()
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ImportLayer(
     contentPadding: PaddingValues,
@@ -391,6 +396,8 @@ internal fun ImportLayer(
     showJsonPromptPage: Boolean,
     onBackFromJsonPromptPage: () -> Unit,
     onOpenJsonPromptPage: () -> Unit,
+    initialFocusMethod: ImportFocusMethod? = null,
+    onInitialFocusConsumed: ((ImportFocusMethod) -> Unit)? = null,
     rawIcs: String,
     rawJson: String,
     parseMessage: String,
@@ -433,6 +440,21 @@ internal fun ImportLayer(
     val previewCollapseThreshold = 8
     var expandIcsPreview by remember(preview.size) { mutableStateOf(preview.size <= previewCollapseThreshold) }
     var expandJsonPreview by remember(jsonPreview.size) { mutableStateOf(jsonPreview.size <= previewCollapseThreshold) }
+    val icsSectionRequester = remember { BringIntoViewRequester() }
+    val jsonSectionRequester = remember { BringIntoViewRequester() }
+    val manualSectionRequester = remember { BringIntoViewRequester() }
+    val hasPendingJsonImport = hasPendingImport && jsonPreview.isNotEmpty()
+
+    LaunchedEffect(initialFocusMethod, showJsonPromptPage) {
+        val focusMethod = initialFocusMethod ?: return@LaunchedEffect
+        if (showJsonPromptPage) return@LaunchedEffect
+        when (focusMethod) {
+            ImportFocusMethod.ICS -> icsSectionRequester.bringIntoView()
+            ImportFocusMethod.JSON -> jsonSectionRequester.bringIntoView()
+            ImportFocusMethod.MANUAL -> manualSectionRequester.bringIntoView()
+        }
+        onInitialFocusConsumed?.invoke(focusMethod)
+    }
 
     if (showJsonPromptPage) {
         JsonPromptPage(
@@ -478,282 +500,310 @@ internal fun ImportLayer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Text(
-                text = stringResource(R.string.import_method_ics),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        OutlinedTextField(
-            value = rawIcs,
-            onValueChange = onRawChange,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(240.dp),
-            label = { Text(stringResource(R.string.import_input_label)) },
-            maxLines = 14,
-        )
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .bringIntoViewRequester(icsSectionRequester),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(onClick = onParsePreview) { Text(stringResource(R.string.import_button_parse_preview)) }
-            Button(onClick = onConfirmImport, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_confirm)) }
-            Button(onClick = onCancelPreview, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
-            Button(onClick = onClearInput) { Text(stringResource(R.string.import_button_clear)) }
-        }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(stringResource(R.string.status_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text(parseMessage, style = MaterialTheme.typography.bodySmall)
-                if (warnings.isNotEmpty()) {
-                    warnings.take(5).forEach {
-                        Text(stringResource(R.string.status_warning_prefix, it), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                if (hasPendingImport) {
-                    Text(
-                        text = stringResource(R.string.import_pending_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-        }
-        Text(stringResource(R.string.import_preview_title, preview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        val collapsedIcs = preview.size > previewCollapseThreshold
-        val shownIcsPreview = if (collapsedIcs && !expandIcsPreview) preview.take(previewCollapseThreshold) else preview
-        shownIcsPreview.forEach { draft ->
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(draft.title.ifBlank { untitled }, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        draft.location ?: stringResource(R.string.no_location),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        draft.recurrence ?: stringResource(R.string.one_time_schedule),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        if (collapsedIcs) {
-            TextButton(onClick = { expandIcsPreview = !expandIcsPreview }) {
                 Text(
-                    if (expandIcsPreview) {
-                        stringResource(R.string.preview_collapse_button)
-                    } else {
-                        stringResource(R.string.preview_expand_button, preview.size - previewCollapseThreshold)
-                    },
+                    text = stringResource(R.string.import_method_ics),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-        }
-
-        HorizontalDivider()
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Text(
-                text = stringResource(R.string.import_method_json),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
+            OutlinedTextField(
+                value = rawIcs,
+                onValueChange = onRawChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp),
+                label = { Text(stringResource(R.string.import_input_label)) },
+                maxLines = 14,
             )
-        }
-        Text(stringResource(R.string.json_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        Text(
-            text = stringResource(R.string.json_import_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedTextField(
-            value = rawJson,
-            onValueChange = onJsonRawChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp),
-            label = { Text(stringResource(R.string.json_input_label)) },
-            maxLines = 12,
-        )
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Button(onClick = onParseJsonPreview) { Text(stringResource(R.string.json_button_parse_preview)) }
-            Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
-        }
-        Text(stringResource(R.string.json_preview_title, jsonPreview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        val collapsedJson = jsonPreview.size > previewCollapseThreshold
-        val shownJsonPreview = if (collapsedJson && !expandJsonPreview) jsonPreview.take(previewCollapseThreshold) else jsonPreview
-        shownJsonPreview.forEach { lesson ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onParsePreview) { Text(stringResource(R.string.import_button_parse_preview)) }
+                Button(onClick = onConfirmImport, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_confirm)) }
+                Button(onClick = onCancelPreview, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
+                Button(onClick = onClearInput) { Text(stringResource(R.string.import_button_clear)) }
+            }
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column(
                     modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(lesson.title, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = formatLessonSummary(lesson, context),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (!lesson.location.isNullOrBlank()) {
+                    Text(stringResource(R.string.status_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(parseMessage, style = MaterialTheme.typography.bodySmall)
+                    if (warnings.isNotEmpty()) {
+                        warnings.take(5).forEach {
+                            Text(stringResource(R.string.status_warning_prefix, it), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (hasPendingImport) {
                         Text(
-                            text = lesson.location,
+                            text = stringResource(R.string.import_pending_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            Text(stringResource(R.string.import_preview_title, preview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            val collapsedIcs = preview.size > previewCollapseThreshold
+            val shownIcsPreview = if (collapsedIcs && !expandIcsPreview) preview.take(previewCollapseThreshold) else preview
+            shownIcsPreview.forEach { draft ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(draft.title.ifBlank { untitled }, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            draft.location ?: stringResource(R.string.no_location),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            draft.recurrence ?: stringResource(R.string.one_time_schedule),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
-        }
-        if (collapsedJson) {
-            TextButton(onClick = { expandJsonPreview = !expandJsonPreview }) {
-                Text(
-                    if (expandJsonPreview) {
-                        stringResource(R.string.preview_collapse_button)
-                    } else {
-                        stringResource(R.string.preview_expand_button, jsonPreview.size - previewCollapseThreshold)
-                    },
-                )
+            if (collapsedIcs) {
+                TextButton(onClick = { expandIcsPreview = !expandIcsPreview }) {
+                    Text(
+                        if (expandIcsPreview) {
+                            stringResource(R.string.preview_collapse_button)
+                        } else {
+                            stringResource(R.string.preview_expand_button, preview.size - previewCollapseThreshold)
+                        },
+                    )
+                }
             }
         }
 
         HorizontalDivider()
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Text(
-                text = stringResource(R.string.import_method_manual),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Text(stringResource(R.string.manual_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        Text(
-            text = stringResource(R.string.manual_import_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedTextField(
-            value = manualTitle,
-            onValueChange = { manualTitle = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.manual_input_title_label)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = manualTeacher,
-            onValueChange = { manualTeacher = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.manual_input_teacher_label)) },
-            singleLine = true,
-        )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(DayOfWeek.values()) { day ->
-                FilterChip(
-                    selected = manualDay == day.value,
-                    onClick = { manualDay = day.value },
-                    label = { Text(dayLabel(day, context)) },
-                )
-            }
-        }
-        OutlinedTextField(
-            value = manualStart,
-            onValueChange = { manualStart = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.manual_input_start_time_label)) },
-            placeholder = { Text(stringResource(R.string.manual_input_start_time_placeholder)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = manualEnd,
-            onValueChange = { manualEnd = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.manual_input_end_time_label)) },
-            placeholder = { Text(stringResource(R.string.manual_input_end_time_placeholder)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = manualLocation,
-            onValueChange = { manualLocation = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.manual_input_location_label)) },
-            singleLine = true,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = manualStartWeek,
-                onValueChange = { manualStartWeek = it },
-                modifier = Modifier.weight(1f),
-                label = { Text(stringResource(R.string.manual_input_start_week_label)) },
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = manualEndWeek,
-                onValueChange = { manualEndWeek = it },
-                modifier = Modifier.weight(1f),
-                label = { Text(stringResource(R.string.manual_input_end_week_label)) },
-                singleLine = true,
-            )
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(LessonWeekParity.entries) { parity ->
-                val labelRes = when (parity) {
-                    LessonWeekParity.ALL -> R.string.week_parity_all
-                    LessonWeekParity.ODD -> R.string.week_parity_odd
-                    LessonWeekParity.EVEN -> R.string.week_parity_even
-                }
-                FilterChip(
-                    selected = manualWeekParity == parity,
-                    onClick = { manualWeekParity = parity },
-                    label = { Text(stringResource(labelRes)) },
-                )
-            }
-        }
-        OutlinedTextField(
-            value = manualNote,
-            onValueChange = { manualNote = it },
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 88.dp),
-            label = { Text(stringResource(R.string.manual_input_note_label)) },
-            maxLines = 4,
-        )
-        Button(
-            onClick = {
-                val imported = onManualImport(
-                    manualTitle,
-                    manualTeacher,
-                    manualLocation,
-                    manualNote,
-                    DayOfWeek.of(manualDay),
-                    manualStart,
-                    manualEnd,
-                    manualStartWeek,
-                    manualEndWeek,
-                    manualWeekParity,
-                )
-                if (imported) {
-                    manualTitle = ""
-                    manualTeacher = ""
-                    manualLocation = ""
-                    manualNote = ""
-                }
-            },
+                .bringIntoViewRequester(jsonSectionRequester),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.manual_import_button))
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                Text(
+                    text = stringResource(R.string.import_method_json),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Text(stringResource(R.string.json_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.json_import_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = rawJson,
+                onValueChange = onJsonRawChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+                label = { Text(stringResource(R.string.json_input_label)) },
+                maxLines = 12,
+            )
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onParseJsonPreview) { Text(stringResource(R.string.json_button_parse_preview)) }
+                Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
+            }
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onConfirmImport, enabled = hasPendingJsonImport) { Text(stringResource(R.string.import_button_confirm)) }
+                Button(onClick = onCancelPreview, enabled = hasPendingJsonImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
+            }
+            Text(stringResource(R.string.json_preview_title, jsonPreview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            val collapsedJson = jsonPreview.size > previewCollapseThreshold
+            val shownJsonPreview = if (collapsedJson && !expandJsonPreview) jsonPreview.take(previewCollapseThreshold) else jsonPreview
+            shownJsonPreview.forEach { lesson ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(lesson.title, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = formatLessonSummary(lesson, context),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (!lesson.location.isNullOrBlank()) {
+                            Text(
+                                text = lesson.location,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+            if (collapsedJson) {
+                TextButton(onClick = { expandJsonPreview = !expandJsonPreview }) {
+                    Text(
+                        if (expandJsonPreview) {
+                            stringResource(R.string.preview_collapse_button)
+                        } else {
+                            stringResource(R.string.preview_expand_button, jsonPreview.size - previewCollapseThreshold)
+                        },
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(manualSectionRequester),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                Text(
+                    text = stringResource(R.string.import_method_manual),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Text(stringResource(R.string.manual_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.manual_import_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = manualTitle,
+                onValueChange = { manualTitle = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.manual_input_title_label)) },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = manualTeacher,
+                onValueChange = { manualTeacher = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.manual_input_teacher_label)) },
+                singleLine = true,
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(DayOfWeek.values()) { day ->
+                    FilterChip(
+                        selected = manualDay == day.value,
+                        onClick = { manualDay = day.value },
+                        label = { Text(dayLabel(day, context)) },
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = manualStart,
+                onValueChange = { manualStart = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.manual_input_start_time_label)) },
+                placeholder = { Text(stringResource(R.string.manual_input_start_time_placeholder)) },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = manualEnd,
+                onValueChange = { manualEnd = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.manual_input_end_time_label)) },
+                placeholder = { Text(stringResource(R.string.manual_input_end_time_placeholder)) },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = manualLocation,
+                onValueChange = { manualLocation = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.manual_input_location_label)) },
+                singleLine = true,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = manualStartWeek,
+                    onValueChange = { manualStartWeek = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text(stringResource(R.string.manual_input_start_week_label)) },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = manualEndWeek,
+                    onValueChange = { manualEndWeek = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text(stringResource(R.string.manual_input_end_week_label)) },
+                    singleLine = true,
+                )
+            }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(LessonWeekParity.entries) { parity ->
+                    val labelRes = when (parity) {
+                        LessonWeekParity.ALL -> R.string.week_parity_all
+                        LessonWeekParity.ODD -> R.string.week_parity_odd
+                        LessonWeekParity.EVEN -> R.string.week_parity_even
+                    }
+                    FilterChip(
+                        selected = manualWeekParity == parity,
+                        onClick = { manualWeekParity = parity },
+                        label = { Text(stringResource(labelRes)) },
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = manualNote,
+                onValueChange = { manualNote = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 88.dp),
+                label = { Text(stringResource(R.string.manual_input_note_label)) },
+                maxLines = 4,
+            )
+            Button(
+                onClick = {
+                    val imported = onManualImport(
+                        manualTitle,
+                        manualTeacher,
+                        manualLocation,
+                        manualNote,
+                        DayOfWeek.of(manualDay),
+                        manualStart,
+                        manualEnd,
+                        manualStartWeek,
+                        manualEndWeek,
+                        manualWeekParity,
+                    )
+                    if (imported) {
+                        manualTitle = ""
+                        manualTeacher = ""
+                        manualLocation = ""
+                        manualNote = ""
+                    }
+                },
+            ) {
+                Text(stringResource(R.string.manual_import_button))
+            }
         }
     }
 }

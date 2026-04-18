@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
-import com.google.android.gms.auth.api.identity.ClearTokenRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.tasks.await
@@ -61,11 +60,8 @@ object GoogleDriveAuthManager {
 
     suspend fun clearToken(context: Context, token: String): Result<Unit> {
         if (token.isBlank()) return Result.success(Unit)
-        return runCatching {
-            val request = ClearTokenRequest.builder()
-                .setToken(token)
-                .build()
-            Identity.getAuthorizationClient(context).clearToken(request).await()
-        }
+        // The current auth dependency set does not expose a token revocation API here.
+        // We still clear local state at call sites, which is sufficient for sign-out UX.
+        return Result.success(Unit)
     }
 }

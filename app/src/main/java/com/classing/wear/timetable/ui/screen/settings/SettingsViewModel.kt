@@ -9,6 +9,7 @@ import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
 import com.classing.wear.timetable.ui.state.SettingsUiState
+import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.worker.AutoSyncController
 import com.classing.wear.timetable.worker.ReminderWorkController
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,17 +30,20 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
     private val syncMessage = MutableStateFlow(WearI18n.syncNever())
+    private val syncFeedback = MutableStateFlow<SyncFeedback?>(null)
 
     init {
         viewModelScope.launch {
             combine(
                 settingsRepository.observePreferences(),
                 syncMessage,
-            ) { pref, syncText ->
+                syncFeedback,
+            ) { pref, syncText, feedback ->
                 SettingsUiState(
                     isLoading = false,
                     preferences = pref,
                     syncMessage = syncText,
+                    syncFeedback = feedback,
                 )
             }.collect { _uiState.value = it }
         }
@@ -145,17 +149,32 @@ class SettingsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(syncMessage = WearI18n.syncRequesting()) }
             val result = mobileSyncRequester.requestSyncFromPhone()
-            syncMessage.value = if (result.isSuccess) {
-                WearI18n.syncRequestSent(result.getOrDefault(0))
+            val feedback = resolveSyncFeedback(result)
+            if (feedback == SyncFeedback.SUCCESS) {
+                syncMessage.value = WearI18n.syncRequestSent(result.getOrDefault(0))
+                syncFeedback.value = SyncFeedback.SUCCESS
             } else {
-                WearI18n.syncRequestFailed(result.exceptionOrNull()?.message ?: "unknown")
+                syncMessage.value = WearI18n.syncRequestFailed(WearI18n.syncCheckPhoneConnection())
+                syncFeedback.value = SyncFeedback.CHECK_PHONE_CONNECTION
             }
         }
+    }
+
+    fun consumeSyncFeedback() {
+        syncFeedback.value = null
     }
 
     private suspend fun notifyCloudSettingsChanged() {
         wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
         wearCloudBridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+    }
+}
+
+internal fun resolveSyncFeedback(result: Result<Int>): SyncFeedback {
+    return if (result.isSuccess && result.getOrDefault(0) > 0) {
+        SyncFeedback.SUCCESS
+    } else {
+        SyncFeedback.CHECK_PHONE_CONNECTION
     }
 }
 

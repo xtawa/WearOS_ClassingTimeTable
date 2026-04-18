@@ -182,6 +182,7 @@ fun MobileTimetableScreen() {
     var wearSyncInProgress by remember { mutableStateOf(false) }
     var wearSyncMode by remember { mutableStateOf(WearSyncMode.AUTO) }
     var showOnboarding by remember { mutableStateOf(false) }
+    var onboardingImportFocusMethod by remember { mutableStateOf<ImportFocusMethod?>(null) }
     var cloudProvider by remember { mutableStateOf(CloudProviderUi.WEBDAV) }
     var cloudSyncEnabled by remember { mutableStateOf(false) }
     var cloudServerUrl by remember { mutableStateOf("") }
@@ -203,11 +204,13 @@ fun MobileTimetableScreen() {
     fun goToSettingsRoot() {
         settingsPageName = SettingsPage.Main.name
         showImportJsonPromptPage = false
+        onboardingImportFocusMethod = null
     }
 
-    fun openSettingsPage(page: SettingsPage) {
+    fun openSettingsPage(page: SettingsPage, importFocusMethod: ImportFocusMethod? = null) {
         settingsPageName = page.name
         showImportJsonPromptPage = false
+        onboardingImportFocusMethod = if (page == SettingsPage.Import) importFocusMethod else null
     }
 
     fun handleBackNavigation(): Boolean {
@@ -605,11 +608,28 @@ fun MobileTimetableScreen() {
             initialReminderEnabled = reminderEnabled,
             initialSemesterWeekStartDate = semesterWeekStartDate,
             initialWearSyncMode = wearSyncMode,
+            initialCloudProvider = cloudProvider,
+            initialCloudSyncEnabled = cloudSyncEnabled,
+            initialCloudServerUrl = cloudServerUrl,
+            initialCloudRemotePath = cloudRemotePath,
+            initialCloudUsername = cloudUsername,
+            initialCloudPassword = cloudPassword,
+            initialCloudDriveFileName = cloudDriveFileName,
             onComplete = { completion ->
                 showWeekend = completion.showWeekend
                 semesterWeekStartDate = completion.semesterWeekStartDate
                 wearSyncMode = completion.wearSyncMode
                 reminderEnabled = completion.reminderEnabled
+                cloudProvider = completion.cloudProvider
+                cloudSyncEnabled = completion.cloudSyncEnabled
+                cloudServerUrl = completion.cloudServerUrl
+                cloudRemotePath = completion.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
+                cloudUsername = completion.cloudUsername
+                cloudPassword = completion.cloudPassword
+                cloudDriveFileName = completion.cloudDriveFileName.ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME }
+                if (cloudProvider == CloudProviderUi.WEBDAV) {
+                    CloudCredentialStore.savePassword(context, cloudPassword)
+                }
                 if (completion.reminderEnabled &&
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -627,29 +647,20 @@ fun MobileTimetableScreen() {
                     alsoPushConfigToWear = false,
                 )
 
-                val targetSettingsPage = when {
-                    completion.openCloudSyncSettingsAfterFinish ||
-                        completion.importTarget == OnboardingImportTarget.CLOUD_SYNC -> SettingsPage.CloudSync
-
-                    completion.importTarget == OnboardingImportTarget.BACKUP_RESTORE -> SettingsPage.BackupRestore
-
-                    completion.importTarget == OnboardingImportTarget.ICS ||
-                        completion.importTarget == OnboardingImportTarget.JSON ||
-                        completion.importTarget == OnboardingImportTarget.MANUAL_ENTRY -> SettingsPage.Import
-
-                    completion.openSettingsHomeAfterFinish -> SettingsPage.Main
-                    else -> null
-                }
+                val navigationDecision = resolveOnboardingNavigation(completion)
+                val targetSettingsPage = navigationDecision.targetSettingsPage
 
                 if (targetSettingsPage == null) {
                     layerName = MobileLayer.Schedule.name
                     settingsPageName = SettingsPage.Main.name
                     showImportJsonPromptPage = false
+                    onboardingImportFocusMethod = null
                 } else {
                     previousMainLayerName = MobileLayer.Schedule.name
                     layerName = MobileLayer.Settings.name
                     settingsPageName = targetSettingsPage.name
-                    showImportJsonPromptPage = completion.importTarget == OnboardingImportTarget.JSON
+                    showImportJsonPromptPage = false
+                    onboardingImportFocusMethod = navigationDecision.importFocusMethod
                 }
                 coroutineScope.launch {
                     refreshWearConnectionStatus()
@@ -730,6 +741,10 @@ fun MobileTimetableScreen() {
             showJsonPromptPage = showImportJsonPromptPage,
             onBackFromJsonPromptPage = { handleBackNavigation() },
             onOpenJsonPromptPage = { showImportJsonPromptPage = true },
+            initialFocusMethod = onboardingImportFocusMethod,
+            onInitialFocusConsumed = { consumed ->
+                onboardingImportFocusMethod = consumeImportFocus(onboardingImportFocusMethod, consumed)
+            },
             rawIcs = rawIcs,
             rawJson = rawJson,
             parseMessage = parseMessage,

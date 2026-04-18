@@ -1,8 +1,10 @@
 package com.classing.wear.timetable.ui.screen.settings
 
 import android.app.AlarmManager
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
@@ -22,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -33,12 +36,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.widget.ConfirmationOverlay
 import com.classing.wear.timetable.R
 import com.classing.wear.timetable.domain.model.KeepAliveLevel
 import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.SettingsUiState
+import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import android.net.Uri
 
@@ -59,11 +64,25 @@ fun SettingsScreen(
     onSetKeepAliveLevel: (KeepAliveLevel) -> Unit,
     onToggleExperimentalAccessibilityKeepAlive: (Boolean) -> Unit,
     onForceFullSync: () -> Unit,
+    onConsumeSyncFeedback: () -> Unit,
     onOpenCloudSync: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
+    val syncSuccessText = stringResource(R.string.settings_sync_feedback_success)
+    val syncCheckPhoneText = stringResource(R.string.settings_sync_feedback_check_phone)
+
+    LaunchedEffect(state.syncFeedback) {
+        val feedback = state.syncFeedback ?: return@LaunchedEffect
+        showSyncFeedbackOverlay(
+            context = context,
+            feedback = feedback,
+            successText = syncSuccessText,
+            checkPhoneText = syncCheckPhoneText,
+        )
+        onConsumeSyncFeedback()
+    }
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -477,7 +496,40 @@ private fun SettingsScreenPreview() {
             onSetKeepAliveLevel = {},
             onToggleExperimentalAccessibilityKeepAlive = {},
             onForceFullSync = {},
+            onConsumeSyncFeedback = {},
             onOpenCloudSync = {},
         )
+    }
+}
+
+private fun showSyncFeedbackOverlay(
+    context: Context,
+    feedback: SyncFeedback,
+    successText: String,
+    checkPhoneText: String,
+) {
+    val activity = context.findActivity() ?: return
+    val overlay = ConfirmationOverlay()
+    when (feedback) {
+        SyncFeedback.SUCCESS -> {
+            overlay
+                .setType(ConfirmationOverlay.SUCCESS_ANIMATION)
+                .setMessage(successText)
+        }
+
+        SyncFeedback.CHECK_PHONE_CONNECTION -> {
+            overlay
+                .setType(ConfirmationOverlay.OPEN_ON_PHONE_ANIMATION)
+                .setMessage(checkPhoneText)
+        }
+    }
+    overlay.showOn(activity)
+}
+
+private tailrec fun Context.findActivity(): Activity? {
+    return when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
     }
 }

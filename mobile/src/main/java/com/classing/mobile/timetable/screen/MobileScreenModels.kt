@@ -22,6 +22,17 @@ internal enum class SettingsPage {
     About,
 }
 
+internal enum class ImportFocusMethod {
+    ICS,
+    JSON,
+    MANUAL,
+}
+
+internal data class OnboardingNavigationDecision(
+    val targetSettingsPage: SettingsPage?,
+    val importFocusMethod: ImportFocusMethod?,
+)
+
 internal enum class WeekNumberMode {
     NATURAL,
     SEMESTER,
@@ -49,6 +60,43 @@ internal data class MobileBackState(
     val previousMainLayer: MobileLayer,
     val showImportJsonPromptPage: Boolean,
 )
+
+internal fun shouldCompleteOnImportSelection(importTarget: OnboardingImportTarget): Boolean {
+    return importTarget != OnboardingImportTarget.NONE
+}
+
+internal fun resolveImportFocusMethod(importTarget: OnboardingImportTarget): ImportFocusMethod? {
+    return when (importTarget) {
+        OnboardingImportTarget.ICS -> ImportFocusMethod.ICS
+        OnboardingImportTarget.JSON -> ImportFocusMethod.JSON
+        OnboardingImportTarget.MANUAL_ENTRY -> ImportFocusMethod.MANUAL
+        else -> null
+    }
+}
+
+internal fun resolveOnboardingNavigation(completion: OnboardingCompletion): OnboardingNavigationDecision {
+    val targetSettingsPage = when {
+        completion.openCloudSyncSettingsAfterFinish -> SettingsPage.CloudSync
+
+        completion.openSettingsHomeAfterFinish -> SettingsPage.Main
+        else -> null
+    }
+    return OnboardingNavigationDecision(
+        targetSettingsPage = targetSettingsPage,
+        importFocusMethod = if (targetSettingsPage == SettingsPage.Import) {
+            resolveImportFocusMethod(completion.importTarget)
+        } else {
+            null
+        },
+    )
+}
+
+internal fun consumeImportFocus(
+    pendingFocusMethod: ImportFocusMethod?,
+    consumedFocusMethod: ImportFocusMethod,
+): ImportFocusMethod? {
+    return if (pendingFocusMethod == consumedFocusMethod) null else pendingFocusMethod
+}
 
 internal fun reduceBackState(state: MobileBackState): MobileBackState? {
     if (state.layer != MobileLayer.Settings) return null

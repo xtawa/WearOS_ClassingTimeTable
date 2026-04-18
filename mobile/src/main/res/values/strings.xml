@@ -19,7 +19,7 @@
     <string name="ghost_title_ai">AI</string>
     <string name="common_copied">Copied</string>
 
-    <string name="initial_parse_message">Paste ICS content, preview it, then confirm import.</string>
+    <string name="initial_parse_message">Paste ICS content here, preview, then confirm import.</string>
     <string name="message_reminder_enabled">Class reminders enabled.</string>
     <string name="message_notification_permission_missing">Notification permission denied. Class reminders are off.</string>
     <string name="loading_message">Loading timetable...</string>
@@ -36,13 +36,13 @@
 
     <string name="day_filter_title">By Day</string>
     <string name="day_chip_label">%1$s (%2$d)</string>
-    <string name="today_classes_title">Today\'s Classes</string>
+    <string name="today_classes_title">Today Classes</string>
     <string name="no_classes_today">No classes for this day.</string>
     <string name="calendar_prev_month">Prev</string>
     <string name="calendar_next_month">Next</string>
     <string name="calendar_selected_date_title">Schedule on %1$s</string>
     <string name="calendar_no_classes_on_date">No classes on this date.</string>
-    <string name="calendar_timeline_hint">Timeline mode: this week is expanded automatically, and earlier days this month are grouped and collapsed.</string>
+    <string name="calendar_timeline_hint">Timeline mode: show this week's timetable by default.</string>
     <string name="calendar_timeline_day_title">%1$s · %2$s</string>
     <string name="calendar_this_week_badge">THIS WEEK</string>
     <string name="calendar_expand_day">Expand</string>
@@ -63,7 +63,7 @@
 
     <string name="import_title">iCalendar (ICS) Import</string>
     <string name="import_page_title">Import Center</string>
-    <string name="import_page_desc">Choose one method below. Each section imports to the same timetable.</string>
+    <string name="import_page_desc">Choose an import method; all methods import into the same timetable.</string>
     <string name="import_method_ics">Method 1 · ICS Import</string>
     <string name="import_method_json">Method 2 · Program JSON Import</string>
     <string name="import_method_manual">Method 3 · Manual Entry</string>
@@ -83,7 +83,37 @@
     <string name="json_prompt_page_label">Conversion Prompt</string>
     <string name="json_prompt_back_button">Back to Import</string>
     <string name="json_prompt_usage_steps">1. Copy prompt  2. Paste into AI with your schedule  3. Paste returned JSON back to import page</string>
-    <string name="json_prompt_content">You are a timetable JSON converter.\nConvert the user\'s timetable text into valid JSON for a mobile app.\nOnly output JSON. Do not output markdown or explanations.\n\nUse exactly this schema:\n{\n  \"version\": 1,\n  \"timezone\": \"Asia/Shanghai\",\n  \"courses\": [\n    {\n      \"title\": \"Course Name\",\n      \"teacher\": \"Optional\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"09:40\",\n      \"startWeek\": 1,\n      \"endWeek\": 16,\n      \"weekParity\": \"ALL\",\n      \"location\": \"Optional\",\n      \"note\": \"Optional\"\n    }\n  ]\n}\n\nRules:\n1. dayOfWeek must be 1-7 (1=Monday, 7=Sunday).\n2. startTime/endTime must be 24h HH:mm.\n3. startWeek/endWeek must be integers in range 1-30, and endWeek &gt;= startWeek.\n4. weekParity must be one of ALL, ODD, EVEN.\n5. Required fields: title, dayOfWeek, startTime, endTime. Optional fields may be empty strings.\n6. Keep all course entries, do not merge different time slots.</string>
+    <string name="json_prompt_content"><![CDATA[You are a timetable JSON converter.
+Convert the user timetable text into valid JSON for a mobile app.
+Only output JSON. Do not output markdown or explanations.
+
+Use exactly this schema:
+{
+  "version": 1,
+  "timezone": "Asia/Shanghai",
+  "courses": [
+    {
+      "title": "Course Name",
+      "teacher": "Optional",
+      "dayOfWeek": 1,
+      "startTime": "08:00",
+      "endTime": "09:40",
+      "startWeek": 1,
+      "endWeek": 16,
+      "weekParity": "ALL",
+      "location": "Optional",
+      "note": "Optional"
+    }
+  ]
+}
+
+Rules:
+1. dayOfWeek must be 1-7 (1=Monday, 7=Sunday).
+2. startTime/endTime must be 24h HH:mm.
+3. startWeek/endWeek must be integers in range 1-30, and endWeek >= startWeek.
+4. weekParity must be one of ALL, ODD, EVEN.
+5. Required fields: title, dayOfWeek, startTime, endTime. Optional fields may be empty strings.
+6. Keep all course entries, do not merge different time slots.]]></string>
 
     <string name="status_title">Status</string>
     <string name="status_warning_prefix">Notice: %1$s</string>
@@ -165,7 +195,7 @@
     <string name="settings_import_entry_button">Open Import Page</string>
     <string name="settings_badge_import">I</string>
     <string name="settings_week_mode_title">Week Number Mode</string>
-    <string name="settings_week_mode_desc">Switch between natural weeks and semester weeks. Semester weeks are calculated every 7 days from the start date.</string>
+    <string name="settings_week_mode_desc">Switch between natural weeks and semester weeks.</string>
     <string name="settings_week_mode_natural">Natural Week</string>
     <string name="settings_week_mode_semester">Semester Week</string>
     <string name="settings_week_start_day_title">Week Starts On</string>
@@ -215,15 +245,15 @@
     <string name="settings_danger_title">Danger Zone</string>
     <string name="settings_danger_desc">Delete all timetable data from this device.</string>
     <string name="settings_danger_clear_button">Delete All Timetables</string>
-    <string name="settings_sync_comm_title">Sync &amp; Communication</string>
+    <string name="settings_sync_comm_title">Manage Wear Sync and Cloud Sync</string>
     <string name="settings_sync_comm_desc">Manage cloud sync and Wear communication in one place.</string>
-    <string name="settings_wear_comm_title">Wear Communication</string>
-    <string name="settings_wear_comm_desc">Check Wear connection and sync timetable manually. On Samsung CN/LE devices, WearOS App mode queues sync through the companion app and Data Layer.</string>
+    <string name="settings_wear_comm_title">Wear Sync</string>
+    <string name="settings_wear_comm_desc">Sync timetable to Wear via Bluetooth.</string>
     <string name="settings_wear_sync_mode_label">Sync method</string>
-    <string name="settings_wear_sync_mode_auto">Auto</string>
+    <string name="settings_wear_sync_mode_auto">Auto Select</string>
     <string name="settings_wear_sync_mode_wearable_api">Wearable API</string>
     <string name="settings_wear_sync_mode_wearos_app">WearOS App</string>
-    <string name="settings_wear_auto_variant_cnle">CN/LE</string>
+    <string name="settings_wear_auto_variant_cnle">China</string>
     <string name="settings_wear_auto_variant_global">Global</string>
     <string name="settings_wear_auto_variant_unknown">Unknown</string>
     <string name="settings_wear_auto_detected_label">Detected watch type: %1$s</string>
@@ -251,14 +281,14 @@
     <string name="wearos_app_available">WearOS app available: %1$s</string>
     <string name="wearos_app_available_connected">WearOS app available: %1$s, connected watches: %2$d</string>
     <string name="wearos_app_unavailable">WearOS app not installed</string>
-    <string name="wear_sync_queued">Sync queued. Wear will receive it after reconnecting through the companion app.</string>
+    <string name="wear_sync_queued">Sync request sent to Wear.</string>
     <string name="wear_sync_queued_via_wearos_app">Sync queued via WearOS app: %1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">WearOS app opened (%1$s). Complete sync in app.</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS app sync failed: %1$s</string>
     <string name="settings_cloud_sync_title">Cloud Sync</string>
-    <string name="settings_cloud_sync_desc">Choose WebDAV or Google Drive OAuth on phone. Wear receives cloud config from phone.</string>
+    <string name="settings_cloud_sync_desc">Choose WebDAV or Google Drive for cloud sync, then sync to Wear.</string>
     <string name="settings_cloud_sync_enable_title">Enable cloud sync</string>
-    <string name="settings_cloud_sync_enable_desc">Sync on app start, foreground every 2 minutes, and settings changes.</string>
+    <string name="settings_cloud_sync_enable_desc">Supports automatic sync.</string>
     <string name="settings_cloud_sync_server_url">WebDAV server URL</string>
     <string name="settings_cloud_sync_remote_path">Remote file path</string>
     <string name="settings_cloud_sync_username">Username</string>
@@ -274,7 +304,7 @@
     <string name="settings_cloud_sync_drive_auth_canceled">Google Drive authorization canceled.</string>
     <string name="settings_cloud_sync_drive_auth_failed">Google Drive authorization failed: %1$s</string>
     <string name="settings_cloud_sync_drive_config_missing">Google Drive OAuth not configured. Please set DRIVE_OAUTH_CLIENT_ID in local.properties.</string>
-    <string name="settings_cloud_sync_drive_cn_warning">CN/LE watch detected. Google Drive sync may be unavailable on watch.</string>
+    <string name="settings_cloud_sync_drive_cn_warning">The currently connected Wear device may not natively support Google Drive sync.</string>
     <string name="settings_cloud_sync_save">Save</string>
     <string name="settings_cloud_sync_test">Test</string>
     <string name="settings_cloud_sync_sync_now">Sync now</string>
@@ -283,10 +313,12 @@
     <string name="settings_cloud_sync_last_sync">Last cloud sync: %1$s</string>
     <string name="settings_cloud_sync_status">Status: %1$s</string>
     <string name="settings_cloud_sync_push_status">Wear config push: %1$s</string>
-    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear WebDAV info updated (mobile authoritative).</string>
+    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear WebDAV info has been synced with mobile.</string>
     <string name="onboarding_step_of">Step %1$d of %2$d</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
+    <string name="onboarding_import_action_open_import">Go to Import</string>
+    <string name="onboarding_import_action_open_cloud_sync">Configure Cloud Sync</string>
     <string name="onboarding_welcome_title">Welcome to Classing</string>
     <string name="onboarding_welcome_subtitle">A curated academic experience. Orchestrate your schedule with editorial clarity.</string>
     <string name="onboarding_import_title">Import Your Schedule</string>
@@ -304,18 +336,18 @@
     <string name="onboarding_import_option_later">Do this later</string>
     <string name="onboarding_import_option_later_desc">Skip import for now and configure after setup.</string>
     <string name="onboarding_device_title">Checking Connection</string>
-    <string name="onboarding_device_subtitle">Detect your watch variant and choose Auto or manual sync mode.</string>
+    <string name="onboarding_device_subtitle">Choose auto or manual sync mode based on the connected Wear device version.</string>
     <string name="onboarding_device_detecting">Detecting watch type...</string>
     <string name="onboarding_cloud_title">Cloud Sync &amp; Backup</string>
     <string name="onboarding_cloud_subtitle">Choose WebDAV or Google Drive in cloud sync settings after onboarding.</string>
     <string name="onboarding_cloud_open_webdav">Open cloud sync settings after setup</string>
-    <string name="onboarding_cloud_hint">If enabled, setup completion will navigate to Settings > Cloud Sync.</string>
+    <string name="onboarding_cloud_hint">If enabled, after setup completes it will automatically navigate to Cloud Sync settings.</string>
     <string name="onboarding_personalize_title">Personalize Your Experience</string>
-    <string name="onboarding_personalize_subtitle">Tune key preferences now. You can update them anytime in Settings.</string>
+    <string name="onboarding_personalize_subtitle">Set preference options now; you can modify them later.</string>
     <string name="onboarding_personalize_reminder">Enable Notifications</string>
     <string name="onboarding_personalize_weekend">Show Weekends</string>
     <string name="onboarding_personalize_semester">Semester Start Date</string>
-    <string name="onboarding_complete_title">You&apos;re All Set!</string>
+    <string name="onboarding_complete_title">You Are All Set!</string>
     <string name="onboarding_complete_subtitle">Your setup is complete. You can start using Classing right away.</string>
     <string name="onboarding_go_dashboard">Go to Dashboard</string>
     <string name="onboarding_view_settings">View Settings</string>

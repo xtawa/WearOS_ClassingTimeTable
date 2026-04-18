@@ -73,6 +73,14 @@ object WearI18n {
         }
     }
 
+    fun syncCheckPhoneConnection(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "请检查手机连接"
+            Lang.ZH_TW -> "請檢查手機連線"
+            Lang.EN -> "Check phone connection"
+        }
+    }
+
     fun courseNotFound(): String {
         return when (currentLang()) {
             Lang.ZH_CN -> "课程不存在"

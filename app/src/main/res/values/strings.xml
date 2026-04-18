@@ -47,7 +47,7 @@
     <string name="search_input_label">Course or teacher</string>
     <string name="search_hint_watch_input">Short keywords work best on watch input.</string>
     <string name="search_empty_input_title">Enter keywords</string>
-    <string name="search_empty_input_subtitle">For example: Android / Alice</string>
+    <string name="search_empty_input_subtitle">Chinese / Ms. Li</string>
     <string name="search_empty_result_title">No courses found</string>
     <string name="search_empty_result_subtitle">Try shorter keywords</string>
     <string name="search_course_meta">%1$s · %2$s</string>
@@ -81,6 +81,8 @@
     <string name="settings_tile_show_countdown">Show countdown</string>
     <string name="settings_last_sync">Last sync: %1$s</string>
     <string name="settings_force_full_sync">Bluetooth sync</string>
+    <string name="settings_sync_feedback_success">Sync succeeded</string>
+    <string name="settings_sync_feedback_check_phone">Check phone connection</string>
     <string name="settings_cloud_sync_title">Cloud sync</string>
     <string name="settings_cloud_sync_server_url">WebDAV server URL</string>
     <string name="settings_cloud_sync_remote_path">Remote file path</string>
@@ -92,7 +94,7 @@
     <string name="settings_cloud_sync_never">Never</string>
     <string name="settings_cloud_sync_config_ready">Cloud config received from phone.</string>
     <string name="settings_cloud_sync_config_missing">No cloud config. Configure cloud sync on phone first.</string>
-    <string name="settings_cloud_sync_phone_only_hint">Wear supports local WebDAV editing, but phone config is authoritative when conflicts happen.</string>
+    <string name="settings_cloud_sync_phone_only_hint">When Wear-local WebDAV info conflicts with mobile, mobile info takes precedence.</string>
     <string name="settings_cloud_sync_wear_config_label">Server: %1$s\nPath: %2$s\nUser: %3$s</string>
     <string name="settings_cloud_sync_wear_status_label">Status: %1$s\nLast sync: %2$s</string>
     <string name="settings_cloud_sync_wear_config_update_label">%1$s\nUpdated at: %2$s</string>

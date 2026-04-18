@@ -1,12 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-val localProps = java.util.Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) {
-        file.inputStream().use { load(it) }
+val localProps = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        localPropsFile.inputStream().use(::load)
     }
 }
 val driveOauthClientId = (
@@ -19,6 +21,31 @@ val driveOauthRedirectScheme = (
         ?: (project.findProperty("DRIVE_OAUTH_REDIRECT_SCHEME") as String?)
         ?: ""
     ).trim()
+val releaseStoreFilePath = (
+    localProps.getProperty("RELEASE_STORE_FILE")
+        ?: (project.findProperty("RELEASE_STORE_FILE") as String?)
+        ?: ""
+    ).trim()
+val releaseStorePassword = (
+    localProps.getProperty("RELEASE_STORE_PASSWORD")
+        ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?)
+        ?: ""
+    ).trim()
+val releaseKeyAlias = (
+    localProps.getProperty("RELEASE_KEY_ALIAS")
+        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?)
+        ?: ""
+    ).trim()
+val releaseKeyPassword = (
+    localProps.getProperty("RELEASE_KEY_PASSWORD")
+        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?)
+        ?: ""
+    ).trim()
+val hasReleaseSigning =
+    releaseStoreFilePath.isNotBlank() &&
+        releaseStorePassword.isNotBlank() &&
+        releaseKeyAlias.isNotBlank() &&
+        releaseKeyPassword.isNotBlank()
 
 android {
     namespace = "com.xtawa.classingtime"
@@ -34,9 +61,23 @@ android {
         buildConfigField("String", "DRIVE_OAUTH_REDIRECT_SCHEME", "\"$driveOauthRedirectScheme\"")
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFilePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

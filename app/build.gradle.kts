@@ -1,8 +1,42 @@
-﻿plugins {
+import java.util.Properties
+
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
 }
+
+val localProps = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        localPropsFile.inputStream().use(::load)
+    }
+}
+val releaseStoreFilePath = (
+    localProps.getProperty("RELEASE_STORE_FILE")
+        ?: (project.findProperty("RELEASE_STORE_FILE") as String?)
+        ?: ""
+    ).trim()
+val releaseStorePassword = (
+    localProps.getProperty("RELEASE_STORE_PASSWORD")
+        ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?)
+        ?: ""
+    ).trim()
+val releaseKeyAlias = (
+    localProps.getProperty("RELEASE_KEY_ALIAS")
+        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?)
+        ?: ""
+    ).trim()
+val releaseKeyPassword = (
+    localProps.getProperty("RELEASE_KEY_PASSWORD")
+        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?)
+        ?: ""
+    ).trim()
+val hasReleaseSigning =
+    releaseStoreFilePath.isNotBlank() &&
+        releaseStorePassword.isNotBlank() &&
+        releaseKeyAlias.isNotBlank() &&
+        releaseKeyPassword.isNotBlank()
 
 android {
     namespace = "com.classing.wear.timetable"
@@ -22,9 +56,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFilePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -75,6 +123,7 @@ dependencies {
 
     implementation("androidx.wear.compose:compose-foundation:1.4.1")
     implementation("androidx.wear.compose:compose-navigation:1.4.1")
+    implementation("androidx.wear:wear:1.3.0")
 
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.datastore:datastore-preferences:1.1.1")

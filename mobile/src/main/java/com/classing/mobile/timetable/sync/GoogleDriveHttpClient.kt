@@ -16,6 +16,7 @@ class GoogleDriveHttpClient {
         runCatching {
             val fileName = config.driveFileName.ifBlank { "classing_sync.json" }
             findFileId(config.driveAccessToken, fileName)
+            Unit
         }
     }
 

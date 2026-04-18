@@ -19,7 +19,7 @@
     <string name="ghost_title_ai">AI</string>
     <string name="common_copied">已複製</string>
 
-    <string name="initial_parse_message">請貼上 ICS 內容，先預覽，再確認匯入。</string>
+    <string name="initial_parse_message">請在此貼上 ICS 內容，預覽後確認匯入</string>
     <string name="message_reminder_enabled">課程提醒已開啟。</string>
     <string name="message_notification_permission_missing">未授予通知權限，課程提醒未開啟。</string>
     <string name="loading_message">正在載入課表...</string>
@@ -42,7 +42,7 @@
     <string name="calendar_next_month">下月</string>
     <string name="calendar_selected_date_title">%1$s 的課程</string>
     <string name="calendar_no_classes_on_date">此日期暫無課程。</string>
-    <string name="calendar_timeline_hint">時間軸模式：當前週自動展開，本月已過日期會分組折疊。</string>
+    <string name="calendar_timeline_hint">時間線模式：預設顯示當週課表</string>
     <string name="calendar_timeline_day_title">%1$s · %2$s</string>
     <string name="calendar_this_week_badge">本週</string>
     <string name="calendar_expand_day">展開</string>
@@ -63,7 +63,7 @@
 
     <string name="import_title">iCalendar (ICS) 匯入</string>
     <string name="import_page_title">匯入中心</string>
-    <string name="import_page_desc">請選擇一種匯入方式，三個區塊都會匯入到同一課表。</string>
+    <string name="import_page_desc">選擇匯入方式，將匯入到同一課表</string>
     <string name="import_method_ics">方式一 · ICS 匯入</string>
     <string name="import_method_json">方式二 · 程式 JSON 匯入</string>
     <string name="import_method_manual">方式三 · 手動輸入</string>
@@ -165,7 +165,7 @@
     <string name="settings_import_entry_button">開啟匯入頁</string>
     <string name="settings_badge_import">匯</string>
     <string name="settings_week_mode_title">週數計算</string>
-    <string name="settings_week_mode_desc">可切換自然週或學期週，學期週按起始日期每 7 天計算。</string>
+    <string name="settings_week_mode_desc">可切換自然週或學期週</string>
     <string name="settings_week_mode_natural">自然週</string>
     <string name="settings_week_mode_semester">學期週</string>
     <string name="settings_week_start_day_title">每週起始日</string>
@@ -212,16 +212,19 @@
     <string name="settings_about_team_title">製作成員組：</string>
     <string name="settings_about_team_members">Xihao Zhang，榮譽開發者 Zichun Wei</string>
     <string name="settings_about_ai_notice">此專案使用 AI 輔助製作，不提供 SLA 保證</string>
-    <string name="settings_danger_title">Danger Zone</string>
+    <string name="settings_danger_title">危險操作區</string>
     <string name="settings_danger_desc">刪除此裝置上的全部課表資料。</string>
     <string name="settings_danger_clear_button">刪除全部課表</string>
-    <string name="settings_sync_comm_title">同步與通訊</string>
+    <string name="settings_sync_comm_title">管理 Wear 端同步與雲端同步</string>
     <string name="settings_sync_comm_desc">統一管理雲端同步與 Wear 通訊。</string>
-    <string name="settings_wear_comm_title">Wear 通訊</string>
-    <string name="settings_wear_comm_desc">檢查 Wear 連線狀態，並手動同步課表。國行三星/CN/LE 裝置建議使用 WearOS App 模式，透過伴侶應用與 Data Layer 排隊同步。</string>
+    <string name="settings_wear_comm_title">Wear 同步</string>
+    <string name="settings_wear_comm_desc">透過藍牙同步課表至 Wear 端</string>
     <string name="settings_wear_sync_mode_label">同步方式</string>
+    <string name="settings_wear_sync_mode_auto">自動選擇</string>
     <string name="settings_wear_sync_mode_wearable_api">Wearable API</string>
     <string name="settings_wear_sync_mode_wearos_app">WearOS App</string>
+    <string name="settings_wear_auto_variant_cnle">國行</string>
+    <string name="settings_wear_auto_variant_global">國際版</string>
     <string name="settings_wear_connection_label">連線狀態：%1$s</string>
     <string name="settings_wear_sync_label">同步狀態：%1$s</string>
     <string name="settings_wear_refresh_button">重新整理狀態</string>
@@ -241,14 +244,14 @@
     <string name="wearos_app_available">WearOS App 可用：%1$s</string>
     <string name="wearos_app_available_connected">WearOS App 可用：%1$s，已連線手錶：%2$d 台</string>
     <string name="wearos_app_unavailable">未安裝 WearOS App</string>
-    <string name="wear_sync_queued">同步已排隊，手錶經伴侶應用重新連線後會自動接收。</string>
+    <string name="wear_sync_queued">已向 Wear 端發送同步請求</string>
     <string name="wear_sync_queued_via_wearos_app">已透過 WearOS App 排隊同步：%1$s</string>
     <string name="wear_sync_via_wearos_app_triggered">已開啟 WearOS App（%1$s），請在 App 內完成同步。</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS App 同步失敗：%1$s</string>
     <string name="settings_cloud_sync_title">雲端同步</string>
-    <string name="settings_cloud_sync_desc">在手機端選擇 WebDAV 或 Google Drive OAuth 並同步至雲端。Wear 端會自動接收設定。</string>
+    <string name="settings_cloud_sync_desc">選擇 WebDAV 或 Google Drive 作為雲端同步方案，並同步至 Wear 端</string>
     <string name="settings_cloud_sync_enable_title">啟用雲端同步</string>
-    <string name="settings_cloud_sync_enable_desc">應用啟動、前景每 2 分鐘、設定變更後自動同步。</string>
+    <string name="settings_cloud_sync_enable_desc">支援自動同步</string>
     <string name="settings_cloud_sync_server_url">WebDAV 伺服器位址</string>
     <string name="settings_cloud_sync_remote_path">遠端檔案路徑</string>
     <string name="settings_cloud_sync_username">使用者名稱</string>
@@ -264,7 +267,7 @@
     <string name="settings_cloud_sync_drive_auth_canceled">Google Drive 授權已取消。</string>
     <string name="settings_cloud_sync_drive_auth_failed">Google Drive 授權失敗：%1$s</string>
     <string name="settings_cloud_sync_drive_config_missing">尚未設定 Google Drive OAuth。請在 local.properties 設定 DRIVE_OAUTH_CLIENT_ID。</string>
-    <string name="settings_cloud_sync_drive_cn_warning">偵測到國行/CN/LE 手錶，手錶端可能無法使用 Google Drive 同步。</string>
+    <string name="settings_cloud_sync_drive_cn_warning">目前連線的 Wear 裝置可能無法原生支援 Google Drive 同步方案。</string>
     <string name="settings_cloud_sync_save">儲存設定</string>
     <string name="settings_cloud_sync_test">測試連線</string>
     <string name="settings_cloud_sync_sync_now">立即同步</string>
@@ -273,7 +276,12 @@
     <string name="settings_cloud_sync_last_sync">最近雲端同步：%1$s</string>
     <string name="settings_cloud_sync_status">狀態：%1$s</string>
     <string name="settings_cloud_sync_push_status">下發 Wear 設定：%1$s</string>
-    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear 端 WebDAV 資訊已更新（以手機為準）。</string>
+    <string name="settings_cloud_sync_push_status_wear_webdav_updated">Wear 端 WebDAV 資訊已隨手機端同步</string>
+    <string name="onboarding_import_action_open_import">前往匯入</string>
+    <string name="onboarding_import_action_open_cloud_sync">設定雲端同步</string>
+    <string name="onboarding_cloud_hint">啟用後，完成精靈後將自動跳轉至雲端同步設定</string>
+    <string name="onboarding_personalize_subtitle">設定偏好選項，後續可修改</string>
+    <string name="onboarding_device_subtitle">選擇自動或手動同步方式，取決於連線的 Wear 裝置版本</string>
 
     <string name="empty_input_message">輸入內容為空。</string>
     <string name="parse_success_preview_message">解析成功，預覽到 %1$d 節課程，請確認後匯入。</string>

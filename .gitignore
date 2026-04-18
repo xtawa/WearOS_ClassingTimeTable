@@ -9,3 +9,4 @@ local.properties
 *.hprof
 /app/release/
 /mobile/release/
+/apkkey.jks

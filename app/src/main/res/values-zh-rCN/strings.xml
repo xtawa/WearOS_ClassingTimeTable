@@ -47,7 +47,7 @@
     <string name="search_input_label">课程或教师</string>
     <string name="search_hint_watch_input">手表输入建议使用短关键词。</string>
     <string name="search_empty_input_title">请输入关键词</string>
-    <string name="search_empty_input_subtitle">例如：Android / 李老师</string>
+    <string name="search_empty_input_subtitle">语文 / 李老师</string>
     <string name="search_empty_result_title">未找到课程</string>
     <string name="search_empty_result_subtitle">试试更短关键词</string>
     <string name="search_course_meta">%1$s · %2$s</string>
@@ -81,6 +81,8 @@
     <string name="settings_tile_show_countdown">显示倒计时</string>
     <string name="settings_last_sync">最近同步：%1$s</string>
     <string name="settings_force_full_sync">蓝牙同步</string>
+    <string name="settings_sync_feedback_success">同步成功</string>
+    <string name="settings_sync_feedback_check_phone">请检查手机连接</string>
     <string name="settings_cloud_sync_title">云同步</string>
     <string name="settings_cloud_sync_server_url">WebDAV 服务器地址</string>
     <string name="settings_cloud_sync_remote_path">远端文件路径</string>
@@ -92,7 +94,7 @@
     <string name="settings_cloud_sync_never">从未</string>
     <string name="settings_cloud_sync_config_ready">已收到手机下发的云同步配置。</string>
     <string name="settings_cloud_sync_config_missing">未收到云同步配置，请先在手机端配置云同步。</string>
-    <string name="settings_cloud_sync_phone_only_hint">Wear 支持本地编辑 WebDAV，但发生冲突时以手机配置为准。</string>
+    <string name="settings_cloud_sync_phone_only_hint">当 Wear 本地编辑的 WebDAV 信息与手机端冲突时，以手机端信息为准</string>
     <string name="settings_cloud_sync_wear_config_label">服务器：%1$s\n路径：%2$s\n用户：%3$s</string>
     <string name="settings_cloud_sync_wear_status_label">状态：%1$s\n最近同步：%2$s</string>
     <string name="settings_cloud_sync_wear_config_update_label">%1$s\n更新时间：%2$s</string>
