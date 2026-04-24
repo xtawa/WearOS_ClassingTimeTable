@@ -42,7 +42,7 @@
     <string name="calendar_next_month">Next</string>
     <string name="calendar_selected_date_title">Schedule on %1$s</string>
     <string name="calendar_no_classes_on_date">No classes on this date.</string>
-    <string name="calendar_timeline_hint">Timeline mode: show this week's timetable by default.</string>
+    <string name="calendar_timeline_hint">Timeline mode: default view shows this week timetable.</string>
     <string name="calendar_timeline_day_title">%1$s · %2$s</string>
     <string name="calendar_this_week_badge">THIS WEEK</string>
     <string name="calendar_expand_day">Expand</string>
@@ -245,7 +245,7 @@ Rules:
     <string name="settings_danger_title">Danger Zone</string>
     <string name="settings_danger_desc">Delete all timetable data from this device.</string>
     <string name="settings_danger_clear_button">Delete All Timetables</string>
-    <string name="settings_sync_comm_title">Manage Wear Sync and Cloud Sync</string>
+    <string name="settings_sync_comm_title">Sync &amp; Communication</string>
     <string name="settings_sync_comm_desc">Manage cloud sync and Wear communication in one place.</string>
     <string name="settings_wear_comm_title">Wear Sync</string>
     <string name="settings_wear_comm_desc">Sync timetable to Wear via Bluetooth.</string>

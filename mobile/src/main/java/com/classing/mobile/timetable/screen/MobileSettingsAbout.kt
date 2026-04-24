@@ -24,10 +24,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.SettingsBackupRestore
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -120,7 +127,7 @@ internal fun SettingsLayer(
         }
 
         SettingsSwitchCard(
-            badge = stringResource(R.string.settings_badge_weekend),
+            icon = Icons.Filled.CalendarMonth,
             title = stringResource(R.string.settings_show_weekend_title),
             desc = stringResource(R.string.settings_show_weekend_desc),
             checked = showWeekend,
@@ -128,42 +135,42 @@ internal fun SettingsLayer(
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_reminder),
+            icon = Icons.Filled.CheckCircle,
             title = stringResource(R.string.settings_reminder_keepalive_title),
             desc = stringResource(R.string.settings_reminder_keepalive_desc),
             onClick = onOpenReminderKeepAlivePage,
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_import),
+            icon = Icons.Filled.DataObject,
             title = stringResource(R.string.settings_import_entry_title),
             desc = stringResource(R.string.settings_import_entry_desc),
             onClick = onOpenImportPage,
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_backup),
+            icon = Icons.Filled.SettingsBackupRestore,
             title = stringResource(R.string.settings_backup_title),
             desc = stringResource(R.string.settings_backup_desc),
             onClick = onOpenBackupRestorePage,
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_week_mode),
+            icon = Icons.Filled.CalendarMonth,
             title = stringResource(R.string.settings_week_mode_title),
             desc = stringResource(R.string.settings_week_mode_desc),
             onClick = onOpenWeekModePage,
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_sync_comm),
+            icon = Icons.Filled.Sync,
             title = stringResource(R.string.settings_sync_comm_title),
             desc = stringResource(R.string.settings_sync_comm_desc),
             onClick = onOpenSyncCommunicationPage,
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_about),
+            icon = Icons.Filled.HelpOutline,
             title = stringResource(R.string.settings_about_entry_title),
             desc = stringResource(R.string.settings_about_entry_desc),
             onClick = onOpenAboutPage,
@@ -565,7 +572,7 @@ internal fun ReminderKeepAliveSettingsPage(
         }
 
         SettingsSwitchCard(
-            badge = stringResource(R.string.settings_badge_reminder),
+            icon = Icons.Filled.CheckCircle,
             title = stringResource(R.string.settings_reminder_toggle_title),
             desc = stringResource(R.string.settings_reminder_toggle_desc),
             checked = reminderEnabled,
@@ -721,14 +728,14 @@ internal fun SyncCommunicationSettingsPage(
         }
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_wear),
+            icon = Icons.Filled.Watch,
             title = stringResource(R.string.settings_wear_comm_title),
             desc = stringResource(R.string.settings_wear_comm_desc),
             onClick = onOpenWearCommunicationPage,
         )
 
         SettingsEntryCard(
-            badge = stringResource(R.string.settings_badge_cloud),
+            icon = Icons.Filled.CloudSync,
             title = stringResource(R.string.settings_cloud_sync_title),
             desc = stringResource(R.string.settings_cloud_sync_desc),
             onClick = onOpenCloudSyncPage,
@@ -970,7 +977,7 @@ internal fun CloudSyncSettingsPage(
         }
 
         SettingsSwitchCard(
-            badge = stringResource(R.string.settings_badge_cloud),
+            icon = Icons.Filled.CloudSync,
             title = stringResource(R.string.settings_cloud_sync_enable_title),
             desc = stringResource(R.string.settings_cloud_sync_enable_desc),
             checked = enabled,
@@ -1532,7 +1539,7 @@ internal fun LessonCard(lesson: LessonUi) {
 
 @Composable
 private fun SettingsSwitchCard(
-    badge: String,
+    icon: ImageVector,
     title: String,
     desc: String,
     checked: Boolean,
@@ -1562,7 +1569,11 @@ private fun SettingsSwitchCard(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(badge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 Column(
                     modifier = Modifier.weight(1f),
@@ -1589,7 +1600,7 @@ private fun SettingsSwitchCard(
 
 @Composable
 private fun SettingsEntryCard(
-    badge: String,
+    icon: ImageVector,
     title: String,
     desc: String,
     onClick: () -> Unit,
@@ -1614,7 +1625,11 @@ private fun SettingsEntryCard(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(badge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold)

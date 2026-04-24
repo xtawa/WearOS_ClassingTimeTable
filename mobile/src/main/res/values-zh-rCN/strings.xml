@@ -215,7 +215,7 @@
     <string name="settings_danger_title">危险操作区</string>
     <string name="settings_danger_desc">删除本设备上的全部课表数据。</string>
     <string name="settings_danger_clear_button">删除全部课表</string>
-    <string name="settings_sync_comm_title">管理 Wear 端同步与云端同步</string>
+    <string name="settings_sync_comm_title">同步与通信</string>
     <string name="settings_sync_comm_desc">统一管理云同步与 Wear 通信。</string>
     <string name="settings_wear_comm_title">Wear 同步</string>
     <string name="settings_wear_comm_desc">通过蓝牙同步课表至 Wear 端</string>

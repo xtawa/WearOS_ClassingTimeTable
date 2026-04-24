@@ -8,9 +8,18 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -67,6 +76,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,9 +84,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -89,6 +99,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
@@ -119,9 +130,11 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -500,17 +513,17 @@ fun MobileTimetableScreen() {
             return@rememberLauncherForActivityResult
         }
 
-        val rawJson = runCatching {
+        val restoreRawJson = runCatching {
             context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
         }.getOrNull()
 
-        if (rawJson.isNullOrBlank()) {
+        if (restoreRawJson.isNullOrBlank()) {
             parseMessage = context.getString(R.string.backup_restore_failed_message)
             persistSettings()
             return@rememberLauncherForActivityResult
         }
 
-        val parsed = parseJsonToLessons(rawJson, context)
+        val parsed = parseJsonToLessons(restoreRawJson, context)
         if (parsed.lessons.isEmpty()) {
             parseMessage = context.getString(R.string.backup_restore_no_valid_lesson_message)
             warnings = parsed.warnings
@@ -672,9 +685,47 @@ fun MobileTimetableScreen() {
 
     val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
-    BackHandler(enabled = layer == MobileLayer.Settings) {
-        handleBackNavigation()
+    val contentDestination = remember(layer, settingsPage, showImportJsonPromptPage) {
+        MobileContentDestination(
+            layer = layer,
+            settingsPage = settingsPage,
+            showImportJsonPromptPage = showImportJsonPromptPage,
+        )
     }
+    val previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Schedule
+    val currentBackState = remember(contentDestination, previousMainLayer) {
+        MobileBackState(
+            layer = contentDestination.layer,
+            settingsPage = contentDestination.settingsPage,
+            previousMainLayer = previousMainLayer,
+            showImportJsonPromptPage = contentDestination.showImportJsonPromptPage,
+        )
+    }
+    val canHandleBack = remember(currentBackState) { reduceBackState(currentBackState) != null }
+    var predictiveBackProgress by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(contentDestination) {
+        predictiveBackProgress = 0f
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        PredictiveBackHandler(enabled = canHandleBack) { progress ->
+            try {
+                progress.collect { backEvent ->
+                    predictiveBackProgress = backEvent.progress.coerceIn(0f, 1f)
+                }
+                predictiveBackProgress = 0f
+                handleBackNavigation()
+            } catch (_: CancellationException) {
+                predictiveBackProgress = 0f
+            }
+        }
+    } else {
+        BackHandler(enabled = canHandleBack) {
+            handleBackNavigation()
+        }
+    }
+    val contentGestureProgress = if (canHandleBack) predictiveBackProgress else 0f
     val visibleDays = if (showWeekend) DayOfWeek.values().toList() else DayOfWeek.values().filter { it.value <= 5 }
     val lessonsByDay = lessons.groupBy { it.dayOfWeek }
     val latestWearAck = remember(latestWearAckAtMillis) { WearSyncAckStore.load(context) }
@@ -734,11 +785,11 @@ fun MobileTimetableScreen() {
     }
     val driveConnected = cloudDriveAccessToken.isNotBlank() &&
         cloudDriveTokenExpireAt > System.currentTimeMillis() + 60_000L
-    val importContent: @Composable (PaddingValues) -> Unit = { innerPadding ->
+    val importContent: @Composable (PaddingValues, Boolean) -> Unit = { innerPadding, showJsonPromptPage ->
         ImportLayer(
             contentPadding = innerPadding,
             onBackToSettings = { handleBackNavigation() },
-            showJsonPromptPage = showImportJsonPromptPage,
+            showJsonPromptPage = showJsonPromptPage,
             onBackFromJsonPromptPage = { handleBackNavigation() },
             onOpenJsonPromptPage = { showImportJsonPromptPage = true },
             initialFocusMethod = onboardingImportFocusMethod,
@@ -996,7 +1047,55 @@ fun MobileTimetableScreen() {
             }
         },
     ) { innerPadding ->
-        when (layer) {
+        AnimatedContent(
+            targetState = contentDestination,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val progress = contentGestureProgress.coerceIn(0f, 1f)
+                    translationX = 48f * progress
+                    scaleX = 1f - (0.05f * progress)
+                    scaleY = 1f - (0.05f * progress)
+                    alpha = 1f - (0.08f * progress)
+                },
+            transitionSpec = {
+                when (resolveContentTransitionDirection(initialState, targetState)) {
+                    ContentTransitionDirection.Forward -> (
+                        slideInHorizontally(
+                            animationSpec = tween(260),
+                            initialOffsetX = { fullWidth -> fullWidth / 4 },
+                        ) + fadeIn(animationSpec = tween(220))
+                        ).togetherWith(
+                        slideOutHorizontally(
+                            animationSpec = tween(220),
+                            targetOffsetX = { fullWidth -> -(fullWidth / 6) },
+                        ) + fadeOut(animationSpec = tween(180)),
+                    )
+
+                    ContentTransitionDirection.Backward -> (
+                        slideInHorizontally(
+                            animationSpec = tween(260),
+                            initialOffsetX = { fullWidth -> -(fullWidth / 4) },
+                        ) + fadeIn(animationSpec = tween(220))
+                        ).togetherWith(
+                        slideOutHorizontally(
+                            animationSpec = tween(220),
+                            targetOffsetX = { fullWidth -> fullWidth / 6 },
+                        ) + fadeOut(animationSpec = tween(180)),
+                    )
+
+                    ContentTransitionDirection.None -> (
+                        fadeIn(animationSpec = tween(120))
+                        ).togetherWith(
+                        fadeOut(animationSpec = tween(90)),
+                    )
+                }.using(
+                    SizeTransform(clip = false),
+                )
+            },
+            label = "mobile_content_transition",
+        ) { destination ->
+            when (destination.layer) {
             MobileLayer.Schedule -> WeekBoardLayer(
                 contentPadding = innerPadding,
                 visibleDays = visibleDays,
@@ -1009,7 +1108,7 @@ fun MobileTimetableScreen() {
                 lessonsByDay = lessonsByDay,
             )
 
-            MobileLayer.Settings -> when (settingsPage) {
+            MobileLayer.Settings -> when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
                     showWeekend = showWeekend,
@@ -1044,7 +1143,7 @@ fun MobileTimetableScreen() {
                     },
                 )
 
-                SettingsPage.Import -> importContent(innerPadding)
+                SettingsPage.Import -> importContent(innerPadding, destination.showImportJsonPromptPage)
 
                 SettingsPage.BackupRestore -> BackupRestoreSettingsPage(
                     contentPadding = innerPadding,
@@ -1396,6 +1495,7 @@ fun MobileTimetableScreen() {
                 )
             }
         }
+        }
     }
 
     MobileDialogs(
@@ -1506,6 +1606,43 @@ fun MobileTimetableScreen() {
             persistSettings()
         },
     )
+}
+
+private data class MobileContentDestination(
+    val layer: MobileLayer,
+    val settingsPage: SettingsPage,
+    val showImportJsonPromptPage: Boolean,
+)
+
+private enum class ContentTransitionDirection {
+    Forward,
+    Backward,
+    None,
+}
+
+private fun resolveContentTransitionDirection(
+    initialState: MobileContentDestination,
+    targetState: MobileContentDestination,
+): ContentTransitionDirection {
+    val initialDepth = initialState.transitionDepth()
+    val targetDepth = targetState.transitionDepth()
+    return when {
+        targetDepth > initialDepth -> ContentTransitionDirection.Forward
+        targetDepth < initialDepth -> ContentTransitionDirection.Backward
+        else -> ContentTransitionDirection.None
+    }
+}
+
+private fun MobileContentDestination.transitionDepth(): Int {
+    return when (layer) {
+        MobileLayer.Schedule -> 0
+        MobileLayer.Calendar -> 100
+        MobileLayer.Settings -> when (settingsPage) {
+            SettingsPage.Main -> 200
+            SettingsPage.Import -> if (showImportJsonPromptPage) 400 else 300
+            else -> 300 + settingsPage.ordinal
+        }
+    }
 }
 
 private fun parseWeekStartDay(raw: String): DayOfWeek {

@@ -55,8 +55,8 @@ android {
         applicationId = "com.xtawa.classingtime"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.3"
+        versionCode = 104
+        versionName = "1.0.4"
         buildConfigField("String", "DRIVE_OAUTH_CLIENT_ID", "\"$driveOauthClientId\"")
         buildConfigField("String", "DRIVE_OAUTH_REDIRECT_SCHEME", "\"$driveOauthRedirectScheme\"")
     }

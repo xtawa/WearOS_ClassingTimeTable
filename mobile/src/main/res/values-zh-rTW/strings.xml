@@ -215,7 +215,7 @@
     <string name="settings_danger_title">危險操作區</string>
     <string name="settings_danger_desc">刪除此裝置上的全部課表資料。</string>
     <string name="settings_danger_clear_button">刪除全部課表</string>
-    <string name="settings_sync_comm_title">管理 Wear 端同步與雲端同步</string>
+    <string name="settings_sync_comm_title">同步與通訊</string>
     <string name="settings_sync_comm_desc">統一管理雲端同步與 Wear 通訊。</string>
     <string name="settings_wear_comm_title">Wear 同步</string>
     <string name="settings_wear_comm_desc">透過藍牙同步課表至 Wear 端</string>
