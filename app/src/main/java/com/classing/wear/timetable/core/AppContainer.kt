@@ -37,6 +37,7 @@ class DefaultAppContainer(
         "classing_timetable.db",
     )
         .addMigrations(AppDatabaseMigrations.MIGRATION_1_2)
+        .addMigrations(AppDatabaseMigrations.MIGRATION_2_3)
         .build()
 
     override val timeProvider: TimeProvider = SystemTimeProvider()

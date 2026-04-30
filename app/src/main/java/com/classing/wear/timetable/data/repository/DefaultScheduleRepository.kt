@@ -8,6 +8,7 @@ import com.classing.wear.timetable.data.local.dao.ScheduleExceptionDao
 import com.classing.wear.timetable.data.local.dao.SemesterDao
 import com.classing.wear.timetable.data.local.dao.TimeSlotDao
 import com.classing.wear.timetable.data.mapper.asDomain
+import com.classing.wear.timetable.data.mapper.asDomainOrNull
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.NextLessonHint
@@ -119,9 +120,9 @@ class DefaultScheduleRepository(
     private fun observeScheduleContext(semester: Semester): Flow<ScheduleContext> {
         return combine(
             courseDao.observeBySemester(semester.localId).map { it.map { e -> e.asDomain() } },
-            sessionDao.observeBySemester(semester.localId).map { it.map { e -> e.asDomain() } },
+            sessionDao.observeBySemester(semester.localId).map { it.mapNotNull { e -> e.asDomainOrNull() } },
             slotDao.observeBySemester(semester.localId).map { it.map { e -> e.asDomain() } },
-            exceptionDao.observeBySemester(semester.localId).map { it.map { e -> e.asDomain() } },
+            exceptionDao.observeBySemester(semester.localId).map { it.mapNotNull { e -> e.asDomainOrNull() } },
         ) { courses, sessions, slots, exceptions ->
             ScheduleContext(courses, sessions, slots, exceptions)
         }

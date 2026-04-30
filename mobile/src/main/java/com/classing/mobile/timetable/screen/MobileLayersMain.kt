@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.screen
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime.screen
 
 import android.Manifest
 import android.content.Context
@@ -405,13 +405,19 @@ internal fun ImportLayer(
     preview: List<CourseDraft>,
     jsonPreview: List<LessonUi>,
     hasPendingImport: Boolean,
+    importItemStates: List<ImportItemState>,
+    importPreviewSummary: ImportPreviewSummary?,
     onRawChange: (String) -> Unit,
     onJsonRawChange: (String) -> Unit,
     onClearInput: () -> Unit,
     onParsePreview: () -> Unit,
     onParseJsonPreview: () -> Unit,
     onConfirmImport: () -> Unit,
+    onConfirmSelectiveImport: (List<LessonUi>) -> Unit,
     onCancelPreview: () -> Unit,
+    onToggleImportItem: (Int) -> Unit,
+    onIcsFileSelected: (android.net.Uri) -> Unit,
+    onJsonFileSelected: (android.net.Uri) -> Unit,
     onManualImport: (
         title: String,
         teacher: String,
@@ -444,6 +450,17 @@ internal fun ImportLayer(
     val jsonSectionRequester = remember { BringIntoViewRequester() }
     val manualSectionRequester = remember { BringIntoViewRequester() }
     val hasPendingJsonImport = hasPendingImport && jsonPreview.isNotEmpty()
+
+    val icsFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) onIcsFileSelected(uri)
+    }
+    val jsonFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) onJsonFileSelected(uri)
+    }
 
     LaunchedEffect(initialFocusMethod, showJsonPromptPage) {
         val focusMethod = initialFocusMethod ?: return@LaunchedEffect
@@ -529,6 +546,9 @@ internal fun ImportLayer(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(onClick = onParsePreview) { Text(stringResource(R.string.import_button_parse_preview)) }
+                Button(onClick = {
+                    icsFilePicker.launch(arrayOf("text/calendar", "application/ics", "*/*"))
+                }) { Text(stringResource(R.string.import_button_select_ics_file)) }
                 Button(onClick = onConfirmImport, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_confirm)) }
                 Button(onClick = onCancelPreview, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
                 Button(onClick = onClearInput) { Text(stringResource(R.string.import_button_clear)) }
@@ -554,28 +574,24 @@ internal fun ImportLayer(
                     }
                 }
             }
+            if (importPreviewSummary != null && importItemStates.isNotEmpty()) {
+                ImportPreviewSummaryCard(
+                    summary = importPreviewSummary,
+                    itemStates = importItemStates,
+                )
+            }
             Text(stringResource(R.string.import_preview_title, preview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             val collapsedIcs = preview.size > previewCollapseThreshold
             val shownIcsPreview = if (collapsedIcs && !expandIcsPreview) preview.take(previewCollapseThreshold) else preview
-            shownIcsPreview.forEach { draft ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(draft.title.ifBlank { untitled }, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            draft.location ?: stringResource(R.string.no_location),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            draft.recurrence ?: stringResource(R.string.one_time_schedule),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+            shownIcsPreview.forEachIndexed { index, draft ->
+                val itemState = importItemStates.getOrNull(index)
+                ImportPreviewDraftCard(
+                    draft = draft,
+                    untitled = untitled,
+                    itemState = itemState,
+                    index = index,
+                    onToggle = onToggleImportItem,
+                )
             }
             if (collapsedIcs) {
                 TextButton(onClick = { expandIcsPreview = !expandIcsPreview }) {
@@ -586,6 +602,26 @@ internal fun ImportLayer(
                             stringResource(R.string.preview_expand_button, preview.size - previewCollapseThreshold)
                         },
                     )
+                }
+            }
+            if (hasPendingImport && importItemStates.isNotEmpty()) {
+                val includedCount = importItemStates.count { it.included }
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            val included = importItemStates.filter { it.included }.map { it.lesson }
+                            if (included.isNotEmpty()) onConfirmSelectiveImport(included)
+                        },
+                        enabled = includedCount > 0,
+                    ) {
+                        Text(stringResource(R.string.import_selective_confirm_button, includedCount))
+                    }
+                    Button(onClick = onCancelPreview) {
+                        Text(stringResource(R.string.import_selective_cancel_button))
+                    }
                 }
             }
         }
@@ -626,6 +662,9 @@ internal fun ImportLayer(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(onClick = onParseJsonPreview) { Text(stringResource(R.string.json_button_parse_preview)) }
+                Button(onClick = {
+                    jsonFilePicker.launch(arrayOf("application/json", "text/plain", "*/*"))
+                }) { Text(stringResource(R.string.import_button_select_json_file)) }
                 Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
             }
             Row(
@@ -635,30 +674,24 @@ internal fun ImportLayer(
                 Button(onClick = onConfirmImport, enabled = hasPendingJsonImport) { Text(stringResource(R.string.import_button_confirm)) }
                 Button(onClick = onCancelPreview, enabled = hasPendingJsonImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
             }
+            if (importPreviewSummary != null && importItemStates.isNotEmpty() && jsonPreview.isNotEmpty()) {
+                ImportPreviewSummaryCard(
+                    summary = importPreviewSummary,
+                    itemStates = importItemStates,
+                )
+            }
             Text(stringResource(R.string.json_preview_title, jsonPreview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             val collapsedJson = jsonPreview.size > previewCollapseThreshold
             val shownJsonPreview = if (collapsedJson && !expandJsonPreview) jsonPreview.take(previewCollapseThreshold) else jsonPreview
-            shownJsonPreview.forEach { lesson ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(lesson.title, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            text = formatLessonSummary(lesson, context),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (!lesson.location.isNullOrBlank()) {
-                            Text(
-                                text = lesson.location,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
+            shownJsonPreview.forEachIndexed { index, lesson ->
+                val itemState = importItemStates.getOrNull(index)
+                ImportPreviewLessonCard(
+                    lesson = lesson,
+                    context = context,
+                    itemState = itemState,
+                    index = index,
+                    onToggle = onToggleImportItem,
+                )
             }
             if (collapsedJson) {
                 TextButton(onClick = { expandJsonPreview = !expandJsonPreview }) {
@@ -669,6 +702,26 @@ internal fun ImportLayer(
                             stringResource(R.string.preview_expand_button, jsonPreview.size - previewCollapseThreshold)
                         },
                     )
+                }
+            }
+            if (hasPendingJsonImport && importItemStates.isNotEmpty()) {
+                val includedCount = importItemStates.count { it.included }
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            val included = importItemStates.filter { it.included }.map { it.lesson }
+                            if (included.isNotEmpty()) onConfirmSelectiveImport(included)
+                        },
+                        enabled = includedCount > 0,
+                    ) {
+                        Text(stringResource(R.string.import_selective_confirm_button, includedCount))
+                    }
+                    Button(onClick = onCancelPreview) {
+                        Text(stringResource(R.string.import_selective_cancel_button))
+                    }
                 }
             }
         }
@@ -803,6 +856,303 @@ internal fun ImportLayer(
                 },
             ) {
                 Text(stringResource(R.string.manual_import_button))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportPreviewSummaryCard(
+    summary: ImportPreviewSummary,
+    itemStates: List<ImportItemState>,
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.import_preview_summary_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.import_preview_summary_valid, summary.validCount),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (summary.conflictCount > 0) {
+                    Text(
+                        text = stringResource(R.string.import_preview_summary_conflict, summary.conflictCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                if (summary.anomalyCount > 0) {
+                    Text(
+                        text = stringResource(R.string.import_preview_summary_skipped, summary.anomalyCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
+            if (summary.conflictCount > 0 || summary.anomalyCount > 0) {
+                Text(
+                    text = stringResource(
+                        R.string.import_selective_conflict_summary,
+                        summary.conflictCount,
+                        summary.total,
+                        summary.anomalyCount,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (itemStates.all { !it.included }) {
+                Text(
+                    text = stringResource(R.string.import_preview_no_valid_items),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportPreviewDraftCard(
+    draft: CourseDraft,
+    untitled: String,
+    itemState: ImportItemState?,
+    index: Int,
+    onToggle: (Int) -> Unit,
+) {
+    val hasConflict = itemState?.hasConflict == true
+    val hasAnomaly = itemState?.anomalies?.isNotEmpty() == true
+    val included = itemState?.included ?: true
+    val borderColor = when {
+        hasConflict -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+        hasAnomaly -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
+        else -> null
+    }
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (!included) {
+                MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLowest
+            },
+        ),
+        border = borderColor?.let { BorderStroke(1.dp, it) },
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    draft.title.ifBlank { untitled },
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (itemState != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (hasConflict) {
+                            Text(
+                                text = stringResource(R.string.import_preview_item_conflict_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                                        RoundedCornerShape(4.dp),
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                        if (hasAnomaly) {
+                            Text(
+                                text = stringResource(R.string.import_preview_item_anomaly_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                                        RoundedCornerShape(4.dp),
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                        TextButton(
+                            onClick = { onToggle(index) },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        ) {
+                            Text(
+                                text = if (included) stringResource(R.string.import_preview_item_skip)
+                                else stringResource(R.string.import_preview_item_include),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
+            }
+            Text(
+                draft.location ?: stringResource(R.string.no_location),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                draft.recurrence ?: stringResource(R.string.one_time_schedule),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (hasAnomaly && itemState != null) {
+                itemState.anomalies.take(3).forEach { anomaly ->
+                    Text(
+                        text = anomaly,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
+            if (hasConflict && itemState != null) {
+                itemState.conflictWithExisting.take(2).forEach { existing ->
+                    Text(
+                        text = stringResource(
+                            R.string.import_selective_conflict_detail,
+                            draft.title.ifBlank { untitled },
+                            existing.title,
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportPreviewLessonCard(
+    lesson: LessonUi,
+    context: Context,
+    itemState: ImportItemState?,
+    index: Int,
+    onToggle: (Int) -> Unit,
+) {
+    val hasConflict = itemState?.hasConflict == true
+    val hasAnomaly = itemState?.anomalies?.isNotEmpty() == true
+    val included = itemState?.included ?: true
+    val borderColor = when {
+        hasConflict -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+        hasAnomaly -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
+        else -> null
+    }
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (!included) {
+                MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLowest
+            },
+        ),
+        border = borderColor?.let { BorderStroke(1.dp, it) },
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    lesson.title,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (itemState != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (hasConflict) {
+                            Text(
+                                text = stringResource(R.string.import_preview_item_conflict_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                                        RoundedCornerShape(4.dp),
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                        if (hasAnomaly) {
+                            Text(
+                                text = stringResource(R.string.import_preview_item_anomaly_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                                        RoundedCornerShape(4.dp),
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                        TextButton(
+                            onClick = { onToggle(index) },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        ) {
+                            Text(
+                                text = if (included) stringResource(R.string.import_preview_item_skip)
+                                else stringResource(R.string.import_preview_item_include),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
+            }
+            Text(
+                text = formatLessonSummary(lesson, context),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!lesson.location.isNullOrBlank()) {
+                Text(
+                    text = lesson.location,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (hasAnomaly && itemState != null) {
+                itemState.anomalies.take(3).forEach { anomaly ->
+                    Text(
+                        text = anomaly,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
+            if (hasConflict && itemState != null) {
+                itemState.conflictWithExisting.take(2).forEach { existing ->
+                    Text(
+                        text = stringResource(
+                            R.string.import_selective_conflict_detail,
+                            lesson.title,
+                            existing.title,
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }

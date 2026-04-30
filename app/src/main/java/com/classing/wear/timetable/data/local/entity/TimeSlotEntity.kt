@@ -16,7 +16,7 @@ import java.time.LocalTime
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("semesterId")],
+    indices = [Index("semesterId"), Index("remoteId")],
 )
 data class TimeSlotEntity(
     @PrimaryKey(autoGenerate = true) val localId: Long = 0,

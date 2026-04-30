@@ -1,4 +1,4 @@
-﻿<resources>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<resources>
     <string name="app_name">Classing 课程表</string>
 
     <string name="layer_dashboard">课表</string>
@@ -72,6 +72,27 @@
     <string name="import_button_confirm">确认导入</string>
     <string name="import_button_cancel_preview">取消预览</string>
     <string name="import_button_clear">清空</string>
+    <string name="import_button_select_file">选择文件</string>
+    <string name="import_button_select_ics_file">选择 .ics 文件</string>
+    <string name="import_button_select_json_file">选择 .json 文件</string>
+    <string name="import_file_read_failed">文件读取失败。</string>
+    <string name="import_file_loaded">文件已加载，点击"解析预览"继续。</string>
+    <string name="import_share_received">已接收分享文件，点击"解析预览"继续。</string>
+    <string name="import_preview_summary_title">导入摘要</string>
+    <string name="import_preview_summary_valid">有效：%1$d</string>
+    <string name="import_preview_summary_skipped">跳过：%1$d</string>
+    <string name="import_preview_summary_conflict">冲突：%1$d</string>
+    <string name="import_preview_anomaly_title">字段异常</string>
+    <string name="import_preview_item_skip">跳过</string>
+    <string name="import_preview_item_include">包含</string>
+    <string name="import_preview_item_conflict_badge">冲突</string>
+    <string name="import_preview_item_anomaly_badge">异常</string>
+    <string name="import_preview_no_valid_items">没有可导入的有效条目，所有条目已跳过或存在异常。</string>
+    <string name="import_selective_confirm_button">导入选中项（%1$d）</string>
+    <string name="import_selective_cancel_button">取消</string>
+    <string name="import_selective_conflict_summary">%2$d 项中有 %1$d 项存在时间冲突，%3$d 项存在字段异常。</string>
+    <string name="import_selective_conflict_detail">%1$s 与 %2$s 时间冲突</string>
+    <string name="import_selective_applied">导入完成。已应用 %1$d 节课程，跳过 %2$d 项。</string>
     <string name="json_import_title">程序 JSON 导入</string>
     <string name="json_import_desc">粘贴 AI 转译后的课表 JSON，实现快捷导入。</string>
     <string name="json_input_label">粘贴课表 JSON</string>

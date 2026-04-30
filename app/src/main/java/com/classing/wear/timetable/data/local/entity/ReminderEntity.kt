@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("semesterId")],
+    indices = [Index("semesterId"), Index("remoteId")],
 )
 data class ReminderEntity(
     @PrimaryKey(autoGenerate = true) val localId: Long = 0,

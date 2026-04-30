@@ -27,7 +27,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("courseId"), Index("semesterId"), Index("timeSlotId")],
+    indices = [Index("courseId"), Index("semesterId"), Index("timeSlotId"), Index("remoteId")],
 )
 data class CourseSessionEntity(
     @PrimaryKey(autoGenerate = true) val localId: Long = 0,

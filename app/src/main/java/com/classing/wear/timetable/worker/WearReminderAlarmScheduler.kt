@@ -8,7 +8,6 @@ import android.os.Build
 import com.classing.wear.timetable.domain.model.KeepAliveLevel
 import com.classing.wear.timetable.reminder.ReminderAlarmReceiver
 import com.classing.wear.timetable.sync.MobileSyncPrefs
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -91,12 +90,12 @@ object WearReminderAlarmScheduler {
         val lessons = root.optJSONArray("lessons") ?: return null
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
-        val nowMinute = now.hour * 60 + now.minute
+        val zoneId = ZoneId.systemDefault()
 
         val candidates = buildList {
             for (offset in 0..7) {
-                val date = today.plusDays(offset.toLong())
-                val dayOfWeek = date.dayOfWeek.value
+                val lessonDate = today.plusDays(offset.toLong())
+                val dayOfWeek = lessonDate.dayOfWeek.value
                 for (i in 0 until lessons.length()) {
                     val item = lessons.optJSONObject(i) ?: continue
                     if (item.optInt("dayOfWeek", -1) != dayOfWeek) continue
@@ -104,14 +103,12 @@ object WearReminderAlarmScheduler {
                     val title = item.optString("title").ifBlank { "Class" }
                     val start = parseTime(item.optString("startTime")) ?: continue
                     val startMinute = start.hour * 60 + start.minute
-                    val triggerMinute = startMinute - ReminderCheckLogic.LEAD_MINUTES
-                    if (triggerMinute < 0) continue
-                    if (offset == 0 && triggerMinute <= nowMinute) continue
+                    val triggerAt = LocalDateTime.of(lessonDate, start)
+                        .minusMinutes(ReminderCheckLogic.LEAD_MINUTES.toLong())
+                    if (!triggerAt.isAfter(now)) continue
 
-                    val triggerTime = LocalTime.of(triggerMinute / 60, triggerMinute % 60)
-                    val triggerAt = LocalDateTime.of(date, triggerTime)
                     val reminderKey = ReminderCheckLogic.reminderKey(
-                        date = date,
+                        date = lessonDate,
                         lesson = SyncedLesson(
                             id = lessonId,
                             title = title,
@@ -122,7 +119,7 @@ object WearReminderAlarmScheduler {
                     )
                     add(
                         AlarmCandidate(
-                            triggerAtMillis = triggerAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                            triggerAtMillis = triggerAt.atZone(zoneId).toInstant().toEpochMilli(),
                             reminderKey = reminderKey,
                             lessonId = lessonId,
                             title = title,

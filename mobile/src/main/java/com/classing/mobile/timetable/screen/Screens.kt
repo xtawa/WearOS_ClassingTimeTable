@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.screen
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime.screen
 
 import android.Manifest
 import android.content.Context
@@ -173,6 +173,8 @@ fun MobileTimetableScreen() {
     var pendingImportLessons by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
     var pendingImportConflicts by remember { mutableStateOf<List<LessonConflict>>(emptyList()) }
     var showImportConflictDialog by remember { mutableStateOf(false) }
+    var importItemStates by remember { mutableStateOf<List<ImportItemState>>(emptyList()) }
+    var importPreviewSummary by remember { mutableStateOf<ImportPreviewSummary?>(null) }
     var pendingManualLesson by remember { mutableStateOf<LessonUi?>(null) }
     var pendingManualConflicts by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
     var showManualConflictDialog by remember { mutableStateOf(false) }
@@ -310,6 +312,36 @@ fun MobileTimetableScreen() {
             keepAliveLevel = keepAliveLevel,
             reminderMinutes = reminderMinutes,
         )
+    }
+
+    fun applyIcsPreviewFromRaw(raw: String) {
+        val result = parseToLessons(
+            raw = raw,
+            parser = parser,
+            adapter = adapter,
+            zoneId = zoneId,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+            context = context,
+        )
+        pendingImportLessons = result.lessons
+        draftPreview = result.drafts
+        jsonPreview = emptyList()
+        parseMessage = result.message
+        warnings = result.warnings
+        importItemStates = buildImportItemStates(result.lessons, lessons)
+        importPreviewSummary = buildImportPreviewSummary(importItemStates)
+    }
+
+    fun applyJsonPreviewFromRaw(raw: String) {
+        val result = parseJsonToLessons(raw, context)
+        pendingImportLessons = result.lessons
+        draftPreview = emptyList()
+        jsonPreview = result.lessons
+        parseMessage = result.message
+        warnings = result.warnings
+        importItemStates = buildImportItemStates(result.lessons, lessons)
+        importPreviewSummary = buildImportPreviewSummary(importItemStates)
     }
 
     suspend fun runCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
@@ -591,6 +623,56 @@ fun MobileTimetableScreen() {
         }
     }
 
+    LaunchedEffect(initialized) {
+        if (!initialized) return@LaunchedEffect
+        val activity = context as? android.app.Activity ?: return@LaunchedEffect
+        val mainActivity = activity as? com.xtawa.classingtime.MainActivity ?: return@LaunchedEffect
+        val sharedUri = mainActivity.sharedImportUri.value
+        val sharedMime = mainActivity.sharedImportMime.value
+        val sharedText = com.xtawa.classingtime.MainActivity.sharedImportText
+        com.xtawa.classingtime.MainActivity.sharedImportText = null
+        if (sharedUri != null) {
+            val content = runCatching {
+                context.contentResolver.openInputStream(sharedUri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+            }.getOrNull()
+            if (!content.isNullOrBlank()) {
+                val isIcs = sharedMime?.contains("calendar") == true ||
+                    sharedUri.path?.endsWith(".ics", ignoreCase = true) == true ||
+                    content.contains("BEGIN:VCALENDAR", ignoreCase = true)
+                if (isIcs) {
+                    rawIcs = content
+                    applyIcsPreviewFromRaw(content)
+                } else {
+                    rawJson = content
+                    applyJsonPreviewFromRaw(content)
+                }
+                previousMainLayerName = MobileLayer.Schedule.name
+                layerName = MobileLayer.Settings.name
+                settingsPageName = SettingsPage.Import.name
+                showImportJsonPromptPage = false
+                onboardingImportFocusMethod = if (isIcs) ImportFocusMethod.ICS else ImportFocusMethod.JSON
+                persistSettings()
+            }
+            mainActivity.sharedImportUri.value = null
+            mainActivity.sharedImportMime.value = null
+        } else if (!sharedText.isNullOrBlank()) {
+            val isIcs = sharedText.contains("BEGIN:VCALENDAR", ignoreCase = true)
+            if (isIcs) {
+                rawIcs = sharedText
+                applyIcsPreviewFromRaw(sharedText)
+            } else {
+                rawJson = sharedText
+                applyJsonPreviewFromRaw(sharedText)
+            }
+            previousMainLayerName = MobileLayer.Schedule.name
+            layerName = MobileLayer.Settings.name
+            settingsPageName = SettingsPage.Import.name
+            showImportJsonPromptPage = false
+            onboardingImportFocusMethod = if (isIcs) ImportFocusMethod.ICS else ImportFocusMethod.JSON
+            persistSettings()
+        }
+    }
+
     LaunchedEffect(initialized, cloudSyncEnabled, lifecycleOwner, showOnboarding) {
         if (!initialized) return@LaunchedEffect
         while (true) {
@@ -803,6 +885,8 @@ fun MobileTimetableScreen() {
             preview = draftPreview,
             jsonPreview = jsonPreview,
             hasPendingImport = pendingImportLessons.isNotEmpty(),
+            importItemStates = importItemStates,
+            importPreviewSummary = importPreviewSummary,
             onRawChange = { rawIcs = it },
             onJsonRawChange = { rawJson = it },
             onClearInput = {
@@ -814,33 +898,17 @@ fun MobileTimetableScreen() {
                 draftPreview = emptyList()
                 jsonPreview = emptyList()
                 warnings = emptyList()
+                importItemStates = emptyList()
+                importPreviewSummary = null
                 parseMessage = context.getString(R.string.message_input_cleared)
                 persistSettings()
             },
             onParsePreview = {
-                val result = parseToLessons(
-                    raw = rawIcs,
-                    parser = parser,
-                    adapter = adapter,
-                    zoneId = zoneId,
-                    weekNumberMode = weekNumberMode,
-                    semesterWeekStartDate = semesterWeekStartDate,
-                    context = context,
-                )
-                pendingImportLessons = result.lessons
-                draftPreview = result.drafts
-                jsonPreview = emptyList()
-                parseMessage = result.message
-                warnings = result.warnings
+                applyIcsPreviewFromRaw(rawIcs)
                 persistSettings()
             },
             onParseJsonPreview = {
-                val result = parseJsonToLessons(rawJson, context)
-                pendingImportLessons = result.lessons
-                draftPreview = emptyList()
-                jsonPreview = result.lessons
-                parseMessage = result.message
-                warnings = result.warnings
+                applyJsonPreviewFromRaw(rawJson)
                 persistSettings()
             },
             onConfirmImport = {
@@ -855,6 +923,8 @@ fun MobileTimetableScreen() {
                         draftPreview = emptyList()
                         jsonPreview = emptyList()
                         warnings = emptyList()
+                        importItemStates = emptyList()
+                        importPreviewSummary = null
                     } else {
                         pendingImportConflicts = conflicts
                         showImportConflictDialog = true
@@ -863,12 +933,61 @@ fun MobileTimetableScreen() {
                 }
                 persistSettings()
             },
+            onConfirmSelectiveImport = { selectedLessons ->
+                val skippedCount = pendingImportLessons.size - selectedLessons.size
+                applyImportedLessons(selectedLessons)
+                parseMessage = context.getString(R.string.import_selective_applied, selectedLessons.size, skippedCount)
+                pendingImportLessons = emptyList()
+                pendingImportConflicts = emptyList()
+                showImportConflictDialog = false
+                draftPreview = emptyList()
+                jsonPreview = emptyList()
+                warnings = emptyList()
+                importItemStates = emptyList()
+                importPreviewSummary = null
+                persistSettings()
+            },
             onCancelPreview = {
                 pendingImportLessons = emptyList()
                 draftPreview = emptyList()
                 jsonPreview = emptyList()
                 warnings = emptyList()
+                importItemStates = emptyList()
+                importPreviewSummary = null
                 parseMessage = context.getString(R.string.import_preview_canceled_message)
+                persistSettings()
+            },
+            onToggleImportItem = { index ->
+                if (index in importItemStates.indices) {
+                    val current = importItemStates[index]
+                    importItemStates = importItemStates.toMutableList().also {
+                        it[index] = current.copy(included = !current.included)
+                    }
+                    importPreviewSummary = buildImportPreviewSummary(importItemStates)
+                }
+            },
+            onIcsFileSelected = { uri ->
+                val content = runCatching {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                }.getOrNull()
+                if (content.isNullOrBlank()) {
+                    parseMessage = context.getString(R.string.import_file_read_failed)
+                } else {
+                    rawIcs = content
+                    applyIcsPreviewFromRaw(content)
+                }
+                persistSettings()
+            },
+            onJsonFileSelected = { uri ->
+                val content = runCatching {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                }.getOrNull()
+                if (content.isNullOrBlank()) {
+                    parseMessage = context.getString(R.string.import_file_read_failed)
+                } else {
+                    rawJson = content
+                    applyJsonPreviewFromRaw(content)
+                }
                 persistSettings()
             },
             onManualImport = { title, teacher, location, note, dayOfWeek, startRaw, endRaw, startWeekRaw, endWeekRaw, weekParity ->
@@ -1519,6 +1638,8 @@ fun MobileTimetableScreen() {
             draftPreview = emptyList()
             jsonPreview = emptyList()
             warnings = emptyList()
+            importItemStates = emptyList()
+            importPreviewSummary = null
             showImportConflictDialog = false
             persistSettings()
         },
@@ -1803,4 +1924,3 @@ private fun SyncStatusBadge(
         }
     }
 }
-

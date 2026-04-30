@@ -1,5 +1,7 @@
-﻿package com.xtawa.classingtime
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -23,9 +26,61 @@ import androidx.compose.ui.unit.sp
 import com.xtawa.classingtime.screen.MobileTimetableScreen
 
 class MainActivity : ComponentActivity() {
+    private val sharedImportUri = mutableStateOf<Uri?>(null)
+    private val sharedImportMime = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIncomingIntent(intent)
         setContent { MobileApp() }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                val mime = intent.type
+                val uri = if (mime != null) intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM) else null
+                if (uri != null) {
+                    sharedImportUri.value = uri
+                    sharedImportMime.value = mime
+                } else {
+                    val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    if (!text.isNullOrBlank()) {
+                        val isIcs = text.contains("BEGIN:VCALENDAR", ignoreCase = true)
+                        sharedImportMime.value = if (isIcs) "text/calendar" else "application/json"
+                        sharedImportUri.value = null
+                        sharedImportText = text
+                    }
+                }
+            }
+            Intent.ACTION_VIEW -> {
+                val uri = intent.data
+                val mime = intent.type
+                if (uri != null) {
+                    sharedImportUri.value = uri
+                    sharedImportMime.value = mime ?: guessMimeFromUri(uri)
+                }
+            }
+        }
+    }
+
+    private fun guessMimeFromUri(uri: Uri): String {
+        val path = uri.path.orEmpty()
+        return when {
+            path.endsWith(".ics", ignoreCase = true) -> "text/calendar"
+            path.endsWith(".json", ignoreCase = true) -> "application/json"
+            else -> "application/octet-stream"
+        }
+    }
+
+    companion object {
+        internal var sharedImportText: String? = null
     }
 }
 

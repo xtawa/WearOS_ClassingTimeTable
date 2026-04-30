@@ -22,7 +22,7 @@ import java.time.LocalDate
             onDelete = ForeignKey.SET_NULL,
         ),
     ],
-    indices = [Index("semesterId"), Index("sessionId"), Index("date")],
+    indices = [Index("semesterId"), Index("sessionId"), Index("date"), Index("remoteId")],
 )
 data class ScheduleExceptionEntity(
     @PrimaryKey(autoGenerate = true) val localId: Long = 0,

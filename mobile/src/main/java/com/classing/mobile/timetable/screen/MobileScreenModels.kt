@@ -169,6 +169,22 @@ internal data class LessonConflict(
     val second: LessonUi,
 )
 
+internal data class ImportItemState(
+    val lesson: LessonUi,
+    val included: Boolean = true,
+    val hasConflict: Boolean = false,
+    val conflictWithExisting: List<LessonUi> = emptyList(),
+    val anomalies: List<String> = emptyList(),
+)
+
+internal data class ImportPreviewSummary(
+    val total: Int,
+    val validCount: Int,
+    val conflictCount: Int,
+    val anomalyCount: Int,
+    val skippedCount: Int,
+)
+
 internal data class WearOsCompanionInfo(
     val packageName: String,
     val versionName: String,

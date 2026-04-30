@@ -1,11 +1,12 @@
 package com.classing.wear.timetable.ui.screen.settings
 
-import android.app.AlarmManager
 import android.app.Activity
+import android.app.AlarmManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -25,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -45,7 +47,6 @@ import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
-import android.net.Uri
 
 @Composable
 fun SettingsScreen(
@@ -159,6 +160,7 @@ fun SettingsScreen(
                 },
             )
         }
+
         item { SettingsSectionTag(title = "保活") }
         item {
             KeepAliveLevelCard(
@@ -171,7 +173,7 @@ fun SettingsScreen(
         }
         item {
             PreferenceSwitchCard(
-                title = "实验无障碍保活",
+                title = "实验性无障碍保活",
                 checked = state.preferences.experimentalAccessibilityKeepAliveEnabled,
                 onCheckedChange = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -442,6 +444,10 @@ private fun KeepAliveStatusCard(
 
 @Composable
 private fun rememberKeepAliveStatus(context: Context): KeepAliveStatus {
+    return remember(context) { loadKeepAliveStatus(context) }
+}
+
+private fun loadKeepAliveStatus(context: Context): KeepAliveStatus {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     val canExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         alarmManager.canScheduleExactAlarms()

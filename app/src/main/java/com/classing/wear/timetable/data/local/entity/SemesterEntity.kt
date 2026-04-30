@@ -1,10 +1,14 @@
 ﻿package com.classing.wear.timetable.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.LocalDate
 
-@Entity(tableName = "semesters")
+@Entity(
+    tableName = "semesters",
+    indices = [Index("remoteId"), Index("isActive")],
+)
 data class SemesterEntity(
     @PrimaryKey(autoGenerate = true) val localId: Long = 0,
     val remoteId: String?,

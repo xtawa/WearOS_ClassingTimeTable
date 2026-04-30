@@ -1,4 +1,4 @@
-﻿<resources>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<resources>
     <string name="app_name">Classing Time</string>
 
     <string name="layer_dashboard">Timetable</string>
@@ -72,6 +72,27 @@
     <string name="import_button_confirm">Confirm Import</string>
     <string name="import_button_cancel_preview">Cancel Preview</string>
     <string name="import_button_clear">Clear</string>
+    <string name="import_button_select_file">Select File</string>
+    <string name="import_button_select_ics_file">Select .ics File</string>
+    <string name="import_button_select_json_file">Select .json File</string>
+    <string name="import_file_read_failed">Failed to read file.</string>
+    <string name="import_file_loaded">File loaded. Tap "Parse Preview" to continue.</string>
+    <string name="import_share_received">File received via share. Tap "Parse Preview" to continue.</string>
+    <string name="import_preview_summary_title">Import Summary</string>
+    <string name="import_preview_summary_valid">Valid: %1$d</string>
+    <string name="import_preview_summary_skipped">Skipped: %1$d</string>
+    <string name="import_preview_summary_conflict">Conflicts: %1$d</string>
+    <string name="import_preview_anomaly_title">Field Anomalies</string>
+    <string name="import_preview_item_skip">Skip</string>
+    <string name="import_preview_item_include">Include</string>
+    <string name="import_preview_item_conflict_badge">Conflict</string>
+    <string name="import_preview_item_anomaly_badge">Anomaly</string>
+    <string name="import_preview_no_valid_items">No valid items to import. All items are skipped or have errors.</string>
+    <string name="import_selective_confirm_button">Import Selected (%1$d)</string>
+    <string name="import_selective_cancel_button">Cancel</string>
+    <string name="import_selective_conflict_summary">%1$d of %2$d items have time conflicts, %3$d items have field anomalies.</string>
+    <string name="import_selective_conflict_detail">%1$s conflicts with %2$s</string>
+    <string name="import_selective_applied">Import complete. %1$d classes applied, %2$d skipped.</string>
     <string name="json_import_title">Program JSON Import</string>
     <string name="json_import_desc">Paste AI-translated schedule JSON for quick import.</string>
     <string name="json_input_label">Paste schedule JSON</string>

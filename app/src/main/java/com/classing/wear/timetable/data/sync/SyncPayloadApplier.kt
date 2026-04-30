@@ -1,7 +1,13 @@
-﻿package com.classing.wear.timetable.data.sync
+package com.classing.wear.timetable.data.sync
 
+import android.util.Log
 import androidx.room.withTransaction
 import com.classing.wear.timetable.data.local.AppDatabase
+import com.classing.wear.timetable.data.local.dao.CourseDao
+import com.classing.wear.timetable.data.local.dao.CourseSessionDao
+import com.classing.wear.timetable.data.local.dao.ScheduleExceptionDao
+import com.classing.wear.timetable.data.local.dao.SemesterDao
+import com.classing.wear.timetable.data.local.dao.TimeSlotDao
 import com.classing.wear.timetable.data.local.entity.CourseEntity
 import com.classing.wear.timetable.data.local.entity.CourseSessionEntity
 import com.classing.wear.timetable.data.local.entity.ScheduleExceptionEntity
@@ -18,49 +24,49 @@ class SyncPayloadApplier(
     private val database: AppDatabase,
 ) {
     suspend fun apply(payload: RemoteSchedulePayload, mode: SyncMode): ApplyPayloadResult {
-        val semesterDao = database.semesterDao()
-        val slotDao = database.timeSlotDao()
-        val courseDao = database.courseDao()
-        val sessionDao = database.courseSessionDao()
-        val exceptionDao = database.scheduleExceptionDao()
-
         var total = 0
-        val semesterIdMap = mutableMapOf<String, Long>()
-        val slotIdMap = mutableMapOf<String, Long>()
-        val courseIdMap = mutableMapOf<String, Long>()
-        val sessionIdMap = mutableMapOf<String, Long>()
-        var activeSemesterId: Long? = null
-
-        // Keep a remoteId -> localId cache so cross-table references can be resolved in one transaction.
-        suspend fun resolveSemesterId(remoteId: String): Long? {
-            semesterIdMap[remoteId]?.let { return it }
-            val id = semesterDao.getByRemoteId(remoteId)?.localId
-            if (id != null) semesterIdMap[remoteId] = id
-            return id
-        }
-
-        suspend fun resolveSlotId(remoteId: String): Long? {
-            slotIdMap[remoteId]?.let { return it }
-            val id = slotDao.getByRemoteId(remoteId)?.localId
-            if (id != null) slotIdMap[remoteId] = id
-            return id
-        }
-
-        suspend fun resolveCourseId(remoteId: String): Long? {
-            courseIdMap[remoteId]?.let { return it }
-            val id = courseDao.getByRemoteId(remoteId)?.localId
-            if (id != null) courseIdMap[remoteId] = id
-            return id
-        }
-
-        suspend fun resolveSessionId(remoteId: String): Long? {
-            sessionIdMap[remoteId]?.let { return it }
-            val id = sessionDao.getByRemoteId(remoteId)?.localId
-            if (id != null) sessionIdMap[remoteId] = id
-            return id
-        }
 
         database.withTransaction {
+            val semesterDao = database.semesterDao()
+            val slotDao = database.timeSlotDao()
+            val courseDao = database.courseDao()
+            val sessionDao = database.courseSessionDao()
+            val exceptionDao = database.scheduleExceptionDao()
+
+            val semesterIdMap = mutableMapOf<String, Long>()
+            val slotIdMap = mutableMapOf<String, Long>()
+            val courseIdMap = mutableMapOf<String, Long>()
+            val sessionIdMap = mutableMapOf<String, Long>()
+            var activeSemesterId: Long? = null
+
+            suspend fun resolveSemesterId(remoteId: String): Long? {
+                semesterIdMap[remoteId]?.let { return it }
+                val id = semesterDao.getByRemoteId(remoteId)?.localId
+                if (id != null) semesterIdMap[remoteId] = id
+                return id
+            }
+
+            suspend fun resolveSlotId(remoteId: String): Long? {
+                slotIdMap[remoteId]?.let { return it }
+                val id = slotDao.getByRemoteId(remoteId)?.localId
+                if (id != null) slotIdMap[remoteId] = id
+                return id
+            }
+
+            suspend fun resolveCourseId(remoteId: String): Long? {
+                courseIdMap[remoteId]?.let { return it }
+                val id = courseDao.getByRemoteId(remoteId)?.localId
+                if (id != null) courseIdMap[remoteId] = id
+                return id
+            }
+
+            suspend fun resolveSessionId(remoteId: String): Long? {
+                sessionIdMap[remoteId]?.let { return it }
+                val id = sessionDao.getByRemoteId(remoteId)?.localId
+                if (id != null) sessionIdMap[remoteId] = id
+                return id
+            }
+
             payload.semesters.forEach { remote ->
                 val existing = semesterDao.getByRemoteId(remote.remoteId)
                 val entity = SemesterEntity(
@@ -73,7 +79,9 @@ class SyncPayloadApplier(
                     isActive = remote.isActive,
                     version = remote.version,
                 )
-                val id = if (existing == null) semesterDao.upsert(entity) else {
+                val id = if (existing == null) {
+                    semesterDao.upsert(entity)
+                } else {
                     semesterDao.upsert(entity)
                     existing.localId
                 }
@@ -83,15 +91,6 @@ class SyncPayloadApplier(
             }
 
             activeSemesterId?.let { semesterDao.setActiveSemester(it) }
-
-            if (mode == SyncMode.FULL) {
-                semesterIdMap.values.forEach { semesterId ->
-                    exceptionDao.deleteBySemester(semesterId)
-                    sessionDao.deleteBySemester(semesterId)
-                    courseDao.deleteBySemester(semesterId)
-                    slotDao.deleteBySemester(semesterId)
-                }
-            }
 
             payload.timeSlots.forEach { remote ->
                 val semesterId = resolveSemesterId(remote.semesterRemoteId) ?: return@forEach
@@ -106,7 +105,9 @@ class SyncPayloadApplier(
                     endTime = remote.endTime,
                     version = remote.version,
                 )
-                val id = if (existing == null) slotDao.upsert(entity) else {
+                val id = if (existing == null) {
+                    slotDao.upsert(entity)
+                } else {
                     slotDao.upsert(entity)
                     existing.localId
                 }
@@ -129,7 +130,9 @@ class SyncPayloadApplier(
                     isFavorite = remote.isFavorite,
                     version = remote.version,
                 )
-                val id = if (existing == null) courseDao.upsert(entity) else {
+                val id = if (existing == null) {
+                    courseDao.upsert(entity)
+                } else {
                     courseDao.upsert(entity)
                     existing.localId
                 }
@@ -155,7 +158,9 @@ class SyncPayloadApplier(
                     weekParity = remote.weekParity,
                     version = remote.version,
                 )
-                val id = if (existing == null) sessionDao.upsert(entity) else {
+                val id = if (existing == null) {
+                    sessionDao.upsert(entity)
+                } else {
                     sessionDao.upsert(entity)
                     existing.localId
                 }
@@ -170,6 +175,26 @@ class SyncPayloadApplier(
                 val slotId = remote.timeSlotRemoteId?.let { resolveSlotId(it) }
                 val newCourseId = remote.newCourseRemoteId?.let { resolveCourseId(it) }
                 val newSlotId = remote.newTimeSlotRemoteId?.let { resolveSlotId(it) }
+
+                val invalidReason = when (remote.exceptionType) {
+                    "CANCEL" -> if (sessionId == null) "missing session reference" else null
+                    "MAKE_UP" -> when {
+                        courseId == null -> "missing course reference"
+                        slotId == null -> "missing time slot reference"
+                        else -> null
+                    }
+                    "RESCHEDULE" -> when {
+                        sessionId == null -> "missing session reference"
+                        newCourseId == null -> "missing new course reference"
+                        newSlotId == null -> "missing new time slot reference"
+                        else -> null
+                    }
+                    else -> "unknown exception type ${remote.exceptionType}"
+                }
+                if (invalidReason != null) {
+                    Log.w(TAG, "Skipping invalid exception remoteId=${remote.remoteId}: $invalidReason")
+                    return@forEach
+                }
 
                 val existing = exceptionDao.getByRemoteId(remote.remoteId)
                 val entity = ScheduleExceptionEntity(
@@ -187,12 +212,21 @@ class SyncPayloadApplier(
                     newTimeSlotId = newSlotId,
                     version = remote.version,
                 )
-                if (remote.exceptionType == "CANCEL" && sessionId == null) return@forEach
-                if (remote.exceptionType == "MAKE_UP" && (courseId == null || slotId == null)) return@forEach
-                if (remote.exceptionType == "RESCHEDULE" && (sessionId == null || newCourseId == null || newSlotId == null)) return@forEach
 
                 exceptionDao.upsert(entity)
                 total += 1
+            }
+
+            if (mode == SyncMode.FULL) {
+                pruneFullSyncRows(
+                    payload = payload,
+                    semesterDao = semesterDao,
+                    slotDao = slotDao,
+                    courseDao = courseDao,
+                    sessionDao = sessionDao,
+                    exceptionDao = exceptionDao,
+                    semesterIdMap = semesterIdMap,
+                )
             }
         }
 
@@ -200,5 +234,71 @@ class SyncPayloadApplier(
             recordsWritten = total,
             dataVersion = payload.dataVersion,
         )
+    }
+
+    private suspend fun pruneFullSyncRows(
+        payload: RemoteSchedulePayload,
+        semesterDao: SemesterDao,
+        slotDao: TimeSlotDao,
+        courseDao: CourseDao,
+        sessionDao: CourseSessionDao,
+        exceptionDao: ScheduleExceptionDao,
+        semesterIdMap: Map<String, Long>,
+    ) {
+        payload.semesters.forEach { semester ->
+            val semesterId = semesterIdMap[semester.remoteId] ?: return@forEach
+
+            pruneSemesterRows(
+                remoteIds = payload.timeSlots
+                    .filter { it.semesterRemoteId == semester.remoteId }
+                    .map(RemoteTimeSlot::remoteId),
+                deleteAll = { slotDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> slotDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+            )
+            pruneSemesterRows(
+                remoteIds = payload.courses
+                    .filter { it.semesterRemoteId == semester.remoteId }
+                    .map(RemoteCourse::remoteId),
+                deleteAll = { courseDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> courseDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+            )
+            pruneSemesterRows(
+                remoteIds = payload.sessions
+                    .filter { it.semesterRemoteId == semester.remoteId }
+                    .map(RemoteSession::remoteId),
+                deleteAll = { sessionDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> sessionDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+            )
+            pruneSemesterRows(
+                remoteIds = payload.exceptions
+                    .filter { it.semesterRemoteId == semester.remoteId }
+                    .map(RemoteException::remoteId),
+                deleteAll = { exceptionDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> exceptionDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+            )
+        }
+
+        val remoteSemesterIds = payload.semesters.map(RemoteSemester::remoteId)
+        if (remoteSemesterIds.isEmpty()) {
+            semesterDao.deleteAll()
+        } else {
+            semesterDao.deleteMissingRemoteIds(remoteSemesterIds)
+        }
+    }
+
+    private suspend fun pruneSemesterRows(
+        remoteIds: List<String>,
+        deleteAll: suspend () -> Unit,
+        deleteMissing: suspend (List<String>) -> Unit,
+    ) {
+        if (remoteIds.isEmpty()) {
+            deleteAll()
+        } else {
+            deleteMissing(remoteIds)
+        }
+    }
+
+    companion object {
+        private const val TAG = "SyncPayloadApplier"
     }
 }

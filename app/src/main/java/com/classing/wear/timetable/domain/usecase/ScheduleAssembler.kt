@@ -152,8 +152,11 @@ class ScheduleAssembler {
 
         val target = candidates.firstOrNull { it.startAt.isAfter(now) || it.status == LessonStatus.IN_PROGRESS }
         val countdown = target?.let {
-            val start = if (it.startAt.isBefore(now)) now else it.startAt
-            Duration.between(now, start)
+            if (it.status == LessonStatus.IN_PROGRESS) {
+                Duration.between(now, it.endAt)
+            } else {
+                Duration.between(now, it.startAt)
+            }
         }
 
         return NextLessonHint(target, countdown)

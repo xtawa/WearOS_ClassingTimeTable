@@ -8,6 +8,7 @@ import com.classing.wear.timetable.domain.model.TimeSlot
 import com.classing.wear.timetable.domain.model.WeekParity
 import com.classing.wear.timetable.domain.model.WeekRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -38,5 +39,27 @@ class ScheduleAssemblerTest {
         )
 
         assertEquals(0, list.size)
+    }
+
+    @Test
+    fun findNextLessonHint_countsDownToEndForInProgressLesson() {
+        val date = LocalDate.of(2026, 3, 17)
+        val now = LocalDateTime.of(date, LocalTime.of(10, 30))
+        val semester = Semester(1, null, "春季", LocalDate.of(2026, 2, 23), LocalDate.of(2026, 7, 5), 19, true, 1)
+        val slot = TimeSlot(1, null, 1, 2, "3-4", LocalTime.of(10, 0), LocalTime.of(11, 35), 1)
+        val course = Course(1, null, 1, "高数", "李老师", "A201", "", "red", false, 1)
+        val session = CourseSession(1, null, 1, 1, DayOfWeek.TUESDAY, 1, WeekRule(1, 19, WeekParity.ALL), 1)
+
+        val hint = assembler.findNextLessonHint(
+            now = now,
+            semester = semester,
+            courses = listOf(course),
+            sessions = listOf(session),
+            slots = listOf(slot),
+            exceptions = emptyList(),
+        )
+
+        assertNotNull(hint.lesson)
+        assertEquals(java.time.Duration.ofMinutes(65), hint.countdown)
     }
 }

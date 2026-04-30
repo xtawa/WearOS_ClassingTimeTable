@@ -25,4 +25,7 @@ interface TimeSlotDao {
 
     @Query("DELETE FROM time_slots WHERE semesterId = :semesterId")
     suspend fun deleteBySemester(semesterId: Long)
+
+    @Query("DELETE FROM time_slots WHERE semesterId = :semesterId AND (remoteId IS NULL OR remoteId NOT IN (:remoteIds))")
+    suspend fun deleteMissingRemoteIds(semesterId: Long, remoteIds: List<String>)
 }

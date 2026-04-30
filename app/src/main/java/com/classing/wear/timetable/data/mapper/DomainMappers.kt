@@ -49,57 +49,74 @@ fun CourseEntity.asDomain(): Course = Course(
     version = version,
 )
 
-fun CourseSessionEntity.asDomain(): CourseSession = CourseSession(
-    localId = localId,
-    remoteId = remoteId,
-    semesterId = semesterId,
-    courseId = courseId,
-    dayOfWeek = DayOfWeek.of(dayOfWeek),
-    timeSlotId = timeSlotId,
-    weekRule = WeekRule(
-        startWeek = startWeek,
-        endWeek = endWeek,
-        parity = WeekParity.valueOf(weekParity),
-    ),
-    version = version,
-)
+fun CourseSessionEntity.asDomainOrNull(): CourseSession? {
+    val safeDayOfWeek = runCatching { DayOfWeek.of(dayOfWeek) }.getOrNull() ?: return null
+    val safeParity = runCatching { WeekParity.valueOf(weekParity) }.getOrNull() ?: return null
+    return CourseSession(
+        localId = localId,
+        remoteId = remoteId,
+        semesterId = semesterId,
+        courseId = courseId,
+        dayOfWeek = safeDayOfWeek,
+        timeSlotId = timeSlotId,
+        weekRule = WeekRule(
+            startWeek = startWeek,
+            endWeek = endWeek,
+            parity = safeParity,
+        ),
+        version = version,
+    )
+}
 
-fun ScheduleExceptionEntity.asDomain(): ScheduleException {
+fun ScheduleExceptionEntity.asDomainOrNull(): ScheduleException? {
     return when (exceptionType) {
-        "CANCEL" -> ScheduleException.Cancel(
-            localId = localId,
-            remoteId = remoteId,
-            semesterId = semesterId,
-            sessionId = requireNotNull(sessionId),
-            date = date,
-            reason = reason,
-            version = version,
-        )
+        "CANCEL" -> sessionId?.let {
+            ScheduleException.Cancel(
+                localId = localId,
+                remoteId = remoteId,
+                semesterId = semesterId,
+                sessionId = it,
+                date = date,
+                reason = reason,
+                version = version,
+            )
+        }
 
-        "MAKE_UP" -> ScheduleException.MakeUp(
-            localId = localId,
-            remoteId = remoteId,
-            semesterId = semesterId,
-            sessionId = sessionId,
-            courseId = requireNotNull(courseId),
-            timeSlotId = requireNotNull(timeSlotId),
-            dayOfWeek = dayOfWeek ?: date.dayOfWeek.value,
-            date = date,
-            reason = reason,
-            version = version,
-        )
+        "MAKE_UP" -> {
+            val safeCourseId = courseId ?: return null
+            val safeTimeSlotId = timeSlotId ?: return null
+            ScheduleException.MakeUp(
+                localId = localId,
+                remoteId = remoteId,
+                semesterId = semesterId,
+                sessionId = sessionId,
+                courseId = safeCourseId,
+                timeSlotId = safeTimeSlotId,
+                dayOfWeek = dayOfWeek ?: date.dayOfWeek.value,
+                date = date,
+                reason = reason,
+                version = version,
+            )
+        }
 
-        else -> ScheduleException.Reschedule(
-            localId = localId,
-            remoteId = remoteId,
-            semesterId = semesterId,
-            sessionId = requireNotNull(sessionId),
-            newCourseId = requireNotNull(newCourseId),
-            newTimeSlotId = requireNotNull(newTimeSlotId),
-            date = date,
-            reason = reason,
-            version = version,
-        )
+        "RESCHEDULE" -> {
+            val safeSessionId = sessionId ?: return null
+            val safeNewCourseId = newCourseId ?: return null
+            val safeNewTimeSlotId = newTimeSlotId ?: return null
+            ScheduleException.Reschedule(
+                localId = localId,
+                remoteId = remoteId,
+                semesterId = semesterId,
+                sessionId = safeSessionId,
+                newCourseId = safeNewCourseId,
+                newTimeSlotId = safeNewTimeSlotId,
+                date = date,
+                reason = reason,
+                version = version,
+            )
+        }
+
+        else -> null
     }
 }
 

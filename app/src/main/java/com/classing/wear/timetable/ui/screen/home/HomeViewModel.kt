@@ -17,7 +17,9 @@ import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -102,6 +104,7 @@ class HomeViewModel(
 
     private fun minuteTicker(): Flow<Long> = flow {
         while (true) {
+            currentCoroutineContext().ensureActive()
             val now = timeProvider.nowDateTime()
             emit(now.toEpochSecond(java.time.ZoneOffset.UTC))
             val delayMillis = ((60 - now.second) * 1_000L) - (now.nano / 1_000_000L)

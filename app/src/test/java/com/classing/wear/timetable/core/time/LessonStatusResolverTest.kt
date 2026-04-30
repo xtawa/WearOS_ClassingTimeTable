@@ -2,6 +2,7 @@
 
 import com.classing.wear.timetable.domain.model.LessonStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 import java.time.LocalDateTime
 
@@ -40,5 +41,17 @@ class LessonStatusResolverTest {
         val now = LocalDateTime.of(2026, 3, 13, 11, 36)
 
         assertEquals(LessonStatus.FINISHED, LessonStatusResolver.resolve(now, start, end))
+    }
+
+    @Test
+    fun resolve_rejects_reversed_time_range() {
+        val start = LocalDateTime.of(2026, 3, 13, 11, 35)
+        val end = LocalDateTime.of(2026, 3, 13, 10, 0)
+
+        try {
+            LessonStatusResolver.resolve(start, start, end)
+            fail("Expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+        }
     }
 }

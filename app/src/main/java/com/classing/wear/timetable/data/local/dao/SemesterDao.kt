@@ -25,4 +25,10 @@ interface SemesterDao {
 
     @Query("UPDATE semesters SET isActive = CASE WHEN localId = :semesterId THEN 1 ELSE 0 END")
     suspend fun setActiveSemester(semesterId: Long)
+
+    @Query("DELETE FROM semesters WHERE remoteId IS NULL OR remoteId NOT IN (:remoteIds)")
+    suspend fun deleteMissingRemoteIds(remoteIds: List<String>)
+
+    @Query("DELETE FROM semesters")
+    suspend fun deleteAll()
 }

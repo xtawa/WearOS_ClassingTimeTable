@@ -55,4 +55,36 @@ class ReminderCheckLogicTest {
 
         assertEquals(false, keyToday == keyTomorrow)
     }
+
+    @Test
+    fun dueLessons_matchesPreviousDayWindowForMidnightLesson() {
+        val now = LocalDateTime.of(2026, 3, 16, 23, 50)
+        val lesson = SyncedLesson(
+            id = "c2",
+            title = "Astronomy",
+            dayOfWeek = now.plusDays(1).dayOfWeek.value,
+            startTime = LocalTime.of(0, 5),
+            location = "Lab",
+        )
+
+        val due = ReminderCheckLogic.dueLessons(listOf(lesson), now, emptySet())
+
+        assertEquals(1, due.size)
+    }
+
+    @Test
+    fun dueLessons_expiresAtWindowEndForMidnightLesson() {
+        val now = LocalDateTime.of(2026, 3, 17, 0, 0)
+        val lesson = SyncedLesson(
+            id = "c2",
+            title = "Astronomy",
+            dayOfWeek = now.dayOfWeek.value,
+            startTime = LocalTime.of(0, 5),
+            location = "Lab",
+        )
+
+        val due = ReminderCheckLogic.dueLessons(listOf(lesson), now, emptySet())
+
+        assertEquals(0, due.size)
+    }
 }

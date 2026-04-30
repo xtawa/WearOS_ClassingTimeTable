@@ -3,6 +3,8 @@
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import java.time.temporal.WeekFields
+import java.util.Locale
 
 object WeekCalculator {
     fun weekIndex(semesterStartDate: LocalDate, targetDate: LocalDate): Int {
@@ -10,7 +12,8 @@ object WeekCalculator {
         return (days / 7L + 1L).toInt().coerceAtLeast(1)
     }
 
-    fun weekStart(date: LocalDate): LocalDate {
-        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    fun weekStart(date: LocalDate, locale: Locale = Locale.getDefault()): LocalDate {
+        val firstDayOfWeek: DayOfWeek = WeekFields.of(locale).firstDayOfWeek
+        return date.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
     }
 }

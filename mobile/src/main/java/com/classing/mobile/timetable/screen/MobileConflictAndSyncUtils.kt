@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.screen
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime.screen
 
 import android.Manifest
 import android.content.Context
@@ -131,6 +131,47 @@ internal fun formatLessonConflict(conflict: LessonConflict, context: Context): S
         R.string.import_conflict_item,
         formatLessonSummary(conflict.first, context),
         formatLessonSummary(conflict.second, context),
+    )
+}
+
+internal fun buildImportItemStates(
+    pendingLessons: List<LessonUi>,
+    existingLessons: List<LessonUi>,
+): List<ImportItemState> {
+    return pendingLessons.map { lesson ->
+        val anomalies = detectLessonAnomalies(lesson)
+        val conflictsWithExisting = findConflictsWithExisting(lesson, existingLessons)
+        val hasConflict = conflictsWithExisting.isNotEmpty()
+        ImportItemState(
+            lesson = lesson,
+            included = anomalies.isEmpty(),
+            hasConflict = hasConflict,
+            conflictWithExisting = conflictsWithExisting,
+            anomalies = anomalies,
+        )
+    }
+}
+
+internal fun detectLessonAnomalies(lesson: LessonUi): List<String> {
+    val anomalies = mutableListOf<String>()
+    if (lesson.title.isBlank()) anomalies += "Title is empty"
+    if (!lesson.startTime.isBefore(lesson.endTime)) anomalies += "Start time not before end time"
+    if (lesson.startWeek <= 0 || lesson.startWeek > DEFAULT_END_WEEK) anomalies += "Invalid start week: ${lesson.startWeek}"
+    if (lesson.endWeek < lesson.startWeek || lesson.endWeek > DEFAULT_END_WEEK) anomalies += "Invalid end week: ${lesson.endWeek}"
+    return anomalies
+}
+
+internal fun buildImportPreviewSummary(itemStates: List<ImportItemState>): ImportPreviewSummary {
+    val conflictCount = itemStates.count { it.hasConflict }
+    val anomalyCount = itemStates.count { it.anomalies.isNotEmpty() }
+    val skippedCount = itemStates.count { !it.included }
+    val validCount = itemStates.count { it.included }
+    return ImportPreviewSummary(
+        total = itemStates.size,
+        validCount = validCount,
+        conflictCount = conflictCount,
+        anomalyCount = anomalyCount,
+        skippedCount = skippedCount,
     )
 }
 

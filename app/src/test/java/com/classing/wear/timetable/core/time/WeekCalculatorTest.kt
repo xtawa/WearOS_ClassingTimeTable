@@ -3,6 +3,7 @@
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
+import java.util.Locale
 
 class WeekCalculatorTest {
 
@@ -14,5 +15,13 @@ class WeekCalculatorTest {
         assertEquals(1, WeekCalculator.weekIndex(semesterStart, LocalDate.of(2026, 3, 1)))
         assertEquals(2, WeekCalculator.weekIndex(semesterStart, LocalDate.of(2026, 3, 2)))
         assertEquals(4, WeekCalculator.weekIndex(semesterStart, LocalDate.of(2026, 3, 16)))
+    }
+
+    @Test
+    fun weekStart_respects_locale_first_day() {
+        val date = LocalDate.of(2026, 3, 18)
+
+        assertEquals(LocalDate.of(2026, 3, 15), WeekCalculator.weekStart(date, Locale.US))
+        assertEquals(LocalDate.of(2026, 3, 16), WeekCalculator.weekStart(date, Locale.CHINA))
     }
 }

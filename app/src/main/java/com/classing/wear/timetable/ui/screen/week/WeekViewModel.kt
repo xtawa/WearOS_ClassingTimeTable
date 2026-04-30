@@ -11,6 +11,7 @@ import com.classing.wear.timetable.ui.state.WeekUiState
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -39,6 +40,14 @@ class WeekViewModel(
             ) { schedule, showWeekend ->
                 schedule.applyWeekendVisibility(showWeekend)
             }
+                .catch { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Failed to load schedule",
+                        )
+                    }
+                }
                 .collect { schedule ->
                     _uiState.value = WeekUiState(
                         isLoading = false,

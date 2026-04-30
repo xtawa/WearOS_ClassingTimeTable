@@ -26,7 +26,7 @@ import com.classing.wear.timetable.data.local.entity.TimeSlotEntity
         ScheduleExceptionEntity::class,
         ReminderEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(AppTypeConverters::class)

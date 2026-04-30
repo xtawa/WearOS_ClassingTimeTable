@@ -14,27 +14,17 @@ data class SyncedLesson(
 
 object ReminderCheckLogic {
     internal const val LEAD_MINUTES = 15
-    internal const val WINDOW_MINUTES = 15
+    internal const val WINDOW_MINUTES = 10
 
     fun dueLessons(
         lessons: List<SyncedLesson>,
         now: LocalDateTime,
         notifiedKeys: Set<String>,
     ): List<SyncedLesson> {
-        val nowMinute = now.hour * 60 + now.minute
-        val day = now.dayOfWeek.value
-        val today = now.toLocalDate()
-
         return lessons.filter { lesson ->
-            if (lesson.dayOfWeek != day) return@filter false
-
-            val startMinute = lesson.startTime.hour * 60 + lesson.startTime.minute
-            val triggerMinute = startMinute - LEAD_MINUTES
-            if (triggerMinute < 0) return@filter false
-
-            val key = reminderKey(today, lesson)
-            val inWindow = nowMinute in triggerMinute until (triggerMinute + WINDOW_MINUTES)
-            inWindow && key !in notifiedKeys
+            val window = reminderWindow(now, lesson) ?: return@filter false
+            val key = reminderKey(window.lessonDate, lesson)
+            key !in notifiedKeys
         }
     }
 
@@ -42,4 +32,33 @@ object ReminderCheckLogic {
         val startMinute = lesson.startTime.hour * 60 + lesson.startTime.minute
         return "${date}:${lesson.id}:${startMinute}"
     }
+
+    private fun reminderWindow(now: LocalDateTime, lesson: SyncedLesson): ReminderWindow? {
+        val today = now.toLocalDate()
+        candidateLessonDates(today, lesson.dayOfWeek).forEach { lessonDate ->
+            val triggerAt = LocalDateTime.of(lessonDate, lesson.startTime)
+                .minusMinutes(LEAD_MINUTES.toLong())
+            val windowEnd = triggerAt.plusMinutes(WINDOW_MINUTES.toLong())
+            if (!now.isBefore(triggerAt) && now.isBefore(windowEnd)) {
+                return ReminderWindow(lessonDate = lessonDate)
+            }
+        }
+        return null
+    }
+
+    private fun candidateLessonDates(today: LocalDate, lessonDayOfWeek: Int): List<LocalDate> {
+        val candidates = ArrayList<LocalDate>(2)
+        if (today.dayOfWeek.value == lessonDayOfWeek) {
+            candidates += today
+        }
+        val tomorrow = today.plusDays(1)
+        if (tomorrow.dayOfWeek.value == lessonDayOfWeek) {
+            candidates += tomorrow
+        }
+        return candidates
+    }
+
+    private data class ReminderWindow(
+        val lessonDate: LocalDate,
+    )
 }

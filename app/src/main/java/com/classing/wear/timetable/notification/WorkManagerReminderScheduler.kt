@@ -1,6 +1,7 @@
 ﻿package com.classing.wear.timetable.notification
 
 import android.content.Context
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -14,6 +15,7 @@ class WorkManagerReminderScheduler(
     override suspend fun scheduleCourseReminder(courseId: Long, triggerAt: LocalDateTime, content: String) {
         val delay = Duration.between(LocalDateTime.now(), triggerAt).toMillis().coerceAtLeast(0)
         val request = OneTimeWorkRequestBuilder<ReminderWorker>()
+            .addTag(reminderTag(courseId))
             .setInitialDelay(delay, java.util.concurrent.TimeUnit.MILLISECONDS)
             .setInputData(
                 workDataOf(
@@ -22,10 +24,20 @@ class WorkManagerReminderScheduler(
                 ),
             )
             .build()
-        WorkManager.getInstance(context).enqueue(request)
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            uniqueWorkName(courseId),
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
     }
 
     override suspend fun cancelCourseReminder(courseId: Long) {
-        // 后续可以把 reminder requestId 与 courseId 绑定到表中再做精准取消。
+        WorkManager.getInstance(context).cancelAllWorkByTag(reminderTag(courseId))
+    }
+
+    private fun reminderTag(courseId: Long): String = "reminder-$courseId"
+
+    private fun uniqueWorkName(courseId: Long): String {
+        return "course-reminder-$courseId"
     }
 }
