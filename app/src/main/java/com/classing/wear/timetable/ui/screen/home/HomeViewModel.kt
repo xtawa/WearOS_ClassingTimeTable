@@ -11,8 +11,8 @@ import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
-import com.classing.wear.timetable.ui.component.HeatmapLessonInput
-import com.classing.wear.timetable.ui.component.buildHeatmapCells
+import com.classing.shared.ui.heatmap.HeatmapLessonInput
+import com.classing.shared.ui.heatmap.buildHeatmapCells
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow

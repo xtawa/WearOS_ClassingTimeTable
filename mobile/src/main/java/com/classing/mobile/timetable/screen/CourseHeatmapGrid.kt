@@ -1,4 +1,4 @@
-package com.classing.wear.timetable.ui.component
+package com.xtawa.classingtime.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,14 +24,14 @@ import com.classing.shared.ui.heatmap.HeatmapCell
 import java.time.DayOfWeek
 
 /**
- * GitHub 风格课程热力图
+ * GitHub 风格课程热力图 (Mobile 端)
  *
  * 列: 周一~周日
  * 行: 时间段
  * 颜色强度: 基于 MaterialTheme.colorScheme.primary 的 alpha
  */
 @Composable
-fun CourseHeatmapGrid(
+internal fun CourseHeatmapGrid(
     cells: List<HeatmapCell>,
     modifier: Modifier = Modifier,
     cellSize: Dp = 14.dp,
@@ -95,9 +95,6 @@ fun CourseHeatmapGrid(
     }
 }
 
-/**
- * 莫奈动态配色适配：基于 primary 色的 alpha 实现热力效果
- */
 private fun heatmapColor(count: Int, primary: Color, empty: Color): Color {
     return when {
         count <= 0 -> empty

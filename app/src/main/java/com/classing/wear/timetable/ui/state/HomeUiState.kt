@@ -3,7 +3,7 @@
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.NextLessonHint
 import com.classing.wear.timetable.domain.model.SyncState
-import com.classing.wear.timetable.ui.component.HeatmapCell
+import com.classing.shared.ui.heatmap.HeatmapCell
 
 data class HomeUiState(
     val isLoading: Boolean = true,
