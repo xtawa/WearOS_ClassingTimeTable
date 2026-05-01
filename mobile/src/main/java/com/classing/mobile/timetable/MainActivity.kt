@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.xtawa.classingtime.screen.MobileTimetableScreen
 
 class MainActivity : ComponentActivity() {
-    private val sharedImportUri = mutableStateOf<Uri?>(null)
-    private val sharedImportMime = mutableStateOf<String?>(null)
+    internal val sharedImportUri = mutableStateOf<Uri?>(null)
+    internal val sharedImportMime = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
