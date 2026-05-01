@@ -14,7 +14,7 @@ class AlarmReminderScheduler(
     override fun schedule(reminders: List<ReminderInstance>) {
         val requestCodes = loadRequestCodes().toMutableSet()
         reminders.forEach { reminder ->
-            val requestCode = reminder.id.hashCode()
+            val requestCode = generateUniqueRequestCode(reminder.id)
             val intent = Intent(context, ReminderAlarmReceiver::class.java).apply {
                 putExtra("courseId", reminder.courseId)
                 putExtra("title", reminder.title)
@@ -50,6 +50,13 @@ class AlarmReminderScheduler(
         saveRequestCodes(emptySet())
     }
 
+    private fun generateUniqueRequestCode(reminderId: String): Int {
+        val base = reminderId.hashCode()
+        val offset = prefs.getInt(KEY_REQUEST_CODE_OFFSET, 0)
+        prefs.edit().putInt(KEY_REQUEST_CODE_OFFSET, offset + 1).apply()
+        return base xor (offset * 2654435761.toInt()) // Knuth multiplicative hash for better distribution
+    }
+
     private fun loadRequestCodes(): Set<String> {
         return prefs.getStringSet(KEY_REQUEST_CODES, emptySet()).orEmpty()
     }
@@ -64,5 +71,6 @@ class AlarmReminderScheduler(
     companion object {
         private const val PREF_NAME = "alarm_reminder_scheduler"
         private const val KEY_REQUEST_CODES = "request_codes"
+        private const val KEY_REQUEST_CODE_OFFSET = "request_code_offset"
     }
 }

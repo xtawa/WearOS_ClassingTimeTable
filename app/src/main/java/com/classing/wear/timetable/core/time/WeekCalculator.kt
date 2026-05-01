@@ -9,7 +9,7 @@ import java.util.Locale
 object WeekCalculator {
     fun weekIndex(semesterStartDate: LocalDate, targetDate: LocalDate): Int {
         val days = java.time.temporal.ChronoUnit.DAYS.between(semesterStartDate, targetDate)
-        return (days / 7L + 1L).toInt().coerceAtLeast(1)
+        return (days / 7L + 1L).toInt().coerceAtLeast(0) // 返回 0 表示学期开始前
     }
 
     fun weekStart(date: LocalDate, locale: Locale = Locale.getDefault()): LocalDate {

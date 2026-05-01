@@ -16,13 +16,17 @@ import com.classing.wear.timetable.domain.model.Semester
 import com.classing.wear.timetable.domain.model.WeekSchedule
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.usecase.ScheduleAssembler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -36,14 +40,20 @@ class DefaultScheduleRepository(
     private val timeProvider: TimeProvider = SystemTimeProvider(),
 ) : ScheduleRepository {
 
+    private val sharedTicker: Flow<LocalDateTime> = minuteTicker().shareIn(
+        scope = CoroutineScope(Dispatchers.Default),
+        started = SharingStarted.WhileSubscribed(),
+        replay = 1,
+    )
+
     override fun observeActiveSemester(): Flow<Semester?> {
         return semesterDao.observeActiveSemester().map { it?.asDomain() }
     }
 
-    override fun observeTodayLessons(today: LocalDate): Flow<List<LessonOccurrence>> {
+    override fun observeTodayLessons(): Flow<List<LessonOccurrence>> {
         return observeActiveSemester().flatMapLatest { semester ->
             if (semester == null) return@flatMapLatest flowOf(emptyList())
-            combine(observeScheduleContext(semester), minuteTicker()) { ctx, now ->
+            combine(observeScheduleContext(semester), sharedTicker) { ctx, now ->
                 assembler.buildDayOccurrences(
                     date = now.toLocalDate(),
                     now = now,
@@ -67,7 +77,7 @@ class DefaultScheduleRepository(
                     ),
                 )
             }
-            combine(observeScheduleContext(semester), minuteTicker()) { ctx, now ->
+            combine(observeScheduleContext(semester), sharedTicker) { ctx, now ->
                 assembler.buildWeekSchedule(
                     weekStart = weekStart,
                     now = now,
@@ -81,10 +91,10 @@ class DefaultScheduleRepository(
         }
     }
 
-    override fun observeNextLesson(nowDate: LocalDate): Flow<NextLessonHint> {
+    override fun observeNextLesson(): Flow<NextLessonHint> {
         return observeActiveSemester().flatMapLatest { semester ->
             if (semester == null) return@flatMapLatest flowOf(NextLessonHint(null, null))
-            combine(observeScheduleContext(semester), minuteTicker()) { ctx, now ->
+            combine(observeScheduleContext(semester), sharedTicker) { ctx, now ->
                 assembler.findNextLessonHint(
                     now = now,
                     semester = semester,

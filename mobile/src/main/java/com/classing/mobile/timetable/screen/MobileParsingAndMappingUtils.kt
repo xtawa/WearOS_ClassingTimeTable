@@ -420,6 +420,7 @@ internal fun hasNotificationPermission(context: Context): Boolean {
 internal fun MobileLayer.labelRes(): Int {
     return when (this) {
         MobileLayer.Schedule -> R.string.layer_dashboard
+        MobileLayer.Dashboard -> R.string.layer_heatmap
         MobileLayer.Calendar -> R.string.layer_calendar
         MobileLayer.Settings -> R.string.layer_settings
     }

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime
 
 import android.content.Intent
 import android.net.Uri

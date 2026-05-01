@@ -6,8 +6,8 @@ data class WeekRule(
     val parity: WeekParity = WeekParity.ALL,
 ) {
     init {
-        require(startWeek in 1..30)
-        require(endWeek >= startWeek)
+        require(startWeek in 1..53) { "startWeek must be in 1..53, was $startWeek" }
+        require(endWeek in startWeek..53) { "endWeek must be in startWeek..53, was $endWeek" }
     }
 
     fun contains(week: Int): Boolean {

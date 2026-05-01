@@ -10,7 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -58,6 +61,10 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.ui.component.CourseHeatmapGrid
+import com.classing.wear.timetable.ui.component.HeatmapLessonInput
+import com.classing.wear.timetable.ui.component.buildHeatmapCells
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -153,6 +160,115 @@ internal fun DashboardLayer(
         } else {
             todayLessons.forEach { lesson ->
                 LessonCard(lesson = lesson)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DashboardHeatmapLayer(
+    contentPadding: PaddingValues,
+    lessons: List<LessonUi>,
+) {
+    val heatmapCells = remember(lessons) {
+        val inputs = lessons.map { lesson ->
+            HeatmapLessonInput(
+                dayOfWeek = lesson.dayOfWeek,
+                startTime = lesson.startTime,
+                endTime = lesson.endTime,
+            )
+        }
+        buildHeatmapCells(inputs)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ghost_title_schedule),
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                text = stringResource(R.string.layer_heatmap),
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.heatmap_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.heatmap_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CourseHeatmapGrid(
+                    cells = heatmapCells,
+                    cellSize = 16.dp,
+                    cellSpacing = 4.dp,
+                )
+
+                // 图例
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.heatmap_legend_less),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    repeat(4) { level ->
+                        val color = when (level) {
+                            0 -> MaterialTheme.colorScheme.surfaceContainerLow
+                            1 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                            2 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                            else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.60f)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(color, RoundedCornerShape(2.dp)),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.heatmap_legend_more),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

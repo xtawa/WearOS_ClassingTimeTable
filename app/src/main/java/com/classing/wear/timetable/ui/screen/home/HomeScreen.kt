@@ -35,6 +35,7 @@ import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.domain.model.NextLessonHint
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.ui.PreviewSamples
+import com.classing.wear.timetable.ui.component.CourseHeatmapGrid
 import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.ErrorState
 import com.classing.wear.timetable.ui.component.LessonCard
@@ -123,6 +124,40 @@ fun HomeScreen(
                         lesson = lesson,
                         onClick = { onLessonClick(lesson.course.localId) },
                     )
+                }
+            }
+        }
+
+        // 热力图卡片
+        if (state.heatmapCells.isNotEmpty()) {
+            item {
+                SectionCaption(
+                    title = stringResource(R.string.heatmap_title),
+                    suffix = "",
+                )
+            }
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CourseHeatmapGrid(
+                            cells = state.heatmapCells,
+                            cellSize = 10.dp,
+                            cellSpacing = 2.dp,
+                            cellCornerRadius = 2.dp,
+                        )
+                        Text(
+                            text = stringResource(R.string.heatmap_desc),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

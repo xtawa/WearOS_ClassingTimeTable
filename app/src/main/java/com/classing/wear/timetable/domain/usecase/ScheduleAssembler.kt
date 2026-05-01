@@ -16,7 +16,6 @@ import com.classing.wear.timetable.domain.model.WeekSchedule
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.temporal.WeekFields
 
 class ScheduleAssembler {
     fun buildDayOccurrences(
@@ -101,11 +100,7 @@ class ScheduleAssembler {
         slots: List<TimeSlot>,
         exceptions: List<ScheduleException>,
     ): WeekSchedule {
-        val weekIndex = if (isNaturalWeekSemester(semester)) {
-            weekStart.get(WeekFields.ISO.weekOfWeekBasedYear()).coerceAtLeast(1)
-        } else {
-            WeekCalculator.weekIndex(semester.startDate, weekStart)
-        }
+        val weekIndex = WeekCalculator.weekIndex(semester.startDate, weekStart)
         val days = (0..6).associate { offset ->
             val date = weekStart.plusDays(offset.toLong())
             date.dayOfWeek to buildDayOccurrences(
@@ -134,7 +129,7 @@ class ScheduleAssembler {
         exceptions: List<ScheduleException>,
     ): NextLessonHint {
         val candidates = buildList {
-            for (i in 0..6) {
+            for (i in 0..13) { // 扩展到 14 天，与提醒重建窗口一致
                 val date = now.toLocalDate().plusDays(i.toLong())
                 addAll(
                     buildDayOccurrences(
@@ -184,7 +179,4 @@ class ScheduleAssembler {
         )
     }
 
-    private fun isNaturalWeekSemester(semester: Semester): Boolean {
-        return semester.remoteId == "mobile-sync-semester-natural"
-    }
 }

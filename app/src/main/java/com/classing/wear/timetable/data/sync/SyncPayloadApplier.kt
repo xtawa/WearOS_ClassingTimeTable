@@ -79,12 +79,7 @@ class SyncPayloadApplier(
                     isActive = remote.isActive,
                     version = remote.version,
                 )
-                val id = if (existing == null) {
-                    semesterDao.upsert(entity)
-                } else {
-                    semesterDao.upsert(entity)
-                    existing.localId
-                }
+                val id = semesterDao.upsert(entity)
                 semesterIdMap[remote.remoteId] = id
                 if (remote.isActive) activeSemesterId = id
                 total += 1
@@ -105,12 +100,7 @@ class SyncPayloadApplier(
                     endTime = remote.endTime,
                     version = remote.version,
                 )
-                val id = if (existing == null) {
-                    slotDao.upsert(entity)
-                } else {
-                    slotDao.upsert(entity)
-                    existing.localId
-                }
+                val id = slotDao.upsert(entity)
                 slotIdMap[remote.remoteId] = id
                 total += 1
             }
@@ -130,12 +120,7 @@ class SyncPayloadApplier(
                     isFavorite = remote.isFavorite,
                     version = remote.version,
                 )
-                val id = if (existing == null) {
-                    courseDao.upsert(entity)
-                } else {
-                    courseDao.upsert(entity)
-                    existing.localId
-                }
+                val id = courseDao.upsert(entity)
                 courseIdMap[remote.remoteId] = id
                 total += 1
             }
@@ -158,12 +143,7 @@ class SyncPayloadApplier(
                     weekParity = remote.weekParity,
                     version = remote.version,
                 )
-                val id = if (existing == null) {
-                    sessionDao.upsert(entity)
-                } else {
-                    sessionDao.upsert(entity)
-                    existing.localId
-                }
+                val id = sessionDao.upsert(entity)
                 sessionIdMap[remote.remoteId] = id
                 total += 1
             }

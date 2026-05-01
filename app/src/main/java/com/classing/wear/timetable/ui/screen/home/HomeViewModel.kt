@@ -6,26 +6,20 @@ import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
-import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.LessonStatus
-import com.classing.wear.timetable.domain.model.NextLessonHint
-import com.classing.wear.timetable.domain.model.Semester
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
-import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.sync.MobileSyncRequester
+import com.classing.wear.timetable.ui.component.HeatmapLessonInput
+import com.classing.wear.timetable.ui.component.buildHeatmapCells
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -45,40 +39,49 @@ class HomeViewModel(
         }
 
         viewModelScope.launch {
+            // 先启动热力图数据流
+            val weekStart = timeProvider.today().with(java.time.DayOfWeek.MONDAY)
+            val heatmapFlow = scheduleRepository.observeWeekSchedule(weekStart)
+                .map { weekSchedule ->
+                    val allLessons = weekSchedule.days.values.flatten()
+                    val inputs = allLessons.map { lesson ->
+                        HeatmapLessonInput(
+                            dayOfWeek = lesson.date.dayOfWeek,
+                            startTime = lesson.startAt.toLocalTime(),
+                            endTime = lesson.endAt.toLocalTime(),
+                        )
+                    }
+                    buildHeatmapCells(inputs)
+                }
+
             combine(
                 scheduleRepository.observeActiveSemester(),
-                scheduleRepository.observeTodayLessons(timeProvider.today()),
-                scheduleRepository.observeNextLesson(timeProvider.today()),
+                scheduleRepository.observeTodayLessons(),
+                scheduleRepository.observeNextLesson(),
                 settingsRepository.observePreferences(),
                 syncState,
-            ) { semester, lessons, next, preferences, syncState ->
-                HomeSnapshot(
-                    semester = semester,
-                    lessons = lessons,
-                    next = next,
-                    preferences = preferences,
-                    syncState = syncState,
-                )
-            }.combine(minuteTicker()) { snapshot, _ ->
+                heatmapFlow,
+            ) { semester, lessons, next, preferences, syncState, heatmapCells ->
                 val today = timeProvider.today()
-                val weekLabel = snapshot.semester?.let {
+                val weekLabel = semester?.let {
                     WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
                 } ?: WearI18n.semesterNotSet()
-                val visibleLessons = if (snapshot.preferences.showCompletedToday) {
-                    snapshot.lessons
+                val visibleLessons = if (preferences.showCompletedToday) {
+                    lessons
                 } else {
-                    snapshot.lessons.filter { it.status != LessonStatus.FINISHED }
+                    lessons.filter { it.status != LessonStatus.FINISHED }
                 }
 
                 HomeUiState(
                     isLoading = false,
-                    hasSchedule = snapshot.semester != null,
+                    hasSchedule = semester != null,
                     dateLabel = TimeFormatters.formatDate(today),
                     weekLabel = weekLabel,
-                    syncState = snapshot.syncState,
-                    nextLesson = snapshot.next,
+                    syncState = syncState,
+                    nextLesson = next,
                     todayLessons = visibleLessons,
-                    errorMessage = (snapshot.syncState as? SyncState.Failed)?.message,
+                    heatmapCells = heatmapCells,
+                    errorMessage = (syncState as? SyncState.Failed)?.message,
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -101,23 +104,5 @@ class HomeViewModel(
             SyncState.Failed(result.exceptionOrNull()?.message ?: "sync request failed")
         }
     }
-
-    private fun minuteTicker(): Flow<Long> = flow {
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val now = timeProvider.nowDateTime()
-            emit(now.toEpochSecond(java.time.ZoneOffset.UTC))
-            val delayMillis = ((60 - now.second) * 1_000L) - (now.nano / 1_000_000L)
-            delay(delayMillis.coerceAtLeast(1L))
-        }
-    }
-
-    private data class HomeSnapshot(
-        val semester: Semester?,
-        val lessons: List<LessonOccurrence>,
-        val next: NextLessonHint,
-        val preferences: UserPreferences,
-        val syncState: SyncState,
-    )
 }
 

@@ -10,9 +10,9 @@ import java.time.LocalDate
 
 interface ScheduleRepository {
     fun observeActiveSemester(): Flow<Semester?>
-    fun observeTodayLessons(today: LocalDate): Flow<List<LessonOccurrence>>
+    fun observeTodayLessons(): Flow<List<LessonOccurrence>>
     fun observeWeekSchedule(weekStart: LocalDate): Flow<WeekSchedule>
-    fun observeNextLesson(nowDate: LocalDate): Flow<NextLessonHint>
+    fun observeNextLesson(): Flow<NextLessonHint>
     fun searchCourses(keyword: String): Flow<List<Course>>
     fun observeCourseDetail(courseId: Long): Flow<Course?>
 }

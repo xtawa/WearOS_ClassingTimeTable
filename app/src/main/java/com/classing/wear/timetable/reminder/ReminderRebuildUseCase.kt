@@ -27,9 +27,9 @@ class ReminderRebuildUseCase(
             end = LocalDate.now(zoneId).plusDays(14),
             zoneId = zoneId,
         )
+        scheduler.cancelAll()
         repository.clearAll()
         repository.replaceAll(reminders)
-        scheduler.cancelAll()
         scheduler.schedule(reminders)
     }
 }

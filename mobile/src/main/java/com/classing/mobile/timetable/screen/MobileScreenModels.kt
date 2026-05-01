@@ -6,6 +6,7 @@ import java.time.LocalTime
 
 internal enum class MobileLayer {
     Schedule,
+    Dashboard,
     Calendar,
     Settings,
 }

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 import kotlinx.coroutines.flow.first
@@ -216,7 +217,7 @@ object WearCloudSyncCoordinator {
     private fun buildPayloadFromCloudTimetable(timetable: WearCloudTimetable): RemoteSchedulePayload {
         val weekMode = timetable.weekNumberMode.uppercase()
         val parsedSemesterStart = runCatching { LocalDate.parse(timetable.semesterWeekStartDate) }.getOrNull()
-        val today = LocalDate.now()
+        val today = LocalDate.now(ZoneId.systemDefault())
         val isoWeekStart = LocalDate.of(today.get(WeekFields.ISO.weekBasedYear()), 1, 4)
             .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val semesterStart = if (weekMode == "SEMESTER") (parsedSemesterStart ?: today) else isoWeekStart

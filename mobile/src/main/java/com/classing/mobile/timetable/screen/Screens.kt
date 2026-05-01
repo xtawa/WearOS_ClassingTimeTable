@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime.screen
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime.screen
 
 import android.Manifest
 import android.content.Context
@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
@@ -1131,6 +1132,7 @@ fun MobileTimetableScreen() {
                     MobileLayer.entries.forEach { item ->
                         val icon = when (item) {
                             MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
+                            MobileLayer.Dashboard -> Icons.Filled.GridView
                             MobileLayer.Calendar -> Icons.Filled.CalendarMonth
                             MobileLayer.Settings -> Icons.Filled.Settings
                         }
@@ -1220,6 +1222,11 @@ fun MobileTimetableScreen() {
                 visibleDays = visibleDays,
                 lessonsByDay = lessonsByDay,
                 onLongPressLesson = { editingLesson = it },
+            )
+
+            MobileLayer.Dashboard -> DashboardHeatmapLayer(
+                contentPadding = innerPadding,
+                lessons = lessons,
             )
 
             MobileLayer.Calendar -> CalendarMonthLayer(
@@ -1757,6 +1764,7 @@ private fun resolveContentTransitionDirection(
 private fun MobileContentDestination.transitionDepth(): Int {
     return when (layer) {
         MobileLayer.Schedule -> 0
+        MobileLayer.Dashboard -> 50
         MobileLayer.Calendar -> 100
         MobileLayer.Settings -> when (settingsPage) {
             SettingsPage.Main -> 200

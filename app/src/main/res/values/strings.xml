@@ -107,4 +107,9 @@
     <string name="settings_cloud_sync_wear_webdav_updated_from_mobile">Wear WebDAV info updated from phone.</string>
     <string name="tile_next_class_label">Classing Next Class Tile</string>
     <string name="complication_next_class_label">Classing Next Class Complication</string>
+
+    <string name="heatmap_title">Course Heatmap</string>
+    <string name="heatmap_desc">Weekly course density</string>
+    <string name="heatmap_legend_less">Less</string>
+    <string name="heatmap_legend_more">More</string>
 </resources>

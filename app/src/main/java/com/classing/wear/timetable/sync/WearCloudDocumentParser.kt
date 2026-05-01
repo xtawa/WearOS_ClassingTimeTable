@@ -54,8 +54,16 @@ object WearCloudDocumentParser {
                                 dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
                                 startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
                                 endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
-                                startWeek = item.optInt("startWeek", 1).coerceIn(1, 30),
-                                endWeek = item.optInt("endWeek", 30).coerceIn(item.optInt("startWeek", 1).coerceIn(1, 30), 30),
+                                startWeek = run {
+                                    val rawStart = item.optInt("startWeek", 1).coerceIn(1, 53)
+                                    val rawEnd = item.optInt("endWeek", 53).coerceIn(1, 53)
+                                    minOf(rawStart, rawEnd)
+                                },
+                                endWeek = run {
+                                    val rawStart = item.optInt("startWeek", 1).coerceIn(1, 53)
+                                    val rawEnd = item.optInt("endWeek", 53).coerceIn(1, 53)
+                                    maxOf(rawStart, rawEnd)
+                                },
                                 weekParity = item.optString("weekParity", "ALL").uppercase().let {
                                     if (it == "ODD" || it == "EVEN") it else "ALL"
                                 },
