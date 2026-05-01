@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui
+package com.classing.wear.timetable.ui
 
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.domain.model.CourseSession

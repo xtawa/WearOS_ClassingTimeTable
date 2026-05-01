@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.domain.repository
+package com.classing.wear.timetable.domain.repository
 
 import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.domain.model.LessonOccurrence

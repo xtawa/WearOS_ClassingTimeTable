@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core.i18n
+package com.classing.wear.timetable.core.i18n
 
 import java.util.Locale
 

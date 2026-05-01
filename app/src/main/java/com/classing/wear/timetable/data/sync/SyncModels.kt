@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.sync
+package com.classing.wear.timetable.data.sync
 
 import java.time.LocalDate
 import java.time.LocalTime

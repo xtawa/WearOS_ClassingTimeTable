@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.component
+package com.classing.wear.timetable.ui.component
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize

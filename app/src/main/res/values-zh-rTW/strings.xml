@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">Classing 課程表</string>
     <string name="sync_channel_name">課表同步</string>
     <string name="reminder_channel_name">上課提醒</string>

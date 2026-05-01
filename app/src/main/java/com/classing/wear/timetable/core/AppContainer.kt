@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core
+package com.classing.wear.timetable.core
 
 import android.content.Context
 import androidx.room.Room

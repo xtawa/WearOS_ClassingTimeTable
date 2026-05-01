@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.local.converter
+package com.classing.wear.timetable.data.local.converter
 
 import androidx.room.TypeConverter
 import java.time.Instant

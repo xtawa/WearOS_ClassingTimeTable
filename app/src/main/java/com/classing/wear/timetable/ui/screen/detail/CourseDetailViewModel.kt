@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.screen.detail
+package com.classing.wear.timetable.ui.screen.detail
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

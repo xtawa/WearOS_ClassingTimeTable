@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.theme
+package com.classing.wear.timetable.ui.theme
 
 import android.content.res.Configuration
 import androidx.compose.runtime.Composable

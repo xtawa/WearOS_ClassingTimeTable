@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core.navigation
+package com.classing.wear.timetable.core.navigation
 
 sealed class Destinations(val route: String) {
     data object Home : Destinations("home")

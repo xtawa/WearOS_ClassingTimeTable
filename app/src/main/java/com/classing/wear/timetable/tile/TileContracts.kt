@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.tile
+package com.classing.wear.timetable.tile
 
 import com.classing.wear.timetable.core.i18n.WearI18n
 import java.time.Instant

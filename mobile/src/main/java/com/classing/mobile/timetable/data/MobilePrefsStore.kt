@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.data
+package com.xtawa.classingtime.data
 
 import android.content.Context
 import org.json.JSONArray

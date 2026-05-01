@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.repository
+package com.classing.wear.timetable.data.repository
 
 import com.classing.wear.timetable.core.time.SystemTimeProvider
 import com.classing.wear.timetable.core.time.TimeProvider

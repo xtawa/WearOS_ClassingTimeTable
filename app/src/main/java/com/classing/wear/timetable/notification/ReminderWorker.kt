@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.notification
+package com.classing.wear.timetable.notification
 
 import android.Manifest
 import android.app.NotificationChannel

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.domain.model
+package com.classing.wear.timetable.domain.model
 
 import java.time.LocalTime
 

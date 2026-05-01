@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable
+package com.classing.wear.timetable
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

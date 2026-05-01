@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.state
+package com.classing.wear.timetable.ui.state
 
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.NextLessonHint

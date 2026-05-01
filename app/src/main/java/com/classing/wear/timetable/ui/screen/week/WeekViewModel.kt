@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.screen.week
+package com.classing.wear.timetable.ui.screen.week
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.screen.settings
+package com.classing.wear.timetable.ui.screen.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.screen.home
+package com.classing.wear.timetable.ui.screen.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

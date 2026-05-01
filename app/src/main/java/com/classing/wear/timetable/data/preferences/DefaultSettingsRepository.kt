@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.preferences
+package com.classing.wear.timetable.data.preferences
 
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory

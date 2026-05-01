@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.screen
+package com.xtawa.classingtime.screen
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.Image

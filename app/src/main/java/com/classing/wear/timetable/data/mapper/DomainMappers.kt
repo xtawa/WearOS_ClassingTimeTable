@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.mapper
+package com.classing.wear.timetable.data.mapper
 
 import com.classing.wear.timetable.data.local.entity.CourseEntity
 import com.classing.wear.timetable.data.local.entity.CourseSessionEntity

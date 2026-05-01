@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.reminder
+package com.xtawa.classingtime.reminder
 
 import android.Manifest
 import android.app.NotificationChannel

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.local.entity
+package com.classing.wear.timetable.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey

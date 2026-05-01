@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿package com.xtawa.classingtime.screen
+package com.xtawa.classingtime.screen
 
 import android.Manifest
 import android.content.Context

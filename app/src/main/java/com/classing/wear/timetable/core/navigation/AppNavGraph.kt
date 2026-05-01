@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core.navigation
+package com.classing.wear.timetable.core.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue

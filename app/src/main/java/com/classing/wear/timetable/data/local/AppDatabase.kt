@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.data.local
+package com.classing.wear.timetable.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core.time
+package com.classing.wear.timetable.core.time
 
 import com.classing.wear.timetable.core.i18n.WearI18n
 import com.classing.wear.timetable.domain.model.LessonStatus

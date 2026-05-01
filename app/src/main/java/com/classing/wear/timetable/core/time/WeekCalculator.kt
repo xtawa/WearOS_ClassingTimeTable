@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core.time
+package com.classing.wear.timetable.core.time
 
 import java.time.DayOfWeek
 import java.time.LocalDate

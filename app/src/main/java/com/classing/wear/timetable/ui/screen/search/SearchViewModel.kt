@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui.screen.search
+package com.classing.wear.timetable.ui.screen.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

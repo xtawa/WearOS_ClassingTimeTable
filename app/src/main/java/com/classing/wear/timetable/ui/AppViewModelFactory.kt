@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.ui
+package com.classing.wear.timetable.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.core.time
+package com.classing.wear.timetable.core.time
 
 import java.time.LocalDate
 import java.time.LocalDateTime

@@ -1,4 +1,4 @@
-﻿package com.classing.wear.timetable.domain.usecase
+package com.classing.wear.timetable.domain.usecase
 
 import com.classing.wear.timetable.core.time.LessonStatusResolver
 import com.classing.wear.timetable.core.time.WeekCalculator
