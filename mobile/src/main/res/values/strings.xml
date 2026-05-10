@@ -48,6 +48,8 @@
     <string name="calendar_expand_day">Expand</string>
     <string name="calendar_collapse_day">Collapse</string>
     <string name="calendar_past_days_group_title">Earlier This Month (%1$d days)</string>
+    <string name="calendar_back_to_timetable">Timetable</string>
+    <string name="schedule_open_calendar">Calendar</string>
 
     <string name="day_header_title">%1$s (%2$d)</string>
     <string name="no_classes">No classes</string>
@@ -98,6 +100,15 @@
     <string name="json_input_label">Paste schedule JSON</string>
     <string name="json_button_parse_preview">Parse JSON Preview</string>
     <string name="json_button_prompt_page">Open AI Prompt</string>
+    <string name="json_import_mode_title">Import Mode</string>
+    <string name="json_import_mode_replace">Replace</string>
+    <string name="json_import_mode_append">Append</string>
+    <string name="json_import_mode_replace_helper">Replace mode overwrites the current timetable with the previewed JSON classes.</string>
+    <string name="json_import_mode_append_helper">Append mode adds new classes to the current timetable and skips exact duplicates.</string>
+    <string name="json_import_confirm_replace_button">Replace Current Timetable</string>
+    <string name="json_import_confirm_append_button">Append to Current Timetable</string>
+    <string name="json_import_selective_replace_button">Replace with Selected (%1$d)</string>
+    <string name="json_import_selective_append_button">Append Selected (%1$d)</string>
     <string name="json_preview_title">JSON Preview (%1$d)</string>
     <string name="json_prompt_page_title">AI Prompt for JSON Conversion</string>
     <string name="json_prompt_page_desc">Copy this prompt to AI, then paste the returned JSON into the import box.</string>
@@ -391,6 +402,8 @@ Rules:
     <string name="json_warning_invalid_start_week">Entry #%1$d has invalid startWeek.</string>
     <string name="json_warning_invalid_end_week">Entry #%1$d has invalid endWeek.</string>
     <string name="json_warning_invalid_week_parity">Entry #%1$d has invalid weekParity.</string>
+    <string name="json_import_replace_applied_message">Replace complete. Imported %1$d classes.</string>
+    <string name="json_import_append_applied_message">Append complete. Added %1$d classes, skipped %2$d exact duplicates.</string>
     <string name="no_pending_import_message">No preview to import. Parse ICS or JSON first.</string>
     <string name="import_confirmed_message">Import complete. %1$d classes updated.</string>
     <string name="import_preview_canceled_message">Import preview canceled.</string>
@@ -439,6 +452,8 @@ Rules:
     <string name="layer_heatmap">Heatmap</string>
     <string name="heatmap_title">Weekly Course Heatmap</string>
     <string name="heatmap_desc">Course density by day and time slot. Darker = more classes.</string>
+    <string name="heatmap_empty_title">No heatmap data yet</string>
+    <string name="heatmap_empty_desc">Import or add classes first, then the weekly heatmap will appear here.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
 </resources>

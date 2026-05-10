@@ -61,7 +61,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.classing.shared.ui.heatmap.HeatmapLessonInput
 import com.classing.shared.ui.heatmap.buildHeatmapCells
 import androidx.compose.ui.text.style.TextAlign
@@ -165,7 +164,7 @@ internal fun DashboardLayer(
 }
 
 @Composable
-internal fun DashboardHeatmapLayer(
+internal fun HeatmapLayer(
     contentPadding: PaddingValues,
     lessons: List<LessonUi>,
 ) {
@@ -225,48 +224,72 @@ internal fun DashboardHeatmapLayer(
             }
         }
 
-        Card {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+        if (heatmapCells.isEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             ) {
-                CourseHeatmapGrid(
-                    cells = heatmapCells,
-                    cellSize = 16.dp,
-                    cellSpacing = 4.dp,
-                )
-
-                // 图例
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.heatmap_legend_less),
-                        style = MaterialTheme.typography.labelSmall,
+                        text = stringResource(R.string.heatmap_empty_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(R.string.heatmap_empty_desc),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    repeat(4) { level ->
-                        val color = when (level) {
-                            0 -> MaterialTheme.colorScheme.surfaceContainerLow
-                            1 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-                            2 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-                            else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.60f)
+                }
+            }
+        } else {
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CourseHeatmapGrid(
+                        cells = heatmapCells,
+                        cellSize = 16.dp,
+                        cellSpacing = 4.dp,
+                    )
+
+                    // 图例
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.heatmap_legend_less),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        repeat(4) { level ->
+                            val color = when (level) {
+                                0 -> MaterialTheme.colorScheme.surfaceContainerLow
+                                1 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                                2 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.60f)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(color, RoundedCornerShape(2.dp)),
+                            )
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .background(color, RoundedCornerShape(2.dp)),
+                        Text(
+                            text = stringResource(R.string.heatmap_legend_more),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Text(
-                        text = stringResource(R.string.heatmap_legend_more),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }

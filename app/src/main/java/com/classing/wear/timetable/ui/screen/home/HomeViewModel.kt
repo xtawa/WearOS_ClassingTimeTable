@@ -11,7 +11,6 @@ import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
-import com.classing.shared.ui.heatmap.HeatmapLessonInput
 import com.classing.shared.ui.heatmap.buildHeatmapCells
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
@@ -39,18 +38,8 @@ class HomeViewModel(
         }
 
         viewModelScope.launch {
-            // 先启动热力图数据流
-            val weekStart = timeProvider.today().with(java.time.DayOfWeek.MONDAY)
-            val heatmapFlow = scheduleRepository.observeWeekSchedule(weekStart)
-                .map { weekSchedule ->
-                    val allLessons = weekSchedule.days.values.flatten()
-                    val inputs = allLessons.map { lesson ->
-                        HeatmapLessonInput(
-                            dayOfWeek = lesson.date.dayOfWeek,
-                            startTime = lesson.startAt.toLocalTime(),
-                            endTime = lesson.endAt.toLocalTime(),
-                        )
-                    }
+            val heatmapFlow = scheduleRepository.observeHeatmapLessons()
+                .map { inputs ->
                     buildHeatmapCells(inputs)
                 }
 
@@ -105,4 +94,3 @@ class HomeViewModel(
         }
     }
 }
-

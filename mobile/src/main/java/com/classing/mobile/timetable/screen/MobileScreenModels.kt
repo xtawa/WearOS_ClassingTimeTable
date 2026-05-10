@@ -6,9 +6,13 @@ import java.time.LocalTime
 
 internal enum class MobileLayer {
     Schedule,
-    Dashboard,
-    Calendar,
+    Heatmap,
     Settings,
+}
+
+internal enum class ScheduleSubview {
+    Timetable,
+    Calendar,
 }
 
 internal enum class SettingsPage {
@@ -27,6 +31,11 @@ internal enum class ImportFocusMethod {
     ICS,
     JSON,
     MANUAL,
+}
+
+internal enum class JsonImportMode {
+    REPLACE,
+    APPEND,
 }
 
 internal data class OnboardingNavigationDecision(
@@ -57,6 +66,7 @@ internal enum class CloudProviderUi {
 
 internal data class MobileBackState(
     val layer: MobileLayer,
+    val scheduleSubview: ScheduleSubview,
     val settingsPage: SettingsPage,
     val previousMainLayer: MobileLayer,
     val showImportJsonPromptPage: Boolean,
@@ -100,6 +110,9 @@ internal fun consumeImportFocus(
 }
 
 internal fun reduceBackState(state: MobileBackState): MobileBackState? {
+    if (state.layer == MobileLayer.Schedule && state.scheduleSubview == ScheduleSubview.Calendar) {
+        return state.copy(scheduleSubview = ScheduleSubview.Timetable)
+    }
     if (state.layer != MobileLayer.Settings) return null
     if (state.settingsPage == SettingsPage.Import && state.showImportJsonPromptPage) {
         return state.copy(showImportJsonPromptPage = false)

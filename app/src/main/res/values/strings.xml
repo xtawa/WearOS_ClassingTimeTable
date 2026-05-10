@@ -110,6 +110,8 @@
 
     <string name="heatmap_title">Course Heatmap</string>
     <string name="heatmap_desc">Weekly course density</string>
+    <string name="heatmap_empty_title">No heatmap data yet</string>
+    <string name="heatmap_empty_desc">Import on phone and sync to Wear first.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
 </resources>

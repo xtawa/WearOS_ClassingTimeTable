@@ -48,7 +48,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Close
@@ -153,6 +152,7 @@ fun MobileTimetableScreen() {
 
     var initialized by remember { mutableStateOf(false) }
     var layerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
+    var scheduleSubviewName by remember { mutableStateOf(ScheduleSubview.Timetable.name) }
     var previousMainLayerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
     var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
     var showImportJsonPromptPage by remember { mutableStateOf(false) }
@@ -167,6 +167,7 @@ fun MobileTimetableScreen() {
     var weekStartDay by remember { mutableStateOf(DayOfWeek.MONDAY) }
     var rawIcs by remember { mutableStateOf("") }
     var rawJson by remember { mutableStateOf("") }
+    var jsonImportMode by remember { mutableStateOf(JsonImportMode.REPLACE) }
     var parseMessage by remember { mutableStateOf(context.getString(R.string.initial_parse_message)) }
     var warnings by remember { mutableStateOf<List<String>>(emptyList()) }
     var draftPreview by remember { mutableStateOf<List<CourseDraft>>(emptyList()) }
@@ -232,12 +233,14 @@ fun MobileTimetableScreen() {
     fun handleBackNavigation(): Boolean {
         val current = MobileBackState(
             layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule,
+            scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable,
             settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main,
             previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Schedule,
             showImportJsonPromptPage = showImportJsonPromptPage,
         )
         val reduced = reduceBackState(current) ?: return false
         layerName = reduced.layer.name
+        scheduleSubviewName = reduced.scheduleSubview.name
         settingsPageName = reduced.settingsPage.name
         showImportJsonPromptPage = reduced.showImportJsonPromptPage
         return true
@@ -277,6 +280,32 @@ fun MobileTimetableScreen() {
     fun applyImportedLessons(importLessons: List<LessonUi>) {
         lessons = com.xtawa.classingtime.screen.applyImportedLessons(importLessons)
         persistLessons()
+    }
+
+    fun applyJsonImportedLessons(importLessons: List<LessonUi>, mode: JsonImportMode): JsonImportApplyResult {
+        val result = com.xtawa.classingtime.screen.applyJsonImport(
+            existingLessons = lessons,
+            importLessons = importLessons,
+            mode = mode,
+        )
+        lessons = result.lessons
+        persistLessons()
+        return result
+    }
+
+    fun buildJsonImportMessage(mode: JsonImportMode, result: JsonImportApplyResult): String {
+        return when (mode) {
+            JsonImportMode.REPLACE -> context.getString(
+                R.string.json_import_replace_applied_message,
+                result.appliedCount,
+            )
+
+            JsonImportMode.APPEND -> context.getString(
+                R.string.json_import_append_applied_message,
+                result.appliedCount,
+                result.skippedDuplicateCount,
+            )
+        }
     }
 
     fun appendManualLesson(newLesson: LessonUi) {
@@ -748,11 +777,13 @@ fun MobileTimetableScreen() {
 
                 if (targetSettingsPage == null) {
                     layerName = MobileLayer.Schedule.name
+                    scheduleSubviewName = ScheduleSubview.Timetable.name
                     settingsPageName = SettingsPage.Main.name
                     showImportJsonPromptPage = false
                     onboardingImportFocusMethod = null
                 } else {
                     previousMainLayerName = MobileLayer.Schedule.name
+                    scheduleSubviewName = ScheduleSubview.Timetable.name
                     layerName = MobileLayer.Settings.name
                     settingsPageName = targetSettingsPage.name
                     showImportJsonPromptPage = false
@@ -767,10 +798,12 @@ fun MobileTimetableScreen() {
     }
 
     val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule
+    val scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
-    val contentDestination = remember(layer, settingsPage, showImportJsonPromptPage) {
+    val contentDestination = remember(layer, scheduleSubview, settingsPage, showImportJsonPromptPage) {
         MobileContentDestination(
             layer = layer,
+            scheduleSubview = scheduleSubview,
             settingsPage = settingsPage,
             showImportJsonPromptPage = showImportJsonPromptPage,
         )
@@ -779,6 +812,7 @@ fun MobileTimetableScreen() {
     val currentBackState = remember(contentDestination, previousMainLayer) {
         MobileBackState(
             layer = contentDestination.layer,
+            scheduleSubview = contentDestination.scheduleSubview,
             settingsPage = contentDestination.settingsPage,
             previousMainLayer = previousMainLayer,
             showImportJsonPromptPage = contentDestination.showImportJsonPromptPage,
@@ -912,6 +946,8 @@ fun MobileTimetableScreen() {
                 applyJsonPreviewFromRaw(rawJson)
                 persistSettings()
             },
+            jsonImportMode = jsonImportMode,
+            onJsonImportModeChange = { jsonImportMode = it },
             onConfirmImport = {
                 if (pendingImportLessons.isEmpty()) {
                     parseMessage = context.getString(R.string.no_pending_import_message)
@@ -934,10 +970,45 @@ fun MobileTimetableScreen() {
                 }
                 persistSettings()
             },
+            onConfirmJsonImport = {
+                if (pendingImportLessons.isEmpty()) {
+                    parseMessage = context.getString(R.string.no_pending_import_message)
+                } else {
+                    val conflicts = detectLessonConflicts(pendingImportLessons)
+                    if (conflicts.isEmpty()) {
+                        val result = applyJsonImportedLessons(pendingImportLessons, jsonImportMode)
+                        parseMessage = buildJsonImportMessage(jsonImportMode, result)
+                        pendingImportLessons = emptyList()
+                        draftPreview = emptyList()
+                        jsonPreview = emptyList()
+                        warnings = emptyList()
+                        importItemStates = emptyList()
+                        importPreviewSummary = null
+                    } else {
+                        pendingImportConflicts = conflicts
+                        showImportConflictDialog = true
+                        parseMessage = context.getString(R.string.import_conflict_detected_message, conflicts.size)
+                    }
+                }
+                persistSettings()
+            },
             onConfirmSelectiveImport = { selectedLessons ->
                 val skippedCount = pendingImportLessons.size - selectedLessons.size
                 applyImportedLessons(selectedLessons)
                 parseMessage = context.getString(R.string.import_selective_applied, selectedLessons.size, skippedCount)
+                pendingImportLessons = emptyList()
+                pendingImportConflicts = emptyList()
+                showImportConflictDialog = false
+                draftPreview = emptyList()
+                jsonPreview = emptyList()
+                warnings = emptyList()
+                importItemStates = emptyList()
+                importPreviewSummary = null
+                persistSettings()
+            },
+            onConfirmSelectiveJsonImport = { selectedLessons ->
+                val result = applyJsonImportedLessons(selectedLessons, jsonImportMode)
+                parseMessage = buildJsonImportMessage(jsonImportMode, result)
                 pendingImportLessons = emptyList()
                 pendingImportConflicts = emptyList()
                 showImportConflictDialog = false
@@ -1132,8 +1203,7 @@ fun MobileTimetableScreen() {
                     MobileLayer.entries.forEach { item ->
                         val icon = when (item) {
                             MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
-                            MobileLayer.Dashboard -> Icons.Filled.GridView
-                            MobileLayer.Calendar -> Icons.Filled.CalendarMonth
+                            MobileLayer.Heatmap -> Icons.Filled.GridView
                             MobileLayer.Settings -> Icons.Filled.Settings
                         }
                         NavigationBarItem(
@@ -1145,6 +1215,9 @@ fun MobileTimetableScreen() {
                                 layerName = item.name
                                 if (item != MobileLayer.Settings) {
                                     goToSettingsRoot()
+                                }
+                                if (item == MobileLayer.Schedule) {
+                                    scheduleSubviewName = ScheduleSubview.Timetable.name
                                 }
                             },
                             icon = { Icon(imageVector = icon, contentDescription = null) },
@@ -1217,24 +1290,28 @@ fun MobileTimetableScreen() {
             label = "mobile_content_transition",
         ) { destination ->
             when (destination.layer) {
-            MobileLayer.Schedule -> WeekBoardLayer(
-                contentPadding = innerPadding,
-                visibleDays = visibleDays,
-                lessonsByDay = lessonsByDay,
-                onLongPressLesson = { editingLesson = it },
-            )
+                MobileLayer.Schedule -> when (destination.scheduleSubview) {
+                    ScheduleSubview.Timetable -> WeekBoardLayer(
+                        contentPadding = innerPadding,
+                        visibleDays = visibleDays,
+                        lessonsByDay = lessonsByDay,
+                        onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
+                        onLongPressLesson = { editingLesson = it },
+                    )
 
-            MobileLayer.Dashboard -> DashboardHeatmapLayer(
-                contentPadding = innerPadding,
-                lessons = lessons,
-            )
+                    ScheduleSubview.Calendar -> CalendarMonthLayer(
+                        contentPadding = innerPadding,
+                        lessonsByDay = lessonsByDay,
+                        onBackToTimetable = { scheduleSubviewName = ScheduleSubview.Timetable.name },
+                    )
+                }
 
-            MobileLayer.Calendar -> CalendarMonthLayer(
-                contentPadding = innerPadding,
-                lessonsByDay = lessonsByDay,
-            )
+                MobileLayer.Heatmap -> HeatmapLayer(
+                    contentPadding = innerPadding,
+                    lessons = lessons,
+                )
 
-            MobileLayer.Settings -> when (destination.settingsPage) {
+                MobileLayer.Settings -> when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
                     showWeekend = showWeekend,
@@ -1637,8 +1714,13 @@ fun MobileTimetableScreen() {
         onConfirmImportConflict = {
             val importSize = pendingImportLessons.size
             if (importSize > 0) {
-                applyImportedLessons(pendingImportLessons)
-                parseMessage = context.getString(R.string.import_confirmed_with_conflict_message, importSize)
+                if (jsonPreview.isNotEmpty()) {
+                    val result = applyJsonImportedLessons(pendingImportLessons, jsonImportMode)
+                    parseMessage = buildJsonImportMessage(jsonImportMode, result)
+                } else {
+                    applyImportedLessons(pendingImportLessons)
+                    parseMessage = context.getString(R.string.import_confirmed_with_conflict_message, importSize)
+                }
             }
             pendingImportLessons = emptyList()
             pendingImportConflicts = emptyList()
@@ -1738,6 +1820,7 @@ fun MobileTimetableScreen() {
 
 private data class MobileContentDestination(
     val layer: MobileLayer,
+    val scheduleSubview: ScheduleSubview,
     val settingsPage: SettingsPage,
     val showImportJsonPromptPage: Boolean,
 )
@@ -1763,9 +1846,11 @@ private fun resolveContentTransitionDirection(
 
 private fun MobileContentDestination.transitionDepth(): Int {
     return when (layer) {
-        MobileLayer.Schedule -> 0
-        MobileLayer.Dashboard -> 50
-        MobileLayer.Calendar -> 100
+        MobileLayer.Schedule -> when (scheduleSubview) {
+            ScheduleSubview.Timetable -> 0
+            ScheduleSubview.Calendar -> 50
+        }
+        MobileLayer.Heatmap -> 100
         MobileLayer.Settings -> when (settingsPage) {
             SettingsPage.Main -> 200
             SettingsPage.Import -> if (showImportJsonPromptPage) 400 else 300

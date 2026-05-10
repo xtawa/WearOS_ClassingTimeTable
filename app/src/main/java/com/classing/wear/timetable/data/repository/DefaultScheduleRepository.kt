@@ -16,6 +16,7 @@ import com.classing.wear.timetable.domain.model.Semester
 import com.classing.wear.timetable.domain.model.WeekSchedule
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.usecase.ScheduleAssembler
+import com.classing.shared.ui.heatmap.HeatmapLessonInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -86,6 +87,28 @@ class DefaultScheduleRepository(
                     sessions = ctx.sessions,
                     slots = ctx.slots,
                     exceptions = ctx.exceptions,
+                )
+            }
+        }
+    }
+
+    override fun observeHeatmapLessons(): Flow<List<HeatmapLessonInput>> {
+        return observeActiveSemester().flatMapLatest { semester ->
+            if (semester == null) return@flatMapLatest flowOf(emptyList())
+            combine(
+                sessionDao.observeBySemester(semester.localId).map { list -> list.mapNotNull { it.asDomainOrNull() } },
+                slotDao.observeBySemester(semester.localId).map { list -> list.map { it.asDomain() } },
+            ) { sessions, slots ->
+                val slotsById = slots.associateBy { it.localId }
+                sessions.mapNotNull { session ->
+                    val slot = slotsById[session.timeSlotId] ?: return@mapNotNull null
+                    HeatmapLessonInput(
+                        dayOfWeek = session.dayOfWeek,
+                        startTime = slot.startTime,
+                        endTime = slot.endTime,
+                    )
+                }.sortedWith(
+                    compareBy<HeatmapLessonInput>({ it.startTime }, { it.dayOfWeek.value }),
                 )
             }
         }

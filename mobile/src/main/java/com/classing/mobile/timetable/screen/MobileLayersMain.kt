@@ -106,6 +106,7 @@ internal fun WeekBoardLayer(
     contentPadding: PaddingValues,
     visibleDays: List<DayOfWeek>,
     lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    onOpenCalendar: () -> Unit,
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
@@ -136,26 +137,36 @@ internal fun WeekBoardLayer(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Column(
-                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.ghost_title_schedule),
-                    style = MaterialTheme.typography.displayLarge,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text(
-                    text = stringResource(R.string.layer_dashboard),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = stringResource(R.string.week_long_press_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(R.string.ghost_title_schedule),
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Text(
+                        text = stringResource(R.string.layer_dashboard),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = stringResource(R.string.week_long_press_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                FilterChip(
+                    selected = false,
+                    onClick = onOpenCalendar,
+                    label = { Text(text = stringResource(R.string.schedule_open_calendar)) },
                 )
             }
         }
@@ -413,7 +424,11 @@ internal fun ImportLayer(
     onParsePreview: () -> Unit,
     onParseJsonPreview: () -> Unit,
     onConfirmImport: () -> Unit,
+    jsonImportMode: JsonImportMode,
+    onJsonImportModeChange: (JsonImportMode) -> Unit,
+    onConfirmJsonImport: () -> Unit,
     onConfirmSelectiveImport: (List<LessonUi>) -> Unit,
+    onConfirmSelectiveJsonImport: (List<LessonUi>) -> Unit,
     onCancelPreview: () -> Unit,
     onToggleImportItem: (Int) -> Unit,
     onIcsFileSelected: (android.net.Uri) -> Unit,
@@ -667,11 +682,59 @@ internal fun ImportLayer(
                 }) { Text(stringResource(R.string.import_button_select_json_file)) }
                 Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
             }
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.json_import_mode_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = jsonImportMode == JsonImportMode.REPLACE,
+                            onClick = { onJsonImportModeChange(JsonImportMode.REPLACE) },
+                            label = { Text(stringResource(R.string.json_import_mode_replace)) },
+                        )
+                        FilterChip(
+                            selected = jsonImportMode == JsonImportMode.APPEND,
+                            onClick = { onJsonImportModeChange(JsonImportMode.APPEND) },
+                            label = { Text(stringResource(R.string.json_import_mode_append)) },
+                        )
+                    }
+                    Text(
+                        text = stringResource(
+                            if (jsonImportMode == JsonImportMode.REPLACE) {
+                                R.string.json_import_mode_replace_helper
+                            } else {
+                                R.string.json_import_mode_append_helper
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(onClick = onConfirmImport, enabled = hasPendingJsonImport) { Text(stringResource(R.string.import_button_confirm)) }
+                Button(onClick = onConfirmJsonImport, enabled = hasPendingJsonImport) {
+                    Text(
+                        stringResource(
+                            if (jsonImportMode == JsonImportMode.REPLACE) {
+                                R.string.json_import_confirm_replace_button
+                            } else {
+                                R.string.json_import_confirm_append_button
+                            },
+                        ),
+                    )
+                }
                 Button(onClick = onCancelPreview, enabled = hasPendingJsonImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
             }
             if (importPreviewSummary != null && importItemStates.isNotEmpty() && jsonPreview.isNotEmpty()) {
@@ -713,11 +776,20 @@ internal fun ImportLayer(
                     Button(
                         onClick = {
                             val included = importItemStates.filter { it.included }.map { it.lesson }
-                            if (included.isNotEmpty()) onConfirmSelectiveImport(included)
+                            if (included.isNotEmpty()) onConfirmSelectiveJsonImport(included)
                         },
                         enabled = includedCount > 0,
                     ) {
-                        Text(stringResource(R.string.import_selective_confirm_button, includedCount))
+                        Text(
+                            stringResource(
+                                if (jsonImportMode == JsonImportMode.REPLACE) {
+                                    R.string.json_import_selective_replace_button
+                                } else {
+                                    R.string.json_import_selective_append_button
+                                },
+                                includedCount,
+                            ),
+                        )
                     }
                     Button(onClick = onCancelPreview) {
                         Text(stringResource(R.string.import_selective_cancel_button))
@@ -1157,4 +1229,3 @@ private fun ImportPreviewLessonCard(
         }
     }
 }
-

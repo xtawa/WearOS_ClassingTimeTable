@@ -128,24 +128,28 @@ fun HomeScreen(
             }
         }
 
-        // 热力图卡片
-        if (state.heatmapCells.isNotEmpty()) {
-            item {
-                SectionCaption(
-                    title = stringResource(R.string.heatmap_title),
-                    suffix = "",
-                )
-            }
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        item {
+            SectionCaption(
+                title = stringResource(R.string.heatmap_title),
+                suffix = "",
+            )
+        }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    if (state.heatmapCells.isEmpty()) {
+                        EmptyState(
+                            title = stringResource(R.string.heatmap_empty_title),
+                            subtitle = stringResource(R.string.heatmap_empty_desc),
+                        )
+                    } else {
                         CourseHeatmapGrid(
                             cells = state.heatmapCells,
                             cellSize = 10.dp,

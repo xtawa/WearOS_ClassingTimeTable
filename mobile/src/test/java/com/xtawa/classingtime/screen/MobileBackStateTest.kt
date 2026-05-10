@@ -9,8 +9,9 @@ class MobileBackStateTest {
     fun reduceBackState_returnsNull_whenNotInSettingsLayer() {
         val state = MobileBackState(
             layer = MobileLayer.Schedule,
+            scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.Main,
-            previousMainLayer = MobileLayer.Calendar,
+            previousMainLayer = MobileLayer.Heatmap,
             showImportJsonPromptPage = false,
         )
 
@@ -23,8 +24,9 @@ class MobileBackStateTest {
     fun reduceBackState_closesImportJsonPromptFirst() {
         val state = MobileBackState(
             layer = MobileLayer.Settings,
+            scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.Import,
-            previousMainLayer = MobileLayer.Calendar,
+            previousMainLayer = MobileLayer.Heatmap,
             showImportJsonPromptPage = true,
         )
 
@@ -38,8 +40,9 @@ class MobileBackStateTest {
     fun reduceBackState_returnsFromSecondaryToSettingsMain() {
         val state = MobileBackState(
             layer = MobileLayer.Settings,
+            scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.CloudSync,
-            previousMainLayer = MobileLayer.Calendar,
+            previousMainLayer = MobileLayer.Heatmap,
             showImportJsonPromptPage = false,
         )
 
@@ -53,15 +56,31 @@ class MobileBackStateTest {
     fun reduceBackState_returnsFromSettingsMainToPreviousMainLayer() {
         val state = MobileBackState(
             layer = MobileLayer.Settings,
+            scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.Main,
-            previousMainLayer = MobileLayer.Calendar,
+            previousMainLayer = MobileLayer.Heatmap,
             showImportJsonPromptPage = false,
         )
 
         val reduced = reduceBackState(state)
 
-        assertEquals(MobileLayer.Calendar, reduced?.layer)
+        assertEquals(MobileLayer.Heatmap, reduced?.layer)
         assertEquals(SettingsPage.Main, reduced?.settingsPage)
     }
-}
 
+    @Test
+    fun reduceBackState_returnsToTimetableFromScheduleCalendarSubview() {
+        val state = MobileBackState(
+            layer = MobileLayer.Schedule,
+            scheduleSubview = ScheduleSubview.Calendar,
+            settingsPage = SettingsPage.Main,
+            previousMainLayer = MobileLayer.Heatmap,
+            showImportJsonPromptPage = false,
+        )
+
+        val reduced = reduceBackState(state)
+
+        assertEquals(MobileLayer.Schedule, reduced?.layer)
+        assertEquals(ScheduleSubview.Timetable, reduced?.scheduleSubview)
+    }
+}

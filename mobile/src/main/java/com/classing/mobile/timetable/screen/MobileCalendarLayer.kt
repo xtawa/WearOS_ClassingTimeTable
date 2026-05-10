@@ -45,6 +45,7 @@ import java.util.Locale
 internal fun CalendarMonthLayer(
     contentPadding: PaddingValues,
     lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    onBackToTimetable: () -> Unit,
 ) {
     val context = LocalContext.current
     val locale = Locale.getDefault()
@@ -109,6 +110,16 @@ internal fun CalendarMonthLayer(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onBackToTimetable,
+                        shape = MaterialTheme.shapes.large,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        Text(text = stringResource(R.string.calendar_back_to_timetable))
+                    }
                     Button(
                         onClick = { displayedMonth = displayedMonth.minusMonths(1) },
                         shape = MaterialTheme.shapes.large,

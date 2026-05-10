@@ -31,6 +31,27 @@ internal data class ManualWearSyncResult(
     val wearConnectionMessage: String,
 )
 
+internal data class JsonImportApplyResult(
+    val lessons: List<LessonUi>,
+    val appliedCount: Int,
+    val skippedDuplicateCount: Int,
+)
+
+private data class LessonDuplicateFingerprint(
+    val title: String,
+    val teacher: String,
+    val location: String,
+    val note: String,
+    val dayOfWeek: DayOfWeek,
+    val startTime: java.time.LocalTime,
+    val endTime: java.time.LocalTime,
+    val startWeek: Int,
+    val endWeek: Int,
+    val weekParity: LessonWeekParity,
+)
+
+private val lessonSortComparator = compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }
+
 internal fun persistSettings(
     context: Context,
     showWeekend: Boolean,
@@ -97,16 +118,51 @@ internal fun persistLessons(context: Context, lessons: List<LessonUi>) {
 }
 
 internal fun applyImportedLessons(importLessons: List<LessonUi>): List<LessonUi> {
-    return importLessons.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+    return sortLessons(importLessons)
+}
+
+internal fun applyJsonImport(
+    existingLessons: List<LessonUi>,
+    importLessons: List<LessonUi>,
+    mode: JsonImportMode,
+): JsonImportApplyResult {
+    return when (mode) {
+        JsonImportMode.REPLACE -> JsonImportApplyResult(
+            lessons = applyImportedLessons(importLessons),
+            appliedCount = importLessons.size,
+            skippedDuplicateCount = 0,
+        )
+
+        JsonImportMode.APPEND -> appendImportedLessons(existingLessons, importLessons)
+    }
+}
+
+internal fun appendImportedLessons(
+    existingLessons: List<LessonUi>,
+    importLessons: List<LessonUi>,
+): JsonImportApplyResult {
+    val existingFingerprints = existingLessons
+        .asSequence()
+        .map(::buildLessonDuplicateFingerprint)
+        .toSet()
+    val uniqueImports = importLessons.filter { lesson ->
+        buildLessonDuplicateFingerprint(lesson) !in existingFingerprints
+    }
+
+    return JsonImportApplyResult(
+        lessons = sortLessons(existingLessons + uniqueImports),
+        appliedCount = uniqueImports.size,
+        skippedDuplicateCount = importLessons.size - uniqueImports.size,
+    )
 }
 
 internal fun appendManualLesson(lessons: List<LessonUi>, newLesson: LessonUi): List<LessonUi> {
-    return (lessons + newLesson).sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+    return sortLessons(lessons + newLesson)
 }
 
 internal fun applyLessonEdit(lessons: List<LessonUi>, updatedLesson: LessonUi): List<LessonUi> {
     return lessons.map { if (it.id == updatedLesson.id) updatedLesson else it }
-        .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+        .let(::sortLessons)
 }
 
 internal fun removeLesson(lessons: List<LessonUi>, targetLesson: LessonUi): List<LessonUi> {
@@ -120,6 +176,25 @@ internal fun syncReminderWork(context: Context, reminderEnabled: Boolean) {
         enabled = reminderEnabled,
         keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel),
         reminderMinutes = settings.reminderMinutes,
+    )
+}
+
+private fun sortLessons(lessons: List<LessonUi>): List<LessonUi> {
+    return lessons.sortedWith(lessonSortComparator)
+}
+
+private fun buildLessonDuplicateFingerprint(lesson: LessonUi): LessonDuplicateFingerprint {
+    return LessonDuplicateFingerprint(
+        title = lesson.title.trim(),
+        teacher = lesson.teacher.orEmpty().trim(),
+        location = lesson.location.orEmpty().trim(),
+        note = lesson.note.orEmpty().trim(),
+        dayOfWeek = lesson.dayOfWeek,
+        startTime = lesson.startTime,
+        endTime = lesson.endTime,
+        startWeek = lesson.startWeek,
+        endWeek = lesson.endWeek,
+        weekParity = lesson.weekParity,
     )
 }
 
