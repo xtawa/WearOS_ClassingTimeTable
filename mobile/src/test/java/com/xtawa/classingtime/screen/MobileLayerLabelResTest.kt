@@ -8,7 +8,7 @@ class MobileLayerLabelResTest {
     @Test
     fun labelRes_mapsMainTabsToTimetableHeatmapAndSettings() {
         assertEquals(R.string.layer_dashboard, MobileLayer.Schedule.labelRes())
-        assertEquals(R.string.layer_heatmap, MobileLayer.Heatmap.labelRes())
+        assertEquals(R.string.layer_heatmap, MobileLayer.Dashboard.labelRes())
         assertEquals(R.string.layer_settings, MobileLayer.Settings.labelRes())
     }
 }

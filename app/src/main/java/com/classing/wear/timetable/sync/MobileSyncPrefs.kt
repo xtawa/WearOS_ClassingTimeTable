@@ -9,4 +9,6 @@ object MobileSyncPrefs {
     const val KEY_LAST_HANDLED_UPDATED_AT = "last_handled_updated_at"
     const val KEY_LAST_DECISION = "last_decision"
     const val KEY_LAST_DECISION_REASON = "last_decision_reason"
+    const val KEY_LAST_PHONE_CLOUD_SNAPSHOT = "last_phone_cloud_snapshot"
+    const val KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT = "last_phone_cloud_snapshot_at"
 }

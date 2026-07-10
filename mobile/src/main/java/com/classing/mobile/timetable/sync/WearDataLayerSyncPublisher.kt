@@ -4,6 +4,7 @@ import android.content.Context
 import com.classing.shared.sync.WearDataLayerContracts
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.PersistedLesson
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
@@ -49,7 +50,7 @@ object WearDataLayerSyncPublisher {
             )
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_LESSONS).apply {
                 dataMap.putString(WearDataLayerContracts.KEY_PAYLOAD, payload)
-                dataMap.putString(WearDataLayerContracts.KEY_FORMAT, "classingtime_mobile_sync_v1")
+                dataMap.putString(WearDataLayerContracts.KEY_FORMAT, "classingtime_mobile_sync_v2")
                 dataMap.putString(WearDataLayerContracts.KEY_TIMEZONE, zoneId.id)
                 dataMap.putString(WearDataLayerContracts.KEY_SOURCE, source)
                 dataMap.putLong(WearDataLayerContracts.KEY_REVISION, updatedAt)
@@ -76,7 +77,62 @@ object WearDataLayerSyncPublisher {
             WearSyncDispatchResult(
                 connectedNodeCount = messageNodeCount,
                 queuedForCompanion = allowDisconnectedQueue && messageNodeCount == 0,
-            )
+            ).also { dispatch ->
+                val resultLabel = if (dispatch.connectedNodeCount > 0) {
+                    "Pushed to ${dispatch.connectedNodeCount} node(s)"
+                } else if (dispatch.queuedForCompanion) {
+                    "Queued for companion delivery"
+                } else {
+                    "No connected Wear device"
+                }
+                MobilePrefsStore.markLastWearPush(context, updatedAt, resultLabel)
+            }
+        }
+    }
+
+    suspend fun publishWearSettingsSnapshot(context: Context, payload: String, revision: Long): Result<Int> {
+        return runCatching {
+            val updatedAt = System.currentTimeMillis()
+            val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_APPLY_WEAR_SETTINGS).apply {
+                dataMap.putString(WearDataLayerContracts.KEY_SETTINGS_PAYLOAD, payload)
+                dataMap.putLong(WearDataLayerContracts.KEY_REVISION, revision)
+                dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
+                dataMap.putString(WearDataLayerContracts.KEY_SOURCE, WearDataLayerContracts.SOURCE_CLOUD_SYNC)
+            }.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(context).putDataItem(request).await()
+            val bytes = payload.toByteArray(StandardCharsets.UTF_8)
+            Wearable.getNodeClient(context).connectedNodes.await().count { node ->
+                runCatching {
+                    Wearable.getMessageClient(context).sendMessage(
+                        node.id,
+                        WearDataLayerContracts.PATH_APPLY_WEAR_SETTINGS,
+                        bytes,
+                    ).await()
+                    true
+                }.getOrDefault(false)
+            }
+        }
+    }
+
+    suspend fun publishCloudSnapshot(context: Context, payload: String): Result<Int> {
+        return runCatching {
+            val updatedAt = System.currentTimeMillis()
+            val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_CLOUD_CONFIG).apply {
+                dataMap.putString(WearDataLayerContracts.KEY_WEAR_CLOUD_SNAPSHOT, payload)
+                dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
+                dataMap.putLong(WearDataLayerContracts.KEY_REVISION, updatedAt)
+                dataMap.putString(WearDataLayerContracts.KEY_SOURCE, WearDataLayerContracts.SOURCE_CLOUD_SYNC)
+            }.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(context).putDataItem(request).await()
+            val bytes = payload.toByteArray(StandardCharsets.UTF_8)
+            Wearable.getNodeClient(context).connectedNodes.await().count { node ->
+                runCatching {
+                    Wearable.getMessageClient(context)
+                        .sendMessage(node.id, WearDataLayerContracts.PATH_CLOUD_CONFIG, bytes)
+                        .await()
+                    true
+                }.getOrDefault(false)
+            }
         }
     }
 
@@ -116,7 +172,7 @@ object WearDataLayerSyncPublisher {
         }
 
         return JSONObject()
-            .put("format", "classingtime_mobile_sync_v1")
+            .put("format", "classingtime_mobile_sync_v2")
             .put("timezone", zoneId.id)
             .put("generatedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
             .put("source", source)

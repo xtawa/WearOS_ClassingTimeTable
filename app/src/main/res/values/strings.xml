@@ -114,4 +114,8 @@
     <string name="heatmap_empty_desc">Import on phone and sync to Wear first.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
+    <string name="settings_cloud_sync_phone_managed">Cloud access is managed by the phone. This watch keeps its local data and queues requests while disconnected.</string>
+    <string name="settings_cloud_sync_last_phone_snapshot">Last phone snapshot: %1$s</string>
+    <string name="settings_cloud_sync_request_queued">Request queued for phone</string>
+    <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
 </resources>

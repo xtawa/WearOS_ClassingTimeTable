@@ -4,8 +4,14 @@ import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.SyncSource
 import com.classing.shared.sync.WearDataLayerContracts
+import com.xtawa.classingtime.account.AccountApiClient
+import com.xtawa.classingtime.data.OfficialSyncFrequency
+import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
+import com.xtawa.classingtime.data.PersistedScheduleException
+import com.xtawa.classingtime.data.PersistedScheduleSnapshot
+import com.xtawa.classingtime.data.PersistedTimetableState
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,6 +25,8 @@ data class CloudRuntimeConfig(
     val driveFileName: String,
     val driveAccessToken: String,
     val driveAccessTokenExpireAt: Long,
+    val accountAccessToken: String,
+    val officialMemberAuthorized: Boolean,
 ) {
     fun isComplete(): Boolean {
         if (!enabled) return false
@@ -34,6 +42,12 @@ data class CloudRuntimeConfig(
                 driveFileName.isNotBlank() &&
                     driveAccessToken.isNotBlank() &&
                     !isDriveTokenExpired()
+            }
+
+            CloudProvider.OFFICIAL -> {
+                serverUrl.startsWith("https://", ignoreCase = true) &&
+                    accountAccessToken.isNotBlank() &&
+                    officialMemberAuthorized
             }
         }
     }
@@ -60,6 +74,8 @@ data class CloudTimetableSnapshot(
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
     val lessons: List<PersistedLesson>,
+    val baseLessons: List<PersistedLesson>? = null,
+    val exceptions: List<PersistedScheduleException> = emptyList(),
 )
 
 data class CloudDocument(
@@ -100,6 +116,48 @@ data class CloudDocument(
                     .put(CloudSyncContracts.KEY_SEMESTER_WEEK_START_DATE, table.semesterWeekStartDate)
                     .put(CloudSyncContracts.KEY_LESSONS, lessons),
             )
+            table.baseLessons?.let { baseLessons ->
+                val baseLessonArray = JSONArray()
+                baseLessons.forEach { lesson ->
+                    baseLessonArray.put(
+                        JSONObject()
+                            .put("id", lesson.id)
+                            .put("title", lesson.title)
+                            .put("teacher", lesson.teacher.orEmpty())
+                            .put("location", lesson.location.orEmpty())
+                            .put("note", lesson.note.orEmpty())
+                            .put("dayOfWeek", lesson.dayOfWeek)
+                            .put("startMinute", lesson.startMinute)
+                            .put("endMinute", lesson.endMinute)
+                            .put("startWeek", lesson.startWeek.coerceIn(1, 30))
+                            .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                            .put("weekParity", lesson.weekParity),
+                    )
+                }
+                root.getJSONObject(CloudSyncContracts.KEY_TIMETABLE)
+                    .put("baseLessons", baseLessonArray)
+            }
+            if (table.exceptions.isNotEmpty()) {
+                val exceptions = JSONArray()
+                table.exceptions.forEach { exception ->
+                    exceptions.put(
+                        JSONObject()
+                            .put("id", exception.id)
+                            .put("lessonId", exception.lessonId.orEmpty())
+                            .put("type", exception.type)
+                            .put("date", exception.date)
+                            .put("title", exception.title.orEmpty())
+                            .put("teacher", exception.teacher.orEmpty())
+                            .put("location", exception.location.orEmpty())
+                            .put("note", exception.note.orEmpty())
+                            .put("dayOfWeek", exception.dayOfWeek ?: JSONObject.NULL)
+                            .put("startMinute", exception.startMinute ?: JSONObject.NULL)
+                            .put("endMinute", exception.endMinute ?: JSONObject.NULL),
+                    )
+                }
+                root.getJSONObject(CloudSyncContracts.KEY_TIMETABLE)
+                    .put("exceptions", exceptions)
+            }
         }
 
         mobileSettings?.let { snapshot ->
@@ -137,31 +195,23 @@ data class CloudDocument(
                 val lessonsArray = raw.optJSONArray(CloudSyncContracts.KEY_LESSONS) ?: JSONArray()
                 val lessons = buildList {
                     for (i in 0 until lessonsArray.length()) {
-                        val item = lessonsArray.optJSONObject(i) ?: continue
-                        val id = item.optString("id")
-                        if (id.isBlank()) continue
-                        val title = item.optString("title")
-                        if (title.isBlank()) continue
-                        val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
-                        add(
-                            PersistedLesson(
-                                id = id,
-                                title = title,
-                                teacher = item.optString("teacher").ifBlank { null },
-                                location = item.optString("location").ifBlank { null },
-                                note = item.optString("note").ifBlank { null },
-                                dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
-                                startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
-                                endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
-                                startWeek = startWeek,
-                                endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30),
-                                weekParity = item.optString("weekParity", "ALL").uppercase().let {
-                                    if (it == "ODD" || it == "EVEN") it else "ALL"
-                                },
-                            ),
-                        )
+                        parsePersistedLesson(lessonsArray.optJSONObject(i))?.let(::add)
                     }
                 }
+                val baseLessons = raw.optJSONArray("baseLessons")?.let { baseLessonsArray ->
+                    buildList {
+                        for (i in 0 until baseLessonsArray.length()) {
+                            parsePersistedLesson(baseLessonsArray.optJSONObject(i))?.let(::add)
+                        }
+                    }
+                }
+                val exceptions = raw.optJSONArray("exceptions")?.let { exceptionsArray ->
+                    buildList {
+                        for (i in 0 until exceptionsArray.length()) {
+                            parsePersistedScheduleException(exceptionsArray.optJSONObject(i))?.let(::add)
+                        }
+                    }
+                }.orEmpty()
                 CloudTimetableSnapshot(
                     updatedAt = raw.optLong(CloudSyncContracts.KEY_UPDATED_AT, 0L),
                     revision = raw.optLong(
@@ -172,6 +222,8 @@ data class CloudDocument(
                     weekNumberMode = raw.optString(CloudSyncContracts.KEY_WEEK_NUMBER_MODE, "NATURAL"),
                     semesterWeekStartDate = raw.optString(CloudSyncContracts.KEY_SEMESTER_WEEK_START_DATE, ""),
                     lessons = lessons,
+                    baseLessons = baseLessons,
+                    exceptions = exceptions,
                 )
             }
 
@@ -197,21 +249,90 @@ data class CloudDocument(
     }
 }
 
+internal fun CloudTimetableSnapshot.toPersistedTimetableState(
+    snapshots: List<PersistedScheduleSnapshot>,
+): PersistedTimetableState {
+    val resolvedBaseLessons = baseLessons ?: lessons
+    val resolvedExceptions = if (baseLessons != null) exceptions else emptyList()
+    return PersistedTimetableState(
+        baseLessons = resolvedBaseLessons,
+        exceptions = resolvedExceptions,
+        snapshots = snapshots,
+    )
+}
+
+private fun parsePersistedLesson(item: JSONObject?): PersistedLesson? {
+    item ?: return null
+    val id = item.optString("id")
+    val title = item.optString("title")
+    if (id.isBlank() || title.isBlank()) return null
+    val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
+    return PersistedLesson(
+        id = id,
+        title = title,
+        teacher = item.optString("teacher").ifBlank { null },
+        location = item.optString("location").ifBlank { null },
+        note = item.optString("note").ifBlank { null },
+        dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
+        startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
+        endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
+        startWeek = startWeek,
+        endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30),
+        weekParity = item.optString("weekParity", "ALL").uppercase().let {
+            if (it == "ODD" || it == "EVEN") it else "ALL"
+        },
+    )
+}
+
+private fun parsePersistedScheduleException(item: JSONObject?): PersistedScheduleException? {
+    item ?: return null
+    val id = item.optString("id")
+    val type = item.optString("type")
+    val date = item.optString("date")
+    if (id.isBlank() || type.isBlank() || date.isBlank()) return null
+    return PersistedScheduleException(
+        id = id,
+        lessonId = item.optString("lessonId").ifBlank { null },
+        type = type,
+        date = date,
+        title = item.optString("title").ifBlank { null },
+        teacher = item.optString("teacher").ifBlank { null },
+        location = item.optString("location").ifBlank { null },
+        note = item.optString("note").ifBlank { null },
+        dayOfWeek = item.optNullableInt("dayOfWeek")?.takeIf { it in 1..7 },
+        startMinute = item.optNullableInt("startMinute")?.takeIf { it in 0 until (24 * 60) },
+        endMinute = item.optNullableInt("endMinute")?.takeIf { it in 1 until (24 * 60) },
+    )
+}
+
+private fun JSONObject.optNullableInt(name: String): Int? {
+    if (!has(name) || isNull(name)) return null
+    return optInt(name)
+}
+
 fun MobileSettings.toCloudRuntimeConfig(
     password: String,
     driveAccessToken: String,
     driveAccessTokenExpireAt: Long,
+    accountAccessToken: String,
 ): CloudRuntimeConfig {
+    val provider = CloudProvider.fromWire(cloudProvider)
     return CloudRuntimeConfig(
-        provider = CloudProvider.fromWire(cloudProvider),
+        provider = provider,
         enabled = cloudSyncEnabled,
-        serverUrl = cloudServerUrl.trim(),
+        serverUrl = if (provider == CloudProvider.OFFICIAL) {
+            AccountApiClient.BASE_URL
+        } else {
+            cloudServerUrl.trim()
+        },
         remotePath = cloudRemotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH },
         username = cloudUsername.trim(),
         password = password,
         driveFileName = cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME },
         driveAccessToken = driveAccessToken,
         driveAccessTokenExpireAt = driveAccessTokenExpireAt,
+        accountAccessToken = accountAccessToken,
+        officialMemberAuthorized = membershipSummary.isMember,
     )
 }
 
@@ -226,6 +347,9 @@ fun MobileSettings.toMobileSettingsSnapshotJson(): JSONObject {
         .put("weekNumberMode", weekNumberMode)
         .put("semesterWeekStartDate", semesterWeekStartDate)
         .put("weekStartDay", weekStartDay)
+        .put("dailyBriefingEnabled", dailyBriefingEnabled)
+        .put("dailyBriefingChannel", dailyBriefingChannel.name)
+        .put("dailyBriefingTime", dailyBriefingTime)
         .put(CloudSyncContracts.KEY_CLOUD_PROVIDER, cloudProvider)
         .put(CloudSyncContracts.KEY_DRIVE_FILE_NAME, cloudDriveFileName)
 }
@@ -241,10 +365,9 @@ fun MobileSettings.toCloudConfigPayload(
         .put("serverUrl", cloudServerUrl.trim())
         .put("remotePath", cloudRemotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH })
         .put("username", cloudUsername.trim())
-        .put("password", password)
         .put(CloudSyncContracts.KEY_DRIVE_FILE_NAME, cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME })
-        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN, driveAccessToken)
-        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, driveAccessTokenExpireAt)
+        .put("officialSyncFrequency", officialSyncFrequency.name)
+        .put("syncScopes", JSONArray(syncScopes.sortedBy { it.ordinal }.map(SyncScope::name)))
 }
 
 fun MobileSettings.toWearCloudSnapshot(
@@ -255,12 +378,16 @@ fun MobileSettings.toWearCloudSnapshot(
     return JSONObject()
         .put("enabled", cloudSyncEnabled)
         .put(CloudSyncContracts.KEY_CLOUD_PROVIDER, cloudProvider)
-        .put("serverUrl", cloudServerUrl.trim())
+        .put("serverUrl", if (CloudProvider.fromWire(cloudProvider) == CloudProvider.OFFICIAL) AccountApiClient.BASE_URL else cloudServerUrl.trim())
         .put("remotePath", cloudRemotePath.trim().ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH })
         .put("username", cloudUsername.trim())
-        .put("password", password)
         .put(CloudSyncContracts.KEY_DRIVE_FILE_NAME, cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME })
-        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN, driveAccessToken)
-        .put(CloudSyncContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, driveAccessTokenExpireAt)
+        .put("officialSyncFrequency", officialSyncFrequency.name)
+        .put("syncScopes", JSONArray(syncScopes.sortedBy { it.ordinal }.map(SyncScope::name)))
+        .put("loggedIn", accountSummary.userId.isNotBlank())
+        .put("isMember", membershipSummary.isMember)
+        .put("membershipTier", membershipSummary.tier)
+        .put("membershipExpiresAt", membershipSummary.expiresAt)
+        .put("officialAvailable", accountSummary.userId.isNotBlank() && membershipSummary.isMember)
         .put(WearDataLayerContracts.KEY_CLOUD_PROVIDER, cloudProvider)
 }

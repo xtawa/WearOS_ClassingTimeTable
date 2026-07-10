@@ -16,4 +16,10 @@ class CloudProviderTest {
         assertEquals(CloudProvider.GOOGLE_DRIVE, CloudProvider.fromWire("GOOGLE_DRIVE"))
         assertEquals(CloudProvider.GOOGLE_DRIVE, CloudProvider.fromWire("google_drive"))
     }
+
+    @Test
+    fun fromWire_parsesOfficial() {
+        assertEquals(CloudProvider.OFFICIAL, CloudProvider.fromWire("OFFICIAL"))
+        assertEquals(CloudProvider.OFFICIAL, CloudProvider.fromWire("official"))
+    }
 }

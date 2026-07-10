@@ -16,13 +16,15 @@ class WebDavHttpClient {
             connection.connect()
             val code = connection.responseCode
             connection.disconnect()
-            if (code !in 200..299 && code != 401 && code != 403) {
+            if (code !in 200..299) {
                 error("HTTP $code")
             }
+            readJson(config).getOrThrow()
+            Unit
         }
     }
 
-    suspend fun readJson(config: CloudRuntimeConfig): Result<String?> = withContext(Dispatchers.IO) {
+    suspend fun readJson(config: CloudRuntimeConfig): Result<CloudReadResult> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = openConnection(config, "GET")
             connection.connectTimeout = CONNECT_TIMEOUT_MS
@@ -30,7 +32,7 @@ class WebDavHttpClient {
             val code = connection.responseCode
             if (code == HttpURLConnection.HTTP_NOT_FOUND) {
                 connection.disconnect()
-                return@runCatching null
+                return@runCatching CloudReadResult(null, null)
             }
             if (code !in 200..299) {
                 val error = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
@@ -38,20 +40,31 @@ class WebDavHttpClient {
                 error("GET failed with HTTP $code ${error.take(180)}")
             }
             val text = connection.inputStream.bufferedReader().use { it.readText() }
+            val etag = connection.getHeaderField("ETag")?.trim()?.ifBlank { null }
             connection.disconnect()
-            text
+            if (etag == null) throw UnsafeCloudStorageException("WebDAV server does not provide ETag; safe multi-device writes are unavailable")
+            CloudReadResult(text, etag)
         }
     }
 
-    suspend fun writeJson(config: CloudRuntimeConfig, payload: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun writeJson(config: CloudRuntimeConfig, payload: String, expectedVersion: String?): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = openConnection(config, "PUT")
             connection.connectTimeout = CONNECT_TIMEOUT_MS
             connection.readTimeout = READ_TIMEOUT_MS
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            if (expectedVersion == null) {
+                connection.setRequestProperty("If-None-Match", "*")
+            } else {
+                connection.setRequestProperty("If-Match", expectedVersion)
+            }
             connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_PRECON_FAILED || code == HttpURLConnection.HTTP_CONFLICT) {
+                connection.disconnect()
+                throw CloudWriteConflictException()
+            }
             if (code !in 200..299 && code != HttpURLConnection.HTTP_CREATED && code != HttpURLConnection.HTTP_NO_CONTENT) {
                 val error = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
                 connection.disconnect()

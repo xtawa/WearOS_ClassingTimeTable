@@ -74,6 +74,11 @@
             android:enabled="true"
             android:exported="false" />
 
+        <receiver
+            android:name=".reminder.DailyBriefingAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <service
             android:name=".sync.MobileSyncAckListenerService"
             android:exported="true">

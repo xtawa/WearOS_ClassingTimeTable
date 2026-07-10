@@ -96,12 +96,13 @@ import org.json.JSONObject
 
 @Composable
 internal fun LessonEditDialog(
-    lesson: LessonUi,
+    editContext: LessonEditContext,
     onDismiss: () -> Unit,
-    onSave: (LessonUi, ChangeScope) -> Unit,
-    onDelete: (ChangeScope) -> Unit,
+    onSave: (LessonUi, LessonEditScope) -> Unit,
+    onDelete: (LessonEditScope) -> Unit,
 ) {
     val context = LocalContext.current
+    val lesson = editContext.lesson
     var title by remember(lesson.id) { mutableStateOf(lesson.title) }
     var teacher by remember(lesson.id) { mutableStateOf(lesson.teacher.orEmpty()) }
     var location by remember(lesson.id) { mutableStateOf(lesson.location.orEmpty()) }
@@ -112,12 +113,22 @@ internal fun LessonEditDialog(
     var startWeekRaw by remember(lesson.id) { mutableStateOf(lesson.startWeek.toString()) }
     var endWeekRaw by remember(lesson.id) { mutableStateOf(lesson.endWeek.toString()) }
     var weekParity by remember(lesson.id) { mutableStateOf(lesson.weekParity) }
-    var scope by remember(lesson.id) { mutableStateOf(ChangeScope.Persistent) }
+    var scope by remember(lesson.id, editContext.anchorDate, editContext.isNewLesson) {
+        mutableStateOf(editContext.allowedScopes.firstOrNull() ?: LessonEditScope.WholeLesson)
+    }
     var validationMessage by remember(lesson.id) { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.lesson_edit_dialog_title)) },
+        title = {
+            Text(
+                if (editContext.isNewLesson) {
+                    stringResource(R.string.lesson_makeup_dialog_title)
+                } else {
+                    stringResource(R.string.lesson_edit_dialog_title)
+                },
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -131,17 +142,35 @@ internal fun LessonEditDialog(
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
+                if (editContext.anchorDate != null) {
+                    Text(
+                        text = stringResource(R.string.lesson_edit_anchor_date, editContext.anchorDate.toString()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = scope == ChangeScope.Persistent,
-                        onClick = { scope = ChangeScope.Persistent },
-                        label = { Text(stringResource(R.string.lesson_edit_scope_persistent)) },
-                    )
-                    FilterChip(
-                        selected = scope == ChangeScope.Temporary,
-                        onClick = { scope = ChangeScope.Temporary },
-                        label = { Text(stringResource(R.string.lesson_edit_scope_temporary)) },
-                    )
+                    if (LessonEditScope.WholeLesson in editContext.allowedScopes) {
+                        FilterChip(
+                            selected = scope == LessonEditScope.WholeLesson,
+                            onClick = { scope = LessonEditScope.WholeLesson },
+                            label = { Text(stringResource(R.string.lesson_edit_scope_whole_lesson)) },
+                        )
+                    }
+                    if (LessonEditScope.FromThisWeek in editContext.allowedScopes) {
+                        FilterChip(
+                            selected = scope == LessonEditScope.FromThisWeek,
+                            onClick = { scope = LessonEditScope.FromThisWeek },
+                            label = { Text(stringResource(R.string.lesson_edit_scope_from_this_week)) },
+                        )
+                    }
+                    if (LessonEditScope.SingleOccurrence in editContext.allowedScopes) {
+                        FilterChip(
+                            selected = scope == LessonEditScope.SingleOccurrence,
+                            onClick = { scope = LessonEditScope.SingleOccurrence },
+                            label = { Text(stringResource(R.string.lesson_edit_scope_single_occurrence)) },
+                        )
+                    }
                 }
 
                 OutlinedTextField(
@@ -289,11 +318,13 @@ internal fun LessonEditDialog(
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(
-                    onClick = { onDelete(scope) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) {
-                    Text(stringResource(R.string.lesson_edit_delete_button))
+                if (!editContext.isNewLesson) {
+                    TextButton(
+                        onClick = { onDelete(scope) },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text(stringResource(R.string.lesson_edit_delete_button))
+                    }
                 }
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.lesson_edit_cancel_button))

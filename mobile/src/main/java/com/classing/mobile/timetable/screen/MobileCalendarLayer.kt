@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.screen
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,8 +45,10 @@ import java.util.Locale
 @Composable
 internal fun CalendarMonthLayer(
     contentPadding: PaddingValues,
-    lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    occurrenceProvider: (LocalDate) -> List<EffectiveLessonOccurrence>,
     onBackToTimetable: () -> Unit,
+    onEditOccurrence: (EffectiveLessonOccurrence, LocalDate) -> Unit,
+    onAddMakeUpLesson: (LocalDate) -> Unit,
 ) {
     val context = LocalContext.current
     val locale = Locale.getDefault()
@@ -159,7 +162,7 @@ internal fun CalendarMonthLayer(
         }
 
         items(upcomingDates, key = { it.toString() }) { date ->
-            val dayLessons = lessonsByDay[date.dayOfWeek].orEmpty().sortedBy { it.startTime }
+            val dayLessons = occurrenceProvider(date).sortedBy { it.lesson.startTime }
             val expanded = expandedState[date] ?: false
             TimelineDayCard(
                 date = date,
@@ -177,6 +180,8 @@ internal fun CalendarMonthLayer(
                     val current = expandedState[date] ?: false
                     expandedState = expandedState + (date to !current)
                 },
+                onEditOccurrence = onEditOccurrence,
+                onAddMakeUpLesson = onAddMakeUpLesson,
             )
         }
 
@@ -216,7 +221,7 @@ internal fun CalendarMonthLayer(
                         if (pastDaysExpanded) {
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 pastDates.asReversed().forEach { date ->
-                                    val dayLessons = lessonsByDay[date.dayOfWeek].orEmpty().sortedBy { it.startTime }
+                                    val dayLessons = occurrenceProvider(date).sortedBy { it.lesson.startTime }
                                     val expanded = expandedState[date] ?: false
                                     TimelineDayCard(
                                         date = date,
@@ -234,6 +239,8 @@ internal fun CalendarMonthLayer(
                                             val current = expandedState[date] ?: false
                                             expandedState = expandedState + (date to !current)
                                         },
+                                        onEditOccurrence = onEditOccurrence,
+                                        onAddMakeUpLesson = onAddMakeUpLesson,
                                     )
                                 }
                             }
@@ -252,9 +259,11 @@ private fun TimelineDayCard(
     weekStart: LocalDate,
     weekEnd: LocalDate,
     dayTitle: String,
-    dayLessons: List<LessonUi>,
+    dayLessons: List<EffectiveLessonOccurrence>,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onEditOccurrence: (EffectiveLessonOccurrence, LocalDate) -> Unit,
+    onAddMakeUpLesson: (LocalDate) -> Unit,
 ) {
     val inCurrentWeek = isWithinWeek(date, weekStart, weekEnd)
     val isToday = date == today
@@ -328,6 +337,9 @@ private fun TimelineDayCard(
             }
 
             if (expanded) {
+                TextButton(onClick = { onAddMakeUpLesson(date) }) {
+                    Text(text = stringResource(R.string.calendar_add_makeup_lesson))
+                }
                 if (dayLessons.isEmpty()) {
                     Text(
                         text = stringResource(R.string.calendar_no_classes_on_date),
@@ -336,8 +348,11 @@ private fun TimelineDayCard(
                     )
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        dayLessons.forEach { lesson ->
-                            TimelineLessonRow(lesson = lesson)
+                        dayLessons.forEach { occurrence ->
+                            TimelineLessonRow(
+                                occurrence = occurrence,
+                                onClick = { onEditOccurrence(occurrence, date) },
+                            )
                         }
                     }
                 }
@@ -347,8 +362,13 @@ private fun TimelineDayCard(
 }
 
 @Composable
-private fun TimelineLessonRow(lesson: LessonUi) {
+private fun TimelineLessonRow(
+    occurrence: EffectiveLessonOccurrence,
+    onClick: () -> Unit,
+) {
+    val lesson = occurrence.lesson
     Card(
+        modifier = Modifier.clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
@@ -388,6 +408,18 @@ private fun TimelineLessonRow(lesson: LessonUi) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                val badge = when (occurrence.origin) {
+                    EffectiveLessonOrigin.BASE -> null
+                    EffectiveLessonOrigin.RESCHEDULED -> stringResource(R.string.calendar_occurrence_rescheduled)
+                    EffectiveLessonOrigin.MAKE_UP -> stringResource(R.string.calendar_occurrence_makeup)
+                }
+                if (badge != null) {
+                    Text(
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }

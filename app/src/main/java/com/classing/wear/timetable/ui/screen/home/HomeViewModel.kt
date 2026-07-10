@@ -21,6 +21,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+private data class HomeInputs(
+    val semester: com.classing.wear.timetable.domain.model.Semester? = null,
+    val lessons: List<com.classing.wear.timetable.domain.model.LessonOccurrence> = emptyList(),
+    val next: com.classing.wear.timetable.domain.model.NextLessonHint = com.classing.wear.timetable.domain.model.NextLessonHint(null, null),
+    val preferences: com.classing.wear.timetable.domain.repository.UserPreferences = com.classing.wear.timetable.domain.repository.UserPreferences(),
+    val syncState: SyncState = SyncState.Idle,
+    val heatmapCells: List<com.classing.shared.ui.heatmap.HeatmapCell> = emptyList(),
+)
+
 class HomeViewModel(
     private val scheduleRepository: ScheduleRepository,
     private val settingsRepository: SettingsRepository,
@@ -46,31 +55,35 @@ class HomeViewModel(
             combine(
                 scheduleRepository.observeActiveSemester(),
                 scheduleRepository.observeTodayLessons(),
-                scheduleRepository.observeNextLesson(),
-                settingsRepository.observePreferences(),
-                syncState,
-                heatmapFlow,
-            ) { semester, lessons, next, preferences, syncState, heatmapCells ->
+            ) { semester, lessons ->
+                HomeInputs(semester = semester, lessons = lessons)
+            }.combine(scheduleRepository.observeNextLesson()) { inputs, next ->
+                inputs.copy(next = next)
+            }.combine(settingsRepository.observePreferences()) { inputs, preferences ->
+                inputs.copy(preferences = preferences)
+            }.combine(syncState) { inputs, currentSyncState ->
+                inputs.copy(syncState = currentSyncState)
+            }.combine(heatmapFlow) { inputs, heatmapCells ->
                 val today = timeProvider.today()
-                val weekLabel = semester?.let {
+                val weekLabel = inputs.semester?.let {
                     WearI18n.weekLabel(WeekCalculator.weekIndex(it.startDate, today))
                 } ?: WearI18n.semesterNotSet()
-                val visibleLessons = if (preferences.showCompletedToday) {
-                    lessons
+                val visibleLessons = if (inputs.preferences.showCompletedToday) {
+                    inputs.lessons
                 } else {
-                    lessons.filter { it.status != LessonStatus.FINISHED }
+                    inputs.lessons.filter { it.status != LessonStatus.FINISHED }
                 }
 
                 HomeUiState(
                     isLoading = false,
-                    hasSchedule = semester != null,
+                    hasSchedule = inputs.semester != null,
                     dateLabel = TimeFormatters.formatDate(today),
                     weekLabel = weekLabel,
-                    syncState = syncState,
-                    nextLesson = next,
+                    syncState = inputs.syncState,
+                    nextLesson = inputs.next,
                     todayLessons = visibleLessons,
                     heatmapCells = heatmapCells,
-                    errorMessage = (syncState as? SyncState.Failed)?.message,
+                    errorMessage = (inputs.syncState as? SyncState.Failed)?.message,
                 )
             }.collect { state ->
                 _uiState.value = state

@@ -409,6 +409,11 @@ internal fun MobileOnboardingFlow(
                                             onClick = { cloudProvider = CloudProviderUi.GOOGLE_DRIVE },
                                             label = { Text("Google Drive") },
                                         )
+                                        FilterChip(
+                                            selected = cloudProvider == CloudProviderUi.OFFICIAL,
+                                            onClick = { cloudProvider = CloudProviderUi.OFFICIAL },
+                                            label = { Text("Official") },
+                                        )
                                     }
                                     if (cloudProvider == CloudProviderUi.WEBDAV) {
                                         OutlinedTextField(
@@ -439,12 +444,21 @@ internal fun MobileOnboardingFlow(
                                             label = { Text(stringResource(R.string.settings_cloud_sync_password)) },
                                             singleLine = true,
                                         )
-                                    } else {
+                                    } else if (cloudProvider == CloudProviderUi.GOOGLE_DRIVE) {
                                         OutlinedTextField(
                                             value = cloudDriveFileName,
                                             onValueChange = { cloudDriveFileName = it },
                                             modifier = Modifier.fillMaxWidth(),
                                             label = { Text(stringResource(R.string.settings_cloud_sync_drive_file_name)) },
+                                            singleLine = true,
+                                        )
+                                    } else {
+                                        OutlinedTextField(
+                                            value = "https://api-classing.underflo.ink",
+                                            onValueChange = {},
+                                            modifier = Modifier.fillMaxWidth(),
+                                            label = { Text("Official API") },
+                                            readOnly = true,
                                             singleLine = true,
                                         )
                                     }

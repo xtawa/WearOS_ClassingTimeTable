@@ -1,0 +1,60 @@
+package com.classing.wear.timetable.ui.screen.settings
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import com.classing.wear.timetable.R
+import com.classing.wear.timetable.ui.component.screenPadding
+
+@Composable
+fun AboutScreen(
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    val versionName = runCatching {
+        @Suppress("DEPRECATION")
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+    }.getOrDefault("")
+
+    ScalingLazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = rememberScalingLazyListState(),
+        contentPadding = screenPadding(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Text(
+                text = "About",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Text(
+                    text = "${context.getString(R.string.app_name)}\nVersion $versionName\nICP 备案号：待补充",
+                    modifier = Modifier.padding(10.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+        item {
+            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
+                Text(text = context.getString(R.string.detail_back))
+            }
+        }
+    }
+}

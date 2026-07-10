@@ -6,7 +6,7 @@ import java.time.LocalTime
 
 internal enum class MobileLayer {
     Schedule,
-    Heatmap,
+    Dashboard,
     Settings,
 }
 
@@ -21,6 +21,8 @@ internal enum class SettingsPage {
     BackupRestore,
     WeekMode,
     ReminderKeepAlive,
+    Account,
+    DailyBriefing,
     SyncCommunication,
     WearCommunication,
     CloudSync,
@@ -62,6 +64,7 @@ internal enum class WearSyncMode {
 internal enum class CloudProviderUi {
     WEBDAV,
     GOOGLE_DRIVE,
+    OFFICIAL,
 }
 
 internal data class MobileBackState(

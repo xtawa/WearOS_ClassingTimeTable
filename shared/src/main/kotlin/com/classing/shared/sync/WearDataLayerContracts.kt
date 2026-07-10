@@ -6,6 +6,7 @@ object WearDataLayerContracts {
     const val PATH_SYNC_REQUEST = "/classing/request_mobile_sync"
     const val PATH_CLOUD_CONFIG = "/classing/cloud_config"
     const val PATH_WEAR_SETTINGS_SNAPSHOT = "/classing/wear_settings_snapshot"
+    const val PATH_APPLY_WEAR_SETTINGS = "/classing/apply_wear_settings"
     const val PATH_PHONE_CLOUD_SYNC_REQUEST = "/classing/phone_cloud_sync_request"
 
     const val KEY_PAYLOAD = "payload"
@@ -15,6 +16,8 @@ object WearDataLayerContracts {
     const val KEY_REQUESTED_AT = "requestedAt"
     const val KEY_UPDATED_AT = "updatedAt"
     const val KEY_REVISION = "revision"
+    const val KEY_DEVICE_ID = "deviceId"
+    const val KEY_LOGICAL_COUNTER = "logicalCounter"
 
     const val KEY_SUCCESS = "success"
     const val KEY_REQUESTED_LESSON_COUNT = "requestedLessonCount"

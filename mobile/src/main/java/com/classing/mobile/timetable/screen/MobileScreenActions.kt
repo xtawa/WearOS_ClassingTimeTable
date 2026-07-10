@@ -3,14 +3,27 @@ package com.xtawa.classingtime.screen
 import android.content.Context
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.data.AccountSummary
+import com.xtawa.classingtime.data.DailyBriefingChannel
+import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
+import com.xtawa.classingtime.data.OfficialSyncFrequency
+import com.xtawa.classingtime.data.PersistedTimetableState
+import com.xtawa.classingtime.data.SyncScope
+import com.xtawa.classingtime.reminder.DailyBriefingScheduler
 import com.xtawa.classingtime.reminder.ReminderScheduler
 import com.xtawa.classingtime.reminder.KeepAliveLevel
+import com.xtawa.classingtime.sync.CloudSyncEngine
+import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
 import com.xtawa.classingtime.sync.WearSyncAckStore
+import com.xtawa.classingtime.sync.toWearCloudSnapshot
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 internal data class SyncAckUpdate(
     val latestAckAtMillis: Long,
@@ -32,9 +45,16 @@ internal data class ManualWearSyncResult(
 )
 
 internal data class JsonImportApplyResult(
-    val lessons: List<LessonUi>,
+    val baseLessons: List<LessonUi>,
+    val exceptions: List<ScheduleExceptionUi>,
     val appliedCount: Int,
     val skippedDuplicateCount: Int,
+)
+
+internal data class LoadedScheduleState(
+    val baseLessons: List<LessonUi>,
+    val exceptions: List<ScheduleExceptionUi>,
+    val snapshots: List<ScheduleStateSnapshot>,
 )
 
 private data class LessonDuplicateFingerprint(
@@ -75,38 +95,84 @@ internal fun persistSettings(
     cloudConfigPushStatus: String,
     cloudLastResult: String,
     cloudLastSyncedAt: Long,
+    accountSummary: AccountSummary = AccountSummary(),
+    membershipSummary: MembershipSummary = MembershipSummary(),
+    dailyBriefingEnabled: Boolean = false,
+    dailyBriefingChannel: DailyBriefingChannel = DailyBriefingChannel.APP_NOTIFICATION,
+    dailyBriefingTime: String = "20:00",
+    officialSyncFrequency: OfficialSyncFrequency = OfficialSyncFrequency.MANUAL_ONLY,
+    syncScopes: Set<SyncScope> = SyncScope.entries.toSet(),
 ) {
+    val settings = MobileSettings(
+        showWeekend = showWeekend,
+        reminderEnabled = reminderEnabled,
+        reminderMinutes = reminderMinutes,
+        keepAliveLevel = keepAliveLevel.name,
+        experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
+        rawIcs = rawIcs,
+        parseMessage = parseMessage,
+        wearSyncMode = wearSyncMode.name,
+        weekNumberMode = weekNumberMode.name,
+        semesterWeekStartDate = semesterWeekStartDate.toString(),
+        weekStartDay = weekStartDay.name,
+        cloudProvider = cloudProvider.name,
+        cloudSyncEnabled = cloudSyncEnabled,
+        cloudServerUrl = cloudServerUrl,
+        cloudRemotePath = cloudRemotePath,
+        cloudUsername = cloudUsername,
+        cloudDriveFileName = cloudDriveFileName,
+        cloudDriveTokenExpireAt = cloudDriveTokenExpireAt,
+        cloudConfigPushStatus = cloudConfigPushStatus,
+        cloudLastResult = cloudLastResult,
+        cloudLastSyncedAt = cloudLastSyncedAt,
+        accountSummary = accountSummary,
+        membershipSummary = membershipSummary,
+        dailyBriefingEnabled = dailyBriefingEnabled,
+        dailyBriefingChannel = dailyBriefingChannel,
+        dailyBriefingTime = dailyBriefingTime,
+        officialSyncFrequency = officialSyncFrequency,
+        syncScopes = syncScopes,
+    )
     MobilePrefsStore.saveSettings(
         context,
-        MobileSettings(
-            showWeekend = showWeekend,
-            reminderEnabled = reminderEnabled,
-            reminderMinutes = reminderMinutes,
-            keepAliveLevel = keepAliveLevel.name,
-            experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
-            rawIcs = rawIcs,
-            parseMessage = parseMessage,
-            wearSyncMode = wearSyncMode.name,
-            weekNumberMode = weekNumberMode.name,
-            semesterWeekStartDate = semesterWeekStartDate.toString(),
-            weekStartDay = weekStartDay.name,
-            cloudProvider = cloudProvider.name,
-            cloudSyncEnabled = cloudSyncEnabled,
-            cloudServerUrl = cloudServerUrl,
-            cloudRemotePath = cloudRemotePath,
-            cloudUsername = cloudUsername,
-            cloudDriveFileName = cloudDriveFileName,
-            cloudDriveTokenExpireAt = cloudDriveTokenExpireAt,
-            cloudConfigPushStatus = cloudConfigPushStatus,
-            cloudLastResult = cloudLastResult,
-            cloudLastSyncedAt = cloudLastSyncedAt,
-        ),
+        settings,
     )
+    DailyBriefingScheduler.sync(context, settings)
+    CloudSyncEngine.schedulePeriodic(context)
+    CoroutineScope(Dispatchers.IO).launch {
+        WearDataLayerSyncPublisher.publishCloudSnapshot(
+            context = context.applicationContext,
+            payload = settings.toWearCloudSnapshot(
+                password = "",
+                driveAccessToken = "",
+                driveAccessTokenExpireAt = cloudDriveTokenExpireAt,
+            ).toString(),
+        )
+    }
     MobilePrefsStore.markLocalMobileSettingsUpdated(context)
 }
 
-internal fun persistLessons(context: Context, lessons: List<LessonUi>) {
-    MobilePrefsStore.saveLessons(context, lessons.map { it.toPersistedLesson() })
+internal fun loadScheduleState(context: Context): LoadedScheduleState {
+    val state: PersistedTimetableState = MobilePrefsStore.loadTimetableState(context)
+    return LoadedScheduleState(
+        baseLessons = state.baseLessons.map { it.toLessonUi() },
+        exceptions = state.exceptions.map { it.toUi() },
+        snapshots = state.snapshots.map { it.toUi() },
+    )
+}
+
+internal fun persistScheduleState(
+    context: Context,
+    baseLessons: List<LessonUi>,
+    exceptions: List<ScheduleExceptionUi>,
+    snapshots: List<ScheduleStateSnapshot>,
+) {
+    MobilePrefsStore.saveTimetableState(
+        context = context,
+        baseLessons = baseLessons.map { it.toPersistedLesson() },
+        exceptions = exceptions.map { it.toPersisted() },
+        snapshots = snapshots.map { it.toPersisted() },
+    )
     MobilePrefsStore.markLocalTimetableUpdated(context)
     val settings = MobilePrefsStore.loadSettings(context)
     ReminderScheduler.sync(
@@ -117,31 +183,37 @@ internal fun persistLessons(context: Context, lessons: List<LessonUi>) {
     )
 }
 
-internal fun applyImportedLessons(importLessons: List<LessonUi>): List<LessonUi> {
-    return sortLessons(importLessons)
+internal fun applyImportedLessons(importLessons: List<LessonUi>): ScheduleMutationResult {
+    return ScheduleMutationResult(
+        baseLessons = sortLessons(importLessons),
+        exceptions = emptyList(),
+    )
 }
 
 internal fun applyJsonImport(
-    existingLessons: List<LessonUi>,
+    existingBaseLessons: List<LessonUi>,
+    existingExceptions: List<ScheduleExceptionUi>,
     importLessons: List<LessonUi>,
     mode: JsonImportMode,
 ): JsonImportApplyResult {
     return when (mode) {
         JsonImportMode.REPLACE -> JsonImportApplyResult(
-            lessons = applyImportedLessons(importLessons),
+            baseLessons = sortLessons(importLessons),
+            exceptions = emptyList(),
             appliedCount = importLessons.size,
             skippedDuplicateCount = 0,
         )
 
-        JsonImportMode.APPEND -> appendImportedLessons(existingLessons, importLessons)
+        JsonImportMode.APPEND -> appendImportedLessons(existingBaseLessons, existingExceptions, importLessons)
     }
 }
 
 internal fun appendImportedLessons(
-    existingLessons: List<LessonUi>,
+    existingBaseLessons: List<LessonUi>,
+    existingExceptions: List<ScheduleExceptionUi>,
     importLessons: List<LessonUi>,
 ): JsonImportApplyResult {
-    val existingFingerprints = existingLessons
+    val existingFingerprints = existingBaseLessons
         .asSequence()
         .map(::buildLessonDuplicateFingerprint)
         .toSet()
@@ -150,23 +222,143 @@ internal fun appendImportedLessons(
     }
 
     return JsonImportApplyResult(
-        lessons = sortLessons(existingLessons + uniqueImports),
+        baseLessons = sortLessons(existingBaseLessons + uniqueImports),
+        exceptions = existingExceptions,
         appliedCount = uniqueImports.size,
         skippedDuplicateCount = importLessons.size - uniqueImports.size,
     )
 }
 
-internal fun appendManualLesson(lessons: List<LessonUi>, newLesson: LessonUi): List<LessonUi> {
-    return sortLessons(lessons + newLesson)
+internal fun appendManualLesson(baseLessons: List<LessonUi>, newLesson: LessonUi): ScheduleMutationResult {
+    return ScheduleMutationResult(
+        baseLessons = sortLessons(baseLessons + newLesson),
+        exceptions = emptyList(),
+    )
 }
 
-internal fun applyLessonEdit(lessons: List<LessonUi>, updatedLesson: LessonUi): List<LessonUi> {
-    return lessons.map { if (it.id == updatedLesson.id) updatedLesson else it }
-        .let(::sortLessons)
+internal fun applyLessonEdit(
+    baseLessons: List<LessonUi>,
+    exceptions: List<ScheduleExceptionUi>,
+    editContext: LessonEditContext,
+    updatedLesson: LessonUi,
+    scope: LessonEditScope,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+): ScheduleMutationResult {
+    val targetLesson = editContext.lesson
+    return when (scope) {
+        LessonEditScope.WholeLesson -> {
+            if (editContext.isNewLesson) {
+                ScheduleMutationResult(
+                    baseLessons = sortLessons(baseLessons + updatedLesson),
+                    exceptions = exceptions,
+                )
+            } else {
+                ScheduleMutationResult(
+                    baseLessons = baseLessons.map { lesson ->
+                        if (lesson.id == targetLesson.id) updatedLesson else lesson
+                    }.let(::sortLessons),
+                    exceptions = exceptions,
+                )
+            }
+        }
+
+        LessonEditScope.FromThisWeek -> {
+            val anchorDate = editContext.anchorDate ?: return ScheduleMutationResult(baseLessons, exceptions)
+            val anchorWeek = resolveAnchorWeek(anchorDate, weekNumberMode, semesterWeekStartDate)
+            val original = baseLessons.firstOrNull { it.id == targetLesson.id }
+                ?: return ScheduleMutationResult(baseLessons, exceptions)
+            val keptLessons = mutableListOf<LessonUi>()
+            baseLessons.forEach { lesson ->
+                if (lesson.id != original.id) {
+                    keptLessons += lesson
+                    return@forEach
+                }
+                if (anchorWeek <= lesson.startWeek) {
+                    return@forEach
+                }
+                keptLessons += lesson.copy(endWeek = (anchorWeek - 1).coerceAtLeast(lesson.startWeek))
+            }
+            keptLessons += updatedLesson.copy(
+                id = "${original.id}-from-$anchorWeek",
+                startWeek = anchorWeek.coerceAtLeast(original.startWeek),
+                endWeek = original.endWeek,
+            )
+            ScheduleMutationResult(
+                baseLessons = sortLessons(keptLessons),
+                exceptions = exceptions.filterNot { exception ->
+                    exception.lessonId == original.id && !exception.date.isBefore(anchorDate)
+                },
+            )
+        }
+
+        LessonEditScope.SingleOccurrence -> {
+            val anchorDate = editContext.anchorDate ?: return ScheduleMutationResult(baseLessons, exceptions)
+            val filtered = exceptions.filterNot { exception ->
+                exception.date == anchorDate &&
+                    when {
+                        editContext.isNewLesson -> exception.type == ScheduleExceptionKind.MAKE_UP &&
+                            exception.title == updatedLesson.title &&
+                            exception.startTime == updatedLesson.startTime
+
+                        else -> exception.lessonId == targetLesson.id
+                    }
+            }
+            val type = if (editContext.isNewLesson) ScheduleExceptionKind.MAKE_UP else ScheduleExceptionKind.RESCHEDULE
+            ScheduleMutationResult(
+                baseLessons = baseLessons,
+                exceptions = filtered + updatedLesson.toScheduleException(
+                    type = type,
+                    anchorDate = anchorDate,
+                    lessonId = if (editContext.isNewLesson) null else targetLesson.id,
+                ),
+            )
+        }
+    }
 }
 
-internal fun removeLesson(lessons: List<LessonUi>, targetLesson: LessonUi): List<LessonUi> {
-    return lessons.filterNot { it.id == targetLesson.id }
+internal fun removeLesson(
+    baseLessons: List<LessonUi>,
+    exceptions: List<ScheduleExceptionUi>,
+    editContext: LessonEditContext,
+    scope: LessonEditScope,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+): ScheduleMutationResult {
+    val targetLesson = editContext.lesson
+    return when (scope) {
+        LessonEditScope.WholeLesson -> ScheduleMutationResult(
+            baseLessons = baseLessons.filterNot { it.id == targetLesson.id },
+            exceptions = exceptions.filterNot { it.lessonId == targetLesson.id },
+        )
+
+        LessonEditScope.FromThisWeek -> {
+            val anchorDate = editContext.anchorDate ?: return ScheduleMutationResult(baseLessons, exceptions)
+            val anchorWeek = resolveAnchorWeek(anchorDate, weekNumberMode, semesterWeekStartDate)
+            val updatedBase = baseLessons.mapNotNull { lesson ->
+                if (lesson.id != targetLesson.id) return@mapNotNull lesson
+                if (anchorWeek <= lesson.startWeek) return@mapNotNull null
+                lesson.copy(endWeek = (anchorWeek - 1).coerceAtLeast(lesson.startWeek))
+            }
+            ScheduleMutationResult(
+                baseLessons = sortLessons(updatedBase),
+                exceptions = exceptions.filterNot { it.lessonId == targetLesson.id && !it.date.isBefore(anchorDate) },
+            )
+        }
+
+        LessonEditScope.SingleOccurrence -> {
+            val anchorDate = editContext.anchorDate ?: return ScheduleMutationResult(baseLessons, exceptions)
+            ScheduleMutationResult(
+                baseLessons = baseLessons,
+                exceptions = exceptions.filterNot { it.lessonId == targetLesson.id && it.date == anchorDate } + ScheduleExceptionUi(
+                    id = "cancel-${targetLesson.id}-$anchorDate",
+                    lessonId = targetLesson.id,
+                    type = ScheduleExceptionKind.CANCEL,
+                    date = anchorDate,
+                ),
+            )
+        }
+    }
 }
 
 internal fun syncReminderWork(context: Context, reminderEnabled: Boolean) {
@@ -181,6 +373,26 @@ internal fun syncReminderWork(context: Context, reminderEnabled: Boolean) {
 
 private fun sortLessons(lessons: List<LessonUi>): List<LessonUi> {
     return lessons.sortedWith(lessonSortComparator)
+}
+
+private fun LessonUi.toScheduleException(
+    type: ScheduleExceptionKind,
+    anchorDate: LocalDate,
+    lessonId: String?,
+): ScheduleExceptionUi {
+    return ScheduleExceptionUi(
+        id = "${type.name.lowercase()}-${lessonId ?: id}-$anchorDate",
+        lessonId = lessonId,
+        type = type,
+        date = anchorDate,
+        title = title,
+        teacher = teacher,
+        location = location,
+        note = note,
+        dayOfWeek = anchorDate.dayOfWeek,
+        startTime = startTime,
+        endTime = endTime,
+    )
 }
 
 private fun buildLessonDuplicateFingerprint(lesson: LessonUi): LessonDuplicateFingerprint {
@@ -205,6 +417,15 @@ internal fun resolveSyncAckUpdate(
 ): SyncAckUpdate? {
     val ack = WearSyncAckStore.load(context) ?: return null
     if (!force && ack.syncedAtMillis <= latestWearAckAtMillis) return null
+    MobilePrefsStore.markLastWearAck(
+        context = context,
+        ackAt = ack.syncedAtMillis,
+        result = if (ack.success) {
+            "Applied ${ack.appliedLessonCount} lessons"
+        } else {
+            ack.errorMessage.ifBlank { "Wear apply failed" }
+        },
+    )
 
     return SyncAckUpdate(
         latestAckAtMillis = ack.syncedAtMillis,

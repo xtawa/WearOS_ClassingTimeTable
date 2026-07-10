@@ -6,10 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.DayOfWeek
 import java.time.LocalTime
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class MobileJsonImportAdapterTest {
     @Test
     fun parseJsonToLessons_supportsLegacyBackupCoursesSchema() {
@@ -207,10 +209,10 @@ class MobileJsonImportAdapterTest {
             ),
         )
 
-        val result = applyJsonImport(existing, imported, JsonImportMode.REPLACE)
+        val result = applyJsonImport(existing, emptyList(), imported, JsonImportMode.REPLACE)
 
-        assertEquals(1, result.lessons.size)
-        assertEquals("Imported", result.lessons.first().title)
+        assertEquals(1, result.baseLessons.size)
+        assertEquals("Imported", result.baseLessons.first().title)
         assertEquals(1, result.appliedCount)
         assertEquals(0, result.skippedDuplicateCount)
     }
@@ -244,9 +246,9 @@ class MobileJsonImportAdapterTest {
             ),
         )
 
-        val result = appendImportedLessons(existing, imported)
+        val result = appendImportedLessons(existing, emptyList(), imported)
 
-        assertEquals(1, result.lessons.size)
+        assertEquals(1, result.baseLessons.size)
         assertEquals(0, result.appliedCount)
         assertEquals(1, result.skippedDuplicateCount)
     }
@@ -272,12 +274,12 @@ class MobileJsonImportAdapterTest {
             ),
         )
 
-        val result = appendImportedLessons(existing, imported)
+        val result = appendImportedLessons(existing, emptyList(), imported)
 
-        assertEquals(2, result.lessons.size)
+        assertEquals(2, result.baseLessons.size)
         assertEquals(1, result.appliedCount)
         assertEquals(0, result.skippedDuplicateCount)
-        assertEquals(listOf("Math", "Physics"), result.lessons.map { it.title })
+        assertEquals(listOf("Math", "Physics"), result.baseLessons.map { it.title })
     }
 
     @Test
@@ -308,13 +310,13 @@ class MobileJsonImportAdapterTest {
             ),
         )
 
-        val result = applyJsonImport(existing, imported, JsonImportMode.APPEND)
+        val result = applyJsonImport(existing, emptyList(), imported, JsonImportMode.APPEND)
 
-        assertEquals(3, result.lessons.size)
+        assertEquals(3, result.baseLessons.size)
         assertEquals(2, result.appliedCount)
         assertEquals(
             listOf("Art", "Biology", "English"),
-            result.lessons.map { it.title },
+            result.baseLessons.map { it.title },
         )
     }
 
@@ -337,9 +339,9 @@ class MobileJsonImportAdapterTest {
             ),
         )
 
-        val result = appendImportedLessons(existingLessons = emptyList(), importLessons = imported)
+        val result = appendImportedLessons(existingBaseLessons = emptyList(), existingExceptions = emptyList(), importLessons = imported)
 
-        assertEquals(2, result.lessons.size)
+        assertEquals(2, result.baseLessons.size)
         assertEquals(2, result.appliedCount)
         assertEquals(0, result.skippedDuplicateCount)
     }

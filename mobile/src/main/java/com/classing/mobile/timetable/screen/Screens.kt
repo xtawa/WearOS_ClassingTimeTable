@@ -103,17 +103,26 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.account.AccountApiClient
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
+import com.xtawa.classingtime.data.AccountSummary
+import com.xtawa.classingtime.data.DailyBriefingChannel
+import com.xtawa.classingtime.data.MembershipSummary
+import com.xtawa.classingtime.data.OfficialSyncFrequency
+import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.reminder.ReminderRuntime
 import com.xtawa.classingtime.reminder.ReminderScheduler
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.sync.CloudCredentialStore
+import com.xtawa.classingtime.sync.CloudSyncEngine
 import com.xtawa.classingtime.sync.GoogleDriveAuthManager
+import com.xtawa.classingtime.sync.MobileCloudSyncV2Store
 import com.xtawa.classingtime.sync.MobileCloudSyncCoordinator
+import com.xtawa.classingtime.sync.AuthCredentialStore
 import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
@@ -180,13 +189,21 @@ fun MobileTimetableScreen() {
     var pendingManualLesson by remember { mutableStateOf<LessonUi?>(null) }
     var pendingManualConflicts by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
     var showManualConflictDialog by remember { mutableStateOf(false) }
-    var editingLesson by remember { mutableStateOf<LessonUi?>(null) }
+    var editingContext by remember { mutableStateOf<LessonEditContext?>(null) }
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
-    var pendingRestoreLessons by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
+    var pendingRestoreBaseLessons by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
+    var pendingRestoreExceptions by remember { mutableStateOf<List<ScheduleExceptionUi>>(emptyList()) }
+    var pendingRestoreWeekNumberMode by remember { mutableStateOf<WeekNumberMode?>(null) }
+    var pendingRestoreSemesterWeekStartDate by remember { mutableStateOf<LocalDate?>(null) }
     var pendingRestoreWarnings by remember { mutableStateOf<List<String>>(emptyList()) }
     var showRestoreConfirmDialog by remember { mutableStateOf(false) }
     var showClearAllConfirmDialog by remember { mutableStateOf(false) }
+    var baseLessons by remember { mutableStateOf(emptyList<LessonUi>()) }
+    var scheduleExceptions by remember { mutableStateOf(emptyList<ScheduleExceptionUi>()) }
+    var scheduleSnapshots by remember { mutableStateOf(emptyList<ScheduleStateSnapshot>()) }
     var lessons by remember { mutableStateOf(emptyList<LessonUi>()) }
+    var currentWeekLessons by remember { mutableStateOf(emptyList<LessonUi>()) }
+    var currentWeekLessonsByDay by remember { mutableStateOf<Map<DayOfWeek, List<LessonUi>>>(emptyMap()) }
     var wearConnectedCount by remember { mutableIntStateOf(0) }
     var wearConnectionMessage by remember { mutableStateOf(context.getString(R.string.wear_connection_checking)) }
     var wearSyncMessage by remember {
@@ -213,10 +230,21 @@ fun MobileTimetableScreen() {
     var cloudLastSyncedAt by remember { mutableStateOf(0L) }
     var cloudSyncInProgress by remember { mutableStateOf(false) }
     var cloudConfigPushStatus by remember { mutableStateOf("") }
+    var accountSummary by remember { mutableStateOf(AccountSummary()) }
+    var membershipSummary by remember { mutableStateOf(MembershipSummary()) }
+    var accountStatusMessage by remember { mutableStateOf("") }
+    var accountBusy by remember { mutableStateOf(false) }
+    var dailyBriefingEnabled by remember { mutableStateOf(false) }
+    var dailyBriefingChannel by remember { mutableStateOf(DailyBriefingChannel.APP_NOTIFICATION) }
+    var dailyBriefingTime by remember { mutableStateOf("20:00") }
+    var officialSyncFrequency by remember { mutableStateOf(OfficialSyncFrequency.MANUAL_ONLY) }
+    var syncScopes by remember { mutableStateOf(SyncScope.entries.toSet()) }
     val coroutineScope = rememberCoroutineScope()
     val wearSyncMutex = remember { Mutex() }
     var weekSettingsAutoSyncPending by remember { mutableStateOf(false) }
     var weekSettingsAutoSyncJob by remember { mutableStateOf<Job?>(null) }
+    var lastProjectionDate by remember { mutableStateOf(LocalDate.now()) }
+    val accountApiClient = remember { AccountApiClient() }
 
     fun goToSettingsRoot() {
         settingsPageName = SettingsPage.Main.name
@@ -270,26 +298,108 @@ fun MobileTimetableScreen() {
             cloudConfigPushStatus = cloudConfigPushStatus,
             cloudLastResult = cloudSyncStatus,
             cloudLastSyncedAt = cloudLastSyncedAt,
+            accountSummary = accountSummary,
+            membershipSummary = membershipSummary,
+            dailyBriefingEnabled = dailyBriefingEnabled,
+            dailyBriefingChannel = dailyBriefingChannel,
+            dailyBriefingTime = dailyBriefingTime,
+            officialSyncFrequency = officialSyncFrequency,
+            syncScopes = syncScopes,
         )
     }
 
-    fun persistLessons() {
-        com.xtawa.classingtime.screen.persistLessons(context, lessons)
+    fun rebuildScheduleProjection() {
+        val projection = buildScheduleProjection(
+            baseLessons = baseLessons,
+            exceptions = scheduleExceptions,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+            weekStartDay = weekStartDay,
+        )
+        lessons = projection.effectiveLessonsForSync
+        currentWeekLessons = projection.currentWeekLessons
+        currentWeekLessonsByDay = projection.currentWeekLessonsByDay
+        lastProjectionDate = LocalDate.now()
+    }
+
+    fun lessonsForDate(date: LocalDate): List<LessonUi> {
+        return buildEffectiveOccurrencesForDateRange(
+            baseLessons = baseLessons,
+            exceptions = scheduleExceptions,
+            startDate = date,
+            endDate = date,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        ).map { it.lesson }
+    }
+
+    fun clearPendingRestoreState() {
+        pendingRestoreBaseLessons = emptyList()
+        pendingRestoreExceptions = emptyList()
+        pendingRestoreWeekNumberMode = null
+        pendingRestoreSemesterWeekStartDate = null
+        pendingRestoreWarnings = emptyList()
+    }
+
+    fun persistScheduleState() {
+        com.xtawa.classingtime.screen.persistScheduleState(
+            context = context,
+            baseLessons = baseLessons,
+            exceptions = scheduleExceptions,
+            snapshots = scheduleSnapshots,
+        )
+        CloudSyncEngine.enqueue(context, CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+    }
+
+    fun snapshotBefore(reason: String) {
+        scheduleSnapshots = capSnapshots(
+            listOf(
+                createScheduleSnapshot(
+                    reason = reason,
+                    weekNumberMode = weekNumberMode,
+                    semesterWeekStartDate = semesterWeekStartDate,
+                    baseLessons = baseLessons,
+                    exceptions = scheduleExceptions,
+                ),
+            ) + scheduleSnapshots,
+        )
+    }
+
+    fun restoreSnapshot(snapshotId: String) {
+        val snapshot = scheduleSnapshots.firstOrNull { it.id == snapshotId } ?: return
+        snapshotBefore("restore_snapshot")
+        baseLessons = snapshot.baseLessons
+        scheduleExceptions = snapshot.exceptions
+        rebuildScheduleProjection()
+        persistScheduleState()
+        parseMessage = context.getString(R.string.backup_restore_success_message, snapshot.baseLessons.size)
+        persistSettings()
+    }
+
+    fun undoLatestSnapshot() {
+        val snapshot = scheduleSnapshots.maxByOrNull { it.createdAt } ?: return
+        restoreSnapshot(snapshot.id)
     }
 
     fun applyImportedLessons(importLessons: List<LessonUi>) {
-        lessons = com.xtawa.classingtime.screen.applyImportedLessons(importLessons)
-        persistLessons()
+        val result = com.xtawa.classingtime.screen.applyImportedLessons(importLessons)
+        baseLessons = result.baseLessons
+        scheduleExceptions = result.exceptions
+        rebuildScheduleProjection()
+        persistScheduleState()
     }
 
     fun applyJsonImportedLessons(importLessons: List<LessonUi>, mode: JsonImportMode): JsonImportApplyResult {
         val result = com.xtawa.classingtime.screen.applyJsonImport(
-            existingLessons = lessons,
+            existingBaseLessons = baseLessons,
+            existingExceptions = scheduleExceptions,
             importLessons = importLessons,
             mode = mode,
         )
-        lessons = result.lessons
-        persistLessons()
+        baseLessons = result.baseLessons
+        scheduleExceptions = result.exceptions
+        rebuildScheduleProjection()
+        persistScheduleState()
         return result
     }
 
@@ -309,28 +419,71 @@ fun MobileTimetableScreen() {
     }
 
     fun appendManualLesson(newLesson: LessonUi) {
-        lessons = com.xtawa.classingtime.screen.appendManualLesson(lessons, newLesson)
-        persistLessons()
+        baseLessons = (baseLessons + newLesson).sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+        rebuildScheduleProjection()
+        persistScheduleState()
     }
 
-    fun applyLessonEdit(updatedLesson: LessonUi, scope: ChangeScope) {
-        lessons = com.xtawa.classingtime.screen.applyLessonEdit(lessons, updatedLesson)
-        if (scope == ChangeScope.Persistent) persistLessons()
-        parseMessage = if (scope == ChangeScope.Persistent) {
-            context.getString(R.string.lesson_edit_saved_persistent_message, updatedLesson.title)
-        } else {
-            context.getString(R.string.lesson_edit_saved_temporary_message, updatedLesson.title)
+    fun applyLessonEdit(updatedLesson: LessonUi, scope: LessonEditScope) {
+        val targetContext = editingContext ?: return
+        if (scope != LessonEditScope.SingleOccurrence) {
+            snapshotBefore(
+                when (scope) {
+                    LessonEditScope.FromThisWeek -> "edit_from_this_week"
+                    LessonEditScope.WholeLesson -> "edit_whole_lesson"
+                    LessonEditScope.SingleOccurrence -> "edit_single_occurrence"
+                },
+            )
+        }
+        val result = com.xtawa.classingtime.screen.applyLessonEdit(
+            baseLessons = baseLessons,
+            exceptions = scheduleExceptions,
+            editContext = targetContext,
+            updatedLesson = updatedLesson,
+            scope = scope,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        )
+        baseLessons = result.baseLessons
+        scheduleExceptions = result.exceptions
+        rebuildScheduleProjection()
+        persistScheduleState()
+        parseMessage = when (scope) {
+            LessonEditScope.SingleOccurrence -> context.getString(R.string.lesson_edit_saved_temporary_message, updatedLesson.title)
+            LessonEditScope.FromThisWeek -> context.getString(R.string.lesson_edit_saved_persistent_message, updatedLesson.title)
+            LessonEditScope.WholeLesson -> context.getString(R.string.lesson_edit_saved_persistent_message, updatedLesson.title)
         }
         persistSettings()
     }
 
-    fun removeLesson(targetLesson: LessonUi, scope: ChangeScope) {
-        lessons = com.xtawa.classingtime.screen.removeLesson(lessons, targetLesson)
-        if (scope == ChangeScope.Persistent) persistLessons()
-        parseMessage = if (scope == ChangeScope.Persistent) {
-            context.getString(R.string.lesson_delete_persistent_message, targetLesson.title)
-        } else {
-            context.getString(R.string.lesson_delete_temporary_message, targetLesson.title)
+    fun removeLesson(scope: LessonEditScope) {
+        val targetContext = editingContext ?: return
+        val targetLesson = targetContext.lesson
+        if (scope != LessonEditScope.SingleOccurrence) {
+            snapshotBefore(
+                when (scope) {
+                    LessonEditScope.FromThisWeek -> "delete_from_this_week"
+                    LessonEditScope.WholeLesson -> "delete_whole_lesson"
+                    LessonEditScope.SingleOccurrence -> "delete_single_occurrence"
+                },
+            )
+        }
+        val result = com.xtawa.classingtime.screen.removeLesson(
+            baseLessons = baseLessons,
+            exceptions = scheduleExceptions,
+            editContext = targetContext,
+            scope = scope,
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        )
+        baseLessons = result.baseLessons
+        scheduleExceptions = result.exceptions
+        rebuildScheduleProjection()
+        persistScheduleState()
+        parseMessage = when (scope) {
+            LessonEditScope.SingleOccurrence -> context.getString(R.string.lesson_delete_temporary_message, targetLesson.title)
+            LessonEditScope.FromThisWeek -> context.getString(R.string.lesson_delete_persistent_message, targetLesson.title)
+            LessonEditScope.WholeLesson -> context.getString(R.string.lesson_delete_persistent_message, targetLesson.title)
         }
         persistSettings()
     }
@@ -342,6 +495,66 @@ fun MobileTimetableScreen() {
             keepAliveLevel = keepAliveLevel,
             reminderMinutes = reminderMinutes,
         )
+    }
+
+    suspend fun ensureAccessToken(): String? {
+        val accessToken = AuthCredentialStore.loadAccessToken(context).takeIf { it.isNotBlank() }
+        if (accessToken != null) return accessToken
+        val refreshToken = AuthCredentialStore.loadRefreshToken(context).takeIf { it.isNotBlank() } ?: return null
+        val refreshed = accountApiClient.refresh(refreshToken).getOrNull() ?: return null
+        AuthCredentialStore.saveSession(context, refreshed.accessToken, refreshed.refreshToken)
+        return refreshed.accessToken
+    }
+
+    suspend fun refreshAccountProfile(showStatus: Boolean = true): Boolean {
+        val accessToken = ensureAccessToken()
+        if (accessToken == null) {
+            accountSummary = AccountSummary()
+            membershipSummary = MembershipSummary()
+            if (showStatus) {
+                accountStatusMessage = "Not logged in"
+            }
+            persistSettings()
+            return false
+        }
+        val result = accountApiClient.fetchProfile(accessToken)
+        return if (result.isSuccess) {
+            val profile = result.getOrThrow()
+            accountSummary = profile.account
+            membershipSummary = profile.membership.copy(lastCheckedAt = System.currentTimeMillis())
+            if (showStatus) {
+                accountStatusMessage = "Account synced"
+            }
+            persistSettings()
+            true
+        } else {
+            if (showStatus) {
+                accountStatusMessage = result.exceptionOrNull()?.message ?: "Failed to refresh account"
+            }
+            false
+        }
+    }
+
+    suspend fun saveDailyBriefingSettings(pushRemote: Boolean): Boolean {
+        if ((dailyBriefingChannel == DailyBriefingChannel.EMAIL || dailyBriefingChannel == DailyBriefingChannel.BOTH) &&
+            accountSummary.userId.isBlank()
+        ) {
+            accountStatusMessage = "Email briefing requires login"
+            return false
+        }
+        persistSettings()
+        if (!pushRemote) return true
+        val accessToken = ensureAccessToken() ?: return true
+        val result = accountApiClient.saveDailyBriefingSubscription(
+            accessToken = accessToken,
+            enabled = dailyBriefingEnabled,
+            channel = dailyBriefingChannel,
+            time = dailyBriefingTime,
+        )
+        if (result.isFailure) {
+            accountStatusMessage = result.exceptionOrNull()?.message ?: "Failed to save briefing subscription"
+        }
+        return result.isSuccess
     }
 
     fun applyIcsPreviewFromRaw(raw: String) {
@@ -375,34 +588,9 @@ fun MobileTimetableScreen() {
     }
 
     suspend fun runCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
-        cloudSyncInProgress = true
-        try {
-            val result = MobileCloudSyncCoordinator.requestCloudSync(
-                context = context,
-                trigger = trigger,
-                force = force,
-                alsoPushConfigToWear = alsoPushConfigToWear,
-            )
-            if (result.isSuccess) {
-                val outcome = result.getOrThrow()
-                cloudSyncStatus = outcome.message
-                cloudLastSyncedAt = outcome.syncedAt
-                cloudConfigPushStatus = if (outcome.pushedConfigNodes > 0) {
-                    "Config pushed to ${outcome.pushedConfigNodes} wear node(s)"
-                } else {
-                    cloudConfigPushStatus
-                }
-                val updated = MobilePrefsStore.loadSettings(context)
-                cloudSyncStatus = updated.cloudLastResult
-                cloudLastSyncedAt = updated.cloudLastSyncedAt
-                cloudConfigPushStatus = updated.cloudConfigPushStatus
-            } else {
-                cloudSyncStatus = "Cloud sync failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
-            }
-            persistSettings()
-        } finally {
-            cloudSyncInProgress = false
-        }
+        @Suppress("UNUSED_VARIABLE") val compatibilityFlags = force to alsoPushConfigToWear
+        CloudSyncEngine.enqueue(context, trigger)
+        cloudSyncStatus = context.getString(R.string.settings_cloud_sync_queued)
     }
 
     fun requestCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
@@ -585,28 +773,31 @@ fun MobileTimetableScreen() {
             return@rememberLauncherForActivityResult
         }
 
-        val parsed = parseJsonToLessons(restoreRawJson, context)
-        if (parsed.lessons.isEmpty()) {
+        val parsed = parseScheduleBackupJson(restoreRawJson, context)
+        if (parsed == null || parsed.baseLessons.isEmpty()) {
             parseMessage = context.getString(R.string.backup_restore_no_valid_lesson_message)
-            warnings = parsed.warnings
+            warnings = emptyList()
             persistSettings()
             return@rememberLauncherForActivityResult
         }
 
-        pendingRestoreLessons = parsed.lessons
+        pendingRestoreBaseLessons = parsed.baseLessons
+        pendingRestoreExceptions = parsed.exceptions
+        pendingRestoreWeekNumberMode = parsed.weekNumberMode
+        pendingRestoreSemesterWeekStartDate = parsed.semesterWeekStartDate
         pendingRestoreWarnings = parsed.warnings
         showRestoreConfirmDialog = true
         parseMessage = context.getString(
             R.string.backup_restore_pending_confirmation_message,
             lessons.size,
-            parsed.lessons.size,
+            parsed.baseLessons.size,
         )
         persistSettings()
     }
 
     LaunchedEffect(Unit) {
         val settings = MobilePrefsStore.loadSettings(context)
-        val storedLessons = MobilePrefsStore.loadLessons(context)
+        val loadedState = loadScheduleState(context)
 
         showWeekend = settings.showWeekend
         reminderEnabled = settings.reminderEnabled
@@ -630,17 +821,22 @@ fun MobileTimetableScreen() {
             CloudCredentialStore.loadDriveAccessTokenExpireAt(context),
         )
         cloudConfigPushStatus = settings.cloudConfigPushStatus
+        accountSummary = settings.accountSummary
+        membershipSummary = settings.membershipSummary
+        dailyBriefingEnabled = settings.dailyBriefingEnabled
+        dailyBriefingChannel = settings.dailyBriefingChannel
+        dailyBriefingTime = settings.dailyBriefingTime
+        officialSyncFrequency = settings.officialSyncFrequency
+        syncScopes = settings.syncScopes.ifEmpty { SyncScope.entries.toSet() }
         cloudPassword = CloudCredentialStore.loadPassword(context)
         cloudDriveAccessToken = CloudCredentialStore.loadDriveAccessToken(context)
         cloudSyncStatus = settings.cloudLastResult
         cloudLastSyncedAt = settings.cloudLastSyncedAt
 
-        if (storedLessons.isNotEmpty()) {
-            lessons = storedLessons.map { it.toLessonUi() }
-        } else {
-            lessons = emptyList()
-            persistLessons()
-        }
+        baseLessons = loadedState.baseLessons
+        scheduleExceptions = loadedState.exceptions
+        scheduleSnapshots = loadedState.snapshots
+        rebuildScheduleProjection()
         MobilePrefsStore.ensureOnboardingCompletedForLegacyUser(context)
         showOnboarding = !MobilePrefsStore.isOnboardingCompleted(context)
 
@@ -649,7 +845,21 @@ fun MobileTimetableScreen() {
             syncReminderWork()
             refreshWearSyncAckStatus(force = true)
             refreshWearConnectionStatus()
+            refreshAccountProfile(showStatus = false)
             runCloudSync(trigger = CloudSyncContracts.TRIGGER_APP_START, force = true)
+        }
+    }
+
+    LaunchedEffect(initialized) {
+        if (!initialized) return@LaunchedEffect
+        while (true) {
+            val today = LocalDate.now()
+            if (today != lastProjectionDate) {
+                rebuildScheduleProjection()
+            }
+            val current = LocalDateTime.now()
+            val delayMillis = ((60 - current.second) * 1_000L) - (current.nano / 1_000_000L)
+            delay(delayMillis.coerceAtLeast(1L))
         }
     }
 
@@ -705,15 +915,8 @@ fun MobileTimetableScreen() {
 
     LaunchedEffect(initialized, cloudSyncEnabled, lifecycleOwner, showOnboarding) {
         if (!initialized) return@LaunchedEffect
-        while (true) {
-            if (!showOnboarding && cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                runCloudSync(
-                    trigger = CloudSyncContracts.TRIGGER_FOREGROUND_TICK,
-                    force = false,
-                    alsoPushConfigToWear = false,
-                )
-            }
-            delay(120_000L)
+        if (!showOnboarding && cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            CloudSyncEngine.enqueue(context, CloudSyncContracts.TRIGGER_FOREGROUND_TICK, markDirty = false)
         }
     }
 
@@ -844,7 +1047,7 @@ fun MobileTimetableScreen() {
     }
     val contentGestureProgress = if (canHandleBack) predictiveBackProgress else 0f
     val visibleDays = if (showWeekend) DayOfWeek.values().toList() else DayOfWeek.values().filter { it.value <= 5 }
-    val lessonsByDay = lessons.groupBy { it.dayOfWeek }
+    val lessonsByDay = currentWeekLessonsByDay
     val latestWearAck = remember(latestWearAckAtMillis) { WearSyncAckStore.load(context) }
     val bluetoothSyncState = resolveBluetoothSyncIndicatorState(
         syncInProgress = wearSyncInProgress,
@@ -954,6 +1157,7 @@ fun MobileTimetableScreen() {
                 } else {
                     val conflicts = detectLessonConflicts(pendingImportLessons)
                     if (conflicts.isEmpty()) {
+                        snapshotBefore("import_replace")
                         applyImportedLessons(pendingImportLessons)
                         parseMessage = context.getString(R.string.import_confirmed_message, pendingImportLessons.size)
                         pendingImportLessons = emptyList()
@@ -976,6 +1180,9 @@ fun MobileTimetableScreen() {
                 } else {
                     val conflicts = detectLessonConflicts(pendingImportLessons)
                     if (conflicts.isEmpty()) {
+                        if (jsonImportMode == JsonImportMode.REPLACE) {
+                            snapshotBefore("json_replace")
+                        }
                         val result = applyJsonImportedLessons(pendingImportLessons, jsonImportMode)
                         parseMessage = buildJsonImportMessage(jsonImportMode, result)
                         pendingImportLessons = emptyList()
@@ -994,6 +1201,7 @@ fun MobileTimetableScreen() {
             },
             onConfirmSelectiveImport = { selectedLessons ->
                 val skippedCount = pendingImportLessons.size - selectedLessons.size
+                snapshotBefore("import_selective_replace")
                 applyImportedLessons(selectedLessons)
                 parseMessage = context.getString(R.string.import_selective_applied, selectedLessons.size, skippedCount)
                 pendingImportLessons = emptyList()
@@ -1007,6 +1215,9 @@ fun MobileTimetableScreen() {
                 persistSettings()
             },
             onConfirmSelectiveJsonImport = { selectedLessons ->
+                if (jsonImportMode == JsonImportMode.REPLACE) {
+                    snapshotBefore("json_selective_replace")
+                }
                 val result = applyJsonImportedLessons(selectedLessons, jsonImportMode)
                 parseMessage = buildJsonImportMessage(jsonImportMode, result)
                 pendingImportLessons = emptyList()
@@ -1203,7 +1414,7 @@ fun MobileTimetableScreen() {
                     MobileLayer.entries.forEach { item ->
                         val icon = when (item) {
                             MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
-                            MobileLayer.Heatmap -> Icons.Filled.GridView
+                            MobileLayer.Dashboard -> Icons.Filled.GridView
                             MobileLayer.Settings -> Icons.Filled.Settings
                         }
                         NavigationBarItem(
@@ -1294,27 +1505,77 @@ fun MobileTimetableScreen() {
                     ScheduleSubview.Timetable -> WeekBoardLayer(
                         contentPadding = innerPadding,
                         visibleDays = visibleDays,
-                        lessonsByDay = lessonsByDay,
+                        lessonsByDay = currentWeekLessonsByDay,
+                        lessonsForDate = ::lessonsForDate,
+                        hasSchedule = lessons.isNotEmpty(),
                         onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
-                        onLongPressLesson = { editingLesson = it },
+                        onLongPressLesson = {
+                            editingContext = LessonEditContext(
+                                lesson = it,
+                                anchorDate = null,
+                                allowedScopes = setOf(LessonEditScope.WholeLesson),
+                            )
+                        },
                     )
 
                     ScheduleSubview.Calendar -> CalendarMonthLayer(
                         contentPadding = innerPadding,
-                        lessonsByDay = lessonsByDay,
+                        occurrenceProvider = { date ->
+                            buildEffectiveOccurrencesForDateRange(
+                                baseLessons = baseLessons,
+                                exceptions = scheduleExceptions,
+                                startDate = date,
+                                endDate = date,
+                                weekNumberMode = weekNumberMode,
+                                semesterWeekStartDate = semesterWeekStartDate,
+                            )
+                        },
                         onBackToTimetable = { scheduleSubviewName = ScheduleSubview.Timetable.name },
+                        onEditOccurrence = { occurrence, date ->
+                            editingContext = LessonEditContext(
+                                lesson = occurrence.lesson,
+                                anchorDate = date,
+                                allowedScopes = setOf(LessonEditScope.SingleOccurrence, LessonEditScope.FromThisWeek),
+                            )
+                        },
+                        onAddMakeUpLesson = { date ->
+                            editingContext = LessonEditContext(
+                                lesson = LessonUi(
+                                    id = "makeup-${date}-${System.currentTimeMillis()}",
+                                    title = "",
+                                    location = null,
+                                    note = null,
+                                    dayOfWeek = date.dayOfWeek,
+                                    startTime = LocalTime.of(8, 0),
+                                    endTime = LocalTime.of(9, 30),
+                                    startWeek = resolveAnchorWeek(date, weekNumberMode, semesterWeekStartDate),
+                                    endWeek = resolveAnchorWeek(date, weekNumberMode, semesterWeekStartDate),
+                                ),
+                                anchorDate = date,
+                                allowedScopes = setOf(LessonEditScope.SingleOccurrence),
+                                isNewLesson = true,
+                            )
+                        },
                     )
                 }
 
-                MobileLayer.Heatmap -> HeatmapLayer(
+                MobileLayer.Dashboard -> DashboardLayer(
                     contentPadding = innerPadding,
-                    lessons = lessons,
+                    lessons = currentWeekLessons,
+                    visibleDays = visibleDays,
+                    lessonsByDay = currentWeekLessonsByDay,
                 )
 
                 MobileLayer.Settings -> when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
                     showWeekend = showWeekend,
+                    onOpenAccountPage = {
+                        openSettingsPage(SettingsPage.Account)
+                    },
+                    onOpenDailyBriefingPage = {
+                        openSettingsPage(SettingsPage.DailyBriefing)
+                    },
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
                     },
@@ -1350,16 +1611,29 @@ fun MobileTimetableScreen() {
 
                 SettingsPage.BackupRestore -> BackupRestoreSettingsPage(
                     contentPadding = innerPadding,
+                    snapshots = scheduleSnapshots,
                     onBack = {
                         handleBackNavigation()
                     },
                     onExportBackup = {
-                        pendingExportJson = buildScheduleBackupJson(lessons, zoneId)
+                        pendingExportJson = buildScheduleBackupJson(
+                            baseLessons = baseLessons,
+                            exceptions = scheduleExceptions,
+                            zoneId = zoneId,
+                            weekNumberMode = weekNumberMode,
+                            semesterWeekStartDate = semesterWeekStartDate,
+                        )
                         val name = "classingtime_backup_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}.json"
                         exportBackupLauncher.launch(name)
                     },
                     onRestoreBackup = {
                         restoreBackupLauncher.launch(arrayOf("application/json", "text/plain"))
+                    },
+                    onUndoLatest = {
+                        undoLatestSnapshot()
+                    },
+                    onRestoreSnapshot = { snapshotId ->
+                        restoreSnapshot(snapshotId)
                     },
                 )
 
@@ -1374,6 +1648,7 @@ fun MobileTimetableScreen() {
                     onWeekNumberModeChange = { mode ->
                         if (weekNumberMode != mode) {
                             weekNumberMode = mode
+                            rebuildScheduleProjection()
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
                             requestCloudSync(
@@ -1385,6 +1660,7 @@ fun MobileTimetableScreen() {
                     onWeekStartDayChange = { day ->
                         if (weekStartDay != day) {
                             weekStartDay = day
+                            rebuildScheduleProjection()
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
                             requestCloudSync(
@@ -1396,6 +1672,7 @@ fun MobileTimetableScreen() {
                     onSemesterWeekStartDateChange = { date ->
                         if (semesterWeekStartDate != date) {
                             semesterWeekStartDate = date
+                            rebuildScheduleProjection()
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
                             requestCloudSync(
@@ -1496,8 +1773,193 @@ fun MobileTimetableScreen() {
                     },
                 )
 
+                SettingsPage.Account -> AccountSettingsPage(
+                    contentPadding = innerPadding,
+                    accountSummary = accountSummary,
+                    membershipSummary = membershipSummary,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    onBack = {
+                        handleBackNavigation()
+                    },
+                    onLogin = { identifier, password ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val session = accountApiClient.login(identifier, password)
+                                if (session.isSuccess) {
+                                    val auth = session.getOrThrow()
+                                    AuthCredentialStore.saveSession(context, auth.accessToken, auth.refreshToken)
+                                    refreshAccountProfile(showStatus = true)
+                                    persistSettings()
+                                    if (cloudProvider == CloudProviderUi.OFFICIAL) {
+                                        requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED, force = true)
+                                    }
+                                } else {
+                                    accountStatusMessage = session.exceptionOrNull()?.message ?: "Login failed"
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onRegister = { username, email, password ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val session = accountApiClient.register(username, email, password)
+                                if (session.isSuccess) {
+                                    val auth = session.getOrThrow()
+                                    AuthCredentialStore.saveSession(context, auth.accessToken, auth.refreshToken)
+                                    refreshAccountProfile(showStatus = true)
+                                    persistSettings()
+                                } else {
+                                    accountStatusMessage = session.exceptionOrNull()?.message ?: "Register failed"
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onLogout = {
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = AuthCredentialStore.loadAccessToken(context)
+                                val refreshToken = AuthCredentialStore.loadRefreshToken(context)
+                                if (accessToken.isNotBlank() && refreshToken.isNotBlank()) {
+                                    accountApiClient.logout(accessToken, refreshToken)
+                                }
+                                AuthCredentialStore.clear(context)
+                                accountSummary = AccountSummary()
+                                membershipSummary = MembershipSummary()
+                                accountStatusMessage = "Logged out"
+                                persistSettings()
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onRefresh = {
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                refreshAccountProfile(showStatus = true)
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onRedeem = { code ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = "Login required before redeeming codes"
+                                } else {
+                                    val redeemed = accountApiClient.redeemCode(accessToken, code)
+                                    if (redeemed.isSuccess) {
+                                        refreshAccountProfile(showStatus = true)
+                                        if (cloudProvider == CloudProviderUi.OFFICIAL) {
+                                            requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED, force = true)
+                                        }
+                                    } else {
+                                        accountStatusMessage = redeemed.exceptionOrNull()?.message ?: "Redeem failed"
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onRequestPasswordReset = { email ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val result = accountApiClient.requestPasswordReset(email)
+                                accountStatusMessage = if (result.isSuccess) {
+                                    "Password reset request sent"
+                                } else {
+                                    result.exceptionOrNull()?.message ?: "Password reset request failed"
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onConfirmPasswordReset = { token, newPassword ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val result = accountApiClient.confirmPasswordReset(token, newPassword)
+                                accountStatusMessage = if (result.isSuccess) {
+                                    "Password reset confirmed"
+                                } else {
+                                    result.exceptionOrNull()?.message ?: "Password reset confirm failed"
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.DailyBriefing -> DailyBriefingSettingsPage(
+                    contentPadding = innerPadding,
+                    enabled = dailyBriefingEnabled,
+                    channel = dailyBriefingChannel,
+                    time = dailyBriefingTime,
+                    loggedIn = accountSummary.userId.isNotBlank(),
+                    statusMessage = accountStatusMessage,
+                    onBack = {
+                        handleBackNavigation()
+                    },
+                    onEnabledChange = {
+                        dailyBriefingEnabled = it
+                    },
+                    onChannelChange = {
+                        if (accountSummary.userId.isBlank() && (it == DailyBriefingChannel.EMAIL || it == DailyBriefingChannel.BOTH)) {
+                            accountStatusMessage = "Email briefing requires login"
+                        } else {
+                            dailyBriefingChannel = it
+                        }
+                    },
+                    onTimeChange = {
+                        dailyBriefingTime = it
+                    },
+                    onSave = {
+                        coroutineScope.launch {
+                            if (dailyBriefingEnabled &&
+                                dailyBriefingChannel != DailyBriefingChannel.EMAIL &&
+                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                            saveDailyBriefingSettings(pushRemote = true)
+                            requestCloudSync(
+                                trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                                alsoPushConfigToWear = false,
+                            )
+                        }
+                    },
+                )
+
                 SettingsPage.SyncCommunication -> SyncCommunicationSettingsPage(
                     contentPadding = innerPadding,
+                    localScheduleUpdatedAt = MobilePrefsStore.loadLocalTimetableUpdatedAt(context),
+                    lastSnapshotAt = MobilePrefsStore.loadLastSnapshotAt(context),
+                    wearConnectionMessage = wearConnectionMessage,
+                    wearPushStatus = MobilePrefsStore.loadLastWearPush(context).second,
+                    wearAckStatus = MobilePrefsStore.loadLastWearAck(context).second,
+                    cloudSummary = if (cloudSyncEnabled) {
+                        "${cloudProvider.name} / enabled"
+                    } else {
+                        "${cloudProvider.name} / disabled"
+                    },
+                    cloudSyncStatus = MobilePrefsStore.loadLastCloudSync(context).second.ifBlank { cloudSyncStatus },
+                    configPushStatus = MobilePrefsStore.loadLastConfigPush(context).second.ifBlank { cloudConfigPushStatus },
                     onBack = {
                         handleBackNavigation()
                     },
@@ -1506,6 +1968,50 @@ fun MobileTimetableScreen() {
                     },
                     onOpenCloudSyncPage = {
                         openSettingsPage(SettingsPage.CloudSync)
+                    },
+                    onRefreshWearStatus = {
+                        coroutineScope.launch {
+                            refreshWearConnectionStatus()
+                        }
+                    },
+                    onSyncWearNow = {
+                        coroutineScope.launch {
+                            runWearSyncInternal()
+                        }
+                    },
+                    onTestCloudConnection = {
+                        coroutineScope.launch {
+                            cloudSyncInProgress = true
+                            try {
+                                if (cloudProvider == CloudProviderUi.WEBDAV) {
+                                    CloudCredentialStore.savePassword(context, cloudPassword)
+                                }
+                                persistSettings()
+                                val result = MobileCloudSyncCoordinator.testConnection(context)
+                                cloudSyncStatus = when {
+                                    result.isSuccess && cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection OK"
+                                    result.isSuccess && cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection OK"
+                                    result.isSuccess && cloudProvider == CloudProviderUi.OFFICIAL -> "Official cloud connection OK"
+                                    cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                    cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                    else -> "Official cloud connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                }
+                                persistSettings()
+                            } finally {
+                                cloudSyncInProgress = false
+                            }
+                        }
+                    },
+                    onSyncCloudNow = {
+                        if (cloudProvider == CloudProviderUi.WEBDAV) {
+                            CloudCredentialStore.savePassword(context, cloudPassword)
+                        }
+                        persistSettings()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_MANUAL,
+                            force = true,
+                            alsoPushConfigToWear = true,
+                        )
                     },
                 )
 
@@ -1556,14 +2062,25 @@ fun MobileTimetableScreen() {
                     driveConnected = driveConnected,
                     driveTokenExpireText = driveTokenExpireText,
                     showDriveCnWarning = showDriveCnWarning,
+                    accountSummary = accountSummary,
+                    membershipSummary = membershipSummary,
+                    officialSyncFrequency = officialSyncFrequency,
+                    syncScopes = syncScopes,
                     syncStatus = cloudSyncStatus,
                     configPushStatus = cloudConfigPushStatus,
                     lastSyncedAt = cloudLastSyncedAt,
                     syncInProgress = cloudSyncInProgress,
+                    recentChanges = MobileCloudSyncV2Store.loadDocument(context).changes,
                     onBack = {
                         handleBackNavigation()
                     },
-                    onProviderChange = { cloudProvider = it },
+                    onProviderChange = {
+                        cloudProvider = it
+                        if (it == CloudProviderUi.OFFICIAL) {
+                            cloudServerUrl = AccountApiClient.BASE_URL
+                            cloudRemotePath = "/api/v1/cloud/official/document"
+                        }
+                    },
                     onEnabledChange = {
                         cloudSyncEnabled = it
                     },
@@ -1572,6 +2089,17 @@ fun MobileTimetableScreen() {
                     onUsernameChange = { cloudUsername = it },
                     onPasswordChange = { cloudPassword = it },
                     onDriveFileNameChange = { cloudDriveFileName = it },
+                    onOfficialSyncFrequencyChange = { officialSyncFrequency = it },
+                    onSyncScopeToggle = { scope, checked ->
+                        syncScopes = if (checked) {
+                            syncScopes + scope
+                        } else {
+                            (syncScopes - scope).ifEmpty { setOf(SyncScope.TIMETABLE) }
+                        }
+                    },
+                    onOpenAccountPage = {
+                        openSettingsPage(SettingsPage.Account)
+                    },
                     onConnectDrive = {
                         coroutineScope.launch {
                             cloudSyncInProgress = true
@@ -1648,6 +2176,9 @@ fun MobileTimetableScreen() {
                         if (cloudProvider == CloudProviderUi.WEBDAV) {
                             CloudCredentialStore.savePassword(context, cloudPassword)
                         }
+                        if (cloudProvider == CloudProviderUi.OFFICIAL) {
+                            cloudServerUrl = AccountApiClient.BASE_URL
+                        }
                         cloudConfigPushStatus = ""
                         persistSettings()
                         requestCloudSync(
@@ -1663,13 +2194,18 @@ fun MobileTimetableScreen() {
                                 if (cloudProvider == CloudProviderUi.WEBDAV) {
                                     CloudCredentialStore.savePassword(context, cloudPassword)
                                 }
+                                if (cloudProvider == CloudProviderUi.OFFICIAL) {
+                                    cloudServerUrl = AccountApiClient.BASE_URL
+                                }
                                 persistSettings()
                                 val result = MobileCloudSyncCoordinator.testConnection(context)
                                 cloudSyncStatus = when {
                                     result.isSuccess && cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection OK"
                                     result.isSuccess && cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection OK"
+                                    result.isSuccess && cloudProvider == CloudProviderUi.OFFICIAL -> "Official cloud connection OK"
                                     cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
-                                    else -> "Google Drive connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                    cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                    else -> "Official cloud connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
                                 }
                                 persistSettings()
                             } finally {
@@ -1681,12 +2217,24 @@ fun MobileTimetableScreen() {
                         if (cloudProvider == CloudProviderUi.WEBDAV) {
                             CloudCredentialStore.savePassword(context, cloudPassword)
                         }
+                        if (cloudProvider == CloudProviderUi.OFFICIAL) {
+                            cloudServerUrl = AccountApiClient.BASE_URL
+                        }
                         persistSettings()
                         requestCloudSync(
                             trigger = CloudSyncContracts.TRIGGER_MANUAL,
                             force = true,
                             alsoPushConfigToWear = true,
                         )
+                    },
+                    onRestoreChange = { domain, recordId ->
+                        if (MobileCloudSyncV2Store.restore(context, domain, recordId)) {
+                            cloudSyncStatus = context.getString(R.string.settings_cloud_sync_restored, recordId)
+                            requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+                        }
+                    },
+                    canRestoreChange = { domain, recordId ->
+                        MobileCloudSyncV2Store.canRestore(context, domain, recordId)
                     },
                 )
 
@@ -1715,9 +2263,13 @@ fun MobileTimetableScreen() {
             val importSize = pendingImportLessons.size
             if (importSize > 0) {
                 if (jsonPreview.isNotEmpty()) {
+                    if (jsonImportMode == JsonImportMode.REPLACE) {
+                        snapshotBefore("json_replace_with_conflict")
+                    }
                     val result = applyJsonImportedLessons(pendingImportLessons, jsonImportMode)
                     parseMessage = buildJsonImportMessage(jsonImportMode, result)
                 } else {
+                    snapshotBefore("import_replace_with_conflict")
                     applyImportedLessons(pendingImportLessons)
                     parseMessage = context.getString(R.string.import_confirmed_with_conflict_message, importSize)
                 }
@@ -1763,49 +2315,54 @@ fun MobileTimetableScreen() {
             parseMessage = context.getString(R.string.manual_conflict_cancel_message)
             persistSettings()
         },
-        editingLesson = editingLesson,
-        onDismissEditLesson = { editingLesson = null },
+        editingContext = editingContext,
+        onDismissEditLesson = { editingContext = null },
         onSaveEditLesson = { updatedLesson, scope ->
             applyLessonEdit(updatedLesson, scope)
-            editingLesson = null
+            editingContext = null
         },
-        onDeleteEditLesson = { lesson, scope ->
-            removeLesson(lesson, scope)
-            editingLesson = null
+        onDeleteEditLesson = { scope ->
+            removeLesson(scope)
+            editingContext = null
         },
         showRestoreConfirmDialog = showRestoreConfirmDialog,
-        pendingRestoreLessons = pendingRestoreLessons,
+        pendingRestoreLessons = pendingRestoreBaseLessons,
         pendingRestoreWarnings = pendingRestoreWarnings,
-        currentLessonsCount = lessons.size,
+        currentLessonsCount = baseLessons.size,
         onDismissRestore = {
             showRestoreConfirmDialog = false
-            pendingRestoreLessons = emptyList()
-            pendingRestoreWarnings = emptyList()
+            clearPendingRestoreState()
             parseMessage = context.getString(R.string.backup_restore_canceled_message)
             persistSettings()
         },
         onConfirmRestore = {
-            lessons = com.xtawa.classingtime.screen.applyImportedLessons(pendingRestoreLessons)
-            persistLessons()
+            snapshotBefore("restore_backup")
+            pendingRestoreWeekNumberMode?.let { weekNumberMode = it }
+            pendingRestoreSemesterWeekStartDate?.let { semesterWeekStartDate = it }
+            baseLessons = pendingRestoreBaseLessons
+            scheduleExceptions = pendingRestoreExceptions
+            rebuildScheduleProjection()
+            persistScheduleState()
             warnings = pendingRestoreWarnings
-            parseMessage = context.getString(R.string.backup_restore_success_message, pendingRestoreLessons.size)
-            pendingRestoreLessons = emptyList()
-            pendingRestoreWarnings = emptyList()
+            parseMessage = context.getString(R.string.backup_restore_success_message, pendingRestoreBaseLessons.size)
+            clearPendingRestoreState()
             showRestoreConfirmDialog = false
             persistSettings()
         },
         onCancelRestore = {
             showRestoreConfirmDialog = false
-            pendingRestoreLessons = emptyList()
-            pendingRestoreWarnings = emptyList()
+            clearPendingRestoreState()
             parseMessage = context.getString(R.string.backup_restore_canceled_message)
             persistSettings()
         },
         showClearAllConfirmDialog = showClearAllConfirmDialog,
         onDismissClearAll = { showClearAllConfirmDialog = false },
         onConfirmClearAll = {
-            lessons = emptyList()
-            persistLessons()
+            snapshotBefore("clear_all")
+            baseLessons = emptyList()
+            scheduleExceptions = emptyList()
+            rebuildScheduleProjection()
+            persistScheduleState()
             showClearAllConfirmDialog = false
             parseMessage = context.getString(R.string.danger_clear_success_message)
             persistSettings()
@@ -1850,7 +2407,7 @@ private fun MobileContentDestination.transitionDepth(): Int {
             ScheduleSubview.Timetable -> 0
             ScheduleSubview.Calendar -> 50
         }
-        MobileLayer.Heatmap -> 100
+        MobileLayer.Dashboard -> 100
         MobileLayer.Settings -> when (settingsPage) {
             SettingsPage.Main -> 200
             SettingsPage.Import -> if (showImportJsonPromptPage) 400 else 300

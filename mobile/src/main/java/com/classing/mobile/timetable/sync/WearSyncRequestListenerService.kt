@@ -9,6 +9,11 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import com.xtawa.classingtime.data.MobilePrefsStore
+import com.xtawa.classingtime.screen.WeekNumberMode
+import com.xtawa.classingtime.screen.buildFlattenedEffectiveLessons
+import com.xtawa.classingtime.screen.toLessonUi
+import com.xtawa.classingtime.screen.toPersistedLesson
+import com.xtawa.classingtime.screen.toUi
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.ZoneId
@@ -56,10 +61,17 @@ class WearSyncRequestListenerService : WearableListenerService() {
 
     private fun triggerMobileSyncPublish() {
         serviceScope.launch {
-            val lessons = MobilePrefsStore.loadLessons(applicationContext)
+            val state = MobilePrefsStore.loadTimetableState(applicationContext)
             val settings = MobilePrefsStore.loadSettings(applicationContext)
+            val weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
             val semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }
                 .getOrDefault(LocalDate.now())
+            val lessons = buildFlattenedEffectiveLessons(
+                baseLessons = state.baseLessons.map { it.toLessonUi() },
+                exceptions = state.exceptions.map { it.toUi() },
+                weekNumberMode = weekNumberMode,
+                semesterWeekStartDate = semesterWeekStartDate,
+            ).map { it.toPersistedLesson() }
             val result = WearDataLayerSyncPublisher.publishLessonsSnapshot(
                 context = applicationContext,
                 lessons = lessons,

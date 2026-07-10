@@ -9,7 +9,12 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.xtawa.classingtime.data.MobilePrefsStore
+import com.xtawa.classingtime.screen.WeekNumberMode
+import com.xtawa.classingtime.screen.buildEffectiveOccurrencesForDateRange
+import com.xtawa.classingtime.screen.toLessonUi
+import com.xtawa.classingtime.screen.toUi
 import java.time.LocalDateTime
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 object ReminderScheduler {
@@ -55,9 +60,20 @@ object ReminderScheduler {
             return
         }
 
-        val lessons = MobilePrefsStore.loadLessons(context)
+        val state = MobilePrefsStore.loadTimetableState(context)
+        val settings = MobilePrefsStore.loadSettings(context)
+        val weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
+        val semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
+        val occurrences = buildEffectiveOccurrencesForDateRange(
+            baseLessons = state.baseLessons.map { it.toLessonUi() },
+            exceptions = state.exceptions.map { it.toUi() },
+            startDate = LocalDate.now(),
+            endDate = LocalDate.now().plusDays(7),
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        )
         val next = ReminderRuntime.findNextAlarm(
-            lessons = lessons,
+            occurrences = occurrences,
             now = LocalDateTime.now(),
             leadMinutes = reminderMinutes.coerceIn(5, 60),
         )

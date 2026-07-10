@@ -14,7 +14,6 @@ import com.classing.shared.sync.CloudSyncContracts
 import com.classing.wear.timetable.core.AppContainer
 import com.classing.wear.timetable.core.navigation.AppNavGraph
 import com.classing.wear.timetable.domain.repository.UserPreferences
-import com.classing.wear.timetable.sync.WearCloudSyncCoordinator
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import androidx.compose.material3.MaterialTheme
 import kotlinx.coroutines.delay
@@ -28,9 +27,9 @@ fun ClassingTimetableApp(appContainer: AppContainer) {
         .collectAsStateWithLifecycle(initialValue = UserPreferences())
 
     LaunchedEffect(Unit) {
+        context.deleteSharedPreferences("wear_cloud_config")
         appContainer.wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_APP_START)
         appContainer.wearCloudBridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_APP_START)
-        WearCloudSyncCoordinator.pullFromCloud(context, CloudSyncContracts.TRIGGER_APP_START, force = true)
     }
 
     LaunchedEffect(lifecycleOwner) {
@@ -38,7 +37,6 @@ fun ClassingTimetableApp(appContainer: AppContainer) {
             if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 appContainer.wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_FOREGROUND_TICK)
                 appContainer.wearCloudBridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_FOREGROUND_TICK)
-                WearCloudSyncCoordinator.pullFromCloud(context, CloudSyncContracts.TRIGGER_FOREGROUND_TICK, force = false)
             }
             delay(120_000L)
         }

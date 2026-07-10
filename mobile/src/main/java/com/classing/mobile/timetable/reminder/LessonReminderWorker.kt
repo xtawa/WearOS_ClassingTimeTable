@@ -15,7 +15,12 @@ import androidx.work.WorkerParameters
 import com.xtawa.classingtime.MainActivity
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.data.MobilePrefsStore
+import com.xtawa.classingtime.screen.WeekNumberMode
+import com.xtawa.classingtime.screen.buildEffectiveOccurrencesForDateRange
+import com.xtawa.classingtime.screen.toLessonUi
+import com.xtawa.classingtime.screen.toUi
 import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
@@ -28,8 +33,18 @@ class LessonReminderWorker(
         val settings = MobilePrefsStore.loadSettings(applicationContext)
         if (!settings.reminderEnabled) return Result.success()
 
-        val lessons = MobilePrefsStore.loadLessons(applicationContext)
-        if (lessons.isEmpty()) return Result.success()
+        val state = MobilePrefsStore.loadTimetableState(applicationContext)
+        val weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
+        val semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
+        val occurrences = buildEffectiveOccurrencesForDateRange(
+            baseLessons = state.baseLessons.map { it.toLessonUi() },
+            exceptions = state.exceptions.map { it.toUi() },
+            startDate = LocalDate.now(),
+            endDate = LocalDate.now(),
+            weekNumberMode = weekNumberMode,
+            semesterWeekStartDate = semesterWeekStartDate,
+        )
+        if (occurrences.isEmpty()) return Result.success()
 
         val now = LocalDateTime.now()
         val nowMinute = now.hour * 60 + now.minute
@@ -60,20 +75,21 @@ class LessonReminderWorker(
             sent += 1
         }
 
-        val today = now.dayOfWeek.value
-        lessons.filter { it.dayOfWeek == today }.forEach { lesson ->
-            val triggerMinute = lesson.startMinute - settings.reminderMinutes
+        occurrences.forEach { occurrence ->
+            val lesson = occurrence.lesson
+            val startMinute = lesson.startTime.hour * 60 + lesson.startTime.minute
+            val triggerMinute = startMinute - settings.reminderMinutes
             if (triggerMinute < 0) return@forEach
 
             val inWindow = nowMinute in triggerMinute until (triggerMinute + CHECK_WINDOW_MINUTES)
-            val uniqueKey = ReminderRuntime.reminderKey(now.toLocalDate(), lesson.id, lesson.startMinute)
+            val uniqueKey = ReminderRuntime.reminderKey(occurrence.date, lesson.id, startMinute)
             if (!inWindow || alreadyNotified.contains(uniqueKey)) return@forEach
 
             postNotification(
                 context = applicationContext,
                 title = lesson.title,
                 location = lesson.location,
-                startMinute = lesson.startMinute,
+                startMinute = startMinute,
                 leadMinutes = settings.reminderMinutes,
                 notificationId = uniqueKey.hashCode(),
             )

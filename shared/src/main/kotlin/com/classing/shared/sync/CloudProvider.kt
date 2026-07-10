@@ -3,6 +3,7 @@ package com.classing.shared.sync
 enum class CloudProvider(val wireValue: String) {
     WEBDAV("WEBDAV"),
     GOOGLE_DRIVE("GOOGLE_DRIVE"),
+    OFFICIAL("OFFICIAL"),
     ;
 
     companion object {

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Watch
@@ -69,7 +71,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.classing.shared.sync.SyncChangeLogEntry
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.data.AccountSummary
+import com.xtawa.classingtime.data.DailyBriefingChannel
+import com.xtawa.classingtime.data.MembershipSummary
+import com.xtawa.classingtime.data.OfficialSyncFrequency
+import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -89,6 +97,8 @@ import kotlinx.coroutines.withContext
 internal fun SettingsLayer(
     contentPadding: PaddingValues,
     showWeekend: Boolean,
+    onOpenAccountPage: () -> Unit,
+    onOpenDailyBriefingPage: () -> Unit,
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
@@ -139,6 +149,20 @@ internal fun SettingsLayer(
             title = stringResource(R.string.settings_reminder_keepalive_title),
             desc = stringResource(R.string.settings_reminder_keepalive_desc),
             onClick = onOpenReminderKeepAlivePage,
+        )
+
+        SettingsEntryCard(
+            icon = Icons.Filled.Person,
+            title = "Account",
+            desc = "Login, register, redeem membership code, and reset password.",
+            onClick = onOpenAccountPage,
+        )
+
+        SettingsEntryCard(
+            icon = Icons.Filled.MailOutline,
+            title = "Daily Briefing",
+            desc = "Configure app notifications and email briefing schedule.",
+            onClick = onOpenDailyBriefingPage,
         )
 
         SettingsEntryCard(
@@ -248,10 +272,14 @@ internal fun SecondaryPageHeader(
 @Composable
 internal fun BackupRestoreSettingsPage(
     contentPadding: PaddingValues,
+    snapshots: List<ScheduleStateSnapshot>,
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
+    onUndoLatest: () -> Unit,
+    onRestoreSnapshot: (String) -> Unit,
 ) {
+    val latestSnapshot = snapshots.maxByOrNull { it.createdAt }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -318,6 +346,73 @@ internal fun BackupRestoreSettingsPage(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_snapshot_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = latestSnapshot?.let {
+                        val createdAt = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(it.createdAt), java.time.ZoneId.systemDefault())
+                            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+                        stringResource(R.string.settings_snapshot_latest, createdAt, it.reason)
+                    } ?: stringResource(R.string.settings_snapshot_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = onUndoLatest,
+                    enabled = latestSnapshot != null,
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(stringResource(R.string.settings_snapshot_undo_button))
+                }
+                if (snapshots.isNotEmpty()) {
+                    snapshots.sortedByDescending { it.createdAt }.take(5).forEach { snapshot ->
+                        val createdAt = LocalDateTime.ofInstant(
+                            java.time.Instant.ofEpochMilli(snapshot.createdAt),
+                            java.time.ZoneId.systemDefault(),
+                        ).format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        text = snapshot.reason,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                    Text(
+                                        text = createdAt,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                TextButton(onClick = { onRestoreSnapshot(snapshot.id) }) {
+                                    Text(stringResource(R.string.settings_snapshot_restore_button))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -687,10 +782,34 @@ internal fun ReminderKeepAliveSettingsPage(
 @Composable
 internal fun SyncCommunicationSettingsPage(
     contentPadding: PaddingValues,
+    localScheduleUpdatedAt: Long,
+    lastSnapshotAt: Long,
+    wearConnectionMessage: String,
+    wearPushStatus: String,
+    wearAckStatus: String,
+    cloudSummary: String,
+    cloudSyncStatus: String,
+    configPushStatus: String,
     onBack: () -> Unit,
     onOpenWearCommunicationPage: () -> Unit,
     onOpenCloudSyncPage: () -> Unit,
+    onRefreshWearStatus: () -> Unit,
+    onSyncWearNow: () -> Unit,
+    onTestCloudConnection: () -> Unit,
+    onSyncCloudNow: () -> Unit,
 ) {
+    val localUpdatedText = if (localScheduleUpdatedAt > 0L) {
+        LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(localScheduleUpdatedAt), java.time.ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+    } else {
+        stringResource(R.string.settings_cloud_sync_never)
+    }
+    val snapshotText = if (lastSnapshotAt > 0L) {
+        LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(lastSnapshotAt), java.time.ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
+    } else {
+        stringResource(R.string.settings_snapshot_empty)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -740,6 +859,69 @@ internal fun SyncCommunicationSettingsPage(
             desc = stringResource(R.string.settings_cloud_sync_desc),
             onClick = onOpenCloudSyncPage,
         )
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_local_updated, localUpdatedText),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_snapshot_updated, snapshotText),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_wear_connection, wearConnectionMessage),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_wear_push, wearPushStatus.ifBlank { "-" }),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_wear_ack, wearAckStatus.ifBlank { "-" }),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_cloud_summary, cloudSummary),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_cloud_result, cloudSyncStatus.ifBlank { "-" }),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_sync_diag_config_push, configPushStatus.ifBlank { "-" }),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRefreshWearStatus, shape = RoundedCornerShape(999.dp)) {
+                        Text(stringResource(R.string.settings_sync_diag_refresh_wear))
+                    }
+                    Button(onClick = onSyncWearNow, shape = RoundedCornerShape(999.dp)) {
+                        Text(stringResource(R.string.settings_sync_diag_sync_wear))
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onTestCloudConnection, shape = RoundedCornerShape(999.dp)) {
+                        Text(stringResource(R.string.settings_sync_diag_test_cloud))
+                    }
+                    Button(onClick = onSyncCloudNow, shape = RoundedCornerShape(999.dp)) {
+                        Text(stringResource(R.string.settings_sync_diag_sync_cloud))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -915,10 +1097,15 @@ internal fun CloudSyncSettingsPage(
     driveConnected: Boolean,
     driveTokenExpireText: String,
     showDriveCnWarning: Boolean,
+    accountSummary: AccountSummary,
+    membershipSummary: MembershipSummary,
+    officialSyncFrequency: OfficialSyncFrequency,
+    syncScopes: Set<SyncScope>,
     syncStatus: String,
     configPushStatus: String,
     lastSyncedAt: Long,
     syncInProgress: Boolean,
+    recentChanges: List<SyncChangeLogEntry>,
     onBack: () -> Unit,
     onProviderChange: (CloudProviderUi) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
@@ -927,11 +1114,16 @@ internal fun CloudSyncSettingsPage(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onDriveFileNameChange: (String) -> Unit,
+    onOfficialSyncFrequencyChange: (OfficialSyncFrequency) -> Unit,
+    onSyncScopeToggle: (SyncScope, Boolean) -> Unit,
+    onOpenAccountPage: () -> Unit,
     onConnectDrive: () -> Unit,
     onDisconnectDrive: () -> Unit,
     onSave: () -> Unit,
     onTestConnection: () -> Unit,
     onSyncNow: () -> Unit,
+    onRestoreChange: (String, String) -> Unit,
+    canRestoreChange: (String, String) -> Boolean,
 ) {
     val lastSyncedText = if (lastSyncedAt > 0L) {
         LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(lastSyncedAt), java.time.ZoneId.systemDefault())
@@ -939,6 +1131,8 @@ internal fun CloudSyncSettingsPage(
     } else {
         stringResource(R.string.settings_cloud_sync_never)
     }
+    val officialLocked = provider == CloudProviderUi.OFFICIAL && !membershipSummary.isMember
+    val officialBaseUrl = "https://api-classing.underflo.ink"
 
     Column(
         modifier = Modifier
@@ -979,9 +1173,13 @@ internal fun CloudSyncSettingsPage(
         SettingsSwitchCard(
             icon = Icons.Filled.CloudSync,
             title = stringResource(R.string.settings_cloud_sync_enable_title),
-            desc = stringResource(R.string.settings_cloud_sync_enable_desc),
+            desc = if (officialLocked) {
+                "Official cloud requires an active membership."
+            } else {
+                stringResource(R.string.settings_cloud_sync_enable_desc)
+            },
             checked = enabled,
-            onCheckedChange = onEnabledChange,
+            onCheckedChange = { if (!officialLocked) onEnabledChange(it) },
         )
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
@@ -1006,6 +1204,11 @@ internal fun CloudSyncSettingsPage(
                         selected = provider == CloudProviderUi.GOOGLE_DRIVE,
                         onClick = { onProviderChange(CloudProviderUi.GOOGLE_DRIVE) },
                         label = { Text("Google Drive") },
+                    )
+                    FilterChip(
+                        selected = provider == CloudProviderUi.OFFICIAL,
+                        onClick = { onProviderChange(CloudProviderUi.OFFICIAL) },
+                        label = { Text("Official") },
                     )
                 }
                 if (provider == CloudProviderUi.WEBDAV) {
@@ -1037,7 +1240,7 @@ internal fun CloudSyncSettingsPage(
                         label = { Text(stringResource(R.string.settings_cloud_sync_password)) },
                         singleLine = true,
                     )
-                } else {
+                } else if (provider == CloudProviderUi.GOOGLE_DRIVE) {
                     OutlinedTextField(
                         value = driveFileName,
                         onValueChange = onDriveFileNameChange,
@@ -1085,18 +1288,98 @@ internal fun CloudSyncSettingsPage(
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
+                } else {
+                    OutlinedTextField(
+                        value = officialBaseUrl,
+                        onValueChange = {},
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Official API") },
+                        singleLine = true,
+                        readOnly = true,
+                    )
+                    Text(
+                        text = if (accountSummary.userId.isBlank()) {
+                            "Login on this phone to use official cloud sync."
+                        } else if (membershipSummary.isMember) {
+                            "Membership active. Official cloud is available."
+                        } else {
+                            "Membership inactive. Upgrade to unlock official cloud sync."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (officialLocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (officialLocked) {
+                        Button(
+                            onClick = onOpenAccountPage,
+                            shape = RoundedCornerShape(999.dp),
+                        ) {
+                            Text("Open account")
+                        }
+                    }
+                }
+                Text(
+                    text = "Sync scopes",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                SyncScope.entries.forEach { scope ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = when (scope) {
+                                SyncScope.TIMETABLE -> "Timetable"
+                                SyncScope.MOBILE_SETTINGS -> "Mobile settings"
+                                SyncScope.WEAR_SETTINGS -> "Wear settings"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Switch(
+                            checked = syncScopes.contains(scope),
+                            onCheckedChange = { onSyncScopeToggle(scope, it) },
+                        )
+                    }
+                }
+                if (provider == CloudProviderUi.OFFICIAL) {
+                    Text(
+                        text = "Auto sync frequency",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OfficialSyncFrequency.entries.forEach { frequency ->
+                            FilterChip(
+                                selected = officialSyncFrequency == frequency,
+                                onClick = { if (!officialLocked) onOfficialSyncFrequencyChange(frequency) },
+                                enabled = !officialLocked,
+                                label = {
+                                    Text(
+                                        when (frequency) {
+                                            OfficialSyncFrequency.MANUAL_ONLY -> "Manual"
+                                            OfficialSyncFrequency.EVERY_15_MIN -> "15m"
+                                            OfficialSyncFrequency.EVERY_30_MIN -> "30m"
+                                            OfficialSyncFrequency.EVERY_1_HOUR -> "1h"
+                                            OfficialSyncFrequency.EVERY_3_HOURS -> "3h"
+                                        },
+                                    )
+                                },
+                            )
+                        }
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = onSave,
-                        enabled = !syncInProgress,
+                        enabled = !syncInProgress && !officialLocked,
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(stringResource(R.string.settings_cloud_sync_save))
                     }
                     Button(
                         onClick = onTestConnection,
-                        enabled = !syncInProgress,
+                        enabled = !syncInProgress && !officialLocked,
                         shape = RoundedCornerShape(999.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
@@ -1133,7 +1416,7 @@ internal fun CloudSyncSettingsPage(
                 }
                 Button(
                     onClick = onSyncNow,
-                    enabled = !syncInProgress,
+                    enabled = !syncInProgress && !officialLocked,
                     shape = RoundedCornerShape(999.dp),
                 ) {
                     Text(
@@ -1143,6 +1426,258 @@ internal fun CloudSyncSettingsPage(
                             stringResource(R.string.settings_cloud_sync_sync_now)
                         },
                     )
+                }
+            }
+        }
+        if (recentChanges.isNotEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(stringResource(R.string.settings_cloud_sync_recent_changes), style = MaterialTheme.typography.titleSmall)
+                    recentChanges.take(20).forEach { change ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                "${change.action}: ${change.recordId}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Text(
+                                "${change.domain} · ${change.version.deviceId.take(8)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (change.action == "deleted" && canRestoreChange(change.domain, change.recordId)) {
+                                TextButton(onClick = { onRestoreChange(change.domain, change.recordId) }) {
+                                    Text(stringResource(R.string.settings_cloud_sync_restore))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun AccountSettingsPage(
+    contentPadding: PaddingValues,
+    accountSummary: AccountSummary,
+    membershipSummary: MembershipSummary,
+    statusMessage: String,
+    busy: Boolean,
+    onBack: () -> Unit,
+    onLogin: (String, String) -> Unit,
+    onRegister: (String, String, String) -> Unit,
+    onLogout: () -> Unit,
+    onRefresh: () -> Unit,
+    onRedeem: (String) -> Unit,
+    onRequestPasswordReset: (String) -> Unit,
+    onConfirmPasswordReset: (String, String) -> Unit,
+) {
+    var identifier by remember { mutableStateOf(accountSummary.identifier) }
+    var password by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf(accountSummary.username) }
+    var email by remember { mutableStateOf(accountSummary.email) }
+    var registerPassword by remember { mutableStateOf("") }
+    var redeemCode by remember { mutableStateOf("") }
+    var resetEmail by remember { mutableStateOf(accountSummary.email) }
+    var resetToken by remember { mutableStateOf("") }
+    var resetNewPassword by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = "Account",
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_about_back_button),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Account status", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (accountSummary.userId.isBlank()) {
+                        "Not logged in"
+                    } else {
+                        "Signed in as ${accountSummary.username.ifBlank { accountSummary.identifier }}"
+                    },
+                )
+                Text(
+                    "Membership: ${if (membershipSummary.isMember) membershipSummary.tier else "FREE"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (membershipSummary.expiresAt > 0L) {
+                    Text(
+                        "Expires at: ${
+                            LocalDateTime.ofInstant(
+                                java.time.Instant.ofEpochMilli(membershipSummary.expiresAt),
+                                java.time.ZoneId.systemDefault(),
+                            ).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                        }",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (statusMessage.isNotBlank()) {
+                    Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRefresh, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
+                        Text("Refresh")
+                    }
+                    Button(onClick = onLogout, enabled = !busy && accountSummary.userId.isNotBlank(), shape = RoundedCornerShape(999.dp)) {
+                        Text("Logout")
+                    }
+                }
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Login", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(value = identifier, onValueChange = { identifier = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Email or username") }, singleLine = true)
+                OutlinedTextField(value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true)
+                Button(onClick = { onLogin(identifier, password) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
+                    Text("Login")
+                }
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Register", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(value = username, onValueChange = { username = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true)
+                OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true)
+                OutlinedTextField(value = registerPassword, onValueChange = { registerPassword = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true)
+                Button(onClick = { onRegister(username, email, registerPassword) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
+                    Text("Register")
+                }
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Membership code", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Redeem code") }, singleLine = true)
+                Button(
+                    onClick = { onRedeem(redeemCode) },
+                    enabled = !busy && accountSummary.userId.isNotBlank(),
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text("Redeem")
+                }
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Password reset", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(value = resetEmail, onValueChange = { resetEmail = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reset email") }, singleLine = true)
+                Button(onClick = { onRequestPasswordReset(resetEmail) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
+                    Text("Send reset email")
+                }
+                OutlinedTextField(value = resetToken, onValueChange = { resetToken = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reset token") }, singleLine = true)
+                OutlinedTextField(value = resetNewPassword, onValueChange = { resetNewPassword = it }, modifier = Modifier.fillMaxWidth(), label = { Text("New password") }, singleLine = true)
+                Button(onClick = { onConfirmPasswordReset(resetToken, resetNewPassword) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
+                    Text("Confirm reset")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DailyBriefingSettingsPage(
+    contentPadding: PaddingValues,
+    enabled: Boolean,
+    channel: DailyBriefingChannel,
+    time: String,
+    loggedIn: Boolean,
+    statusMessage: String,
+    onBack: () -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onChannelChange: (DailyBriefingChannel) -> Unit,
+    onTimeChange: (String) -> Unit,
+    onSave: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = "Daily Briefing",
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_about_back_button),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        SettingsSwitchCard(
+            icon = Icons.Filled.MailOutline,
+            title = "Enable daily briefing",
+            desc = "App notification can work offline; email requires login.",
+            checked = enabled,
+            onCheckedChange = onEnabledChange,
+        )
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("Channel", fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DailyBriefingChannel.entries.forEach { item ->
+                        val disabled = !loggedIn && item == DailyBriefingChannel.EMAIL
+                        FilterChip(
+                            selected = channel == item,
+                            onClick = { if (!disabled) onChannelChange(item) },
+                            label = { Text(item.name) },
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = time,
+                    onValueChange = onTimeChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Time (HH:mm)") },
+                    singleLine = true,
+                )
+                if (statusMessage.isNotBlank()) {
+                    Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Button(onClick = onSave, shape = RoundedCornerShape(999.dp)) {
+                    Text("Save briefing")
                 }
             }
         }
@@ -1345,6 +1880,11 @@ internal fun AboutLayer(
                     )
                 }
             }
+            Text(
+                text = "ICP 备案号：待补充",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
 

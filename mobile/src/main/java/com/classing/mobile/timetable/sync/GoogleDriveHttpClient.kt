@@ -14,16 +14,15 @@ class CloudAuthExpiredException(message: String) : IOException(message)
 class GoogleDriveHttpClient {
     suspend fun testConnection(config: CloudRuntimeConfig): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val fileName = config.driveFileName.ifBlank { "classing_sync.json" }
-            findFileId(config.driveAccessToken, fileName)
+            readJson(config).getOrThrow()
             Unit
         }
     }
 
-    suspend fun readJson(config: CloudRuntimeConfig): Result<String?> = withContext(Dispatchers.IO) {
+    suspend fun readJson(config: CloudRuntimeConfig): Result<CloudReadResult> = withContext(Dispatchers.IO) {
         runCatching {
             val fileName = config.driveFileName.ifBlank { "classing_sync.json" }
-            val fileId = findFileId(config.driveAccessToken, fileName) ?: return@runCatching null
+            val fileId = findFileId(config.driveAccessToken, fileName) ?: return@runCatching CloudReadResult(null, null)
             val connection = openConnection(
                 url = "https://www.googleapis.com/drive/v3/files/$fileId?alt=media",
                 method = "GET",
@@ -32,7 +31,7 @@ class GoogleDriveHttpClient {
             val code = connection.responseCode
             if (code == HttpURLConnection.HTTP_NOT_FOUND) {
                 connection.disconnect()
-                return@runCatching null
+                return@runCatching CloudReadResult(null, null)
             }
             if (code == HttpURLConnection.HTTP_UNAUTHORIZED) {
                 val error = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
@@ -45,16 +44,23 @@ class GoogleDriveHttpClient {
                 error("Drive GET failed with HTTP $code ${error.take(180)}")
             }
             val payload = connection.inputStream.bufferedReader().use { it.readText() }
+            val etag = connection.getHeaderField("ETag")?.trim()?.ifBlank { null }
             connection.disconnect()
-            payload
+            if (etag == null) throw UnsafeCloudStorageException("Google Drive did not provide a resource ETag")
+            CloudReadResult(payload, encodeVersion(fileId, etag))
         }
     }
 
-    suspend fun writeJson(config: CloudRuntimeConfig, payload: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun writeJson(config: CloudRuntimeConfig, payload: String, expectedVersion: String?): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val fileName = config.driveFileName.ifBlank { "classing_sync.json" }
             val accessToken = config.driveAccessToken
-            val fileId = findFileId(accessToken, fileName) ?: createFile(accessToken, fileName)
+            if (expectedVersion == null) {
+                if (findFileId(accessToken, fileName) != null) throw CloudWriteConflictException()
+                createFileWithContent(accessToken, fileName, payload)
+                return@runCatching
+            }
+            val (fileId, etag) = decodeVersion(expectedVersion)
             val connection = openConnection(
                 url = "https://www.googleapis.com/upload/drive/v3/files/$fileId?uploadType=media",
                 method = "PATCH",
@@ -62,8 +68,13 @@ class GoogleDriveHttpClient {
             )
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connection.setRequestProperty("If-Match", etag)
             connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_PRECON_FAILED || code == HttpURLConnection.HTTP_CONFLICT) {
+                connection.disconnect()
+                throw CloudWriteConflictException()
+            }
             if (code == HttpURLConnection.HTTP_UNAUTHORIZED) {
                 val error = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
                 connection.disconnect()
@@ -79,7 +90,8 @@ class GoogleDriveHttpClient {
     }
 
     private fun findFileId(accessToken: String, fileName: String): String? {
-        val query = "name='$fileName' and trashed=false"
+        val escapedName = fileName.replace("'", "\\'")
+        val query = "name='$escapedName' and trashed=false"
         val url = Uri.Builder()
             .scheme("https")
             .authority("www.googleapis.com")
@@ -104,21 +116,33 @@ class GoogleDriveHttpClient {
         val text = connection.inputStream.bufferedReader().use { it.readText() }
         connection.disconnect()
         val files = JSONObject(text).optJSONArray("files") ?: JSONArray()
-        return files.optJSONObject(0)?.optString("id").orEmpty().ifBlank { null }
+        return buildList {
+            for (index in 0 until files.length()) {
+                files.optJSONObject(index)?.optString("id")?.takeIf { it.isNotBlank() }?.let(::add)
+            }
+        }.minOrNull()
     }
 
-    private fun createFile(accessToken: String, fileName: String): String {
+    private fun createFileWithContent(accessToken: String, fileName: String, payload: String) {
+        val boundary = "classing-${System.currentTimeMillis()}"
         val connection = openConnection(
-            url = "https://www.googleapis.com/drive/v3/files?fields=id",
+            url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
             method = "POST",
             accessToken = accessToken,
         )
         connection.doOutput = true
-        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        val body = JSONObject()
+        connection.setRequestProperty("Content-Type", "multipart/related; boundary=$boundary")
+        val metadata = JSONObject()
             .put("name", fileName)
             .put("parents", JSONArray().put("appDataFolder"))
             .toString()
+        val body = buildString {
+            append("--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n")
+            append(metadata)
+            append("\r\n--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n")
+            append(payload)
+            append("\r\n--$boundary--\r\n")
+        }
         connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
         val code = connection.responseCode
         if (code == HttpURLConnection.HTTP_UNAUTHORIZED) {
@@ -131,9 +155,16 @@ class GoogleDriveHttpClient {
             connection.disconnect()
             error("Drive CREATE failed with HTTP $code ${error.take(180)}")
         }
-        val text = connection.inputStream.bufferedReader().use { it.readText() }
+        connection.inputStream.close()
         connection.disconnect()
-        return JSONObject(text).optString("id").ifBlank { throw IOException("Drive create file missing id") }
+    }
+
+    private fun encodeVersion(fileId: String, etag: String): String = "$fileId\n$etag"
+
+    private fun decodeVersion(raw: String): Pair<String, String> {
+        val separator = raw.indexOf('\n')
+        if (separator <= 0 || separator == raw.lastIndex) throw UnsafeCloudStorageException("Invalid Drive version token")
+        return raw.substring(0, separator) to raw.substring(separator + 1)
     }
 
     private fun openConnection(url: String, method: String, accessToken: String): HttpURLConnection {

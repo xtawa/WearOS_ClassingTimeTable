@@ -47,6 +47,7 @@ import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+import org.json.JSONObject
 
 @Composable
 fun SettingsScreen(
@@ -67,12 +68,16 @@ fun SettingsScreen(
     onForceFullSync: () -> Unit,
     onConsumeSyncFeedback: () -> Unit,
     onOpenCloudSync: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val syncSuccessText = stringResource(R.string.settings_sync_feedback_success)
     val syncCheckPhoneText = stringResource(R.string.settings_sync_feedback_check_phone)
+    val cloudSnapshot = remember(context) {
+        loadWearCloudSummary(context)
+    }
 
     LaunchedEffect(state.syncFeedback) {
         val feedback = state.syncFeedback ?: return@LaunchedEffect
@@ -297,7 +302,55 @@ fun SettingsScreen(
                 Text(stringResource(R.string.settings_cloud_sync_title))
             }
         }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text("Phone account", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Login: ${if (cloudSnapshot.loggedIn) "Yes" else "No"}\nMember: ${if (cloudSnapshot.isMember) cloudSnapshot.membershipTier else "FREE"}\nProvider: ${cloudSnapshot.provider.ifBlank { "-" }}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+        item {
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onOpenAbout()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text("About")
+            }
+        }
     }
+}
+
+private data class WearCloudSummary(
+    val loggedIn: Boolean = false,
+    val isMember: Boolean = false,
+    val membershipTier: String = "FREE",
+    val provider: String = "",
+)
+
+private fun loadWearCloudSummary(context: Context): WearCloudSummary {
+    val prefs = context.getSharedPreferences("wear_mobile_sync", Context.MODE_PRIVATE)
+    val json = runCatching {
+        JSONObject(prefs.getString("last_phone_cloud_snapshot", "").orEmpty())
+    }.getOrNull() ?: return WearCloudSummary()
+    return WearCloudSummary(
+        loggedIn = json.optBoolean("loggedIn", false),
+        isMember = json.optBoolean("isMember", false),
+        membershipTier = json.optString("membershipTier", "FREE"),
+        provider = json.optString("cloudProvider"),
+    )
 }
 
 @Composable
@@ -504,6 +557,7 @@ private fun SettingsScreenPreview() {
             onForceFullSync = {},
             onConsumeSyncFeedback = {},
             onOpenCloudSync = {},
+            onOpenAbout = {},
         )
     }
 }

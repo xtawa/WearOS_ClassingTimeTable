@@ -32,7 +32,7 @@ class NextClassSnapshotProvider(
     suspend fun loadSnapshot(): NextClassSnapshot {
         val today = appContainer.timeProvider.today()
         val preferences = appContainer.settingsRepository.observePreferences().first()
-        val next = appContainer.scheduleRepository.observeNextLesson(today).first()
+        val next = appContainer.scheduleRepository.observeNextLesson().first()
         val lesson = next.lesson
 
         if (lesson == null) {

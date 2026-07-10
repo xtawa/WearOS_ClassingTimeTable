@@ -1,4 +1,4 @@
-﻿package com.xtawa.classingtime.screen
+package com.xtawa.classingtime.screen
 
 import android.Manifest
 import android.content.Context
@@ -185,9 +185,23 @@ internal fun formatLessonSummary(lesson: LessonUi, context: Context): String {
     )
 }
 
-internal fun buildScheduleBackupJson(lessons: List<LessonUi>, zoneId: ZoneId): String {
+internal data class BackupRestorePayload(
+    val baseLessons: List<LessonUi>,
+    val exceptions: List<ScheduleExceptionUi>,
+    val weekNumberMode: WeekNumberMode?,
+    val semesterWeekStartDate: LocalDate?,
+    val warnings: List<String>,
+)
+
+internal fun buildScheduleBackupJson(
+    baseLessons: List<LessonUi>,
+    exceptions: List<ScheduleExceptionUi>,
+    zoneId: ZoneId,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+): String {
     val courses = JSONArray()
-    lessons.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }).forEach { lesson ->
+    baseLessons.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }).forEach { lesson ->
         courses.put(
             JSONObject()
                 .put("id", lesson.id)
@@ -203,13 +217,121 @@ internal fun buildScheduleBackupJson(lessons: List<LessonUi>, zoneId: ZoneId): S
                 .put("weekParity", lesson.weekParity.name),
         )
     }
+    val exceptionArray = JSONArray()
+    exceptions.sortedWith(compareBy<ScheduleExceptionUi> { it.date }.thenBy { it.startTime }).forEach { exception ->
+        exceptionArray.put(
+            JSONObject()
+                .put("id", exception.id)
+                .put("lessonId", exception.lessonId ?: "")
+                .put("type", exception.type.name)
+                .put("date", exception.date.toString())
+                .put("title", exception.title ?: "")
+                .put("teacher", exception.teacher ?: "")
+                .put("location", exception.location ?: "")
+                .put("note", exception.note ?: "")
+                .put("dayOfWeek", exception.dayOfWeek?.value ?: JSONObject.NULL)
+                .put("startTime", exception.startTime?.format(clockFormatter) ?: JSONObject.NULL)
+                .put("endTime", exception.endTime?.format(clockFormatter) ?: JSONObject.NULL),
+        )
+    }
     return JSONObject()
-        .put("format", "classingtime_backup_v1")
-        .put("version", 1)
+        .put("format", "classingtime_backup_v2")
+        .put("version", 2)
         .put("timezone", zoneId.id)
         .put("generatedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+        .put("weekNumberMode", weekNumberMode.name)
+        .put("semesterWeekStartDate", semesterWeekStartDate.toString())
         .put("courses", courses)
+        .put("exceptions", exceptionArray)
         .toString(2)
+}
+
+internal fun parseScheduleBackupJson(raw: String, context: Context): BackupRestorePayload? {
+    val root = runCatching { JSONObject(raw) }.getOrNull()
+    if (root == null) {
+        val fallback = parseJsonToLessons(raw, context)
+        return if (fallback.lessons.isEmpty()) {
+            null
+        } else {
+            BackupRestorePayload(
+                baseLessons = fallback.lessons,
+                exceptions = emptyList(),
+                weekNumberMode = null,
+                semesterWeekStartDate = null,
+                warnings = fallback.warnings,
+            )
+        }
+    }
+
+    val format = root.optString("format")
+    if (format == "classingtime_backup_v2") {
+        val baseLessons = parseJsonToLessons(root.optJSONArray("courses")?.toString().orEmpty(), context).lessons
+        val exceptions = parseBackupExceptions(root.optJSONArray("exceptions"))
+        return BackupRestorePayload(
+            baseLessons = baseLessons,
+            exceptions = exceptions,
+            weekNumberMode = WeekNumberMode.entries.firstOrNull {
+                it.name == root.optString("weekNumberMode").trim().uppercase()
+            },
+            semesterWeekStartDate = runCatching {
+                LocalDate.parse(root.optString("semesterWeekStartDate"))
+            }.getOrNull(),
+            warnings = emptyList(),
+        )
+    }
+
+    val courses = root.optJSONArray("courses")
+    if (format == "classingtime_backup_v1" && courses != null) {
+        val parsed = parseJsonToLessons(courses.toString(), context)
+        return BackupRestorePayload(
+            baseLessons = parsed.lessons,
+            exceptions = emptyList(),
+            weekNumberMode = null,
+            semesterWeekStartDate = null,
+            warnings = parsed.warnings,
+        )
+    }
+
+    val fallback = parseJsonToLessons(raw, context)
+    return if (fallback.lessons.isEmpty()) {
+        null
+    } else {
+        BackupRestorePayload(
+            baseLessons = fallback.lessons,
+            exceptions = emptyList(),
+            weekNumberMode = null,
+            semesterWeekStartDate = null,
+            warnings = fallback.warnings,
+        )
+    }
+}
+
+private fun parseBackupExceptions(raw: JSONArray?): List<ScheduleExceptionUi> {
+    if (raw == null) return emptyList()
+    return buildList {
+        for (index in 0 until raw.length()) {
+            val item = raw.optJSONObject(index) ?: continue
+            val id = item.optString("id")
+            val type = item.optString("type")
+            val date = runCatching { LocalDate.parse(item.optString("date")) }.getOrNull()
+            if (id.isBlank() || type.isBlank() || date == null) continue
+            add(
+                ScheduleExceptionUi(
+                    id = id,
+                    lessonId = item.optString("lessonId").ifBlank { null },
+                    type = ScheduleExceptionKind.fromRaw(type),
+                    date = date,
+                    title = item.optString("title").ifBlank { null },
+                    teacher = item.optString("teacher").ifBlank { null },
+                    location = item.optString("location").ifBlank { null },
+                    note = item.optString("note").ifBlank { null },
+                    dayOfWeek = item.optInt("dayOfWeek").takeIf { it in 1..7 }?.let { DayOfWeek.of(it) },
+                    startTime = parseFlexibleTime(item.optString("startTime").ifBlank { null }),
+                    endTime = parseFlexibleTime(item.optString("endTime").ifBlank { null }),
+                ),
+            )
+        }
+    }
 }
 
 internal suspend fun fetchConnectedWearNodeCount(context: Context): Result<Int> {

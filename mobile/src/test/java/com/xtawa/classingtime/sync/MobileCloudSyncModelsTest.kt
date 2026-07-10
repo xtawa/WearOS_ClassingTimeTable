@@ -2,12 +2,20 @@ package com.xtawa.classingtime.sync
 
 import com.classing.shared.sync.SyncSource
 import com.xtawa.classingtime.data.MobileSettings
+import com.xtawa.classingtime.data.PersistedLesson
+import com.xtawa.classingtime.data.PersistedScheduleException
+import com.xtawa.classingtime.data.PersistedScheduleSnapshot
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class MobileCloudSyncModelsTest {
     @Test
     fun fromJson_falls_back_to_updatedAt_when_revision_missing() {
@@ -55,7 +63,7 @@ class MobileCloudSyncModelsTest {
     }
 
     @Test
-    fun toCloudConfigPayload_includesProviderAndDriveFields() {
+    fun toCloudConfigPayload_excludesCredentials() {
         val settings = MobileSettings(
             showWeekend = true,
             reminderEnabled = false,
@@ -88,8 +96,9 @@ class MobileCloudSyncModelsTest {
 
         assertEquals("GOOGLE_DRIVE", payload.optString("cloudProvider"))
         assertEquals("classing_sync.json", payload.optString("driveFileName"))
-        assertEquals("token-123", payload.optString("driveAccessToken"))
-        assertEquals(12345L, payload.optLong("driveAccessTokenExpireAt"))
+        assertTrue(!payload.has("password"))
+        assertTrue(!payload.has("driveAccessToken"))
+        assertTrue(!payload.has("driveAccessTokenExpireAt"))
     }
 
     @Test
@@ -104,8 +113,154 @@ class MobileCloudSyncModelsTest {
             driveFileName = "classing_sync.json",
             driveAccessToken = "abc",
             driveAccessTokenExpireAt = System.currentTimeMillis() + 120_000L,
+            accountAccessToken = "",
+            officialMemberAuthorized = false,
         )
 
         assertTrue(config.isComplete())
+    }
+
+    @Test
+    fun cloudTimetable_roundTripsRawBaseLessonsAndExceptions() {
+        val snapshot = CloudTimetableSnapshot(
+            updatedAt = 100L,
+            revision = 100L,
+            source = SyncSource.PHONE_DIRECT,
+            weekNumberMode = "SEMESTER",
+            semesterWeekStartDate = "2026-03-02",
+            lessons = listOf(
+                PersistedLesson(
+                    id = "flattened-1",
+                    title = "Math",
+                    teacher = "Alice",
+                    location = "A101",
+                    note = null,
+                    dayOfWeek = 1,
+                    startMinute = 480,
+                    endMinute = 570,
+                    startWeek = 1,
+                    endWeek = 8,
+                    weekParity = "ALL",
+                ),
+            ),
+            baseLessons = listOf(
+                PersistedLesson(
+                    id = "base-1",
+                    title = "Math",
+                    teacher = "Alice",
+                    location = "A101",
+                    note = null,
+                    dayOfWeek = 1,
+                    startMinute = 480,
+                    endMinute = 570,
+                    startWeek = 1,
+                    endWeek = 16,
+                    weekParity = "ALL",
+                ),
+            ),
+            exceptions = listOf(
+                PersistedScheduleException(
+                    id = "cancel-1",
+                    lessonId = "base-1",
+                    type = "CANCEL",
+                    date = "2026-03-09",
+                    title = null,
+                    teacher = null,
+                    location = null,
+                    note = null,
+                    dayOfWeek = null,
+                    startMinute = null,
+                    endMinute = null,
+                ),
+            ),
+        )
+
+        val document = CloudDocument(
+            timetable = snapshot,
+            mobileSettings = null,
+            wearSettings = null,
+        )
+
+        val parsed = CloudDocument.fromJson(document.toJson())
+
+        assertNotNull(parsed.timetable)
+        assertEquals(1, parsed.timetable?.baseLessons?.size)
+        assertEquals("base-1", parsed.timetable?.baseLessons?.firstOrNull()?.id)
+        assertEquals(1, parsed.timetable?.exceptions?.size)
+        assertEquals("CANCEL", parsed.timetable?.exceptions?.firstOrNull()?.type)
+    }
+
+    @Test
+    fun toPersistedTimetableState_prefersRawStateWhenAvailable() {
+        val snapshot = CloudTimetableSnapshot(
+            updatedAt = 100L,
+            revision = 100L,
+            source = SyncSource.PHONE_DIRECT,
+            weekNumberMode = "SEMESTER",
+            semesterWeekStartDate = "2026-03-02",
+            lessons = listOf(
+                PersistedLesson(
+                    id = "flattened-1",
+                    title = "Math",
+                    teacher = null,
+                    location = null,
+                    note = null,
+                    dayOfWeek = 1,
+                    startMinute = 480,
+                    endMinute = 570,
+                    startWeek = 1,
+                    endWeek = 8,
+                    weekParity = "ALL",
+                ),
+            ),
+            baseLessons = listOf(
+                PersistedLesson(
+                    id = "base-1",
+                    title = "Math",
+                    teacher = null,
+                    location = null,
+                    note = null,
+                    dayOfWeek = 1,
+                    startMinute = 480,
+                    endMinute = 570,
+                    startWeek = 1,
+                    endWeek = 16,
+                    weekParity = "ALL",
+                ),
+            ),
+            exceptions = listOf(
+                PersistedScheduleException(
+                    id = "cancel-1",
+                    lessonId = "base-1",
+                    type = "CANCEL",
+                    date = "2026-03-09",
+                    title = null,
+                    teacher = null,
+                    location = null,
+                    note = null,
+                    dayOfWeek = null,
+                    startMinute = null,
+                    endMinute = null,
+                ),
+            ),
+        )
+
+        val state = snapshot.toPersistedTimetableState(
+            snapshots = listOf(
+                PersistedScheduleSnapshot(
+                    id = "snap-1",
+                    createdAt = 1L,
+                    reason = "test",
+                    weekNumberMode = "SEMESTER",
+                    semesterWeekStartDate = "2026-03-02",
+                    baseLessons = emptyList(),
+                    exceptions = emptyList(),
+                ),
+            ),
+        )
+
+        assertEquals("base-1", state.baseLessons.firstOrNull()?.id)
+        assertEquals("cancel-1", state.exceptions.firstOrNull()?.id)
+        assertEquals(1, state.snapshots.size)
     }
 }

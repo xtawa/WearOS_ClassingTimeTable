@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import com.xtawa.classingtime.screen.EffectiveLessonOccurrence
 import com.xtawa.classingtime.data.PersistedLesson
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -82,6 +83,32 @@ object ReminderRuntime {
                     )
                 }
             }
+        }
+        return candidates.minByOrNull { it.triggerAtMillis }
+    }
+
+    internal fun findNextAlarm(
+        occurrences: List<EffectiveLessonOccurrence>,
+        now: LocalDateTime,
+        leadMinutes: Int,
+    ): NextReminderAlarm? {
+        val currentMinute = now.hour * 60 + now.minute
+        val currentDay = now.toLocalDate()
+        val candidates = occurrences.mapNotNull { occurrence ->
+            val startMinute = occurrence.lesson.startTime.hour * 60 + occurrence.lesson.startTime.minute
+            val triggerMinute = startMinute - leadMinutes
+            if (triggerMinute < 0) return@mapNotNull null
+            if (occurrence.date == currentDay && triggerMinute <= currentMinute) return@mapNotNull null
+            val triggerTime = LocalTime.of(triggerMinute / 60, triggerMinute % 60)
+            val triggerAt = LocalDateTime.of(occurrence.date, triggerTime)
+            NextReminderAlarm(
+                triggerAtMillis = triggerAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                reminderKey = reminderKey(occurrence.date, occurrence.lesson.id, startMinute),
+                lessonId = occurrence.lesson.id,
+                title = occurrence.lesson.title,
+                location = occurrence.lesson.location,
+                startMinute = startMinute,
+            )
         }
         return candidates.minByOrNull { it.triggerAtMillis }
     }

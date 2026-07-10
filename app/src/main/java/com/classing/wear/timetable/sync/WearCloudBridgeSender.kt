@@ -9,6 +9,7 @@ import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 
@@ -19,10 +20,14 @@ class WearCloudBridgeSender(
     suspend fun publishWearSettingsSnapshot(trigger: String): Result<Int> {
         return runCatching {
             val updatedAt = System.currentTimeMillis()
+            val (deviceId, revision) = nextVersion()
             val snapshot = settingsRepository.exportWearSettingsSnapshot()
             val payload = JSONObject(snapshot)
+                .put(WearDataLayerContracts.KEY_FORMAT, "classing_wear_settings_v2")
+                .put(WearDataLayerContracts.KEY_DEVICE_ID, deviceId)
+                .put(WearDataLayerContracts.KEY_LOGICAL_COUNTER, revision)
                 .put(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
-                .put(WearDataLayerContracts.KEY_REVISION, updatedAt)
+                .put(WearDataLayerContracts.KEY_REVISION, revision)
                 .put(WearDataLayerContracts.KEY_SOURCE, SyncSource.WEAR_LOCAL.wireValue)
                 .put(WearDataLayerContracts.KEY_TRIGGER, trigger)
                 .toString()
@@ -30,7 +35,8 @@ class WearCloudBridgeSender(
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_WEAR_SETTINGS_SNAPSHOT).apply {
                 dataMap.putString(WearDataLayerContracts.KEY_SETTINGS_PAYLOAD, payload)
                 dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
-                dataMap.putLong(WearDataLayerContracts.KEY_REVISION, updatedAt)
+                dataMap.putLong(WearDataLayerContracts.KEY_REVISION, revision)
+                dataMap.putString(WearDataLayerContracts.KEY_DEVICE_ID, deviceId)
                 dataMap.putString(WearDataLayerContracts.KEY_SOURCE, SyncSource.WEAR_LOCAL.wireValue)
                 dataMap.putString(WearDataLayerContracts.KEY_TRIGGER, trigger)
             }.asPutDataRequest().setUrgent()
@@ -40,7 +46,7 @@ class WearCloudBridgeSender(
                 context = context,
                 domain = SyncDomain.WEAR_SETTINGS,
                 stamp = SyncStamp(
-                    revision = updatedAt,
+                    revision = revision,
                     source = SyncSource.WEAR_LOCAL,
                     appliedAt = updatedAt,
                 ),
@@ -49,7 +55,7 @@ class WearCloudBridgeSender(
                 context = context,
                 domain = SyncDomain.WEAR_SETTINGS,
                 decision = "applied",
-                reason = "local wear settings published revision=$updatedAt",
+                reason = "local wear settings published revision=$revision",
             )
 
             val nodes = Wearable.getNodeClient(context).connectedNodes.await()
@@ -65,27 +71,22 @@ class WearCloudBridgeSender(
         }
     }
 
-    suspend fun requestPhoneCloudSync(trigger: String, wearCloudSnapshot: WearCloudConfig? = null): Result<Int> {
+    private fun nextVersion(): Pair<String, Long> {
+        val prefs = context.getSharedPreferences("wear_sync_identity", Context.MODE_PRIVATE)
+        val id = prefs.getString("device_id", null)?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString("device_id", it).commit()
+        }
+        val counter = maxOf(prefs.getLong("logical_counter", 0L), System.currentTimeMillis()) + 1L
+        prefs.edit().putLong("logical_counter", counter).commit()
+        return id to counter
+    }
+
+    suspend fun requestPhoneCloudSync(trigger: String): Result<Int> {
         return runCatching {
             val requestedAt = System.currentTimeMillis()
             val payloadObject = JSONObject()
                 .put(WearDataLayerContracts.KEY_TRIGGER, trigger)
                 .put(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
-            wearCloudSnapshot?.let {
-                val snapshot = JSONObject()
-                    .put("enabled", it.enabled)
-                    .put(WearDataLayerContracts.KEY_CLOUD_PROVIDER, it.provider.wireValue)
-                    .put("serverUrl", it.serverUrl)
-                    .put("remotePath", it.remotePath)
-                    .put("username", it.username)
-                    .put("password", it.password)
-                    .put(WearDataLayerContracts.KEY_DRIVE_FILE_NAME, it.driveFileName)
-                    .put(WearDataLayerContracts.KEY_DRIVE_ACCESS_TOKEN, it.driveAccessToken)
-                    .put(WearDataLayerContracts.KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, it.driveAccessTokenExpireAt)
-                payloadObject.put(WearDataLayerContracts.KEY_WEAR_CLOUD_SNAPSHOT, snapshot)
-                // Backward compatible key for older mobile builds.
-                payloadObject.put(WearDataLayerContracts.KEY_WEAR_WEBDAV_SNAPSHOT, JSONObject(snapshot.toString()))
-            }
             val payload = payloadObject
                 .toString()
                 .toByteArray(StandardCharsets.UTF_8)

@@ -366,4 +366,27 @@
     <string name="reminder_notification_title">上課提醒：%1$s</string>
     <string name="reminder_notification_body_with_location">%1$d 分鐘後開始 · %2$s · %3$s</string>
     <string name="reminder_notification_body_no_location">%1$d 分鐘後開始 · %2$s</string>
+    <string name="dashboard_desc">快速查看今天安排、最忙的一天，以及每週課程熱力分布。</string>
+    <string name="dashboard_summary_title">Dashboard 概覽</string>
+    <string name="dashboard_total_count_title">可見課程</string>
+    <string name="dashboard_active_days_title">有課天數</string>
+    <string name="dashboard_today_remaining_count_title">今日剩餘</string>
+    <string name="dashboard_busiest_day_title">最忙的一天</string>
+    <string name="dashboard_busiest_day_empty">暫無</string>
+    <string name="dashboard_status_title">當前狀態</string>
+    <string name="dashboard_status_free">目前空閒</string>
+    <string name="dashboard_status_in_progress">正在上課：%1$s</string>
+    <string name="dashboard_status_next">今天下一節：%1$s，%2$s 開始</string>
+    <string name="dashboard_status_done">今天課程已全部結束</string>
+    <string name="dashboard_today_remaining_title">今天剩餘課程</string>
+    <string name="dashboard_today_remaining_empty">今天沒有剩餘課程。</string>
+    <string name="dashboard_day_schedule_title">%1$s 課程安排（%2$d）</string>
+    <string name="dashboard_day_schedule_empty">%1$s 暫無課程安排。</string>
+    <string name="layer_heatmap">Dashboard</string>
+    <string name="heatmap_title">每週課程熱力圖</string>
+    <string name="heatmap_desc">按日期與時間段查看課程密度，顏色越深代表課程越多。</string>
+    <string name="heatmap_empty_title">暫無熱力圖資料</string>
+    <string name="heatmap_empty_desc">先匯入或新增課程，這裡才會顯示熱力圖。</string>
+    <string name="heatmap_legend_less">少</string>
+    <string name="heatmap_legend_more">多</string>
 </resources>

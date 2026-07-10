@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xtawa.classingtime.screen.MobileTimetableScreen
+import com.xtawa.classingtime.sync.CloudSyncEngine
 
 class MainActivity : ComponentActivity() {
     internal val sharedImportUri = mutableStateOf<Uri?>(null)
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CloudSyncEngine.schedulePeriodic(this)
         handleIncomingIntent(intent)
         setContent { MobileApp() }
     }
@@ -206,4 +208,3 @@ private fun stitchShapes(): Shapes {
         extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(40.dp),
     )
 }
-

@@ -106,19 +106,12 @@ internal fun WeekBoardLayer(
     contentPadding: PaddingValues,
     visibleDays: List<DayOfWeek>,
     lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    lessonsForDate: (LocalDate) -> List<LessonUi>,
+    hasSchedule: Boolean,
     onOpenCalendar: () -> Unit,
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
-    var now by remember { mutableStateOf(LocalDateTime.now()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            val current = LocalDateTime.now()
-            now = current
-            val delayMillis = ((60 - current.second) * 1_000L) - (current.nano / 1_000_000L)
-            delay(delayMillis.coerceAtLeast(1L))
-        }
-    }
     val todayDay = LocalDate.now().dayOfWeek
     val prioritizedDays = remember(visibleDays, todayDay) {
         if (visibleDays.contains(todayDay)) {
@@ -127,8 +120,6 @@ internal fun WeekBoardLayer(
             visibleDays
         }
     }
-    val nextLesson = remember(lessonsByDay, now) { resolveNextLessonForBoard(lessonsByDay, now) }
-    val hasSchedule = remember(lessonsByDay) { lessonsByDay.values.any { it.isNotEmpty() } }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -169,13 +160,6 @@ internal fun WeekBoardLayer(
                     label = { Text(text = stringResource(R.string.schedule_open_calendar)) },
                 )
             }
-        }
-        item {
-            MobileNextLessonHeroCard(
-                nextLesson = nextLesson,
-                hasSchedule = hasSchedule,
-                now = now,
-            )
         }
         items(prioritizedDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
@@ -372,21 +356,19 @@ private fun MobileNextLessonHeroCard(
     }
 }
 
-private data class UpcomingLessonForBoard(
+internal data class UpcomingLessonForBoard(
     val lesson: LessonUi,
     val startAt: LocalDateTime,
     val endAt: LocalDateTime,
 )
 
-private fun resolveNextLessonForBoard(
-    lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+internal fun resolveNextLessonForBoard(
+    lessonsForDate: (LocalDate) -> List<LessonUi>,
     now: LocalDateTime,
 ): UpcomingLessonForBoard? {
-    if (lessonsByDay.values.none { it.isNotEmpty() }) return null
-
     val candidates = (0..7).asSequence().flatMap { offset ->
         val date = now.toLocalDate().plusDays(offset.toLong())
-        lessonsByDay[date.dayOfWeek].orEmpty().asSequence().map { lesson ->
+        lessonsForDate(date).asSequence().map { lesson ->
             val startAt = LocalDateTime.of(date, lesson.startTime)
             val endAt = LocalDateTime.of(date, lesson.endTime)
             UpcomingLessonForBoard(lesson = lesson, startAt = startAt, endAt = endAt)

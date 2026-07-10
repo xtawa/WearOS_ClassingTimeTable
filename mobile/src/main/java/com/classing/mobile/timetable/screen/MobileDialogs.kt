@@ -27,10 +27,10 @@ internal fun MobileDialogs(
     onDismissManualConflict: () -> Unit,
     onConfirmManualConflict: (LessonUi) -> Unit,
     onCancelManualConflict: () -> Unit,
-    editingLesson: LessonUi?,
+    editingContext: LessonEditContext?,
     onDismissEditLesson: () -> Unit,
-    onSaveEditLesson: (LessonUi, ChangeScope) -> Unit,
-    onDeleteEditLesson: (LessonUi, ChangeScope) -> Unit,
+    onSaveEditLesson: (LessonUi, LessonEditScope) -> Unit,
+    onDeleteEditLesson: (LessonEditScope) -> Unit,
     showRestoreConfirmDialog: Boolean,
     pendingRestoreLessons: List<LessonUi>,
     pendingRestoreWarnings: List<String>,
@@ -127,13 +127,13 @@ internal fun MobileDialogs(
         )
     }
 
-    val targetLesson = editingLesson
-    if (targetLesson != null) {
+    val targetContext = editingContext
+    if (targetContext != null) {
         LessonEditDialog(
-            lesson = targetLesson,
+            editContext = targetContext,
             onDismiss = onDismissEditLesson,
             onSave = onSaveEditLesson,
-            onDelete = { scope -> onDeleteEditLesson(targetLesson, scope) },
+            onDelete = onDeleteEditLesson,
         )
     }
 

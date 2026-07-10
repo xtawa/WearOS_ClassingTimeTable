@@ -11,7 +11,7 @@ class MobileBackStateTest {
             layer = MobileLayer.Schedule,
             scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.Main,
-            previousMainLayer = MobileLayer.Heatmap,
+            previousMainLayer = MobileLayer.Dashboard,
             showImportJsonPromptPage = false,
         )
 
@@ -26,7 +26,7 @@ class MobileBackStateTest {
             layer = MobileLayer.Settings,
             scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.Import,
-            previousMainLayer = MobileLayer.Heatmap,
+            previousMainLayer = MobileLayer.Dashboard,
             showImportJsonPromptPage = true,
         )
 
@@ -42,7 +42,7 @@ class MobileBackStateTest {
             layer = MobileLayer.Settings,
             scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.CloudSync,
-            previousMainLayer = MobileLayer.Heatmap,
+            previousMainLayer = MobileLayer.Dashboard,
             showImportJsonPromptPage = false,
         )
 
@@ -58,13 +58,13 @@ class MobileBackStateTest {
             layer = MobileLayer.Settings,
             scheduleSubview = ScheduleSubview.Timetable,
             settingsPage = SettingsPage.Main,
-            previousMainLayer = MobileLayer.Heatmap,
+            previousMainLayer = MobileLayer.Dashboard,
             showImportJsonPromptPage = false,
         )
 
         val reduced = reduceBackState(state)
 
-        assertEquals(MobileLayer.Heatmap, reduced?.layer)
+        assertEquals(MobileLayer.Dashboard, reduced?.layer)
         assertEquals(SettingsPage.Main, reduced?.settingsPage)
     }
 
@@ -74,7 +74,7 @@ class MobileBackStateTest {
             layer = MobileLayer.Schedule,
             scheduleSubview = ScheduleSubview.Calendar,
             settingsPage = SettingsPage.Main,
-            previousMainLayer = MobileLayer.Heatmap,
+            previousMainLayer = MobileLayer.Dashboard,
             showImportJsonPromptPage = false,
         )
 
