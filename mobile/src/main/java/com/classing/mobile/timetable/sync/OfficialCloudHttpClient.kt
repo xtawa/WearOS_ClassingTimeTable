@@ -2,13 +2,15 @@ package com.xtawa.classingtime.sync
 
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class OfficialCloudHttpClient {
-    fun testConnection(config: CloudRuntimeConfig): Result<Unit> {
+    suspend fun testConnection(config: CloudRuntimeConfig): Result<Unit> {
         return request(config, "GET", "/api/v1/cloud/official/ping", null, null).map { Unit }
     }
 
-    fun readJson(config: CloudRuntimeConfig): Result<CloudReadResult> {
+    suspend fun readJson(config: CloudRuntimeConfig): Result<CloudReadResult> {
         return request(config, "GET", "/api/v1/cloud/official/document", null, null).map { response ->
             CloudReadResult(
                 payload = response.body.ifBlank { null },
@@ -17,7 +19,7 @@ class OfficialCloudHttpClient {
         }
     }
 
-    fun writeJson(config: CloudRuntimeConfig, payload: String, expectedVersion: String?): Result<Unit> {
+    suspend fun writeJson(config: CloudRuntimeConfig, payload: String, expectedVersion: String?): Result<Unit> {
         return request(
             config = config,
             method = "PUT",
@@ -32,14 +34,14 @@ class OfficialCloudHttpClient {
         val versionToken: String?,
     )
 
-    private fun request(
+    private suspend fun request(
         config: CloudRuntimeConfig,
         method: String,
         path: String,
         payload: String?,
         expectedVersion: String?,
-    ): Result<Response> {
-        return runCatching {
+    ): Result<Response> = withContext(Dispatchers.IO) {
+        runCatching {
             val connection = (URL(config.serverUrl + path).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = 10_000
@@ -68,8 +70,11 @@ class OfficialCloudHttpClient {
                 if (status == HttpURLConnection.HTTP_PRECON_FAILED || status == HttpURLConnection.HTTP_CONFLICT) {
                     throw CloudWriteConflictException()
                 }
-                if (status == HttpURLConnection.HTTP_UNAUTHORIZED || status == HttpURLConnection.HTTP_FORBIDDEN) {
+                if (status == HttpURLConnection.HTTP_UNAUTHORIZED) {
                     throw CloudAuthExpiredException("Official cloud authorization expired")
+                }
+                if (status == HttpURLConnection.HTTP_FORBIDDEN) {
+                    throw CloudPermissionDeniedException("Official cloud permission denied")
                 }
                 if (status !in 200..299) {
                     error("HTTP $status ${body.take(160)}".trim())

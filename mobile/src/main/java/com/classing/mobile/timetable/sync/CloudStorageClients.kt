@@ -10,6 +10,7 @@ data class CloudReadResult(val payload: String?, val versionToken: String?)
 
 class CloudWriteConflictException(message: String = "Cloud document changed during sync") : Exception(message)
 class UnsafeCloudStorageException(message: String) : Exception(message)
+class CloudPermissionDeniedException(message: String) : Exception(message)
 
 internal suspend fun <T> retryConditionalCloudUpdate(
     maxAttempts: Int,

@@ -50,7 +50,7 @@ object MobileCloudSyncCoordinator {
                 val message = when (config.provider) {
                     CloudProvider.WEBDAV -> "Cloud sync disabled or WebDAV config incomplete"
                     CloudProvider.GOOGLE_DRIVE -> "Cloud sync disabled or Google Drive auth missing/expired"
-                    CloudProvider.OFFICIAL -> "Official cloud requires login and active membership"
+                    CloudProvider.OFFICIAL -> "Official cloud requires login"
                 }
                 saveCloudStatus(context, current, message, startedAt)
                 return@runCatching CloudSyncOutcome(false, message, startedAt, 0)
@@ -62,7 +62,7 @@ object MobileCloudSyncCoordinator {
             var conflicts = 0
             var wrote = false
             retryConditionalCloudUpdate(MAX_CAS_ATTEMPTS) { _ ->
-                runWithDriveAuthRefreshRetry(context, runtimeConfig) { refreshedConfig ->
+                runWithAuthRefreshRetry(context, runtimeConfig) { refreshedConfig ->
                     runtimeConfig = refreshedConfig
                     val read = client.readJson(runtimeConfig).getOrElse { throw it }
                     val remote = parseRemote(context, read.payload, startedAt)
@@ -73,7 +73,7 @@ object MobileCloudSyncCoordinator {
 
                     if (read.payload != null && remote.isV2 && remote.document == merge.document) {
                         publishMergedScheduleToWear(context)
-                        return@runWithDriveAuthRefreshRetry
+                        return@runWithAuthRefreshRetry
                     }
 
                     val payload = MobileCloudSyncV2Json.toJson(merge.document).toString()
@@ -127,7 +127,7 @@ object MobileCloudSyncCoordinator {
         if (!config.isConfiguredForConnectionTest()) return Result.failure(IllegalStateException("Cloud config incomplete"))
         val client = storageClient(config.provider)
         return runCatching {
-            runWithDriveAuthRefreshRetry(context, config) { refreshedConfig ->
+            runWithAuthRefreshRetry(context, config) { refreshedConfig ->
                 config = refreshedConfig
                 client.testConnection(config).getOrElse { throw it }
             }
@@ -147,21 +147,26 @@ object MobileCloudSyncCoordinator {
             }
             val syncScopes = setOf(SyncScope.MOBILE_SETTINGS)
             val client = officialCloudStorageClient
+            var runtimeConfig = config
             var conflicts = 0
             var wrote = false
             retryConditionalCloudUpdate(MAX_CAS_ATTEMPTS) {
-                val read = client.readJson(config).getOrElse { throw it }
-                val remote = parseRemote(context, read.payload, startedAt)
-                val local = MobileCloudSyncV2Store.captureLocal(context, syncScopes = syncScopes)
-                val merge = CloudSyncV2Merger.merge(remote.document, local, System.currentTimeMillis())
-                conflicts += merge.conflicts
-                MobileCloudSyncV2Store.applyMerged(context, merge.document, syncScopes)
-                if (read.payload != null && remote.isV2 && remote.document == merge.document) {
-                    return@retryConditionalCloudUpdate Unit
+                runWithAuthRefreshRetry(context, runtimeConfig) { refreshedConfig ->
+                    runtimeConfig = refreshedConfig
+                    val read = client.readJson(runtimeConfig).getOrElse { throw it }
+                    val remote = parseRemote(context, read.payload, startedAt)
+                    val local = MobileCloudSyncV2Store.captureLocal(context, syncScopes = syncScopes)
+                    val merge = CloudSyncV2Merger.merge(remote.document, local, System.currentTimeMillis())
+                    conflicts += merge.conflicts
+                    MobileCloudSyncV2Store.applyMerged(context, merge.document, syncScopes)
+                    if (read.payload != null && remote.isV2 && remote.document == merge.document) {
+                        return@runWithAuthRefreshRetry
+                    }
+                    val payload = MobileCloudSyncV2Json.toJson(merge.document).toString()
+                    client.writeJson(runtimeConfig, payload, read.versionToken).getOrElse { throw it }
+                    wrote = true
                 }
-                val payload = MobileCloudSyncV2Json.toJson(merge.document).toString()
-                client.writeJson(config, payload, read.versionToken).getOrElse { throw it }
-                wrote = true
+                Unit
             }
             val finishedAt = System.currentTimeMillis()
             CloudSyncOutcome(
@@ -229,25 +234,10 @@ object MobileCloudSyncCoordinator {
         var driveTokenExpireAt = CloudCredentialStore.loadDriveAccessTokenExpireAt(context)
         var driveTokenRefreshAfterAt = CloudCredentialStore.loadDriveAccessTokenRefreshAfterAt(context)
         val provider = CloudProvider.fromWire(settings.cloudProvider)
-        var accountAccessToken = AuthCredentialStore.loadAccessToken(context)
-        if (provider == CloudProvider.OFFICIAL && !AuthCredentialStore.isAccessTokenUsable(context)) {
-            accountAccessToken = if (AuthCredentialStore.isRefreshTokenUsable(context)) {
-                AccountApiClient().refresh(AuthCredentialStore.loadRefreshToken(context)).getOrNull()?.let { session ->
-                    AuthCredentialStore.saveSession(
-                        context,
-                        session.accessToken,
-                        session.refreshToken,
-                        session.accessExpiresAt,
-                        session.refreshExpiresAt,
-                    )
-                    session.accessToken
-                }.orEmpty()
-            } else {
-                ""
-            }
-            if (accountAccessToken.isBlank()) {
-                AuthCredentialStore.clear(context)
-            }
+        val accountAccessToken = if (provider == CloudProvider.OFFICIAL) {
+            AccountSessionManager.ensureAccessToken(context).orEmpty()
+        } else {
+            AuthCredentialStore.loadAccessToken(context)
         }
         val needsRefresh = provider == CloudProvider.GOOGLE_DRIVE &&
             (driveToken.isBlank() || driveTokenExpireAt <= System.currentTimeMillis() + 60_000L || driveTokenRefreshAfterAt <= System.currentTimeMillis() + 60_000L)
@@ -273,26 +263,7 @@ object MobileCloudSyncCoordinator {
         context: Context,
         settings: MobileSettings,
     ): CloudRuntimeConfig {
-        var accessToken = AuthCredentialStore.loadAccessToken(context)
-        if (!AuthCredentialStore.isAccessTokenUsable(context)) {
-            accessToken = if (AuthCredentialStore.isRefreshTokenUsable(context)) {
-                AccountApiClient().refresh(AuthCredentialStore.loadRefreshToken(context)).getOrNull()?.let { session ->
-                    AuthCredentialStore.saveSession(
-                        context,
-                        session.accessToken,
-                        session.refreshToken,
-                        session.accessExpiresAt,
-                        session.refreshExpiresAt,
-                    )
-                    session.accessToken
-                }.orEmpty()
-            } else {
-                ""
-            }
-            if (accessToken.isBlank()) {
-                AuthCredentialStore.clear(context)
-            }
-        }
+        val accessToken = AccountSessionManager.ensureAccessToken(context).orEmpty()
         return CloudRuntimeConfig(
             provider = CloudProvider.OFFICIAL,
             enabled = true,
@@ -317,7 +288,7 @@ object MobileCloudSyncCoordinator {
         return (scopes - SyncScope.TIMETABLE).ifEmpty { setOf(SyncScope.MOBILE_SETTINGS) }
     }
 
-    private suspend fun runWithDriveAuthRefreshRetry(
+    private suspend fun runWithAuthRefreshRetry(
         context: Context,
         config: CloudRuntimeConfig,
         block: suspend (CloudRuntimeConfig) -> Unit,
@@ -325,10 +296,24 @@ object MobileCloudSyncCoordinator {
         try {
             block(config)
         } catch (error: CloudAuthExpiredException) {
-            if (config.provider != CloudProvider.GOOGLE_DRIVE) throw error
-            val refreshed = refreshDriveRuntimeConfigSilently(context, config) ?: throw error
+            val refreshed = when (config.provider) {
+                CloudProvider.GOOGLE_DRIVE -> refreshDriveRuntimeConfigSilently(context, config)
+                CloudProvider.OFFICIAL -> refreshOfficialRuntimeConfig(context, config)
+                CloudProvider.WEBDAV -> null
+            } ?: throw error
             block(refreshed)
         }
+    }
+
+    private suspend fun refreshOfficialRuntimeConfig(
+        context: Context,
+        config: CloudRuntimeConfig,
+    ): CloudRuntimeConfig? {
+        val accessToken = AccountSessionManager.refreshAfterUnauthorized(
+            context = context,
+            rejectedAccessToken = config.accountAccessToken,
+        ) ?: return null
+        return config.copy(accountAccessToken = accessToken)
     }
 
     private suspend fun refreshDriveRuntimeConfigSilently(

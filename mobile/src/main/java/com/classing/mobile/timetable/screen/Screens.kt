@@ -124,6 +124,7 @@ import com.xtawa.classingtime.sync.GoogleDriveAuthManager
 import com.xtawa.classingtime.sync.MobileCloudSyncV2Store
 import com.xtawa.classingtime.sync.MobileCloudSyncCoordinator
 import com.xtawa.classingtime.sync.AuthCredentialStore
+import com.xtawa.classingtime.sync.AccountSessionManager
 import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
@@ -503,26 +504,7 @@ fun MobileTimetableScreen() {
     }
 
     suspend fun ensureAccessToken(): String? {
-        if (AuthCredentialStore.isAccessTokenUsable(context)) {
-            return AuthCredentialStore.loadAccessToken(context)
-        }
-        if (!AuthCredentialStore.isRefreshTokenUsable(context)) {
-            AuthCredentialStore.clear(context)
-            return null
-        }
-        val refreshToken = AuthCredentialStore.loadRefreshToken(context)
-        val refreshed = accountApiClient.refresh(refreshToken).getOrElse {
-            AuthCredentialStore.clear(context)
-            return null
-        }
-        AuthCredentialStore.saveSession(
-            context,
-            refreshed.accessToken,
-            refreshed.refreshToken,
-            refreshed.accessExpiresAt,
-            refreshed.refreshExpiresAt,
-        )
-        return refreshed.accessToken
+        return AccountSessionManager.ensureAccessToken(context, accountApiClient)
     }
 
     suspend fun refreshAccountProfile(showStatus: Boolean = true): Boolean {
@@ -666,7 +648,7 @@ fun MobileTimetableScreen() {
         if (accountSummary.userId.isBlank()) return
         coroutineScope.launch {
             val result = MobileCloudSyncCoordinator.requestOfficialSettingsSync(context, trigger)
-            if (result.isSuccess) {
+            if (result.getOrNull()?.success == true) {
                 applySyncedSettingsState()
             }
         }
@@ -1000,7 +982,7 @@ fun MobileTimetableScreen() {
                 context = context,
                 trigger = CloudSyncContracts.TRIGGER_FOREGROUND_TICK,
             )
-            if (result.isSuccess) {
+            if (result.getOrNull()?.success == true) {
                 applySyncedSettingsState()
             }
             delay(5_000L)
