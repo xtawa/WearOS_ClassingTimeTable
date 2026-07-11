@@ -53,6 +53,22 @@ class MobileBackStateTest {
     }
 
     @Test
+    fun reduceBackState_returnsFromAccountChildPageToAccount() {
+        val state = MobileBackState(
+            layer = MobileLayer.Settings,
+            scheduleSubview = ScheduleSubview.Timetable,
+            settingsPage = SettingsPage.AccountPasswordReset,
+            previousMainLayer = MobileLayer.Dashboard,
+            showImportJsonPromptPage = false,
+        )
+
+        val reduced = reduceBackState(state)
+
+        assertEquals(MobileLayer.Settings, reduced?.layer)
+        assertEquals(SettingsPage.Account, reduced?.settingsPage)
+    }
+
+    @Test
     fun reduceBackState_returnsFromSettingsMainToPreviousMainLayer() {
         val state = MobileBackState(
             layer = MobileLayer.Settings,

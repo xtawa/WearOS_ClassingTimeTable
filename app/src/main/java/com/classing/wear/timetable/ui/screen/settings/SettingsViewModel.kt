@@ -74,13 +74,6 @@ class SettingsViewModel(
         }
     }
 
-    fun setExperimentalAccessibilityKeepAliveEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setExperimentalAccessibilityKeepAliveEnabled(enabled)
-            notifyCloudSettingsChanged()
-        }
-    }
-
     fun toggleAutoSync(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setAutoSync(enabled)

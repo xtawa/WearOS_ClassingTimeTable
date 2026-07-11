@@ -9,6 +9,7 @@ object CloudCredentialStore {
     private const val KEY_PASSWORD = "webdav_password"
     private const val KEY_DRIVE_ACCESS_TOKEN = "drive_access_token"
     private const val KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT = "drive_access_token_expire_at"
+    private const val KEY_DRIVE_ACCESS_TOKEN_REFRESH_AFTER_AT = "drive_access_token_refresh_after_at"
 
     private fun prefs(context: Context): android.content.SharedPreferences {
         val masterKey = MasterKey.Builder(context)
@@ -35,10 +36,16 @@ object CloudCredentialStore {
         prefs(context).edit().remove(KEY_PASSWORD).apply()
     }
 
-    fun saveDriveAccessToken(context: Context, token: String, expireAt: Long) {
+    fun saveDriveAccessToken(
+        context: Context,
+        token: String,
+        expireAt: Long,
+        refreshAfterAt: Long = expireAt,
+    ) {
         prefs(context).edit()
             .putString(KEY_DRIVE_ACCESS_TOKEN, token)
             .putLong(KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, expireAt)
+            .putLong(KEY_DRIVE_ACCESS_TOKEN_REFRESH_AFTER_AT, refreshAfterAt)
             .apply()
     }
 
@@ -50,10 +57,15 @@ object CloudCredentialStore {
         return prefs(context).getLong(KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT, 0L)
     }
 
+    fun loadDriveAccessTokenRefreshAfterAt(context: Context): Long {
+        return prefs(context).getLong(KEY_DRIVE_ACCESS_TOKEN_REFRESH_AFTER_AT, 0L)
+    }
+
     fun clearDriveAccessToken(context: Context) {
         prefs(context).edit()
             .remove(KEY_DRIVE_ACCESS_TOKEN)
             .remove(KEY_DRIVE_ACCESS_TOKEN_EXPIRE_AT)
+            .remove(KEY_DRIVE_ACCESS_TOKEN_REFRESH_AFTER_AT)
             .apply()
     }
 }

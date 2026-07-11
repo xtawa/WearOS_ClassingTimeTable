@@ -402,17 +402,17 @@ internal fun MobileOnboardingFlow(
                                         FilterChip(
                                             selected = cloudProvider == CloudProviderUi.WEBDAV,
                                             onClick = { cloudProvider = CloudProviderUi.WEBDAV },
-                                            label = { Text("WebDAV") },
+                    label = { Text(stringResource(R.string.cloud_provider_webdav)) },
                                         )
                                         FilterChip(
                                             selected = cloudProvider == CloudProviderUi.GOOGLE_DRIVE,
                                             onClick = { cloudProvider = CloudProviderUi.GOOGLE_DRIVE },
-                                            label = { Text("Google Drive") },
+                    label = { Text(stringResource(R.string.cloud_provider_google_drive)) },
                                         )
                                         FilterChip(
                                             selected = cloudProvider == CloudProviderUi.OFFICIAL,
                                             onClick = { cloudProvider = CloudProviderUi.OFFICIAL },
-                                            label = { Text("Official") },
+                    label = { Text(stringResource(R.string.cloud_provider_official)) },
                                         )
                                     }
                                     if (cloudProvider == CloudProviderUi.WEBDAV) {
@@ -457,7 +457,7 @@ internal fun MobileOnboardingFlow(
                                             value = "https://api-classing.underflo.ink",
                                             onValueChange = {},
                                             modifier = Modifier.fillMaxWidth(),
-                                            label = { Text("Official API") },
+                        label = { Text(stringResource(R.string.official_cloud_api_label)) },
                                             readOnly = true,
                                             singleLine = true,
                                         )

@@ -78,7 +78,6 @@ internal fun persistSettings(
     reminderEnabled: Boolean,
     reminderMinutes: Int,
     keepAliveLevel: KeepAliveLevel,
-    experimentalAccessibilityKeepAliveEnabled: Boolean,
     rawIcs: String,
     parseMessage: String,
     wearSyncMode: WearSyncMode,
@@ -102,13 +101,13 @@ internal fun persistSettings(
     dailyBriefingTime: String = "20:00",
     officialSyncFrequency: OfficialSyncFrequency = OfficialSyncFrequency.MANUAL_ONLY,
     syncScopes: Set<SyncScope> = SyncScope.entries.toSet(),
+    devModeEnabled: Boolean = false,
 ) {
     val settings = MobileSettings(
         showWeekend = showWeekend,
         reminderEnabled = reminderEnabled,
         reminderMinutes = reminderMinutes,
         keepAliveLevel = keepAliveLevel.name,
-        experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
         rawIcs = rawIcs,
         parseMessage = parseMessage,
         wearSyncMode = wearSyncMode.name,
@@ -132,6 +131,7 @@ internal fun persistSettings(
         dailyBriefingTime = dailyBriefingTime,
         officialSyncFrequency = officialSyncFrequency,
         syncScopes = syncScopes,
+        devModeEnabled = devModeEnabled,
     )
     MobilePrefsStore.saveSettings(
         context,

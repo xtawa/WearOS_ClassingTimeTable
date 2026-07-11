@@ -64,7 +64,6 @@ class MobilePrefsStoreOnboardingTest {
             reminderEnabled = false,
             reminderMinutes = 15,
             keepAliveLevel = "BALANCED",
-            experimentalAccessibilityKeepAliveEnabled = false,
             rawIcs = "",
             parseMessage = "",
             wearSyncMode = "AUTO",

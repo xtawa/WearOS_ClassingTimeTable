@@ -31,7 +31,6 @@ class DefaultSettingsRepository(
                 showWeekend = pref[KEY_SHOW_WEEKEND] ?: true,
                 showCompletedToday = pref[KEY_SHOW_COMPLETED_TODAY] ?: false,
                 keepAliveLevel = KeepAliveLevel.fromRaw(pref[KEY_KEEP_ALIVE_LEVEL]),
-                experimentalAccessibilityKeepAliveEnabled = pref[KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE] ?: false,
                 tileShowTeacher = pref[KEY_TILE_SHOW_TEACHER] ?: true,
                 tileShowLocation = pref[KEY_TILE_SHOW_LOCATION] ?: true,
                 tileShowCountdown = pref[KEY_TILE_SHOW_COUNTDOWN] ?: true,
@@ -51,10 +50,6 @@ class DefaultSettingsRepository(
             .put("showWeekend", pref[KEY_SHOW_WEEKEND] ?: true)
             .put("showCompletedToday", pref[KEY_SHOW_COMPLETED_TODAY] ?: false)
             .put("keepAliveLevel", pref[KEY_KEEP_ALIVE_LEVEL] ?: KeepAliveLevel.BALANCED.name)
-            .put(
-                "experimentalAccessibilityKeepAliveEnabled",
-                pref[KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE] ?: false,
-            )
             .put("tileShowTeacher", pref[KEY_TILE_SHOW_TEACHER] ?: true)
             .put("tileShowLocation", pref[KEY_TILE_SHOW_LOCATION] ?: true)
             .put("tileShowCountdown", pref[KEY_TILE_SHOW_COUNTDOWN] ?: true)
@@ -76,10 +71,6 @@ class DefaultSettingsRepository(
             it[KEY_KEEP_ALIVE_LEVEL] = KeepAliveLevel.fromRaw(
                 raw.optString("keepAliveLevel", it[KEY_KEEP_ALIVE_LEVEL] ?: KeepAliveLevel.BALANCED.name),
             ).name
-            it[KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE] = raw.optBoolean(
-                "experimentalAccessibilityKeepAliveEnabled",
-                it[KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE] ?: false,
-            )
             it[KEY_TILE_SHOW_TEACHER] = raw.optBoolean("tileShowTeacher", it[KEY_TILE_SHOW_TEACHER] ?: true)
             it[KEY_TILE_SHOW_LOCATION] = raw.optBoolean("tileShowLocation", it[KEY_TILE_SHOW_LOCATION] ?: true)
             it[KEY_TILE_SHOW_COUNTDOWN] = raw.optBoolean("tileShowCountdown", it[KEY_TILE_SHOW_COUNTDOWN] ?: true)
@@ -114,9 +105,6 @@ class DefaultSettingsRepository(
         dataStore.edit { it[KEY_KEEP_ALIVE_LEVEL] = level.name }
     }
 
-    override suspend fun setExperimentalAccessibilityKeepAliveEnabled(enabled: Boolean) {
-        dataStore.edit { it[KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE] = enabled }
-    }
 
     override suspend fun setTileShowTeacher(enabled: Boolean) {
         dataStore.edit { it[KEY_TILE_SHOW_TEACHER] = enabled }
@@ -155,7 +143,6 @@ class DefaultSettingsRepository(
         private val KEY_SHOW_WEEKEND = booleanPreferencesKey("show_weekend")
         private val KEY_SHOW_COMPLETED_TODAY = booleanPreferencesKey("show_completed_today")
         private val KEY_KEEP_ALIVE_LEVEL = stringPreferencesKey("keep_alive_level")
-        private val KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE = booleanPreferencesKey("experimental_accessibility_keep_alive")
         private val KEY_TILE_SHOW_TEACHER = booleanPreferencesKey("tile_show_teacher")
         private val KEY_TILE_SHOW_LOCATION = booleanPreferencesKey("tile_show_location")
         private val KEY_TILE_SHOW_COUNTDOWN = booleanPreferencesKey("tile_show_countdown")

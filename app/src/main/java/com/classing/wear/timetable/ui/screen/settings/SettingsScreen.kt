@@ -2,7 +2,6 @@ package com.classing.wear.timetable.ui.screen.settings
 
 import android.app.Activity
 import android.app.AlarmManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -64,7 +63,6 @@ fun SettingsScreen(
     onToggleTileShowCurrentWeek: (Boolean) -> Unit,
     onToggleTileShowTimeRange: (Boolean) -> Unit,
     onSetKeepAliveLevel: (KeepAliveLevel) -> Unit,
-    onToggleExperimentalAccessibilityKeepAlive: (Boolean) -> Unit,
     onForceFullSync: () -> Unit,
     onConsumeSyncFeedback: () -> Unit,
     onOpenCloudSync: () -> Unit,
@@ -166,7 +164,7 @@ fun SettingsScreen(
             )
         }
 
-        item { SettingsSectionTag(title = "保活") }
+        item { SettingsSectionTag(title = stringResource(R.string.settings_section_keep_alive)) }
         item {
             KeepAliveLevelCard(
                 level = state.preferences.keepAliveLevel,
@@ -177,23 +175,8 @@ fun SettingsScreen(
             )
         }
         item {
-            PreferenceSwitchCard(
-                title = "实验性无障碍保活",
-                checked = state.preferences.experimentalAccessibilityKeepAliveEnabled,
-                onCheckedChange = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExperimentalAccessibilityKeepAlive(it)
-                },
-            )
-        }
-        item {
             KeepAliveStatusCard(
                 context = context,
-                onOpenAccessibilitySettings = {
-                    context.startActivity(
-                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                    )
-                },
                 onOpenBatteryOptimizationSettings = {
                     val requestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                         data = Uri.parse("package:${context.packageName}")
@@ -310,9 +293,14 @@ fun SettingsScreen(
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Phone account", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_phone_account), style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        "Login: ${if (cloudSnapshot.loggedIn) "Yes" else "No"}\nMember: ${if (cloudSnapshot.isMember) cloudSnapshot.membershipTier else "FREE"}\nProvider: ${cloudSnapshot.provider.ifBlank { "-" }}",
+                        stringResource(
+                            R.string.settings_phone_account_summary,
+                            if (cloudSnapshot.loggedIn) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
+                            if (cloudSnapshot.isMember) cloudSnapshot.membershipTier else "FREE",
+                            cloudSnapshot.provider.ifBlank { "-" },
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -327,7 +315,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(999.dp),
             ) {
-                Text("About")
+                Text(stringResource(R.string.settings_about))
             }
         }
     }
@@ -405,15 +393,15 @@ private fun KeepAliveLevelCard(
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(text = "提醒保活强度", style = MaterialTheme.typography.bodyMedium)
+            Text(text = stringResource(R.string.settings_keepalive_level), style = MaterialTheme.typography.bodyMedium)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 listOf(
-                    KeepAliveLevel.ECO to "省电",
-                    KeepAliveLevel.BALANCED to "均衡",
-                    KeepAliveLevel.AGGRESSIVE to "增强",
+                    KeepAliveLevel.ECO to stringResource(R.string.settings_keepalive_eco),
+                    KeepAliveLevel.BALANCED to stringResource(R.string.settings_keepalive_balanced),
+                    KeepAliveLevel.AGGRESSIVE to stringResource(R.string.settings_keepalive_aggressive),
                 ).forEach { (itemLevel, label) ->
                     Button(
                         onClick = { onSetKeepAliveLevel(itemLevel) },
@@ -438,7 +426,6 @@ private fun KeepAliveLevelCard(
 @Composable
 private fun KeepAliveStatusCard(
     context: Context,
-    onOpenAccessibilitySettings: () -> Unit,
     onOpenBatteryOptimizationSettings: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
 ) {
@@ -451,15 +438,17 @@ private fun KeepAliveStatusCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "精确闹钟: ${if (status.canScheduleExactAlarm) "已授权" else "未授权"}",
+                text = stringResource(
+                    R.string.settings_exact_alarm_status,
+                    if (status.canScheduleExactAlarm) stringResource(R.string.settings_authorized) else stringResource(R.string.settings_not_authorized),
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = "电池优化白名单: ${if (status.ignoringBatteryOptimizations) "已加入" else "未加入"}",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                text = "无障碍服务: ${if (status.accessibilityEnabled) "已启用" else "未启用"}",
+                text = stringResource(
+                    R.string.settings_battery_optimization_status,
+                    if (status.ignoringBatteryOptimizations) stringResource(R.string.settings_enabled) else stringResource(R.string.settings_disabled),
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(
@@ -467,21 +456,13 @@ private fun KeepAliveStatusCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Button(
-                    onClick = onOpenAccessibilitySettings,
-                    shape = RoundedCornerShape(999.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) { Text("无障碍") }
-                Button(
                     onClick = onOpenBatteryOptimizationSettings,
                     shape = RoundedCornerShape(999.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     ),
-                ) { Text("电池") }
+                ) { Text(stringResource(R.string.settings_battery_short)) }
                 Button(
                     onClick = onOpenExactAlarmSettings,
                     shape = RoundedCornerShape(999.dp),
@@ -489,7 +470,7 @@ private fun KeepAliveStatusCard(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     ),
-                ) { Text("闹钟") }
+                ) { Text(stringResource(R.string.settings_alarm_short)) }
             }
         }
     }
@@ -509,26 +490,15 @@ private fun loadKeepAliveStatus(context: Context): KeepAliveStatus {
     }
     val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     val ignoringBattery = powerManager.isIgnoringBatteryOptimizations(context.packageName)
-    val enabledServices = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-    ).orEmpty()
-    val serviceName = ComponentName(
-        context.packageName,
-        "com.classing.wear.timetable.accessibility.KeepAliveAccessibilityService",
-    ).flattenToString()
-    val accessibilityEnabled = enabledServices.split(':').any { it.equals(serviceName, ignoreCase = true) }
     return KeepAliveStatus(
         canScheduleExactAlarm = canExact,
         ignoringBatteryOptimizations = ignoringBattery,
-        accessibilityEnabled = accessibilityEnabled,
     )
 }
 
 private data class KeepAliveStatus(
     val canScheduleExactAlarm: Boolean,
     val ignoringBatteryOptimizations: Boolean,
-    val accessibilityEnabled: Boolean,
 )
 
 @Preview(showBackground = true, widthDp = 220, heightDp = 220)
@@ -553,7 +523,6 @@ private fun SettingsScreenPreview() {
             onToggleTileShowCurrentWeek = {},
             onToggleTileShowTimeRange = {},
             onSetKeepAliveLevel = {},
-            onToggleExperimentalAccessibilityKeepAlive = {},
             onForceFullSync = {},
             onConsumeSyncFeedback = {},
             onOpenCloudSync = {},

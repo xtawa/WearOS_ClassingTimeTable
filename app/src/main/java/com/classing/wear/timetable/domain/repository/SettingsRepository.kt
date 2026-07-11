@@ -10,7 +10,6 @@ data class UserPreferences(
     val showWeekend: Boolean = true,
     val showCompletedToday: Boolean = false,
     val keepAliveLevel: KeepAliveLevel = KeepAliveLevel.BALANCED,
-    val experimentalAccessibilityKeepAliveEnabled: Boolean = false,
     val tileShowTeacher: Boolean = true,
     val tileShowLocation: Boolean = true,
     val tileShowCountdown: Boolean = true,
@@ -29,7 +28,6 @@ interface SettingsRepository {
     suspend fun setShowWeekend(enabled: Boolean)
     suspend fun setShowCompletedToday(enabled: Boolean)
     suspend fun setKeepAliveLevel(level: KeepAliveLevel)
-    suspend fun setExperimentalAccessibilityKeepAliveEnabled(enabled: Boolean)
     suspend fun setTileShowTeacher(enabled: Boolean)
     suspend fun setTileShowLocation(enabled: Boolean)
     suspend fun setTileShowCountdown(enabled: Boolean)

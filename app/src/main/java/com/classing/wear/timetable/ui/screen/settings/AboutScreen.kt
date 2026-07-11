@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -37,7 +38,7 @@ fun AboutScreen(
     ) {
         item {
             Text(
-                text = "About",
+                text = stringResource(R.string.settings_about),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -45,7 +46,7 @@ fun AboutScreen(
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Text(
-                    text = "${context.getString(R.string.app_name)}\nVersion $versionName\nICP 备案号：待补充",
+                text = stringResource(R.string.settings_about_summary, context.getString(R.string.app_name), versionName),
                     modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )

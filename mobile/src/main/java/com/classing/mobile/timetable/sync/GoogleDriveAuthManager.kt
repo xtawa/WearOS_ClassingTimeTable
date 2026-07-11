@@ -11,11 +11,13 @@ import kotlinx.coroutines.tasks.await
 data class DriveAccessToken(
     val token: String,
     val expireAt: Long,
+    val refreshAfterAt: Long,
 )
 
 object GoogleDriveAuthManager {
     const val DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata"
-    private const val DEFAULT_ACCESS_TOKEN_TTL_MS = 50 * 60 * 1000L
+    private const val DRIVE_AUTH_TTL_MS = 14L * 24L * 60L * 60L * 1000L
+    private const val ACCESS_TOKEN_REFRESH_AFTER_MS = 50L * 60L * 1000L
 
     fun buildAuthorizationRequest(): AuthorizationRequest {
         return AuthorizationRequest.builder()
@@ -45,7 +47,8 @@ object GoogleDriveAuthManager {
             }
             DriveAccessToken(
                 token = token,
-                expireAt = now + DEFAULT_ACCESS_TOKEN_TTL_MS,
+                expireAt = now + DRIVE_AUTH_TTL_MS,
+                refreshAfterAt = now + ACCESS_TOKEN_REFRESH_AFTER_MS,
             )
         }
     }

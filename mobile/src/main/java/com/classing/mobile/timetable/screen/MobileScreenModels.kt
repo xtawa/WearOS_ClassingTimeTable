@@ -22,6 +22,8 @@ internal enum class SettingsPage {
     WeekMode,
     ReminderKeepAlive,
     Account,
+    AccountRegister,
+    AccountPasswordReset,
     DailyBriefing,
     SyncCommunication,
     WearCommunication,
@@ -119,6 +121,9 @@ internal fun reduceBackState(state: MobileBackState): MobileBackState? {
     if (state.layer != MobileLayer.Settings) return null
     if (state.settingsPage == SettingsPage.Import && state.showImportJsonPromptPage) {
         return state.copy(showImportJsonPromptPage = false)
+    }
+    if (state.settingsPage == SettingsPage.AccountRegister || state.settingsPage == SettingsPage.AccountPasswordReset) {
+        return state.copy(settingsPage = SettingsPage.Account)
     }
     if (state.settingsPage != SettingsPage.Main) {
         return state.copy(

@@ -443,6 +443,7 @@ internal fun ImportLayer(
     val previewCollapseThreshold = 8
     var expandIcsPreview by remember(preview.size) { mutableStateOf(preview.size <= previewCollapseThreshold) }
     var expandJsonPreview by remember(jsonPreview.size) { mutableStateOf(jsonPreview.size <= previewCollapseThreshold) }
+    var expandedImportMethod by remember { mutableStateOf<ImportFocusMethod?>(initialFocusMethod ?: ImportFocusMethod.ICS) }
     val icsSectionRequester = remember { BringIntoViewRequester() }
     val jsonSectionRequester = remember { BringIntoViewRequester() }
     val manualSectionRequester = remember { BringIntoViewRequester() }
@@ -462,6 +463,7 @@ internal fun ImportLayer(
     LaunchedEffect(initialFocusMethod, showJsonPromptPage) {
         val focusMethod = initialFocusMethod ?: return@LaunchedEffect
         if (showJsonPromptPage) return@LaunchedEffect
+        expandedImportMethod = focusMethod
         when (focusMethod) {
             ImportFocusMethod.ICS -> icsSectionRequester.bringIntoView()
             ImportFocusMethod.JSON -> jsonSectionRequester.bringIntoView()
@@ -520,15 +522,27 @@ internal fun ImportLayer(
                 .bringIntoViewRequester(icsSectionRequester),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                Text(
-                    text = stringResource(R.string.import_method_ics),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable {
+                    expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.ICS) null else ImportFocusMethod.ICS
+                },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.import_method_ics),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(stringResource(if (expandedImportMethod == ImportFocusMethod.ICS) R.string.import_section_collapse else R.string.import_section_expand))
+                }
             }
+            if (expandedImportMethod == ImportFocusMethod.ICS) {
             OutlinedTextField(
                 value = rawIcs,
                 onValueChange = onRawChange,
@@ -621,6 +635,7 @@ internal fun ImportLayer(
                     }
                 }
             }
+            }
         }
 
         HorizontalDivider()
@@ -630,15 +645,27 @@ internal fun ImportLayer(
                 .bringIntoViewRequester(jsonSectionRequester),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                Text(
-                    text = stringResource(R.string.import_method_json),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable {
+                    expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.JSON) null else ImportFocusMethod.JSON
+                },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.import_method_json),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(stringResource(if (expandedImportMethod == ImportFocusMethod.JSON) R.string.import_section_collapse else R.string.import_section_expand))
+                }
             }
+            if (expandedImportMethod == ImportFocusMethod.JSON) {
             Text(stringResource(R.string.json_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Text(
                 text = stringResource(R.string.json_import_desc),
@@ -778,6 +805,7 @@ internal fun ImportLayer(
                     }
                 }
             }
+            }
         }
 
         HorizontalDivider()
@@ -787,15 +815,27 @@ internal fun ImportLayer(
                 .bringIntoViewRequester(manualSectionRequester),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                Text(
-                    text = stringResource(R.string.import_method_manual),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable {
+                    expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.MANUAL) null else ImportFocusMethod.MANUAL
+                },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.import_method_manual),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(stringResource(if (expandedImportMethod == ImportFocusMethod.MANUAL) R.string.import_section_collapse else R.string.import_section_expand))
+                }
             }
+            if (expandedImportMethod == ImportFocusMethod.MANUAL) {
             Text(stringResource(R.string.manual_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Text(
                 text = stringResource(R.string.manual_import_desc),
@@ -910,6 +950,7 @@ internal fun ImportLayer(
                 },
             ) {
                 Text(stringResource(R.string.manual_import_button))
+            }
             }
         }
     }

@@ -25,6 +25,7 @@ data class CloudRuntimeConfig(
     val driveFileName: String,
     val driveAccessToken: String,
     val driveAccessTokenExpireAt: Long,
+    val driveAccessTokenRefreshAfterAt: Long,
     val accountAccessToken: String,
     val officialMemberAuthorized: Boolean,
 ) {
@@ -46,10 +47,18 @@ data class CloudRuntimeConfig(
 
             CloudProvider.OFFICIAL -> {
                 serverUrl.startsWith("https://", ignoreCase = true) &&
-                    accountAccessToken.isNotBlank() &&
-                    officialMemberAuthorized
+                    accountAccessToken.isNotBlank()
             }
         }
+    }
+
+    fun isConfiguredForConnectionTest(): Boolean = when (provider) {
+        CloudProvider.WEBDAV -> serverUrl.startsWith("https://", ignoreCase = true) &&
+            remotePath.isNotBlank() && username.isNotBlank() && password.isNotBlank()
+        CloudProvider.GOOGLE_DRIVE -> driveFileName.isNotBlank() &&
+            driveAccessToken.isNotBlank() && !isDriveTokenExpired()
+        CloudProvider.OFFICIAL -> serverUrl.startsWith("https://", ignoreCase = true) &&
+            accountAccessToken.isNotBlank()
     }
 
     fun isDriveTokenExpired(
@@ -57,6 +66,13 @@ data class CloudRuntimeConfig(
         skewMs: Long = 60_000L,
     ): Boolean {
         return driveAccessTokenExpireAt <= 0L || now + skewMs >= driveAccessTokenExpireAt
+    }
+
+    fun shouldRefreshDriveAccessToken(
+        now: Long = System.currentTimeMillis(),
+        skewMs: Long = 60_000L,
+    ): Boolean {
+        return driveAccessTokenRefreshAfterAt <= 0L || now + skewMs >= driveAccessTokenRefreshAfterAt
     }
 }
 
@@ -314,6 +330,7 @@ fun MobileSettings.toCloudRuntimeConfig(
     password: String,
     driveAccessToken: String,
     driveAccessTokenExpireAt: Long,
+    driveAccessTokenRefreshAfterAt: Long,
     accountAccessToken: String,
 ): CloudRuntimeConfig {
     val provider = CloudProvider.fromWire(cloudProvider)
@@ -331,6 +348,7 @@ fun MobileSettings.toCloudRuntimeConfig(
         driveFileName = cloudDriveFileName.trim().ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME },
         driveAccessToken = driveAccessToken,
         driveAccessTokenExpireAt = driveAccessTokenExpireAt,
+        driveAccessTokenRefreshAfterAt = driveAccessTokenRefreshAfterAt,
         accountAccessToken = accountAccessToken,
         officialMemberAuthorized = membershipSummary.isMember,
     )
@@ -342,7 +360,6 @@ fun MobileSettings.toMobileSettingsSnapshotJson(): JSONObject {
         .put("reminderEnabled", reminderEnabled)
         .put("reminderMinutes", reminderMinutes)
         .put("keepAliveLevel", keepAliveLevel)
-        .put("experimentalAccessibilityKeepAliveEnabled", experimentalAccessibilityKeepAliveEnabled)
         .put("wearSyncMode", wearSyncMode)
         .put("weekNumberMode", weekNumberMode)
         .put("semesterWeekStartDate", semesterWeekStartDate)

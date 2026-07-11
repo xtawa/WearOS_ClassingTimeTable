@@ -150,4 +150,5 @@ object CloudSyncV2 {
     const val DOMAIN_MOBILE_SETTINGS = "mobile.settings"
     const val DOMAIN_WEAR_SETTINGS = "wear.settings"
     const val DOMAIN_CLOUD_CONFIG = "cloud.config"
+    const val DOMAIN_APP_COMMANDS = "app.commands"
 }

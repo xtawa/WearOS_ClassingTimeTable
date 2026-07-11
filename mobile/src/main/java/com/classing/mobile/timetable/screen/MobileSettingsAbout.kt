@@ -1,9 +1,13 @@
 package com.xtawa.classingtime.screen
 
 import android.app.DatePickerDialog
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.BorderStroke
@@ -43,6 +47,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
@@ -59,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -67,18 +73,29 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.classing.shared.sync.SyncChangeLogEntry
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.data.AccountSummary
 import com.xtawa.classingtime.data.DailyBriefingChannel
 import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.OfficialSyncFrequency
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
+import com.xtawa.classingtime.update.AppUpdateRelease
+import com.xtawa.classingtime.update.ClientRequestRateLimitException
+import com.xtawa.classingtime.update.InstallLaunchResult
+import com.xtawa.classingtime.update.UpdateApiClient
+import com.xtawa.classingtime.update.launchUpdateInstaller
+import java.io.File
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -87,27 +104,21 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.util.Locale
-import java.net.HttpURLConnection
-import java.net.URL
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 internal fun SettingsLayer(
     contentPadding: PaddingValues,
-    showWeekend: Boolean,
     onOpenAccountPage: () -> Unit,
-    onOpenDailyBriefingPage: () -> Unit,
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
     onOpenReminderKeepAlivePage: () -> Unit,
     onOpenSyncCommunicationPage: () -> Unit,
     onOpenAboutPage: () -> Unit,
-    onToggleWeekend: (Boolean) -> Unit,
     onClearAllSchedules: () -> Unit,
 ) {
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -136,12 +147,11 @@ internal fun SettingsLayer(
             )
         }
 
-        SettingsSwitchCard(
+        SettingsEntryCard(
             icon = Icons.Filled.CalendarMonth,
-            title = stringResource(R.string.settings_show_weekend_title),
-            desc = stringResource(R.string.settings_show_weekend_desc),
-            checked = showWeekend,
-            onCheckedChange = onToggleWeekend,
+            title = stringResource(R.string.settings_week_mode_title),
+            desc = stringResource(R.string.settings_week_mode_desc),
+            onClick = onOpenWeekModePage,
         )
 
         SettingsEntryCard(
@@ -153,16 +163,9 @@ internal fun SettingsLayer(
 
         SettingsEntryCard(
             icon = Icons.Filled.Person,
-            title = "Account",
-            desc = "Login, register, redeem membership code, and reset password.",
+            title = stringResource(R.string.settings_account_title),
+            desc = stringResource(R.string.settings_account_desc),
             onClick = onOpenAccountPage,
-        )
-
-        SettingsEntryCard(
-            icon = Icons.Filled.MailOutline,
-            title = "Daily Briefing",
-            desc = "Configure app notifications and email briefing schedule.",
-            onClick = onOpenDailyBriefingPage,
         )
 
         SettingsEntryCard(
@@ -180,17 +183,17 @@ internal fun SettingsLayer(
         )
 
         SettingsEntryCard(
-            icon = Icons.Filled.CalendarMonth,
-            title = stringResource(R.string.settings_week_mode_title),
-            desc = stringResource(R.string.settings_week_mode_desc),
-            onClick = onOpenWeekModePage,
-        )
-
-        SettingsEntryCard(
             icon = Icons.Filled.Sync,
             title = stringResource(R.string.settings_sync_comm_title),
             desc = stringResource(R.string.settings_sync_comm_desc),
             onClick = onOpenSyncCommunicationPage,
+        )
+
+        SettingsEntryCard(
+            icon = Icons.Filled.OpenInNew,
+            title = stringResource(R.string.settings_open_web_title),
+            desc = stringResource(R.string.settings_open_web_desc),
+            onClick = { uriHandler.openUri("https://api-classing.underflo.ink") },
         )
 
         SettingsEntryCard(
@@ -421,10 +424,12 @@ internal fun BackupRestoreSettingsPage(
 @Composable
 internal fun WeekModeSettingsPage(
     contentPadding: PaddingValues,
+    showWeekend: Boolean,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
     weekStartDay: DayOfWeek,
     onBack: () -> Unit,
+    onShowWeekendChange: (Boolean) -> Unit,
     onWeekNumberModeChange: (WeekNumberMode) -> Unit,
     onWeekStartDayChange: (DayOfWeek) -> Unit,
     onSemesterWeekStartDateChange: (LocalDate) -> Unit,
@@ -487,6 +492,14 @@ internal fun WeekModeSettingsPage(
                 label = { Text(stringResource(R.string.settings_week_mode_semester)) },
             )
         }
+
+        SettingsSwitchCard(
+            icon = Icons.Filled.CalendarMonth,
+            title = stringResource(R.string.settings_show_weekend_title),
+            desc = stringResource(R.string.settings_show_weekend_desc),
+            checked = showWeekend,
+            onCheckedChange = onShowWeekendChange,
+        )
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
@@ -582,7 +595,7 @@ internal fun WeekModeSettingsPage(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = stringResource(R.string.settings_semester_start_date_pick_button),
+                            text = stringResource(R.string.settings_semester_switch_button),
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -618,17 +631,15 @@ internal fun ReminderKeepAliveSettingsPage(
     reminderEnabled: Boolean,
     reminderMinutes: Int,
     keepAliveLevel: KeepAliveLevel,
-    experimentalAccessibilityKeepAliveEnabled: Boolean,
     keepAliveStatus: String,
     onBack: () -> Unit,
     onToggleReminder: (Boolean) -> Unit,
     onReminderMinutesChange: (Int) -> Unit,
     onKeepAliveLevelChange: (KeepAliveLevel) -> Unit,
-    onToggleExperimentalAccessibilityKeepAlive: (Boolean) -> Unit,
-    onOpenAccessibilitySettings: () -> Unit,
     onOpenBatteryOptimizationSettings: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
     onRefreshKeepAliveStatus: () -> Unit,
+    onOpenDailyBriefing: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -701,24 +712,24 @@ internal fun ReminderKeepAliveSettingsPage(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    text = "提醒保活强度",
+                text = stringResource(R.string.keepalive_level_title),
                     fontWeight = FontWeight.SemiBold,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = keepAliveLevel == KeepAliveLevel.ECO,
                         onClick = { onKeepAliveLevelChange(KeepAliveLevel.ECO) },
-                        label = { Text("省电") },
+                    label = { Text(stringResource(R.string.keepalive_level_eco)) },
                     )
                     FilterChip(
                         selected = keepAliveLevel == KeepAliveLevel.BALANCED,
                         onClick = { onKeepAliveLevelChange(KeepAliveLevel.BALANCED) },
-                        label = { Text("均衡") },
+                    label = { Text(stringResource(R.string.keepalive_level_balanced)) },
                     )
                     FilterChip(
                         selected = keepAliveLevel == KeepAliveLevel.AGGRESSIVE,
                         onClick = { onKeepAliveLevelChange(KeepAliveLevel.AGGRESSIVE) },
-                        label = { Text("增强") },
+                    label = { Text(stringResource(R.string.keepalive_level_aggressive)) },
                     )
                 }
                 Text(
@@ -726,36 +737,10 @@ internal fun ReminderKeepAliveSettingsPage(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    text = "实验功能：无障碍保活仅用于内测/侧载，请勿用于 Play 上架版本。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("启用实验无障碍保活", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = experimentalAccessibilityKeepAliveEnabled,
-                        onCheckedChange = onToggleExperimentalAccessibilityKeepAlive,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onOpenAccessibilitySettings,
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) { Text("无障碍设置") }
-                    Button(
-                        onClick = onRefreshKeepAliveStatus,
-                        shape = RoundedCornerShape(999.dp),
-                    ) { Text("刷新状态") }
-                }
+                Button(
+                    onClick = onRefreshKeepAliveStatus,
+                    shape = RoundedCornerShape(999.dp),
+                ) { Text(stringResource(R.string.keepalive_refresh_status)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = onOpenBatteryOptimizationSettings,
@@ -764,7 +749,7 @@ internal fun ReminderKeepAliveSettingsPage(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
-                    ) { Text("电池白名单") }
+                ) { Text(stringResource(R.string.keepalive_battery_whitelist)) }
                     Button(
                         onClick = onOpenExactAlarmSettings,
                         shape = RoundedCornerShape(999.dp),
@@ -772,10 +757,17 @@ internal fun ReminderKeepAliveSettingsPage(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
-                    ) { Text("精确闹钟") }
+                ) { Text(stringResource(R.string.keepalive_exact_alarm)) }
                 }
             }
         }
+
+        SettingsEntryCard(
+            icon = Icons.Filled.MailOutline,
+            title = stringResource(R.string.settings_daily_briefing_title),
+            desc = stringResource(R.string.settings_daily_briefing_desc),
+            onClick = onOpenDailyBriefing,
+        )
     }
 }
 
@@ -1174,7 +1166,7 @@ internal fun CloudSyncSettingsPage(
             icon = Icons.Filled.CloudSync,
             title = stringResource(R.string.settings_cloud_sync_enable_title),
             desc = if (officialLocked) {
-                "Official cloud requires an active membership."
+                stringResource(R.string.official_cloud_membership_required)
             } else {
                 stringResource(R.string.settings_cloud_sync_enable_desc)
             },
@@ -1198,17 +1190,17 @@ internal fun CloudSyncSettingsPage(
                     FilterChip(
                         selected = provider == CloudProviderUi.WEBDAV,
                         onClick = { onProviderChange(CloudProviderUi.WEBDAV) },
-                        label = { Text("WebDAV") },
+                        label = { Text(stringResource(R.string.cloud_provider_webdav)) },
                     )
                     FilterChip(
                         selected = provider == CloudProviderUi.GOOGLE_DRIVE,
                         onClick = { onProviderChange(CloudProviderUi.GOOGLE_DRIVE) },
-                        label = { Text("Google Drive") },
+                        label = { Text(stringResource(R.string.cloud_provider_google_drive)) },
                     )
                     FilterChip(
                         selected = provider == CloudProviderUi.OFFICIAL,
                         onClick = { onProviderChange(CloudProviderUi.OFFICIAL) },
-                        label = { Text("Official") },
+                        label = { Text(stringResource(R.string.cloud_provider_official)) },
                     )
                 }
                 if (provider == CloudProviderUi.WEBDAV) {
@@ -1293,17 +1285,17 @@ internal fun CloudSyncSettingsPage(
                         value = officialBaseUrl,
                         onValueChange = {},
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Official API") },
+                        label = { Text(stringResource(R.string.official_cloud_api_label)) },
                         singleLine = true,
                         readOnly = true,
                     )
                     Text(
                         text = if (accountSummary.userId.isBlank()) {
-                            "Login on this phone to use official cloud sync."
+                            stringResource(R.string.official_cloud_login_required)
                         } else if (membershipSummary.isMember) {
-                            "Membership active. Official cloud is available."
+                            stringResource(R.string.official_cloud_membership_active)
                         } else {
-                            "Membership inactive. Upgrade to unlock official cloud sync."
+                            stringResource(R.string.official_cloud_membership_inactive)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (officialLocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1313,12 +1305,12 @@ internal fun CloudSyncSettingsPage(
                             onClick = onOpenAccountPage,
                             shape = RoundedCornerShape(999.dp),
                         ) {
-                            Text("Open account")
+                            Text(stringResource(R.string.official_cloud_open_account))
                         }
                     }
                 }
                 Text(
-                    text = "Sync scopes",
+                    text = stringResource(R.string.cloud_sync_scopes_title),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -1330,9 +1322,9 @@ internal fun CloudSyncSettingsPage(
                     ) {
                         Text(
                             text = when (scope) {
-                                SyncScope.TIMETABLE -> "Timetable"
-                                SyncScope.MOBILE_SETTINGS -> "Mobile settings"
-                                SyncScope.WEAR_SETTINGS -> "Wear settings"
+                                SyncScope.TIMETABLE -> stringResource(R.string.cloud_sync_scope_timetable)
+                                SyncScope.MOBILE_SETTINGS -> stringResource(R.string.cloud_sync_scope_mobile_settings)
+                                SyncScope.WEAR_SETTINGS -> stringResource(R.string.cloud_sync_scope_wear_settings)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -1344,7 +1336,7 @@ internal fun CloudSyncSettingsPage(
                 }
                 if (provider == CloudProviderUi.OFFICIAL) {
                     Text(
-                        text = "Auto sync frequency",
+                        text = stringResource(R.string.official_cloud_frequency_title),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -1357,7 +1349,7 @@ internal fun CloudSyncSettingsPage(
                                 label = {
                                     Text(
                                         when (frequency) {
-                                            OfficialSyncFrequency.MANUAL_ONLY -> "Manual"
+                                            OfficialSyncFrequency.MANUAL_ONLY -> stringResource(R.string.official_cloud_frequency_manual)
                                             OfficialSyncFrequency.EVERY_15_MIN -> "15m"
                                             OfficialSyncFrequency.EVERY_30_MIN -> "30m"
                                             OfficialSyncFrequency.EVERY_1_HOUR -> "1h"
@@ -1469,22 +1461,15 @@ internal fun AccountSettingsPage(
     busy: Boolean,
     onBack: () -> Unit,
     onLogin: (String, String) -> Unit,
-    onRegister: (String, String, String) -> Unit,
     onLogout: () -> Unit,
     onRefresh: () -> Unit,
     onRedeem: (String) -> Unit,
-    onRequestPasswordReset: (String) -> Unit,
-    onConfirmPasswordReset: (String, String) -> Unit,
+    onOpenRegister: () -> Unit,
+    onOpenPasswordReset: () -> Unit,
 ) {
     var identifier by remember { mutableStateOf(accountSummary.identifier) }
     var password by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf(accountSummary.username) }
-    var email by remember { mutableStateOf(accountSummary.email) }
-    var registerPassword by remember { mutableStateOf("") }
     var redeemCode by remember { mutableStateOf("") }
-    var resetEmail by remember { mutableStateOf(accountSummary.email) }
-    var resetToken by remember { mutableStateOf("") }
-    var resetNewPassword by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -1496,7 +1481,7 @@ internal fun AccountSettingsPage(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SecondaryPageHeader(
-            title = "Account",
+            title = stringResource(R.string.settings_account_title),
             onBack = onBack,
             backLabel = stringResource(R.string.settings_about_back_button),
             modifier = Modifier.fillMaxWidth(),
@@ -1507,27 +1492,34 @@ internal fun AccountSettingsPage(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Account status", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.account_status_title), fontWeight = FontWeight.SemiBold)
                 Text(
                     if (accountSummary.userId.isBlank()) {
-                        "Not logged in"
+                        stringResource(R.string.account_not_logged_in)
                     } else {
-                        "Signed in as ${accountSummary.username.ifBlank { accountSummary.identifier }}"
+                        stringResource(
+                            R.string.account_signed_in_as,
+                            accountSummary.username.ifBlank { accountSummary.identifier },
+                        )
                     },
                 )
                 Text(
-                    "Membership: ${if (membershipSummary.isMember) membershipSummary.tier else "FREE"}",
+                    stringResource(
+                        R.string.account_membership_status,
+                        if (membershipSummary.isMember) membershipSummary.tier else "FREE",
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (membershipSummary.expiresAt > 0L) {
                     Text(
-                        "Expires at: ${
+                        stringResource(
+                            R.string.account_membership_expires_at,
                             LocalDateTime.ofInstant(
                                 java.time.Instant.ofEpochMilli(membershipSummary.expiresAt),
                                 java.time.ZoneId.systemDefault(),
-                            ).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                        }",
+                            ).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1537,75 +1529,229 @@ internal fun AccountSettingsPage(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRefresh, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
-                        Text("Refresh")
+                        Text(stringResource(R.string.common_refresh))
                     }
                     Button(onClick = onLogout, enabled = !busy && accountSummary.userId.isNotBlank(), shape = RoundedCornerShape(999.dp)) {
-                        Text("Logout")
+                        Text(stringResource(R.string.account_logout))
                     }
                 }
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        if (accountSummary.userId.isBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Login", fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(value = identifier, onValueChange = { identifier = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Email or username") }, singleLine = true)
-                OutlinedTextField(value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true)
-                Button(onClick = { onLogin(identifier, password) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
-                    Text("Login")
+                Text(stringResource(R.string.account_login), fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    value = identifier,
+                    onValueChange = { identifier = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.account_identifier)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.account_password)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    singleLine = true,
+                )
+                Button(
+                    onClick = { onLogin(identifier, password) },
+                    enabled = !busy && identifier.isNotBlank() && password.isNotBlank(),
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(stringResource(R.string.account_login))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onOpenRegister, enabled = !busy) {
+                        Text(stringResource(R.string.account_register))
+                    }
+                    TextButton(onClick = onOpenPasswordReset, enabled = !busy) {
+                        Text(stringResource(R.string.account_forgot_password))
+                    }
                 }
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Register", fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(value = username, onValueChange = { username = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true)
-                OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true)
-                OutlinedTextField(value = registerPassword, onValueChange = { registerPassword = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true)
-                Button(onClick = { onRegister(username, email, registerPassword) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
-                    Text("Register")
-                }
-            }
-        }
-
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text("Membership code", fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Redeem code") }, singleLine = true)
+                Text(stringResource(R.string.account_membership_code), fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_redeem_code)) }, singleLine = true)
                 Button(
                     onClick = { onRedeem(redeemCode) },
                     enabled = !busy && accountSummary.userId.isNotBlank(),
                     shape = RoundedCornerShape(999.dp),
                 ) {
-                    Text("Redeem")
+                    Text(stringResource(R.string.account_redeem))
                 }
             }
         }
+    }
+}
 
+@Composable
+internal fun AccountRegisterPage(
+    contentPadding: PaddingValues,
+    statusMessage: String,
+    busy: Boolean,
+    challengeId: String,
+    onBack: () -> Unit,
+    onRequestVerification: (String, String, String) -> Unit,
+    onConfirmVerification: (String) -> Unit,
+) {
+    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var verificationCode by remember { mutableStateOf("") }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
+            .navigationBarsPadding().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = stringResource(R.string.account_register),
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_account_title),
+            modifier = Modifier.fillMaxWidth(),
+        )
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Password reset", fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(value = resetEmail, onValueChange = { resetEmail = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reset email") }, singleLine = true)
-                Button(onClick = { onRequestPasswordReset(resetEmail) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
-                    Text("Send reset email")
+                Text(stringResource(R.string.account_register_desc), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(value = username, onValueChange = { username = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_username)) }, singleLine = true)
+                OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_email)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true)
+                OutlinedTextField(value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_password)) }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
+                if (statusMessage.isNotBlank()) {
+                    Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
-                OutlinedTextField(value = resetToken, onValueChange = { resetToken = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reset token") }, singleLine = true)
-                OutlinedTextField(value = resetNewPassword, onValueChange = { resetNewPassword = it }, modifier = Modifier.fillMaxWidth(), label = { Text("New password") }, singleLine = true)
-                Button(onClick = { onConfirmPasswordReset(resetToken, resetNewPassword) }, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
-                    Text("Confirm reset")
+                if (challengeId.isBlank()) {
+                    Button(
+                        onClick = { onRequestVerification(username, email, password) },
+                        enabled = !busy && username.isNotBlank() && email.isNotBlank() && password.length >= 8,
+                        shape = RoundedCornerShape(999.dp),
+                    ) {
+                        Text(stringResource(R.string.account_send_verification))
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = verificationCode,
+                        onValueChange = { verificationCode = it.filter(Char::isDigit).take(6) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.account_verification_code)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        singleLine = true,
+                    )
+                    Button(
+                        onClick = { onConfirmVerification(verificationCode) },
+                        enabled = !busy && verificationCode.length == 6,
+                        shape = RoundedCornerShape(999.dp),
+                    ) {
+                        Text(stringResource(R.string.account_confirm_registration))
+                    }
+                    TextButton(
+                        onClick = { onRequestVerification(username, email, password) },
+                        enabled = !busy,
+                    ) {
+                        Text(stringResource(R.string.account_resend_verification))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun TurnstileVerificationDialog(
+    siteKey: String,
+    onVerified: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.account_turnstile_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.account_turnstile_desc), style = MaterialTheme.typography.bodySmall)
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth().height(110.dp),
+                    factory = { context ->
+                        WebView(context).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            webViewClient = WebViewClient()
+                            addJavascriptInterface(object {
+                                @JavascriptInterface
+                                fun verified(token: String) {
+                                    post { if (token.isNotBlank()) onVerified(token) }
+                                }
+                            }, "ClassingNative")
+                            val safeSiteKey = siteKey.replace(Regex("[^A-Za-z0-9_-]"), "")
+                            loadDataWithBaseURL(
+                                "https://api-classing.underflo.ink/",
+                                """<!doctype html><html><head><meta name="viewport" content="width=device-width"></head><body style="margin:0;background:transparent"><div class="cf-turnstile" data-sitekey="$safeSiteKey" data-callback="verified"></div><script>function verified(token){ClassingNative.verified(token)}</script><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></body></html>""",
+                                "text/html",
+                                "UTF-8",
+                                null,
+                            )
+                        }
+                    },
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_about_update_close)) } },
+    )
+}
+
+@Composable
+internal fun AccountPasswordResetPage(
+    contentPadding: PaddingValues,
+    initialEmail: String,
+    statusMessage: String,
+    busy: Boolean,
+    onBack: () -> Unit,
+    onRequestPasswordReset: (String) -> Unit,
+    onConfirmPasswordReset: (String, String) -> Unit,
+) {
+    var email by remember { mutableStateOf(initialEmail) }
+    var token by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
+            .navigationBarsPadding().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = stringResource(R.string.password_reset_title),
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_account_title),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.password_reset_request_desc), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_email)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true)
+                Button(onClick = { onRequestPasswordReset(email) }, enabled = !busy && email.isNotBlank(), shape = RoundedCornerShape(999.dp)) {
+                    Text(stringResource(R.string.password_reset_send_email))
+                }
+                OutlinedTextField(value = token, onValueChange = { token = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.password_reset_token)) }, singleLine = true)
+                OutlinedTextField(value = newPassword, onValueChange = { newPassword = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.password_reset_new_password)) }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
+                if (statusMessage.isNotBlank()) {
+                    Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Button(onClick = { onConfirmPasswordReset(token, newPassword) }, enabled = !busy && token.isNotBlank() && newPassword.length >= 8, shape = RoundedCornerShape(999.dp)) {
+                    Text(stringResource(R.string.password_reset_confirm))
                 }
             }
         }
@@ -1636,7 +1782,7 @@ internal fun DailyBriefingSettingsPage(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SecondaryPageHeader(
-            title = "Daily Briefing",
+            title = stringResource(R.string.settings_daily_briefing_title),
             onBack = onBack,
             backLabel = stringResource(R.string.settings_about_back_button),
             modifier = Modifier.fillMaxWidth(),
@@ -1644,8 +1790,8 @@ internal fun DailyBriefingSettingsPage(
 
         SettingsSwitchCard(
             icon = Icons.Filled.MailOutline,
-            title = "Enable daily briefing",
-            desc = "App notification can work offline; email requires login.",
+            title = stringResource(R.string.daily_briefing_enable_title),
+            desc = stringResource(R.string.daily_briefing_enable_desc),
             checked = enabled,
             onCheckedChange = onEnabledChange,
         )
@@ -1655,14 +1801,22 @@ internal fun DailyBriefingSettingsPage(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("Channel", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.daily_briefing_channel_title), fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DailyBriefingChannel.entries.forEach { item ->
                         val disabled = !loggedIn && item == DailyBriefingChannel.EMAIL
                         FilterChip(
                             selected = channel == item,
                             onClick = { if (!disabled) onChannelChange(item) },
-                            label = { Text(item.name) },
+                            label = {
+                                Text(
+                                    when (item) {
+                                        DailyBriefingChannel.APP_NOTIFICATION -> stringResource(R.string.daily_briefing_channel_app)
+                                        DailyBriefingChannel.EMAIL -> stringResource(R.string.daily_briefing_channel_email)
+                                        DailyBriefingChannel.BOTH -> stringResource(R.string.daily_briefing_channel_both)
+                                    },
+                                )
+                            },
                         )
                     }
                 }
@@ -1670,14 +1824,14 @@ internal fun DailyBriefingSettingsPage(
                     value = time,
                     onValueChange = onTimeChange,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Time (HH:mm)") },
+                    label = { Text(stringResource(R.string.daily_briefing_time_label)) },
                     singleLine = true,
                 )
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
                 Button(onClick = onSave, shape = RoundedCornerShape(999.dp)) {
-                    Text("Save briefing")
+                    Text(stringResource(R.string.daily_briefing_save))
                 }
             }
         }
@@ -1687,7 +1841,9 @@ internal fun DailyBriefingSettingsPage(
 @Composable
 internal fun AboutLayer(
     contentPadding: PaddingValues,
+    devModeEnabled: Boolean,
     onBack: () -> Unit,
+    onToggleDevMode: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1698,6 +1854,16 @@ internal fun AboutLayer(
     var infoDialogTitle by remember { mutableStateOf<String?>(null) }
     var infoDialogContent by remember { mutableStateOf("") }
     var showWechatDialog by remember { mutableStateOf(false) }
+    val updateApiClient = remember { UpdateApiClient() }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateChecking by remember { mutableStateOf(false) }
+    var updateAvailable by remember { mutableStateOf(false) }
+    var latestRelease by remember { mutableStateOf<AppUpdateRelease?>(null) }
+    var updateStatus by remember { mutableStateOf("") }
+    var updateDownloading by remember { mutableStateOf(false) }
+    var updateDownloadedBytes by remember { mutableStateOf(0L) }
+    var updateTotalBytes by remember { mutableStateOf(0L) }
+    var downloadedUpdateFile by remember { mutableStateOf<File?>(null) }
 
     fun showInfoDialog(title: String, content: String) {
         infoDialogTitle = title
@@ -1711,16 +1877,19 @@ internal fun AboutLayer(
                 title = title,
                 content = context.getString(R.string.settings_about_notice_loading),
             )
-            val content = fetchPlainTextFromEndpoint(NOTICE_ENDPOINT_URL)
+            val content = updateApiClient.fetchAnnouncements()
                 .fold(
-                    onSuccess = { text ->
-                        text.ifBlank { context.getString(R.string.settings_about_notice_empty) }
+                    onSuccess = { announcements ->
+                        announcements.joinToString("\n\n") { announcement ->
+                            "${announcement.title}\n${announcement.content}"
+                        }.ifBlank { context.getString(R.string.settings_about_notice_empty) }
                     },
                     onFailure = { error ->
-                        context.getString(
-                            R.string.settings_about_notice_failed,
-                            error.message ?: "unknown",
-                        )
+                        if (error is ClientRequestRateLimitException) {
+                            context.getString(R.string.settings_about_rate_limited, error.retryAfterSeconds)
+                        } else {
+                            context.getString(R.string.settings_about_notice_failed_short)
+                        }
                     },
                 )
             showInfoDialog(title = title, content = content)
@@ -1729,24 +1898,42 @@ internal fun AboutLayer(
 
     val checkLatestVersion: () -> Unit = {
         scope.launch {
-            val title = context.getString(R.string.settings_about_check_update_title)
-            showInfoDialog(
-                title = title,
-                content = context.getString(R.string.settings_about_check_update_loading),
-            )
-            val content = fetchPlainTextFromEndpoint(LATEST_VERSION_ENDPOINT_URL)
-                .fold(
-                    onSuccess = { text ->
-                        text.ifBlank { context.getString(R.string.settings_about_notice_empty) }
-                    },
-                    onFailure = { error ->
-                        context.getString(
-                            R.string.settings_about_check_update_failed,
-                            error.message ?: "unknown",
+            showUpdateDialog = true
+            updateChecking = true
+            updateAvailable = false
+            latestRelease = null
+            updateStatus = context.getString(R.string.settings_about_check_update_loading)
+            updateDownloading = false
+            updateDownloadedBytes = 0L
+            updateTotalBytes = 0L
+            downloadedUpdateFile = null
+            updateApiClient.checkLatest(BuildConfig.VERSION_CODE.toLong()).fold(
+                onSuccess = { result ->
+                    latestRelease = result.release
+                    updateAvailable = result.updateAvailable
+                    updateStatus = when {
+                        result.release == null -> context.getString(R.string.settings_about_update_no_release)
+                        result.updateAvailable -> context.getString(
+                            R.string.settings_about_update_available,
+                            versionName,
+                            result.release.versionName,
                         )
-                    },
-                )
-            showInfoDialog(title = title, content = content)
+                        else -> context.getString(
+                            R.string.settings_about_update_latest,
+                            versionName,
+                            result.release.versionName,
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    updateStatus = if (error is ClientRequestRateLimitException) {
+                        context.getString(R.string.settings_about_rate_limited, error.retryAfterSeconds)
+                    } else {
+                        context.getString(R.string.settings_about_check_update_failed_short)
+                    }
+                },
+            )
+            updateChecking = false
         }
     }
 
@@ -1829,6 +2016,37 @@ internal fun AboutLayer(
                 }
             }
 
+            SettingsSwitchCard(
+                icon = Icons.Filled.DataObject,
+                title = stringResource(R.string.settings_dev_mode_title),
+                desc = stringResource(R.string.settings_dev_mode_desc),
+                checked = devModeEnabled,
+                onCheckedChange = onToggleDevMode,
+            )
+
+            if (devModeEnabled) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(stringResource(R.string.settings_dev_mode_details_title), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(
+                                R.string.settings_dev_mode_details_value,
+                                BuildConfig.BUILD_TYPE,
+                                BuildConfig.VERSION_CODE,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -1881,7 +2099,7 @@ internal fun AboutLayer(
                 }
             }
             Text(
-                text = "ICP 备案号：待补充",
+                            text = stringResource(R.string.settings_about_icp_pending),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1927,6 +2145,119 @@ internal fun AboutLayer(
         )
     }
 
+    if (showUpdateDialog) {
+        val release = latestRelease
+        val progress = if (updateTotalBytes > 0L) {
+            (updateDownloadedBytes.toFloat() / updateTotalBytes.toFloat()).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+        AlertDialog(
+            onDismissRequest = { if (!updateDownloading) showUpdateDialog = false },
+            title = { Text(stringResource(R.string.settings_about_check_update_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(updateStatus, style = MaterialTheme.typography.bodyMedium)
+                    if (release != null) {
+                        Text(
+                            stringResource(
+                                R.string.settings_about_update_version_and_size,
+                                release.versionName,
+                                formatUpdateBytes(release.artifactSize),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (release.mandatory) {
+                            Text(
+                                stringResource(R.string.settings_about_update_mandatory),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        if (release.changelog.isNotBlank()) {
+                            Text(release.changelog, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (updateDownloading) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            stringResource(
+                                R.string.settings_about_update_progress,
+                                (progress * 100).toInt(),
+                                formatUpdateBytes(updateDownloadedBytes),
+                                formatUpdateBytes(updateTotalBytes),
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                when {
+                    updateChecking -> Unit
+                    downloadedUpdateFile != null -> {
+                        TextButton(
+                            onClick = {
+                                val result = launchUpdateInstaller(context, downloadedUpdateFile!!)
+                                updateStatus = if (result == InstallLaunchResult.PERMISSION_REQUIRED) {
+                                    context.getString(R.string.settings_about_update_install_permission)
+                                } else {
+                                    context.getString(R.string.settings_about_update_installer_opened)
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.settings_about_update_install))
+                        }
+                    }
+                    updateAvailable && release != null && !updateDownloading -> {
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    updateDownloading = true
+                                    updateDownloadedBytes = 0L
+                                    updateTotalBytes = release.artifactSize
+                                    updateStatus = context.getString(R.string.settings_about_update_downloading)
+                                    updateApiClient.downloadRelease(context, release) { downloaded, total ->
+                                        updateDownloadedBytes = downloaded
+                                        updateTotalBytes = total
+                                    }.fold(
+                                        onSuccess = { file ->
+                                            downloadedUpdateFile = file
+                                            updateStatus = context.getString(R.string.settings_about_update_downloaded)
+                                            val result = launchUpdateInstaller(context, file)
+                                            updateStatus = if (result == InstallLaunchResult.PERMISSION_REQUIRED) {
+                                                context.getString(R.string.settings_about_update_install_permission)
+                                            } else {
+                                                context.getString(R.string.settings_about_update_installer_opened)
+                                            }
+                                        },
+                                        onFailure = {
+                                            updateStatus = context.getString(R.string.settings_about_update_download_failed)
+                                        },
+                                    )
+                                    updateDownloading = false
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.settings_about_update_download))
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                if (!updateDownloading) {
+                    TextButton(onClick = { showUpdateDialog = false }) {
+                        Text(stringResource(R.string.settings_about_update_close))
+                    }
+                }
+            },
+        )
+    }
+
     if (showWechatDialog) {
         AlertDialog(
             onDismissRequest = { showWechatDialog = false },
@@ -1957,28 +2288,11 @@ internal fun AboutLayer(
     }
 }
 
-private const val NOTICE_ENDPOINT_URL = "https://api.classing.underflo.ink/api/getNotice"
-private const val LATEST_VERSION_ENDPOINT_URL = "https://api.classing.underflo.ink/api/getLatestVer"
-
-private suspend fun fetchPlainTextFromEndpoint(url: String): Result<String> = withContext(Dispatchers.IO) {
-    runCatching {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 8_000
-            connection.setRequestProperty("Accept", "text/plain, application/json, */*")
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) {
-                error("HTTP $code ${body.take(120)}".trim())
-            }
-            body.trimStart('\uFEFF').trim()
-        } finally {
-            connection.disconnect()
-        }
-    }
+private fun formatUpdateBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 B"
+    if (bytes < 1024L) return "$bytes B"
+    if (bytes < 1024L * 1024L) return String.format(Locale.getDefault(), "%.1f KB", bytes / 1024.0)
+    return String.format(Locale.getDefault(), "%.1f MB", bytes / 1024.0 / 1024.0)
 }
 
 @Composable

@@ -118,4 +118,24 @@
     <string name="settings_cloud_sync_last_phone_snapshot">Last phone snapshot: %1$s</string>
     <string name="settings_cloud_sync_request_queued">Request queued for phone</string>
     <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
+    <string name="settings_section_keep_alive">Keep alive</string>
+    <string name="settings_phone_account">Phone account</string>
+    <string name="settings_phone_account_summary">Signed in: %1$s\nMembership: %2$s\nProvider: %3$s</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="settings_about">About</string>
+    <string name="settings_keepalive_level">Reminder keep-alive level</string>
+    <string name="settings_keepalive_eco">Eco</string>
+    <string name="settings_keepalive_balanced">Balanced</string>
+    <string name="settings_keepalive_aggressive">Enhanced</string>
+    <string name="settings_exact_alarm_status">Exact alarms: %1$s</string>
+    <string name="settings_battery_optimization_status">Battery optimization: %1$s</string>
+    <string name="settings_authorized">Authorized</string>
+    <string name="settings_not_authorized">Not authorized</string>
+    <string name="settings_enabled">Enabled</string>
+    <string name="settings_disabled">Disabled</string>
+    <string name="settings_battery_short">Battery</string>
+    <string name="settings_alarm_short">Alarm</string>
+    <string name="settings_about_summary">%1$s\nVersion %2$s\nICP filing: pending</string>
+    <string name="reminder_unknown_class">Class</string>
 </resources>

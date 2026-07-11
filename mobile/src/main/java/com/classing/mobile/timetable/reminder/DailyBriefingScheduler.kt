@@ -38,10 +38,26 @@ object DailyBriefingScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val nextTriggerAt = computeNextTrigger(settings.dailyBriefingTime)
         val pendingIntent = pendingIntent(context)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
+        val canScheduleExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+        try {
+            when {
+                canScheduleExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
+                }
+
+                canScheduleExact -> {
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
+                }
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
+                }
+
+                else -> alarmManager.set(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
+            }
+        } catch (_: SecurityException) {
+            // Special exact-alarm access can be revoked between the capability check and scheduling.
+            alarmManager.set(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
         }
     }
 
@@ -62,6 +78,10 @@ object DailyBriefingScheduler {
             postNotification(context, settings)
         }
         sync(context, settings)
+    }
+
+    fun postTestNotification(context: Context) {
+        postNotification(context, MobilePrefsStore.loadSettings(context))
     }
 
     private fun computeNextTrigger(rawTime: String): Long {

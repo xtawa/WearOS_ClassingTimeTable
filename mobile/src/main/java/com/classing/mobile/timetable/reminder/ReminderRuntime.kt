@@ -1,11 +1,9 @@
 package com.xtawa.classingtime.reminder
 
 import android.app.AlarmManager
-import android.content.ComponentName
 import android.content.Context
 import android.os.Build
 import android.os.PowerManager
-import android.provider.Settings
 import com.xtawa.classingtime.screen.EffectiveLessonOccurrence
 import com.xtawa.classingtime.data.PersistedLesson
 import java.time.LocalDate
@@ -16,7 +14,6 @@ import java.time.ZoneId
 data class KeepAliveRuntimeStatus(
     val canScheduleExactAlarm: Boolean,
     val ignoringBatteryOptimizations: Boolean,
-    val accessibilityServiceEnabled: Boolean,
 )
 
 data class NextReminderAlarm(
@@ -49,7 +46,6 @@ object ReminderRuntime {
         return KeepAliveRuntimeStatus(
             canScheduleExactAlarm = canExact,
             ignoringBatteryOptimizations = ignoringBattery,
-            accessibilityServiceEnabled = isAccessibilityServiceEnabled(context),
         )
     }
 
@@ -113,15 +109,4 @@ object ReminderRuntime {
         return candidates.minByOrNull { it.triggerAtMillis }
     }
 
-    private fun isAccessibilityServiceEnabled(context: Context): Boolean {
-        val enabled = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ).orEmpty()
-        val service = ComponentName(
-            context.packageName,
-            "com.xtawa.classingtime.accessibility.KeepAliveAccessibilityService",
-        ).flattenToString()
-        return enabled.split(':').any { it.equals(service, ignoreCase = true) }
-    }
 }

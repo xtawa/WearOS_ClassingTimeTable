@@ -7,12 +7,33 @@ import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 data class AuthSession(
     val accessToken: String,
     val refreshToken: String,
+    val accessExpiresAt: Long,
+    val refreshExpiresAt: Long,
 )
+
+data class RegistrationVerificationChallenge(
+    val challengeId: String,
+    val expiresAt: Long,
+    val resendAfterSeconds: Int,
+)
+
+data class RegistrationSecurityConfig(
+    val turnstileRequired: Boolean,
+    val turnstileSiteKey: String,
+)
+
+class AccountApiException(
+    val statusCode: Int,
+    val errorCode: String,
+    message: String,
+) : IllegalStateException(message)
 
 data class AccountProfile(
     val account: AccountSummary,
@@ -22,17 +43,52 @@ data class AccountProfile(
 class AccountApiClient(
     private val baseUrl: String = BASE_URL,
 ) {
-    fun register(username: String, email: String, password: String): Result<AuthSession> {
-        return postAuthSession(
-            path = "/api/v1/auth/register",
+    suspend fun requestRegistrationVerification(
+        username: String,
+        email: String,
+        password: String,
+        turnstileToken: String = "",
+    ): Result<RegistrationVerificationChallenge> {
+        return request(
+            method = "POST",
+            path = "/api/v1/auth/register/email/request",
             body = JSONObject()
                 .put("username", username.trim())
                 .put("email", email.trim())
-                .put("password", password),
+                .put("password", password)
+                .put("turnstileToken", turnstileToken),
+        ).map { json ->
+            val challenge = json.optJSONObject("challenge") ?: json
+            RegistrationVerificationChallenge(
+                challengeId = challenge.getString("challengeId"),
+                expiresAt = challenge.optLong("expiresAt", 0L),
+                resendAfterSeconds = challenge.optInt("resendAfterSeconds", 60),
+            )
+        }
+    }
+
+    suspend fun registrationSecurityConfig(): Result<RegistrationSecurityConfig> {
+        return request(method = "GET", path = "/api/v1/auth/registration/config").map { json ->
+            RegistrationSecurityConfig(
+                turnstileRequired = json.optBoolean("turnstileRequired", false),
+                turnstileSiteKey = json.optString("turnstileSiteKey"),
+            )
+        }
+    }
+
+    suspend fun confirmRegistration(
+        challengeId: String,
+        verificationCode: String,
+    ): Result<AuthSession> {
+        return postAuthSession(
+            path = "/api/v1/auth/register/email/confirm",
+            body = JSONObject()
+                .put("challengeId", challengeId)
+                .put("verificationCode", verificationCode.trim()),
         )
     }
 
-    fun login(identifier: String, password: String): Result<AuthSession> {
+    suspend fun login(identifier: String, password: String): Result<AuthSession> {
         return postAuthSession(
             path = "/api/v1/auth/login",
             body = JSONObject()
@@ -41,14 +97,14 @@ class AccountApiClient(
         )
     }
 
-    fun refresh(refreshToken: String): Result<AuthSession> {
+    suspend fun refresh(refreshToken: String): Result<AuthSession> {
         return postAuthSession(
             path = "/api/v1/auth/refresh",
             body = JSONObject().put("refreshToken", refreshToken),
         )
     }
 
-    fun logout(accessToken: String, refreshToken: String): Result<Unit> {
+    suspend fun logout(accessToken: String, refreshToken: String): Result<Unit> {
         return request(
             method = "POST",
             path = "/api/v1/auth/logout",
@@ -57,7 +113,7 @@ class AccountApiClient(
         ).map { Unit }
     }
 
-    fun requestPasswordReset(email: String): Result<Unit> {
+    suspend fun requestPasswordReset(email: String): Result<Unit> {
         return request(
             method = "POST",
             path = "/api/v1/auth/password/reset/request",
@@ -65,7 +121,7 @@ class AccountApiClient(
         ).map { Unit }
     }
 
-    fun confirmPasswordReset(token: String, newPassword: String): Result<Unit> {
+    suspend fun confirmPasswordReset(token: String, newPassword: String): Result<Unit> {
         return request(
             method = "POST",
             path = "/api/v1/auth/password/reset/confirm",
@@ -75,7 +131,7 @@ class AccountApiClient(
         ).map { Unit }
     }
 
-    fun fetchProfile(accessToken: String): Result<AccountProfile> {
+    suspend fun fetchProfile(accessToken: String): Result<AccountProfile> {
         return runCatching {
             val accountJson = request(
                 method = "GET",
@@ -94,7 +150,7 @@ class AccountApiClient(
         }
     }
 
-    fun redeemCode(accessToken: String, code: String): Result<MembershipSummary> {
+    suspend fun redeemCode(accessToken: String, code: String): Result<MembershipSummary> {
         return request(
             method = "POST",
             path = "/api/v1/membership/redeem",
@@ -103,7 +159,7 @@ class AccountApiClient(
         ).map { parseMembershipSummary(it) }
     }
 
-    fun saveDailyBriefingSubscription(
+    suspend fun saveDailyBriefingSubscription(
         accessToken: String,
         enabled: Boolean,
         channel: DailyBriefingChannel,
@@ -120,7 +176,7 @@ class AccountApiClient(
         ).map { Unit }
     }
 
-    private fun postAuthSession(path: String, body: JSONObject): Result<AuthSession> {
+    private suspend fun postAuthSession(path: String, body: JSONObject): Result<AuthSession> {
         return request(method = "POST", path = path, body = body).map { json ->
             val session = json.optJSONObject("session") ?: json
             val accessToken = session.optString("accessToken")
@@ -128,17 +184,22 @@ class AccountApiClient(
             require(accessToken.isNotBlank() && refreshToken.isNotBlank()) {
                 "Authentication response missing tokens"
             }
-            AuthSession(accessToken = accessToken, refreshToken = refreshToken)
+            AuthSession(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                accessExpiresAt = session.optLong("accessExpiresAt", 0L),
+                refreshExpiresAt = session.optLong("refreshExpiresAt", 0L),
+            )
         }
     }
 
-    private fun request(
+    private suspend fun request(
         method: String,
         path: String,
         accessToken: String? = null,
         body: JSONObject? = null,
-    ): Result<JSONObject> {
-        return runCatching {
+    ): Result<JSONObject> = withContext(Dispatchers.IO) {
+        runCatching {
             val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = 10_000
@@ -164,10 +225,13 @@ class AccountApiClient(
                     .orEmpty()
                     .trim()
                 if (code !in 200..299) {
-                    val message = runCatching {
-                        JSONObject(payload).optString("message").ifBlank { payload }
-                    }.getOrDefault(payload)
-                    error("HTTP $code ${message.ifBlank { "request failed" }}".trim())
+                    val errorBody = runCatching { JSONObject(payload) }.getOrNull()
+                    val message = errorBody?.optString("message").orEmpty().ifBlank { payload }
+                    throw AccountApiException(
+                        statusCode = code,
+                        errorCode = errorBody?.optString("code").orEmpty(),
+                        message = message.ifBlank { "request failed" },
+                    )
                 }
                 if (payload.isBlank()) JSONObject() else JSONObject(payload)
             } finally {

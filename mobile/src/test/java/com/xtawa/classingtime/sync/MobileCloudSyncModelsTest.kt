@@ -69,7 +69,6 @@ class MobileCloudSyncModelsTest {
             reminderEnabled = false,
             reminderMinutes = 15,
             keepAliveLevel = "BALANCED",
-            experimentalAccessibilityKeepAliveEnabled = false,
             rawIcs = "",
             parseMessage = "",
             wearSyncMode = "AUTO",
@@ -113,11 +112,52 @@ class MobileCloudSyncModelsTest {
             driveFileName = "classing_sync.json",
             driveAccessToken = "abc",
             driveAccessTokenExpireAt = System.currentTimeMillis() + 120_000L,
+            driveAccessTokenRefreshAfterAt = System.currentTimeMillis() + 120_000L,
             accountAccessToken = "",
             officialMemberAuthorized = false,
         )
 
         assertTrue(config.isComplete())
+    }
+
+    @Test
+    fun connectionTest_googleDriveDoesNotRequireSyncToggle() {
+        val config = CloudRuntimeConfig(
+            provider = com.classing.shared.sync.CloudProvider.GOOGLE_DRIVE,
+            enabled = false,
+            serverUrl = "",
+            remotePath = "",
+            username = "",
+            password = "",
+            driveFileName = "classing_sync.json",
+            driveAccessToken = "abc",
+            driveAccessTokenExpireAt = System.currentTimeMillis() + 120_000L,
+            driveAccessTokenRefreshAfterAt = System.currentTimeMillis() + 120_000L,
+            accountAccessToken = "",
+            officialMemberAuthorized = false,
+        )
+
+        assertTrue(config.isConfiguredForConnectionTest())
+    }
+
+    @Test
+    fun connectionTest_officialCloudUsesServerAuthorizationInsteadOfStaleMembershipCache() {
+        val config = CloudRuntimeConfig(
+            provider = com.classing.shared.sync.CloudProvider.OFFICIAL,
+            enabled = false,
+            serverUrl = "https://api-classing.underflo.ink",
+            remotePath = "",
+            username = "",
+            password = "",
+            driveFileName = "",
+            driveAccessToken = "",
+            driveAccessTokenExpireAt = 0L,
+            driveAccessTokenRefreshAfterAt = 0L,
+            accountAccessToken = "access-token",
+            officialMemberAuthorized = false,
+        )
+
+        assertTrue(config.isConfiguredForConnectionTest())
     }
 
     @Test

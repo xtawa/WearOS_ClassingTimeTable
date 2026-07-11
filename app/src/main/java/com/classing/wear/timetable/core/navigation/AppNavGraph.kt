@@ -147,7 +147,6 @@ fun AppNavGraph(appContainer: AppContainer) {
                 onToggleTileShowCurrentWeek = vm::toggleTileShowCurrentWeek,
                 onToggleTileShowTimeRange = vm::toggleTileShowTimeRange,
                 onSetKeepAliveLevel = vm::setKeepAliveLevel,
-                onToggleExperimentalAccessibilityKeepAlive = vm::setExperimentalAccessibilityKeepAliveEnabled,
                 onForceFullSync = vm::forceFullSync,
                 onConsumeSyncFeedback = vm::consumeSyncFeedback,
                 onOpenCloudSync = { navController.navigate(Destinations.CloudSync.route) },

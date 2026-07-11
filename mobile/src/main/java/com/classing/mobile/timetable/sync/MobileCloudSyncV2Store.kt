@@ -26,6 +26,8 @@ object MobileCloudSyncV2Store {
     private const val KEY_DEVICE_ID = "device_id"
     private const val KEY_COUNTER = "logical_counter"
     private const val KEY_DOCUMENT = "local_document"
+    private const val KEY_PROCESSED_COMMANDS = "processed_commands"
+    private const val COMMAND_MAX_AGE_MS = 10L * 60L * 1000L
 
     fun deviceId(context: Context): String {
         val prefs = prefs(context)
@@ -48,13 +50,18 @@ object MobileCloudSyncV2Store {
             .commit()
     }
 
-    fun captureLocal(context: Context, now: Long = System.currentTimeMillis()): CloudSyncDocumentV2 {
+    fun captureLocal(
+        context: Context,
+        now: Long = System.currentTimeMillis(),
+        syncScopes: Set<SyncScope>? = null,
+    ): CloudSyncDocumentV2 {
         val cached = loadDocument(context)
         val state = MobilePrefsStore.loadTimetableState(context)
         val settings = MobilePrefsStore.loadSettings(context)
+        val effectiveScopes = syncScopes ?: settings.syncScopes
         val domains = cached.records.toMutableMap()
         val changes = cached.changes.toMutableList()
-        if (settings.syncScopes.contains(SyncScope.TIMETABLE)) {
+        if (effectiveScopes.contains(SyncScope.TIMETABLE)) {
             domains[CloudSyncV2.DOMAIN_TIMETABLE_LESSONS] = reconcileDomain(
                 context, CloudSyncV2.DOMAIN_TIMETABLE_LESSONS,
                 state.baseLessons.associate { it.id to lessonToJson(it).toString() },
@@ -66,7 +73,7 @@ object MobileCloudSyncV2Store {
                 cached.records[CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS].orEmpty(), now, changes,
             )
         }
-        if (settings.syncScopes.contains(SyncScope.MOBILE_SETTINGS)) {
+        if (effectiveScopes.contains(SyncScope.MOBILE_SETTINGS)) {
             domains[CloudSyncV2.DOMAIN_MOBILE_SETTINGS] = reconcileDomain(
                 context, CloudSyncV2.DOMAIN_MOBILE_SETTINGS, mobileSettingValues(settings),
                 cached.records[CloudSyncV2.DOMAIN_MOBILE_SETTINGS].orEmpty(), now, changes,
@@ -79,7 +86,7 @@ object MobileCloudSyncV2Store {
         val wearValues = MobilePrefsStore.loadWearSettingsSnapshot(context)?.first?.let { raw ->
             runCatching { jsonObjectValues(JSONObject(raw)) }.getOrDefault(emptyMap())
         }.orEmpty()
-        if (settings.syncScopes.contains(SyncScope.WEAR_SETTINGS)) {
+        if (effectiveScopes.contains(SyncScope.WEAR_SETTINGS)) {
             domains[CloudSyncV2.DOMAIN_WEAR_SETTINGS] = reconcileDomain(
                 context, CloudSyncV2.DOMAIN_WEAR_SETTINGS, wearValues,
                 cached.records[CloudSyncV2.DOMAIN_WEAR_SETTINGS].orEmpty(), now, changes,
@@ -135,19 +142,25 @@ object MobileCloudSyncV2Store {
         return CloudSyncDocumentV2(records = domains, updatedAt = now)
     }
 
-    fun applyMerged(context: Context, document: CloudSyncDocumentV2) {
+    fun applyMerged(
+        context: Context,
+        document: CloudSyncDocumentV2,
+        syncScopes: Set<SyncScope>? = null,
+    ) {
         // Save first so persistence callbacks cannot reinterpret remote data as a new local edit.
         saveDocument(context, document)
+        consumeAppCommands(context, document)
         val currentState = MobilePrefsStore.loadTimetableState(context)
         var settings = MobilePrefsStore.loadSettings(context)
-        if (settings.syncScopes.contains(SyncScope.TIMETABLE)) {
+        val effectiveScopes = syncScopes ?: settings.syncScopes
+        if (effectiveScopes.contains(SyncScope.TIMETABLE)) {
             val lessons = livePayloads(document, CloudSyncV2.DOMAIN_TIMETABLE_LESSONS)
                 .mapNotNull { runCatching { lessonFromJson(JSONObject(it)) }.getOrNull() }
             val exceptions = livePayloads(document, CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS)
                 .mapNotNull { runCatching { exceptionFromJson(JSONObject(it)) }.getOrNull() }
             MobilePrefsStore.saveTimetableState(context, lessons, exceptions, currentState.snapshots)
         }
-        if (settings.syncScopes.contains(SyncScope.MOBILE_SETTINGS)) {
+        if (effectiveScopes.contains(SyncScope.MOBILE_SETTINGS)) {
             val mobile = liveSettingValues(document, CloudSyncV2.DOMAIN_MOBILE_SETTINGS)
             val cloud = liveSettingValues(document, CloudSyncV2.DOMAIN_CLOUD_CONFIG)
             settings = settings.copy(
@@ -155,9 +168,6 @@ object MobileCloudSyncV2Store {
                 reminderEnabled = mobile.boolean("reminderEnabled", settings.reminderEnabled),
                 reminderMinutes = mobile.int("reminderMinutes", settings.reminderMinutes),
                 keepAliveLevel = mobile.string("keepAliveLevel", settings.keepAliveLevel),
-                experimentalAccessibilityKeepAliveEnabled = mobile.boolean(
-                    "experimentalAccessibilityKeepAliveEnabled", settings.experimentalAccessibilityKeepAliveEnabled,
-                ),
                 rawIcs = mobile.string("rawIcs", settings.rawIcs),
                 wearSyncMode = mobile.string("wearSyncMode", settings.wearSyncMode),
                 weekNumberMode = mobile.string("weekNumberMode", settings.weekNumberMode),
@@ -188,7 +198,7 @@ object MobileCloudSyncV2Store {
             reminderMinutes = settings.reminderMinutes,
         )
         DailyBriefingScheduler.sync(context, settings)
-        if (settings.syncScopes.contains(SyncScope.WEAR_SETTINGS)) {
+        if (effectiveScopes.contains(SyncScope.WEAR_SETTINGS)) {
             val wear = liveSettingValues(document, CloudSyncV2.DOMAIN_WEAR_SETTINGS)
             if (wear.isNotEmpty()) {
                 val snapshot = JSONObject()
@@ -224,6 +234,31 @@ object MobileCloudSyncV2Store {
     fun canRestore(context: Context, domain: String, recordId: String, now: Long = System.currentTimeMillis()): Boolean {
         val record = loadDocument(context).records[domain]?.get(recordId) ?: return false
         return record.isDeleted && record.payload != null && (record.recoverableUntil ?: 0L) >= now
+    }
+
+    private fun consumeAppCommands(context: Context, document: CloudSyncDocumentV2, now: Long = System.currentTimeMillis()) {
+        val prefs = prefs(context)
+        val processed = prefs.getString(KEY_PROCESSED_COMMANDS, "").orEmpty()
+            .split(',')
+            .filter { it.isNotBlank() }
+            .toMutableSet()
+        var changed = false
+        document.records[CloudSyncV2.DOMAIN_APP_COMMANDS].orEmpty().values
+            .filterNot { it.isDeleted }
+            .forEach { record ->
+                if (record.id in processed) return@forEach
+                val payload = runCatching { JSONObject(record.payload ?: "") }.getOrNull() ?: return@forEach
+                val createdAt = payload.optLong("createdAt", record.version.changedAt)
+                if (createdAt <= 0L || now - createdAt > COMMAND_MAX_AGE_MS) return@forEach
+                if (payload.optString("type") == "DAILY_BRIEFING_TEST") {
+                    DailyBriefingScheduler.postTestNotification(context)
+                    processed += record.id
+                    changed = true
+                }
+        }
+        if (changed) {
+            prefs.edit().putString(KEY_PROCESSED_COMMANDS, processed.toList().takeLast(50).joinToString(",")).apply()
+        }
     }
 
     private fun reconcileDomain(
@@ -404,7 +439,6 @@ private fun exceptionFromJson(item: JSONObject): PersistedScheduleException? {
 private fun mobileSettingValues(settings: MobileSettings) = mapOf(
     "showWeekend" to valuePayload(settings.showWeekend), "reminderEnabled" to valuePayload(settings.reminderEnabled),
     "reminderMinutes" to valuePayload(settings.reminderMinutes), "keepAliveLevel" to valuePayload(settings.keepAliveLevel),
-    "experimentalAccessibilityKeepAliveEnabled" to valuePayload(settings.experimentalAccessibilityKeepAliveEnabled),
     "rawIcs" to valuePayload(settings.rawIcs), "wearSyncMode" to valuePayload(settings.wearSyncMode),
     "weekNumberMode" to valuePayload(settings.weekNumberMode),
     "semesterWeekStartDate" to valuePayload(settings.semesterWeekStartDate), "weekStartDay" to valuePayload(settings.weekStartDay),

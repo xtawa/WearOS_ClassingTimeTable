@@ -53,7 +53,6 @@ data class MobileSettings(
     val reminderEnabled: Boolean,
     val reminderMinutes: Int,
     val keepAliveLevel: String,
-    val experimentalAccessibilityKeepAliveEnabled: Boolean,
     val accountSummary: AccountSummary = AccountSummary(),
     val membershipSummary: MembershipSummary = MembershipSummary(),
     val rawIcs: String,
@@ -77,6 +76,7 @@ data class MobileSettings(
     val cloudConfigPushStatus: String,
     val cloudLastResult: String,
     val cloudLastSyncedAt: Long,
+    val devModeEnabled: Boolean = false,
 )
 
 object MobilePrefsStore {
@@ -85,7 +85,6 @@ object MobilePrefsStore {
     private const val KEY_REMINDER_ENABLED = "reminder_enabled"
     private const val KEY_REMINDER_MINUTES = "reminder_minutes"
     private const val KEY_KEEP_ALIVE_LEVEL = "keep_alive_level"
-    private const val KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED = "experimental_accessibility_keep_alive_enabled"
     private const val KEY_ACCOUNT_SUMMARY_JSON = "account_summary_json"
     private const val KEY_MEMBERSHIP_SUMMARY_JSON = "membership_summary_json"
     private const val KEY_RAW_ICS = "raw_ics"
@@ -109,6 +108,7 @@ object MobilePrefsStore {
     private const val KEY_CLOUD_CONFIG_PUSH_STATUS = "cloud_config_push_status"
     private const val KEY_CLOUD_LAST_RESULT = "cloud_last_result"
     private const val KEY_CLOUD_LAST_SYNCED_AT = "cloud_last_synced_at"
+    private const val KEY_DEV_MODE_ENABLED = "dev_mode_enabled"
     private const val KEY_LOCAL_TIMETABLE_UPDATED_AT = "local_timetable_updated_at"
     private const val KEY_LOCAL_MOBILE_SETTINGS_UPDATED_AT = "local_mobile_settings_updated_at"
     private const val KEY_WEAR_SETTINGS_SNAPSHOT = "wear_settings_snapshot"
@@ -137,7 +137,6 @@ object MobilePrefsStore {
             reminderEnabled = p.getBoolean(KEY_REMINDER_ENABLED, false),
             reminderMinutes = p.getInt(KEY_REMINDER_MINUTES, 15).coerceIn(5, 60),
             keepAliveLevel = p.getString(KEY_KEEP_ALIVE_LEVEL, "BALANCED") ?: "BALANCED",
-            experimentalAccessibilityKeepAliveEnabled = p.getBoolean(KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED, false),
             accountSummary = parseAccountSummary(p.getString(KEY_ACCOUNT_SUMMARY_JSON, null)),
             membershipSummary = parseMembershipSummary(p.getString(KEY_MEMBERSHIP_SUMMARY_JSON, null)),
             rawIcs = p.getString(KEY_RAW_ICS, "") ?: "",
@@ -161,6 +160,7 @@ object MobilePrefsStore {
             cloudConfigPushStatus = p.getString(KEY_CLOUD_CONFIG_PUSH_STATUS, "") ?: "",
             cloudLastResult = p.getString(KEY_CLOUD_LAST_RESULT, "") ?: "",
             cloudLastSyncedAt = p.getLong(KEY_CLOUD_LAST_SYNCED_AT, 0L),
+            devModeEnabled = p.getBoolean(KEY_DEV_MODE_ENABLED, false),
         )
     }
 
@@ -170,7 +170,6 @@ object MobilePrefsStore {
             .putBoolean(KEY_REMINDER_ENABLED, settings.reminderEnabled)
             .putInt(KEY_REMINDER_MINUTES, settings.reminderMinutes.coerceIn(5, 60))
             .putString(KEY_KEEP_ALIVE_LEVEL, settings.keepAliveLevel)
-            .putBoolean(KEY_EXPERIMENTAL_ACCESSIBILITY_KEEP_ALIVE_ENABLED, settings.experimentalAccessibilityKeepAliveEnabled)
             .putString(KEY_ACCOUNT_SUMMARY_JSON, buildAccountSummaryJson(settings.accountSummary).toString())
             .putString(KEY_MEMBERSHIP_SUMMARY_JSON, buildMembershipSummaryJson(settings.membershipSummary).toString())
             .putString(KEY_RAW_ICS, settings.rawIcs)
@@ -194,6 +193,7 @@ object MobilePrefsStore {
             .putString(KEY_CLOUD_CONFIG_PUSH_STATUS, settings.cloudConfigPushStatus)
             .putString(KEY_CLOUD_LAST_RESULT, settings.cloudLastResult)
             .putLong(KEY_CLOUD_LAST_SYNCED_AT, settings.cloudLastSyncedAt)
+            .putBoolean(KEY_DEV_MODE_ENABLED, settings.devModeEnabled)
             .apply()
     }
 

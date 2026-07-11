@@ -104,6 +104,7 @@ import androidx.lifecycle.Lifecycle
 import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.account.AccountApiClient
+import com.xtawa.classingtime.account.AccountApiException
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
@@ -169,7 +170,6 @@ fun MobileTimetableScreen() {
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
     var keepAliveLevel by remember { mutableStateOf(KeepAliveLevel.BALANCED) }
-    var experimentalAccessibilityKeepAliveEnabled by remember { mutableStateOf(false) }
     var keepAliveStatusTick by remember { mutableIntStateOf(0) }
     var weekNumberMode by remember { mutableStateOf(WeekNumberMode.NATURAL) }
     var semesterWeekStartDate by remember { mutableStateOf(LocalDate.now()) }
@@ -234,11 +234,16 @@ fun MobileTimetableScreen() {
     var membershipSummary by remember { mutableStateOf(MembershipSummary()) }
     var accountStatusMessage by remember { mutableStateOf("") }
     var accountBusy by remember { mutableStateOf(false) }
+    var registrationChallengeId by remember { mutableStateOf("") }
+    var pendingTurnstileRegistration by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var registrationTurnstileSiteKey by remember { mutableStateOf("") }
+    var dailyBriefingStatusMessage by remember { mutableStateOf("") }
     var dailyBriefingEnabled by remember { mutableStateOf(false) }
     var dailyBriefingChannel by remember { mutableStateOf(DailyBriefingChannel.APP_NOTIFICATION) }
     var dailyBriefingTime by remember { mutableStateOf("20:00") }
     var officialSyncFrequency by remember { mutableStateOf(OfficialSyncFrequency.MANUAL_ONLY) }
     var syncScopes by remember { mutableStateOf(SyncScope.entries.toSet()) }
+    var devModeEnabled by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val wearSyncMutex = remember { Mutex() }
     var weekSettingsAutoSyncPending by remember { mutableStateOf(false) }
@@ -281,7 +286,6 @@ fun MobileTimetableScreen() {
             reminderEnabled = reminderEnabled,
             reminderMinutes = reminderMinutes,
             keepAliveLevel = keepAliveLevel,
-            experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
             rawIcs = rawIcs,
             parseMessage = parseMessage,
             wearSyncMode = wearSyncMode,
@@ -305,6 +309,7 @@ fun MobileTimetableScreen() {
             dailyBriefingTime = dailyBriefingTime,
             officialSyncFrequency = officialSyncFrequency,
             syncScopes = syncScopes,
+            devModeEnabled = devModeEnabled,
         )
     }
 
@@ -498,11 +503,25 @@ fun MobileTimetableScreen() {
     }
 
     suspend fun ensureAccessToken(): String? {
-        val accessToken = AuthCredentialStore.loadAccessToken(context).takeIf { it.isNotBlank() }
-        if (accessToken != null) return accessToken
-        val refreshToken = AuthCredentialStore.loadRefreshToken(context).takeIf { it.isNotBlank() } ?: return null
-        val refreshed = accountApiClient.refresh(refreshToken).getOrNull() ?: return null
-        AuthCredentialStore.saveSession(context, refreshed.accessToken, refreshed.refreshToken)
+        if (AuthCredentialStore.isAccessTokenUsable(context)) {
+            return AuthCredentialStore.loadAccessToken(context)
+        }
+        if (!AuthCredentialStore.isRefreshTokenUsable(context)) {
+            AuthCredentialStore.clear(context)
+            return null
+        }
+        val refreshToken = AuthCredentialStore.loadRefreshToken(context)
+        val refreshed = accountApiClient.refresh(refreshToken).getOrElse {
+            AuthCredentialStore.clear(context)
+            return null
+        }
+        AuthCredentialStore.saveSession(
+            context,
+            refreshed.accessToken,
+            refreshed.refreshToken,
+            refreshed.accessExpiresAt,
+            refreshed.refreshExpiresAt,
+        )
         return refreshed.accessToken
     }
 
@@ -512,7 +531,7 @@ fun MobileTimetableScreen() {
             accountSummary = AccountSummary()
             membershipSummary = MembershipSummary()
             if (showStatus) {
-                accountStatusMessage = "Not logged in"
+                accountStatusMessage = context.getString(R.string.account_not_logged_in)
             }
             persistSettings()
             return false
@@ -523,13 +542,17 @@ fun MobileTimetableScreen() {
             accountSummary = profile.account
             membershipSummary = profile.membership.copy(lastCheckedAt = System.currentTimeMillis())
             if (showStatus) {
-                accountStatusMessage = "Account synced"
+                accountStatusMessage = context.getString(R.string.account_synced)
             }
             persistSettings()
             true
         } else {
             if (showStatus) {
-                accountStatusMessage = result.exceptionOrNull()?.message ?: "Failed to refresh account"
+                accountStatusMessage = accountErrorMessage(
+                    context,
+                    result.exceptionOrNull(),
+                    R.string.account_error_refresh_failed,
+                )
             }
             false
         }
@@ -539,12 +562,20 @@ fun MobileTimetableScreen() {
         if ((dailyBriefingChannel == DailyBriefingChannel.EMAIL || dailyBriefingChannel == DailyBriefingChannel.BOTH) &&
             accountSummary.userId.isBlank()
         ) {
-            accountStatusMessage = "Email briefing requires login"
+            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_login_required)
             return false
         }
         persistSettings()
         if (!pushRemote) return true
-        val accessToken = ensureAccessToken() ?: return true
+        val accessToken = ensureAccessToken()
+        if (accessToken == null) {
+            if (dailyBriefingChannel == DailyBriefingChannel.EMAIL || dailyBriefingChannel == DailyBriefingChannel.BOTH) {
+                dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_login_required)
+                return false
+            }
+            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_saved_local)
+            return true
+        }
         val result = accountApiClient.saveDailyBriefingSubscription(
             accessToken = accessToken,
             enabled = dailyBriefingEnabled,
@@ -552,7 +583,13 @@ fun MobileTimetableScreen() {
             time = dailyBriefingTime,
         )
         if (result.isFailure) {
-            accountStatusMessage = result.exceptionOrNull()?.message ?: "Failed to save briefing subscription"
+            dailyBriefingStatusMessage = accountErrorMessage(
+                context,
+                result.exceptionOrNull(),
+                R.string.daily_briefing_save_failed,
+            )
+        } else {
+            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_saved)
         }
         return result.isSuccess
     }
@@ -596,6 +633,42 @@ fun MobileTimetableScreen() {
     fun requestCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
         coroutineScope.launch {
             runCloudSync(trigger = trigger, force = force, alsoPushConfigToWear = alsoPushConfigToWear)
+            if (accountSummary.userId.isNotBlank()) {
+                MobileCloudSyncCoordinator.requestOfficialSettingsSync(context, trigger)
+            }
+        }
+    }
+
+    fun applySyncedSettingsState() {
+        val synced = MobilePrefsStore.loadSettings(context)
+        showWeekend = synced.showWeekend
+        reminderEnabled = synced.reminderEnabled
+        reminderMinutes = synced.reminderMinutes
+        keepAliveLevel = KeepAliveLevel.fromRaw(synced.keepAliveLevel)
+        weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == synced.weekNumberMode } ?: WeekNumberMode.NATURAL
+        semesterWeekStartDate = runCatching { LocalDate.parse(synced.semesterWeekStartDate) }.getOrDefault(semesterWeekStartDate)
+        weekStartDay = parseWeekStartDay(synced.weekStartDay)
+        dailyBriefingEnabled = synced.dailyBriefingEnabled
+        dailyBriefingChannel = synced.dailyBriefingChannel
+        dailyBriefingTime = synced.dailyBriefingTime
+        cloudProvider = CloudProviderUi.entries.firstOrNull { it.name == synced.cloudProvider } ?: cloudProvider
+        cloudSyncEnabled = synced.cloudSyncEnabled
+        cloudServerUrl = synced.cloudServerUrl
+        cloudRemotePath = synced.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
+        cloudUsername = synced.cloudUsername
+        cloudDriveFileName = synced.cloudDriveFileName.ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME }
+        officialSyncFrequency = synced.officialSyncFrequency
+        syncScopes = synced.syncScopes.ifEmpty { SyncScope.entries.toSet() }
+        rebuildScheduleProjection()
+    }
+
+    fun requestOfficialSettingsSync(trigger: String) {
+        if (accountSummary.userId.isBlank()) return
+        coroutineScope.launch {
+            val result = MobileCloudSyncCoordinator.requestOfficialSettingsSync(context, trigger)
+            if (result.isSuccess) {
+                applySyncedSettingsState()
+            }
         }
     }
 
@@ -717,7 +790,7 @@ fun MobileTimetableScreen() {
         }
         cloudDriveAccessToken = token.token
         cloudDriveTokenExpireAt = token.expireAt
-        CloudCredentialStore.saveDriveAccessToken(context, token.token, token.expireAt)
+        CloudCredentialStore.saveDriveAccessToken(context, token.token, token.expireAt, token.refreshAfterAt)
         cloudConfigPushStatus = ""
         cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_connected)
         cloudSyncInProgress = false
@@ -803,7 +876,6 @@ fun MobileTimetableScreen() {
         reminderEnabled = settings.reminderEnabled
         reminderMinutes = settings.reminderMinutes
         keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel)
-        experimentalAccessibilityKeepAliveEnabled = settings.experimentalAccessibilityKeepAliveEnabled
         rawIcs = settings.rawIcs.takeUnless { it.contains("PRODID:-//Classing//Schedule Demo//EN") }.orEmpty()
         parseMessage = settings.parseMessage.ifBlank { context.getString(R.string.initial_parse_message) }
         wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.AUTO
@@ -828,6 +900,7 @@ fun MobileTimetableScreen() {
         dailyBriefingTime = settings.dailyBriefingTime
         officialSyncFrequency = settings.officialSyncFrequency
         syncScopes = settings.syncScopes.ifEmpty { SyncScope.entries.toSet() }
+        devModeEnabled = settings.devModeEnabled
         cloudPassword = CloudCredentialStore.loadPassword(context)
         cloudDriveAccessToken = CloudCredentialStore.loadDriveAccessToken(context)
         cloudSyncStatus = settings.cloudLastResult
@@ -917,6 +990,20 @@ fun MobileTimetableScreen() {
         if (!initialized) return@LaunchedEffect
         if (!showOnboarding && cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             CloudSyncEngine.enqueue(context, CloudSyncContracts.TRIGGER_FOREGROUND_TICK, markDirty = false)
+        }
+    }
+
+    LaunchedEffect(initialized, accountSummary.userId, lifecycleOwner, showOnboarding) {
+        if (!initialized || showOnboarding || accountSummary.userId.isBlank()) return@LaunchedEffect
+        while (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            val result = MobileCloudSyncCoordinator.requestOfficialSettingsSync(
+                context = context,
+                trigger = CloudSyncContracts.TRIGGER_FOREGROUND_TICK,
+            )
+            if (result.isSuccess) {
+                applySyncedSettingsState()
+            }
+            delay(5_000L)
         }
     }
 
@@ -1062,7 +1149,6 @@ fun MobileTimetableScreen() {
     )
     val keepAliveRuntimeStatus = remember(
         keepAliveLevel,
-        experimentalAccessibilityKeepAliveEnabled,
         reminderEnabled,
         reminderMinutes,
         keepAliveStatusTick,
@@ -1074,8 +1160,6 @@ fun MobileTimetableScreen() {
         append(if (keepAliveRuntimeStatus.canScheduleExactAlarm) "已授权" else "未授权")
         append(" · 电池优化白名单: ")
         append(if (keepAliveRuntimeStatus.ignoringBatteryOptimizations) "已加入" else "未加入")
-        append(" · 无障碍服务: ")
-        append(if (keepAliveRuntimeStatus.accessibilityServiceEnabled) "已启用" else "未启用")
     }
     val autoDetection = remember {
         detectWearAutoSyncPlan(findWearOsCompanionInfo(context))
@@ -1569,12 +1653,8 @@ fun MobileTimetableScreen() {
                 MobileLayer.Settings -> when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
-                    showWeekend = showWeekend,
                     onOpenAccountPage = {
                         openSettingsPage(SettingsPage.Account)
-                    },
-                    onOpenDailyBriefingPage = {
-                        openSettingsPage(SettingsPage.DailyBriefing)
                     },
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
@@ -1593,14 +1673,6 @@ fun MobileTimetableScreen() {
                     },
                     onOpenAboutPage = {
                         openSettingsPage(SettingsPage.About)
-                    },
-                    onToggleWeekend = {
-                        showWeekend = it
-                        persistSettings()
-                        requestCloudSync(
-                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
-                            alsoPushConfigToWear = false,
-                        )
                     },
                     onClearAllSchedules = {
                         showClearAllConfirmDialog = true
@@ -1639,11 +1711,20 @@ fun MobileTimetableScreen() {
 
                 SettingsPage.WeekMode -> WeekModeSettingsPage(
                     contentPadding = innerPadding,
+                    showWeekend = showWeekend,
                     weekNumberMode = weekNumberMode,
                     semesterWeekStartDate = semesterWeekStartDate,
                     weekStartDay = weekStartDay,
                     onBack = {
                         handleBackNavigation()
+                    },
+                    onShowWeekendChange = {
+                        showWeekend = it
+                        persistSettings()
+                        requestCloudSync(
+                            trigger = CloudSyncContracts.TRIGGER_SETTINGS_CHANGED,
+                            alsoPushConfigToWear = false,
+                        )
                     },
                     onWeekNumberModeChange = { mode ->
                         if (weekNumberMode != mode) {
@@ -1688,7 +1769,6 @@ fun MobileTimetableScreen() {
                     reminderEnabled = reminderEnabled,
                     reminderMinutes = reminderMinutes,
                     keepAliveLevel = keepAliveLevel,
-                    experimentalAccessibilityKeepAliveEnabled = experimentalAccessibilityKeepAliveEnabled,
                     keepAliveStatus = keepAliveStatusText,
                     onBack = {
                         handleBackNavigation()
@@ -1734,16 +1814,6 @@ fun MobileTimetableScreen() {
                             alsoPushConfigToWear = false,
                         )
                     },
-                    onToggleExperimentalAccessibilityKeepAlive = {
-                        experimentalAccessibilityKeepAliveEnabled = it
-                        persistSettings()
-                        syncReminderWork()
-                    },
-                    onOpenAccessibilitySettings = {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                    },
                     onOpenBatteryOptimizationSettings = {
                         val requestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:${context.packageName}")
@@ -1771,6 +1841,9 @@ fun MobileTimetableScreen() {
                             alsoPushConfigToWear = false,
                         )
                     },
+                    onOpenDailyBriefing = {
+                        openSettingsPage(SettingsPage.DailyBriefing)
+                    },
                 )
 
                 SettingsPage.Account -> AccountSettingsPage(
@@ -1789,32 +1862,22 @@ fun MobileTimetableScreen() {
                                 val session = accountApiClient.login(identifier, password)
                                 if (session.isSuccess) {
                                     val auth = session.getOrThrow()
-                                    AuthCredentialStore.saveSession(context, auth.accessToken, auth.refreshToken)
+                                    AuthCredentialStore.saveSession(
+                                        context,
+                                        auth.accessToken,
+                                        auth.refreshToken,
+                                        auth.accessExpiresAt,
+                                        auth.refreshExpiresAt,
+                                    )
                                     refreshAccountProfile(showStatus = true)
                                     persistSettings()
-                                    if (cloudProvider == CloudProviderUi.OFFICIAL) {
-                                        requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED, force = true)
-                                    }
+                                    requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
                                 } else {
-                                    accountStatusMessage = session.exceptionOrNull()?.message ?: "Login failed"
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onRegister = { username, email, password ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val session = accountApiClient.register(username, email, password)
-                                if (session.isSuccess) {
-                                    val auth = session.getOrThrow()
-                                    AuthCredentialStore.saveSession(context, auth.accessToken, auth.refreshToken)
-                                    refreshAccountProfile(showStatus = true)
-                                    persistSettings()
-                                } else {
-                                    accountStatusMessage = session.exceptionOrNull()?.message ?: "Register failed"
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        session.exceptionOrNull(),
+                                        R.string.account_error_login_failed,
+                                    )
                                 }
                             } finally {
                                 accountBusy = false
@@ -1833,7 +1896,7 @@ fun MobileTimetableScreen() {
                                 AuthCredentialStore.clear(context)
                                 accountSummary = AccountSummary()
                                 membershipSummary = MembershipSummary()
-                                accountStatusMessage = "Logged out"
+                                accountStatusMessage = context.getString(R.string.account_logged_out)
                                 persistSettings()
                             } finally {
                                 accountBusy = false
@@ -1856,7 +1919,7 @@ fun MobileTimetableScreen() {
                             try {
                                 val accessToken = ensureAccessToken()
                                 if (accessToken == null) {
-                                    accountStatusMessage = "Login required before redeeming codes"
+                                    accountStatusMessage = context.getString(R.string.account_login_required_redeem)
                                 } else {
                                     val redeemed = accountApiClient.redeemCode(accessToken, code)
                                     if (redeemed.isSuccess) {
@@ -1865,7 +1928,11 @@ fun MobileTimetableScreen() {
                                             requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED, force = true)
                                         }
                                     } else {
-                                        accountStatusMessage = redeemed.exceptionOrNull()?.message ?: "Redeem failed"
+                                        accountStatusMessage = accountErrorMessage(
+                                            context,
+                                            redeemed.exceptionOrNull(),
+                                            R.string.account_redeem_failed,
+                                        )
                                     }
                                 }
                             } finally {
@@ -1873,15 +1940,104 @@ fun MobileTimetableScreen() {
                             }
                         }
                     },
+                    onOpenRegister = {
+                        accountStatusMessage = ""
+                        registrationChallengeId = ""
+                        openSettingsPage(SettingsPage.AccountRegister)
+                    },
+                    onOpenPasswordReset = {
+                        accountStatusMessage = ""
+                        openSettingsPage(SettingsPage.AccountPasswordReset)
+                    },
+                )
+
+                SettingsPage.AccountRegister -> AccountRegisterPage(
+                    contentPadding = innerPadding,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    challengeId = registrationChallengeId,
+                    onBack = { handleBackNavigation() },
+                    onRequestVerification = { username, email, password ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val security = accountApiClient.registrationSecurityConfig().getOrNull()
+                                if (security?.turnstileRequired == true) {
+                                    if (security.turnstileSiteKey.isBlank()) {
+                                        accountStatusMessage = context.getString(R.string.account_turnstile_unavailable)
+                                    } else {
+                                        registrationTurnstileSiteKey = security.turnstileSiteKey
+                                        pendingTurnstileRegistration = Triple(username, email, password)
+                                    }
+                                    return@launch
+                                }
+                                val challenge = accountApiClient.requestRegistrationVerification(username, email, password, "")
+                                if (challenge.isSuccess) {
+                                    registrationChallengeId = challenge.getOrThrow().challengeId
+                                    accountStatusMessage = context.getString(R.string.account_verification_sent)
+                                } else {
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        challenge.exceptionOrNull(),
+                                        R.string.account_verification_send_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onConfirmVerification = { code ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val session = accountApiClient.confirmRegistration(registrationChallengeId, code)
+                                if (session.isSuccess) {
+                                    val auth = session.getOrThrow()
+                                    AuthCredentialStore.saveSession(
+                                        context,
+                                        auth.accessToken,
+                                        auth.refreshToken,
+                                        auth.accessExpiresAt,
+                                        auth.refreshExpiresAt,
+                                    )
+                                    refreshAccountProfile(showStatus = true)
+                                    registrationChallengeId = ""
+                                    requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+                                    openSettingsPage(SettingsPage.Account)
+                                } else {
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        session.exceptionOrNull(),
+                                        R.string.account_error_register_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.AccountPasswordReset -> AccountPasswordResetPage(
+                    contentPadding = innerPadding,
+                    initialEmail = accountSummary.email,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    onBack = { handleBackNavigation() },
                     onRequestPasswordReset = { email ->
                         coroutineScope.launch {
                             accountBusy = true
                             try {
                                 val result = accountApiClient.requestPasswordReset(email)
                                 accountStatusMessage = if (result.isSuccess) {
-                                    "Password reset request sent"
+                                    context.getString(R.string.password_reset_request_sent)
                                 } else {
-                                    result.exceptionOrNull()?.message ?: "Password reset request failed"
+                                    accountErrorMessage(
+                                        context,
+                                        result.exceptionOrNull(),
+                                        R.string.password_reset_request_failed,
+                                    )
                                 }
                             } finally {
                                 accountBusy = false
@@ -1894,9 +2050,14 @@ fun MobileTimetableScreen() {
                             try {
                                 val result = accountApiClient.confirmPasswordReset(token, newPassword)
                                 accountStatusMessage = if (result.isSuccess) {
-                                    "Password reset confirmed"
+                                    AuthCredentialStore.clear(context)
+                                    context.getString(R.string.password_reset_confirmed)
                                 } else {
-                                    result.exceptionOrNull()?.message ?: "Password reset confirm failed"
+                                    accountErrorMessage(
+                                        context,
+                                        result.exceptionOrNull(),
+                                        R.string.password_reset_confirm_failed,
+                                    )
                                 }
                             } finally {
                                 accountBusy = false
@@ -1911,7 +2072,7 @@ fun MobileTimetableScreen() {
                     channel = dailyBriefingChannel,
                     time = dailyBriefingTime,
                     loggedIn = accountSummary.userId.isNotBlank(),
-                    statusMessage = accountStatusMessage,
+                    statusMessage = dailyBriefingStatusMessage,
                     onBack = {
                         handleBackNavigation()
                     },
@@ -1920,7 +2081,7 @@ fun MobileTimetableScreen() {
                     },
                     onChannelChange = {
                         if (accountSummary.userId.isBlank() && (it == DailyBriefingChannel.EMAIL || it == DailyBriefingChannel.BOTH)) {
-                            accountStatusMessage = "Email briefing requires login"
+                            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_login_required)
                         } else {
                             dailyBriefingChannel = it
                         }
@@ -1930,6 +2091,13 @@ fun MobileTimetableScreen() {
                     },
                     onSave = {
                         coroutineScope.launch {
+                            val validTime = runCatching {
+                                LocalTime.parse(dailyBriefingTime, DateTimeFormatter.ofPattern("HH:mm"))
+                            }.isSuccess
+                            if (!validTime) {
+                                dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_invalid_time)
+                                return@launch
+                            }
                             if (dailyBriefingEnabled &&
                                 dailyBriefingChannel != DailyBriefingChannel.EMAIL &&
                                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -1988,13 +2156,18 @@ fun MobileTimetableScreen() {
                                 }
                                 persistSettings()
                                 val result = MobileCloudSyncCoordinator.testConnection(context)
-                                cloudSyncStatus = when {
-                                    result.isSuccess && cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection OK"
-                                    result.isSuccess && cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection OK"
-                                    result.isSuccess && cloudProvider == CloudProviderUi.OFFICIAL -> "Official cloud connection OK"
-                                    cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
-                                    cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
-                                    else -> "Official cloud connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                val providerLabel = context.getString(
+                                    when (cloudProvider) {
+                                        CloudProviderUi.WEBDAV -> R.string.cloud_provider_webdav
+                                        CloudProviderUi.GOOGLE_DRIVE -> R.string.cloud_provider_google_drive
+                                        CloudProviderUi.OFFICIAL -> R.string.cloud_provider_official
+                                    },
+                                )
+                                cloudSyncStatus = context.getString(
+                                    if (result.isSuccess) R.string.cloud_connection_success else R.string.cloud_connection_failed,
+                                    providerLabel,
+                                ).let { message ->
+                                    if (devModeEnabled && result.isFailure) "$message · ${result.exceptionOrNull()?.message.orEmpty()}" else message
                                 }
                                 persistSettings()
                             } finally {
@@ -2131,7 +2304,7 @@ fun MobileTimetableScreen() {
                                 val token = GoogleDriveAuthManager.parseAccessToken(authResult).getOrThrow()
                                 cloudDriveAccessToken = token.token
                                 cloudDriveTokenExpireAt = token.expireAt
-                                CloudCredentialStore.saveDriveAccessToken(context, token.token, token.expireAt)
+                                CloudCredentialStore.saveDriveAccessToken(context, token.token, token.expireAt, token.refreshAfterAt)
                                 cloudSyncStatus = context.getString(R.string.settings_cloud_sync_drive_connected)
                                 cloudConfigPushStatus = ""
                                 persistSettings()
@@ -2199,13 +2372,18 @@ fun MobileTimetableScreen() {
                                 }
                                 persistSettings()
                                 val result = MobileCloudSyncCoordinator.testConnection(context)
-                                cloudSyncStatus = when {
-                                    result.isSuccess && cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection OK"
-                                    result.isSuccess && cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection OK"
-                                    result.isSuccess && cloudProvider == CloudProviderUi.OFFICIAL -> "Official cloud connection OK"
-                                    cloudProvider == CloudProviderUi.WEBDAV -> "WebDAV connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
-                                    cloudProvider == CloudProviderUi.GOOGLE_DRIVE -> "Google Drive connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
-                                    else -> "Official cloud connection failed: ${result.exceptionOrNull()?.message ?: "unknown"}"
+                                val providerLabel = context.getString(
+                                    when (cloudProvider) {
+                                        CloudProviderUi.WEBDAV -> R.string.cloud_provider_webdav
+                                        CloudProviderUi.GOOGLE_DRIVE -> R.string.cloud_provider_google_drive
+                                        CloudProviderUi.OFFICIAL -> R.string.cloud_provider_official
+                                    },
+                                )
+                                cloudSyncStatus = context.getString(
+                                    if (result.isSuccess) R.string.cloud_connection_success else R.string.cloud_connection_failed,
+                                    providerLabel,
+                                ).let { message ->
+                                    if (devModeEnabled && result.isFailure) "$message · ${result.exceptionOrNull()?.message.orEmpty()}" else message
                                 }
                                 persistSettings()
                             } finally {
@@ -2240,13 +2418,54 @@ fun MobileTimetableScreen() {
 
                 SettingsPage.About -> AboutLayer(
                     contentPadding = innerPadding,
+                    devModeEnabled = devModeEnabled,
                     onBack = {
                         handleBackNavigation()
+                    },
+                    onToggleDevMode = {
+                        devModeEnabled = it
+                        persistSettings()
                     },
                 )
             }
         }
         }
+    }
+
+    pendingTurnstileRegistration?.let { pending ->
+        TurnstileVerificationDialog(
+            siteKey = registrationTurnstileSiteKey,
+            onVerified = { token ->
+                pendingTurnstileRegistration = null
+                coroutineScope.launch {
+                    accountBusy = true
+                    try {
+                        val challenge = accountApiClient.requestRegistrationVerification(
+                            pending.first,
+                            pending.second,
+                            pending.third,
+                            token,
+                        )
+                        if (challenge.isSuccess) {
+                            registrationChallengeId = challenge.getOrThrow().challengeId
+                            accountStatusMessage = context.getString(R.string.account_verification_sent)
+                        } else {
+                            accountStatusMessage = accountErrorMessage(
+                                context,
+                                challenge.exceptionOrNull(),
+                                R.string.account_verification_send_failed,
+                            )
+                        }
+                    } finally {
+                        accountBusy = false
+                    }
+                }
+            },
+            onDismiss = {
+                pendingTurnstileRegistration = null
+                accountBusy = false
+            },
+        )
     }
 
     MobileDialogs(
@@ -2373,6 +2592,30 @@ fun MobileTimetableScreen() {
             persistSettings()
         },
     )
+}
+
+private fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes: Int): String {
+    val resource = when ((error as? AccountApiException)?.errorCode) {
+        "AUTH_INVALID_CREDENTIALS" -> R.string.account_error_invalid_credentials
+        "AUTH_ACCOUNT_DISABLED", "AUTH_ACCOUNT_UNAVAILABLE" -> R.string.account_error_disabled
+        "AUTH_REGISTRATION_DISABLED" -> R.string.account_error_registration_disabled
+        "AUTH_USERNAME_INVALID" -> R.string.account_error_username_invalid
+        "AUTH_EMAIL_INVALID" -> R.string.account_error_email_invalid
+        "AUTH_PASSWORD_WEAK", "ACCOUNT_PASSWORD_WEAK" -> R.string.account_error_password_weak
+        "AUTH_ACCOUNT_EXISTS", "ACCOUNT_PROFILE_CONFLICT" -> R.string.account_error_exists
+        "AUTH_RATE_LIMITED" -> R.string.account_error_rate_limited
+        "AUTH_EMAIL_VERIFICATION_INVALID", "AUTH_EMAIL_VERIFICATION_EXPIRED" -> R.string.account_verification_invalid
+        "AUTH_EMAIL_DELIVERY_FAILED" -> R.string.account_verification_send_failed
+        "AUTH_TURNSTILE_INVALID", "AUTH_TURNSTILE_UNAVAILABLE" -> R.string.account_turnstile_unavailable
+        "AUTH_REFRESH_REVOKED", "AUTH_ACCESS_EXPIRED", "AUTH_SESSION_REVOKED", "AUTH_REQUIRED" -> R.string.account_error_session_expired
+        "AUTH_RESET_TOKEN_INVALID" -> R.string.password_reset_error_token_invalid
+        "MEMBERSHIP_REDEEM_INVALID", "MEMBERSHIP_REDEEM_NOT_FOUND" -> R.string.account_redeem_invalid
+        "MEMBERSHIP_REDEEM_CONFLICT" -> R.string.account_redeem_used
+        "BRIEFING_INVALID" -> R.string.daily_briefing_invalid_time
+        "BRIEFING_DISABLED" -> R.string.daily_briefing_service_disabled
+        else -> fallbackRes
+    }
+    return context.getString(resource)
 }
 
 private data class MobileContentDestination(

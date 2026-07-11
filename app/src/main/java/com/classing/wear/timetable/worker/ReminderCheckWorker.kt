@@ -92,7 +92,9 @@ class ReminderCheckWorker(
             for (i in 0 until lessons.length()) {
                 val item = lessons.optJSONObject(i) ?: continue
                 val id = item.optString("id").ifBlank { "lesson-$i" }
-                val title = item.optString("title").ifBlank { "Class" }
+                val title = item.optString("title").ifBlank {
+                    applicationContext.getString(R.string.reminder_unknown_class)
+                }
                 val day = item.optInt("dayOfWeek", 1).coerceIn(1, 7)
                 val start = parseTime(item.optString("startTime")) ?: continue
 
@@ -142,6 +144,11 @@ class ReminderCheckWorker(
     }
 
     private fun postNotification(lesson: SyncedLesson, notificationId: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         val startText = lesson.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
         val content = listOfNotNull(lesson.title, startText, lesson.location?.takeIf { it.isNotBlank() })
             .joinToString(" · ")
@@ -156,7 +163,11 @@ class ReminderCheckWorker(
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
+        try {
+            NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
+        } catch (_: SecurityException) {
+            // Notification permission can be revoked between the check and notify call.
+        }
     }
 
     private fun loadNotifiedSet(date: LocalDate): Set<String> {

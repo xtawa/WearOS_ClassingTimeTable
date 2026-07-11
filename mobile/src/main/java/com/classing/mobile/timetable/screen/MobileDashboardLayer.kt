@@ -172,7 +172,7 @@ internal fun DashboardLayer(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DashboardMetricCard(
                         modifier = Modifier.weight(1f),
-                        title = "Today's classes",
+                        title = stringResource(R.string.today_classes_title),
                         value = todayLessons.size.toString(),
                     )
                     DashboardMetricCard(
@@ -220,7 +220,7 @@ internal fun DashboardLayer(
             }
         }
 
-        DashboardSectionTitle(title = "Next lesson")
+        DashboardSectionTitle(title = stringResource(R.string.schedule_next_lesson_title))
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
             Column(
                 modifier = Modifier
@@ -230,7 +230,11 @@ internal fun DashboardLayer(
             ) {
                 if (nextTodayLesson == null) {
                     Text(
-                        text = if (todayLessons.isEmpty()) "No classes scheduled today" else "No upcoming class today",
+                        text = if (todayLessons.isEmpty()) {
+                            stringResource(R.string.no_classes_today)
+                        } else {
+                            stringResource(R.string.schedule_next_lesson_empty)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
