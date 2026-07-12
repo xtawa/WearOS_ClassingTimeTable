@@ -2,6 +2,7 @@ package com.xtawa.classingtime.sync
 
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -54,6 +55,7 @@ class OfficialCloudHttpClient {
                 if (payload != null) {
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    setRequestProperty("Idempotency-Key", UUID.randomUUID().toString())
                 }
             }
             try {
@@ -76,6 +78,15 @@ class OfficialCloudHttpClient {
                 if (status == HttpURLConnection.HTTP_FORBIDDEN) {
                     throw CloudPermissionDeniedException("Official cloud permission denied")
                 }
+                if (status == 429) {
+                    val errorCode = parseErrorCode(body)
+                    val retryAfter = connection.getHeaderField("Retry-After")?.toIntOrNull()?.coerceAtLeast(1) ?: 60
+                    throw CloudRateLimitedException(
+                        retryAfterSeconds = retryAfter,
+                        errorCode = errorCode,
+                        message = "Official cloud rate limited; retry after ${retryAfter}s",
+                    )
+                }
                 if (status !in 200..299) {
                     error("HTTP $status ${body.take(160)}".trim())
                 }
@@ -88,4 +99,8 @@ class OfficialCloudHttpClient {
             }
         }
     }
+
+    private fun parseErrorCode(body: String): String = runCatching {
+        org.json.JSONObject(body).optString("code")
+    }.getOrDefault("")
 }

@@ -49,7 +49,7 @@
 - 请求头：
   - `Authorization: Bearer <accessToken>`
   - `If-Match: <etag-or-version>`
-  - `Idempotency-Key: <uuid>`
+  - `Idempotency-Key: <uuid>`（≤ 128 字节，超长返回 `400 IDEMPOTENCY_KEY_TOO_LONG`）
 
 ### `POST /api/v1/cloud/official/test`
 - 测试账户令牌与官方云连接；`GET /api/v1/cloud/official/ping` 提供相同的轻量连接检测。
@@ -60,6 +60,7 @@
 
 ## 5. 幂等与并发
 - 每次写入必须带 `Idempotency-Key`。
+- `Idempotency-Key` 长度上限 128 字节；超长返回 `400 IDEMPOTENCY_KEY_TOO_LONG`，客户端应缩短 key 后重试。
 - 服务端保存最近一段时间的 key，避免客户端重试重复提交。
 - 并发冲突使用：
   - `409 Conflict`
@@ -89,3 +90,14 @@
 说明：
 - Android 最小周期按 15 分钟对齐。
 - 频率变更后客户端需重建 WorkManager 周期任务。
+
+## 9. 限流
+
+`PUT /api/v1/cloud/official/document` 受双维度限流保护：
+
+| 维度 | 限制 | 错误码 |
+|---|---|---|
+| IP（敏感接口共享） | 60 次/分钟 | `429 IP_RATE_LIMITED` |
+| 账户 | 30 次/分钟 | `429 ACCOUNT_RATE_LIMITED` |
+
+429 响应携带 `Retry-After: 60`。正常同步频率（≤ `EVERY_15_MIN`）远低于账户限制；若因并发冲突（409/412）触发自动重试，重试次数应 ≤ 3 并带退避。

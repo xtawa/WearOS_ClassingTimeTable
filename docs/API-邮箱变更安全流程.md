@@ -92,6 +92,8 @@ HTTP/1.1 202 Accepted
 | 403 | `ACCOUNT_PASSWORD_CURRENT_INVALID` | 当前密码错误 |
 | 409 | `ACCOUNT_EMAIL_CONFLICT` | 新邮箱已被其他账户占用 |
 | 429 | `ACCOUNT_EMAIL_RATE_LIMITED` | 60 秒内重复发起，需等待 `Retry-After` |
+| 429 | `IP_RATE_LIMITED` | 同一 IP 敏感接口超过 60 次/分钟（携带 `Retry-After: 60`） |
+| 429 | `ACCOUNT_RATE_LIMITED` | 同一账户该接口超过 10 次/分钟（携带 `Retry-After: 60`） |
 | 503 | `AUTH_EMAIL_DELIVERY_FAILED` | 验证码邮件入队失败 |
 
 ---
@@ -134,6 +136,8 @@ HTTP/1.1 200 OK
 |---|---|---|
 | 400 | `ACCOUNT_EMAIL_VERIFICATION_INVALID` | 验证码错误、过期或已使用 |
 | 409 | `ACCOUNT_EMAIL_CONFLICT` | 确认时邮箱已被他人占用（并发冲突） |
+| 429 | `IP_RATE_LIMITED` | 同一 IP 敏感接口超过 60 次/分钟（携带 `Retry-After: 60`） |
+| 429 | `ACCOUNT_RATE_LIMITED` | 同一账户该接口超过 10 次/分钟（携带 `Retry-After: 60`） |
 
 ---
 

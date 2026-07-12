@@ -29,7 +29,7 @@ data class CloudSyncOutcome(
 )
 
 object MobileCloudSyncCoordinator {
-    private const val MAX_CAS_ATTEMPTS = 4
+    private const val MAX_CAS_ATTEMPTS = 3
     private val mutex = Mutex()
     private val webDavStorageClient: MobileCloudStorageClient = WebDavCloudStorageClient()
     private val googleDriveStorageClient: MobileCloudStorageClient = GoogleDriveCloudStorageClient()
@@ -109,6 +109,7 @@ object MobileCloudSyncCoordinator {
             val prefix = when (error) {
                 is UnsafeCloudStorageException -> "Unsafe cloud storage"
                 is CloudWriteConflictException -> "Cloud changed repeatedly; retry queued"
+                is CloudRateLimitedException -> "Cloud rate limited; retry after ${error.retryAfterSeconds}s"
                 else -> "Cloud sync failed"
             }
             saveCloudStatus(

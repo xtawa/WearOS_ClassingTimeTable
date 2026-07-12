@@ -100,6 +100,20 @@ class OfficialCloudHttpClientTest {
         }
     }
 
+    @Test
+    fun writeJson_sendsBoundedIdempotencyKey() = runBlocking {
+        OneShotHttpServer(status = 200, body = "{}").use { server ->
+            val result = OfficialCloudHttpClient().writeJson(config(server.baseUrl), "{}", "v1")
+
+            assertTrue(result.isSuccess)
+            val keyLine = server.awaitRequest().lineSequence()
+                .first { it.startsWith("Idempotency-Key:", ignoreCase = true) }
+            val key = keyLine.substringAfter(':').trim()
+            assertTrue(key.isNotBlank())
+            assertTrue(key.toByteArray(Charsets.UTF_8).size <= 128)
+        }
+    }
+
     private fun config(baseUrl: String) = CloudRuntimeConfig(
         provider = CloudProvider.OFFICIAL,
         enabled = true,

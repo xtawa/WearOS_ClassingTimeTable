@@ -150,3 +150,5 @@
 - `AUTH_RESET_TOKEN_USED`
 - `AUTH_EMAIL_ALREADY_EXISTS`
 - `AUTH_USERNAME_ALREADY_EXISTS`
+- `IP_RATE_LIMITED` — 同一 IP 对敏感接口的请求超过 60 次/分钟（HTTP 429，携带 `Retry-After: 60`）
+- `ACCOUNT_RATE_LIMITED` — 同一账户密码修改超过 10 次/分钟（HTTP 429，携带 `Retry-After: 60`）

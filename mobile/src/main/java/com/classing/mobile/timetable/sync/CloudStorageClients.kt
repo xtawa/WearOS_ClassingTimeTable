@@ -11,6 +11,11 @@ data class CloudReadResult(val payload: String?, val versionToken: String?)
 class CloudWriteConflictException(message: String = "Cloud document changed during sync") : Exception(message)
 class UnsafeCloudStorageException(message: String) : Exception(message)
 class CloudPermissionDeniedException(message: String) : Exception(message)
+class CloudRateLimitedException(
+    val retryAfterSeconds: Int,
+    val errorCode: String,
+    message: String,
+) : Exception(message)
 
 internal suspend fun <T> retryConditionalCloudUpdate(
     maxAttempts: Int,
@@ -23,6 +28,9 @@ internal suspend fun <T> retryConditionalCloudUpdate(
             return block(attempt)
         } catch (conflict: CloudWriteConflictException) {
             lastConflict = conflict
+            if (attempt + 1 < maxAttempts) {
+                kotlinx.coroutines.delay(250L shl attempt.coerceAtMost(2))
+            }
         }
     }
     throw lastConflict ?: CloudWriteConflictException()

@@ -1,5 +1,68 @@
 # Classing 客户端变更日志
 
+## 2026-07-12
+
+### 安全加固：请求头长度限制
+
+**影响端：** Android Mobile、Android Wear、Web Admin
+
+**后端版本要求：** classing-backend ≥ 2026-07-12
+
+**变更原因：**
+`X-Request-ID` 与 `Idempotency-Key` 头无长度限制，攻击者可发送数 MB 的头值导致日志、上下文与 `idempotency_keys` 表膨胀。
+
+**主要变更：**
+
+- `X-Request-ID` 超过 128 字节时，服务端忽略该值并生成新的 `req_` ID；128 字节以内原样回显。对客户端透明。
+- `Idempotency-Key` 超过 128 字节时，`PUT /api/v1/cloud/official/document` 返回 `400 IDEMPOTENCY_KEY_TOO_LONG`。
+- 128 字节上限覆盖 UUID（36 字符）、nanoid（21 字符）等所有常见标识格式。
+
+**客户端适配要点：**
+
+- 使用 UUID 作为 `Idempotency-Key` 的客户端无需改动。
+- 若客户端使用非标准长 key 格式，需确保 `Idempotency-Key` ≤ 128 字节。
+- 收到 `400 IDEMPOTENCY_KEY_TOO_LONG` 时应缩短 key 后重试，不应使用相同 key 重试。
+- `X-Request-ID` 变更对客户端透明，无需改动。
+
+**详细文档：**
+
+- [API-官方云同步与同步项目.md](./API-官方云同步与同步项目.md)
+
+---
+
+## 2026-07-12
+
+### 安全加固：敏感接口账户维度限流
+
+**影响端：** Android Mobile、Android Wear、Web Admin
+
+**后端版本要求：** classing-backend ≥ 2026-07-12
+
+**变更原因：**
+此前兑换、简报测试、官方云写入、密码修改、邮箱变更确认等敏感写接口无任何限流，持有有效 access token 的攻击者可高频调用进行兑换码爆破、邮件轰炸或云文档打满。所有限流器仅有 IP 维度，通过 IP 轮换即可绕过。
+
+**主要变更：**
+
+- 上述敏感写接口新增双维度限流：IP 维度（60 次/分钟/IP，敏感接口共享）与账户维度（5–30 次/分钟/账户，按接口风险分级）。
+- 账户维度键为 `user:<userId>`，IP 轮换（代理池 / 设备农场）无法绕过。
+- 超限分别返回 `429 IP_RATE_LIMITED` 或 `429 ACCOUNT_RATE_LIMITED`，均携带 `Retry-After: 60` 响应头。
+- 公开下载接口 `GET /client/releases/{id}/download` 纳入公共客户端限流（3 次/分钟/IP+路径），与公告/版本查询共享 `CLIENT_RATE_LIMITED` 预算。
+
+**客户端适配要点：**
+
+- 所有受影响接口的 429 响应应读取 `Retry-After` 头并按该值退避，不应立即重试。
+- 兑换按钮收到 `ACCOUNT_RATE_LIMITED` 后禁用 60 秒并展示倒计时。
+- 简报测试按钮点击后进入 60 秒冷却（该接口限流最严格，5 次/分钟）。
+- 下载失败重试应指数退避（30s → 60s → 120s），1 分钟内不超过 3 次。
+- 429 不应视为致命错误，不应触发退出登录或崩溃。
+- 邮箱变更的 60 秒重发冷却（`ACCOUNT_EMAIL_RATE_LIMITED`）与账户维度限流（`ACCOUNT_RATE_LIMITED`）独立计数，可能先后触发。
+
+**详细文档：**
+
+- [客户端影响-敏感接口限流.md](./客户端影响-敏感接口限流.md)
+
+---
+
 ## 2026-07-11
 
 ### 安全加固：邮箱变更两步验证

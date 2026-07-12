@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classing Time Table — 创意提案</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ground: #08090A;
+            --surface-1: #16171C;
+            --surface-2: #1E1F25;
+            --surface-3: #26272E;
+            --hairline: rgba(255,255,255,0.06);
+            --text-primary: #F7F8F8;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --accent: #5E6AD2;
+            --accent-glow: rgba(94, 106, 210, 0.18);
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow: 0 1px 2px rgba(0,0,0,0.3);
+            --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-hover: ease-out;
+        }
+
+        .light-mode {
+            --ground: #F7F8F8;
+            --surface-1: #FFFFFF;
+            --surface-2: #F3F4F6;
+            --surface-3: #E5E7EB;
+            --hairline: rgba(0,0,0,0.06);
+            --text-primary: #08090A;
+            --text-secondary: #4B5563;
+            --text-muted: #9CA3AF;
+            --accent: #5E6AD2;
+            --accent-glow: rgba(94, 106, 210, 0.12);
+            --shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+
+        :root.vercel-accent { --accent: #000000; --accent-glow: rgba(0,0,0,0.12); }
+        :root.raycast-accent { --accent: #6B5CF6; --accent-glow: rgba(107, 92, 246, 0.18); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--ground);
+            color: var(--text-primary);
+            line-height: 1.55;
+            font-size: 15px;
+            min-height: 100vh;
+            transition: background-color 350ms var(--ease-snap), color 350ms var(--ease-snap);
+        }
+
+        ::selection { background-color: var(--accent); color: white; }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: var(--accent);
+            width: 0%;
+            z-index: 1000;
+            transition: width 150ms var(--ease-hover);
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 260px;
+            padding: 24px 0;
+            background: var(--surface-1);
+            border-right: 1px solid var(--hairline);
+            overflow-y: auto;
+            z-index: 900;
+            transition: background-color 350ms var(--ease-snap), border-color 350ms var(--ease-snap);
+        }
+
+        .sidebar-header {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--hairline);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-brand {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-brand-accent { color: var(--accent); }
+
+        .sidebar-nav {
+            padding: 0 8px;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 8px 16px;
+            margin: 2px 8px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 150ms var(--ease-hover);
+            cursor: pointer;
+        }
+
+        .nav-item:hover { background: var(--surface-2); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent-glow); color: var(--accent); }
+
+        .nav-divider {
+            height: 1px;
+            background: var(--hairline);
+            margin: 12px 16px;
+        }
+
+        .nav-section-label {
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+
+        .section {
+            min-height: 100vh;
+            padding: 64px 96px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .section-title {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            font-size: clamp(28px, 5vw, 48px);
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 32px;
+        }
+
+        .hero-section {
+            padding: 96px;
+            background: var(--surface-1);
+        }
+
+        .hero-gradient {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+        }
+
+        .hero-tagline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--accent-glow);
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 24px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .hero-title {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 700;
+            font-size: clamp(40px, 8vw, 72px);
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+        }
+
+        .hero-title-accent { color: var(--accent); }
+
+        .hero-description {
+            font-size: 20px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+            margin-bottom: 64px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 700;
+            font-size: 32px;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .hero-device-frame {
+            position: relative;
+            width: 280px;
+            height: 600px;
+            background: var(--surface-2);
+            border-radius: 48px;
+            padding: 20px;
+            border: 10px solid var(--surface-3);
+            box-shadow: var(--shadow);
+            align-self: flex-end;
+            margin-top: -120px;
+        }
+
+        .device-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--ground);
+            border-radius: 38px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+
+        .device-time {
+            font-family: 'Inter Tight', sans-serif;
+            font-weight: 600;
+            font-size: 32px;
+            text-align: center;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .device-date {
+            font-size: 12px;
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .device-next-class {
+            background: var(--accent-glow);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .device-next-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .device-course-name {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .device-course-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .device-countdown {
+            display: inline-block;
+            padding: 4px 8px;
+            background: var(--accent);
+            color: white;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .device-lesson-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .device-lesson-item {
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            border: 1px solid var(--hairline);
+        }
+
+        .device-lesson-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .device-lesson-detail {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .device-bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid var(--hairline);
+            margin-top: 8px;
+        }
+
+        .device-nav-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .device-nav-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--hairline);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: background-color 350ms var(--ease-snap), border-color 350ms var(--ease-snap);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card-title {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .feature-card {
+            background: var(--surface-1);
+            border: 1px solid var(--hairline);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            transition: all 200ms var(--ease-hover);
+        }
+
+        .feature-card:hover {
+            background: var(--surface-2);
+            transform: translateY(-2px);
+        }
+
+        .feature-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+
+        .feature-title {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .feature-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .sync-diagram {
+            background: var(--surface-1);
+            border: 1px solid var(--hairline);
+            border-radius: var(--radius-md);
+            padding: 32px;
+            margin-top: 32px;
+            overflow-x: auto;
+        }
+
+        .diagram-title {
+            font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .diagram-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .flow-node {
+            min-width: 160px;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            transition: all 200ms var(--ease-hover);
+        }
+
+        .flow-node:hover {
+            transform: scale(1.05);
+        }
+
+        .flow-node-mobile {
+            background: var(--surface-3);
+            border: 2px solid var(--accent);
+        }
+
+        .flow-node-wear {
+            background: var(--surface-3);
+            border: 2px solid var(--text-secondary);
+        }
+
+        .flow-node-cloud {
+            background: var(--accent-glow);
+            border: 1px dashed var(--accent);
+        }
+
+        .flow-node-auto {
+            background: var(--surface-2);
+            border: 1px solid var(--hairline);
+            min-width: 200px;
+        }
+
+        .flow-node.mode-cn { border-color: #EF4444; }
+        .flow-node.mode-global { border-color: #3B82F6; }
+
+        .flow-node-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+
+        .flow-node-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .flow-node-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .flow-arrow {
+            width: 40px;
+            height: 2px;
+            background: var(--hairline);
+            position: relative;
+        }
+
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 6px solid var(--hairline);
+        }
+
+        .flow-arrow-double {
+            width: 40px;
+            height: 2px;
+            background: var(--accent);
+            position: relative;
+        }
+
+        .flow-arrow-double::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 6px solid var(--accent);
+        }
+
+        .flow-arrow-double::before {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-right: 6px solid var(--accent);
+        }
+
+        .conflict-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+            background: var(--surface-1);
+            border: 1px solid var(--hairline);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .conflict-table th,
+        .conflict-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--hairline);
+        }
+
+        .conflict-table th:last-child,
+        .conflict-table td:last-child {
+            text-align: center;
+        }
+
+        .conflict-table th {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background: var(--surface-2);
+        }
+
+        .conflict-table td {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .conflict-table td:first-child {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .conflict-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .conflict-status.conflict {
+            background: rgba(239, 68, 68, 0.15);
+            color: #EF4444;
+        }
+
+        .conflict-status.no-conflict {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22C55E;
+        }
+
+        .conflict-status.partial {
+            background: rgba(251, 191, 36, 0.15);
+            color: #FBBF24;
+        }
+
+        .conflict-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .highlight-box {
+            background: var(--accent-glow);
+            border-left: 3px solid var(--accent);
+            padding: 16px 20px;
+            margin: 16px 0;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        }
+
+        .highlight-box code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--accent);
+            background: var(--surface-2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .code-block {
+            background: var(--surface-2);
+            border: 1px solid var(--hairline);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+
+        .code-block .keyword { color: #C678DD; }
+        .code-block .function { color: #61AFEF; }
+        .code-block .string { color: #98C379; }
+        .code-block .comment { color: var(--text-muted); font-style: italic; }
+
+        .placeholder-section {
+            opacity: 0.5;
+        }
+
+        .placeholder-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-md);
+            background: var(--surface-2);
+            border: 1px dashed var(--hairline);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .placeholder-text {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .tweaks-panel {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+        }
+
+        .tweaks-toggle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            border: 1px solid var(--hairline);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 200ms var(--ease-hover);
+        }
+
+        .tweaks-toggle:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+
+        .tweaks-content {
+            position: absolute;
+            bottom: 56px;
+            right: 0;
+            width: 280px;
+            background: var(--surface-1);
+            border: 1px solid var(--hairline);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: all 200ms var(--ease-snap);
+        }
+
+        .tweaks-content.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .tweaks-header {
+            font-family: 'Inter Tight', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .tweak-item {
+            margin-bottom: 16px;
+        }
+
+        .tweak-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .tweak-options {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tweak-option {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid var(--hairline);
+            background: var(--surface-2);
+            color: var(--text-secondary);
+            transition: all 150ms var(--ease-hover);
+        }
+
+        .tweak-option:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+
+        .tweak-option.active {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .tweak-toggle-switch {
+            width: 44px;
+            height: 24px;
+            border-radius: 999px;
+            background: var(--surface-3);
+            position: relative;
+            cursor: pointer;
+            transition: background 200ms var(--ease-hover);
+        }
+
+        .tweak-toggle-switch.on {
+            background: var(--accent);
+        }
+
+        .tweak-toggle-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: left 200ms var(--ease-hover);
+        }
+
+        .tweak-toggle-switch.on .tweak-toggle-thumb {
+            left: 22px;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 220px;
+            }
+            .main-content {
+                margin-left: 220px;
+            }
+            .section {
+                padding: 48px 48px;
+            }
+            .hero-section {
+                padding: 64px 48px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -260px;
+                transition: left 350ms var(--ease-snap);
+            }
+            .sidebar.open {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .section {
+                padding: 48px 24px;
+            }
+            .hero-section {
+                padding: 48px 24px;
+            }
+            .hero-stats {
+                gap: 24px;
+            }
+            .hero-device-frame {
+                display: none;
+            }
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-1);
+            border: 1px solid var(--hairline);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            font-size: 20px;
+            z-index: 1001;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex;
+            }
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 899;
+        }
+
+        .sidebar-overlay.open {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <div class="mobile-menu-toggle" id="mobileMenuToggle">
+        ☰
+    </div>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <span class="sidebar-brand-accent">Classing</span>
+                <span>Time Table</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">提案概览</div>
+            <a href="#hero" class="nav-item" data-section="hero">封面</a>
+            <a href="#overview" class="nav-item" data-section="overview">产品概览</a>
+
+            <div class="nav-divider"></div>
+
+            <div class="nav-section-label">核心能力</div>
+            <a href="#features" class="nav-item" data-section="features">核心功能</a>
+            <a href="#wearos" class="nav-item" data-section="wearos">WearOS 特色</a>
+            <a href="#sync" class="nav-item" data-section="sync">同步与冲突检测</a>
+            <a href="#import" class="nav-item" data-section="import">数据导入</a>
+
+            <div class="nav-divider"></div>
+
+            <div class="nav-section-label">架构与路线</div>
+            <a href="#architecture" class="nav-item" data-section="architecture">技术架构</a>
+            <a href="#roadmap" class="nav-item" data-section="roadmap">发展路线</a>
+
+            <div class="nav-divider"></div>
+
+            <div class="nav-section-label">附录</div>
+            <a href="#about" class="nav-item" data-section="about">关于项目</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <section id="hero" class="section hero-section">
+            <div class="hero-gradient"></div>
+            <div class="hero-content">
+                <div class="hero-tagline">
+                    <span>WearOS 应用</span>
+                    <span>·</span>
+                    <span>课程表管理</span>
+                </div>
+
+                <h1 class="hero-title">
+                    智能课程表<br>
+                    <span class="hero-title-accent">穿戴设备体验</span>
+                </h1>
+
+                <p class="hero-description">
+                    Classing Time Table 是一款专为 Android WearOS 设计的课程表应用，
+                    让学生在手腕上即可查看课程、接收提醒、管理周课表。
+                    通过手机与手表的无缝同步，实现真正的轻量化学习助手体验。
+                </p>
+
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">3 种</div>
+                        <div class="stat-label">同步模式</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">2 套</div>
+                        <div class="stat-label">数据格式</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">实时</div>
+                        <div class="stat-label">冲突检测</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-device-frame">
+                <div class="device-screen">
+                    <div class="device-time">09:23</div>
+                    <div class="device-date">周四 · 第 8 周</div>
+
+                    <div class="device-next-class">
+                        <div class="device-next-label">下一节课</div>
+                        <div class="device-course-name">高级 Android</div>
+                        <div class="device-course-time">09:30 - 11:10 · A-301</div>
+                        <div class="device-countdown">7 分钟后</div>
+                    </div>
+
+                    <div class="device-lesson-list">
+                        <div class="device-lesson-item">
+                            <div class="device-lesson-name">高等数学</div>
+                            <div class="device-lesson-detail">08:00 - 09:40 · B-102</div>
+                        </div>
+                        <div class="device-lesson-item">
+                            <div class="device-lesson-name">大学英语</div>
+                            <div class="device-lesson-detail">14:00 - 15:40 · C-205</div>
+                        </div>
+                    </div>
+
+                    <div class="device-bottom-nav">
+                        <div class="device-nav-btn active">周</div>
+                        <div class="device-nav-btn">🔍</div>
+                        <div class="device-nav-btn">⚙️</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="overview" class="section">
+            <h2 class="section-title">产品概览</h2>
+            <p class="section-subtitle">
+                Classing Time Table 是一个跨平台课程表应用，包含移动端管理端和 WearOS 穿戴端，
+                通过 Google Wearable Data Layer 实现数据同步，支持多格式课程数据导入。
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-number">01</div>
+                    <div class="feature-title">WearOS 原生体验</div>
+                    <div class="feature-description">
+                        基于 Jetpack Compose for Wear 开发，完美适配圆形/方形屏幕，
+                        支持 ScalingLazyColumn 滚动、表盘 Complication 集成。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">02</div>
+                    <div class="feature-title">无缝同步机制</div>
+                    <div class="feature-description">
+                        通过 Google Wearable Data Layer 实现手机与手表实时同步，
+                        支持离线队列、自动重试、同步状态反馈。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">03</div>
+                    <div class="feature-title">智能冲突检测</div>
+                    <div class="feature-description">
+                        自动检测课程时间冲突、周次重叠，支持单双周规则判断，
+                        在导入时实时反馈异常数据。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">04</div>
+                    <div class="feature-title">多格式数据导入</div>
+                    <div class="feature-description">
+                        支持 ICS 日历格式和 JSON 自定义格式，内置容错解析逻辑，
+                        自动识别多种字段命名规范。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="section">
+            <h2 class="section-title">核心功能</h2>
+            <p class="section-subtitle">
+                从表盘到课程详情，覆盖用户完整的课程表使用场景。
+            </p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">CB</div>
+                    <div class="card-title">表盘 Complication</div>
+                </div>
+                <div class="card-body">
+                    通过 <code>NextClassComplicationService</code> 实现表盘集成，
+                    在表盘上直接展示下一节课信息，支持短文本和长文本两种展示模式。
+                    数据由 <code>NextClassSnapshotProvider</code> 实时提供，包含课程名称、
+                    时间、地点、倒计时等关键信息。
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">HS</div>
+                    <div class="card-title">首页仪表盘</div>
+                </div>
+                <div class="card-body">
+                    WearOS 首页展示日期、周数、同步状态、下一节课倒计时、今日课程列表，
+                    以及课程热力图。使用 <code>ScalingLazyColumn</code> 实现圆形屏幕优化滚动，
+                    支持快速操作入口（周视图、搜索、设置）。
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">WV</div>
+                    <div class="card-title">周课表视图</div>
+                </div>
+                <div class="card-body">
+                    完整的一周课程表展示，支持按周次切换，显示每天的课程安排。
+                    课程卡片展示时间、地点、教师信息，支持点击查看详情。
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">SD</div>
+                    <div class="card-title">课程详情</div>
+                </div>
+                <div class="card-body">
+                    详细课程信息展示，包括课程名称、教师、教室、时间范围、周次规则、
+                    备注等。支持收藏、编辑操作。
+                </div>
+            </div>
+        </section>
+
+        <section id="wearos" class="section">
+            <h2 class="section-title">WearOS 特色</h2>
+            <p class="section-subtitle">
+                针对穿戴设备的特性进行深度优化，提供符合 WearOS HIG 的用户体验。
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-number">01</div>
+                    <div class="feature-title">圆形屏幕适配</div>
+                    <div class="feature-description">
+                        使用 Jetpack Compose for Wear 的 <code>ScalingLazyColumn</code>，
+                        自动适配圆形屏幕的边缘裁剪，内容始终保持在可视区域内。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">02</div>
+                    <div class="feature-title">表盘集成</div>
+                    <div class="feature-description">
+                        通过 Complication Data Source API 提供实时课程信息，
+                        用户无需打开应用即可查看下节课。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">03</div>
+                    <div class="feature-title">手势操作</div>
+                    <div class="feature-description">
+                        支持 WearOS 标准手势：轻触选择、长按操作、滑动导航，
+                        符合用户对穿戴设备的操作习惯。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">04</div>
+                    <div class="feature-title">低功耗设计</div>
+                    <div class="feature-description">
+                        优化数据同步频率，减少后台唤醒，延长手表续航。
+                        Complication 更新采用按需策略。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sync" class="section">
+            <h2 class="section-title">同步与冲突检测</h2>
+            <p class="section-subtitle">
+                基于 Google Wearable Data Layer 的同步机制，支持三种同步模式，
+                自动检测 CN/LE 版本差异，并提供完整的课程冲突检测能力。
+            </p>
+
+            <div class="sync-diagram">
+                <div class="diagram-title">同步模式架构</div>
+                <div class="diagram-flow">
+                    <div class="flow-node flow-node-mobile">
+                        <div class="flow-node-label">移动端</div>
+                        <div class="flow-node-title">Classing Mobile</div>
+                        <div class="flow-node-desc">课程管理、导入导出</div>
+                    </div>
+
+                    <div class="flow-arrow-double"></div>
+
+                    <div class="flow-node flow-node-auto">
+                        <div class="flow-node-label">自动检测</div>
+                        <div class="flow-node-title">detectWearAutoSyncPlan</div>
+                        <div class="flow-node-desc">CN/LE vs Global</div>
+                    </div>
+
+                    <div class="flow-arrow"></div>
+
+                    <div style="display: flex; gap: 24px;">
+                        <div class="flow-node flow-node-wear mode-cn">
+                            <div class="flow-node-label">CN / LE</div>
+                            <div class="flow-node-title">WearOS App</div>
+                            <div class="flow-node-desc">SOURCE_WEAROS_APP</div>
+                        </div>
+                        <div class="flow-node flow-node-wear mode-global">
+                            <div class="flow-node-label">Global</div>
+                            <div class="flow-node-title">Wearable API</div>
+                            <div class="flow-node-desc">SOURCE_WEARABLE_API</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">DET</div>
+                    <div class="card-title">自动检测机制</div>
+                </div>
+                <div class="card-body">
+                    <p style="margin-bottom: 16px;">
+                        <code>detectWearAutoSyncPlan()</code> 函数根据已安装的 WearOS 伴侣应用版本，
+                        自动选择最佳同步模式：
+                    </p>
+                    <ul style="padding-left: 20px; margin-bottom: 16px; color: var(--text-secondary);">
+                        <li><strong>CN / LE 版本</strong>：使用 <code>SOURCE_WEAROS_APP</code> 模式，通过 WearOS 应用通道同步</li>
+                        <li><strong>Global 版本</strong>：使用 <code>SOURCE_WEARABLE_API</code> 模式，通过 Google Wearable API 同步</li>
+                    </ul>
+                    <div class="highlight-box">
+                        检测逻辑：扫描 <code>com.google.android.wearable.app.cn</code> 和 <code>com.google.android.wearable.app</code> 包，
+                        通过包名后缀和版本号中的 <code>le</code> 标识判断区域版本。
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">CON</div>
+                    <div class="card-title">课程冲突检测</div>
+                </div>
+                <div class="card-body">
+                    <p style="margin-bottom: 16px;">
+                        <code>detectLessonConflicts()</code> 函数实现完整的课程冲突检测逻辑，
+                        同时考虑时间重叠和周次规则：
+                    </p>
+
+                    <div class="code-block">
+                        <span class="keyword">internal fun</span> <span class="function">lessonsOverlap</span>(
+                            first: LessonUi,
+                            second: LessonUi
+                        ): <span class="keyword">Boolean</span> {
+                            <span class="comment">// 1. 检查是否同一天</span>
+                            <span class="keyword">if</span> (first.dayOfWeek != second.dayOfWeek) <span class="keyword">return</span> <span class="keyword">false</span>
+
+                            <span class="comment">// 2. 检查时间区间是否重叠</span>
+                            <span class="keyword">if</span> (!(first.startTime < second.endTime && second.startTime < first.endTime)) {
+                                <span class="keyword">return</span> <span class="keyword">false</span>
+                            }
+
+                            <span class="comment">// 3. 检查周次规则是否重叠</span>
+                            <span class="keyword">return</span> weekRulesOverlap(first, second)
+                        }
+                    </div>
+
+                    <p style="margin-bottom: 16px;">
+                        <code>weekRulesOverlap()</code> 函数判断周次规则冲突：
+                    </p>
+
+                    <div class="code-block">
+                        <span class="keyword">internal fun</span> <span class="function">weekRulesOverlap</span>(
+                            first: LessonUi,
+                            second: LessonUi
+                        ): <span class="keyword">Boolean</span> {
+                            <span class="comment">// 周次区间不重叠</span>
+                            <span class="keyword">if</span> (first.endWeek < second.startWeek || second.endWeek < first.startWeek) {
+                                <span class="keyword">return</span> <span class="keyword">false</span>
+                            }
+                            <span class="comment">// 任意课程为全周</span>
+                            <span class="keyword">if</span> (first.weekParity == ALL || second.weekParity == ALL) {
+                                <span class="keyword">return</span> <span class="keyword">true</span>
+                            }
+                            <span class="comment">// 单双周相同则冲突</span>
+                            <span class="keyword">return</span> first.weekParity == second.weekParity
+                        }
+                    </div>
+
+                    <p style="margin-bottom: 16px;">
+                        冲突检测结果用于导入预览和异常提醒：
+                    </p>
+
+                    <table class="conflict-table">
+                        <thead>
+                            <tr>
+                                <th>检测类型</th>
+                                <th>检测方法</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>时间冲突</td>
+                                <td>同天 + 时间重叠</td>
+                                <td><span class="conflict-status conflict"><span class="conflict-status-dot"></span>冲突</span></td>
+                            </tr>
+                            <tr>
+                                <td>周次区间重叠</td>
+                                <td>endWeek &gt;= startWeek</td>
+                                <td><span class="conflict-status no-conflict"><span class="conflict-status-dot"></span>正常</span></td>
+                            </tr>
+                            <tr>
+                                <td>单周 vs 单周</td>
+                                <td>weekParity == ODD</td>
+                                <td><span class="conflict-status conflict"><span class="conflict-status-dot"></span>冲突</span></td>
+                            </tr>
+                            <tr>
+                                <td>单周 vs 全周</td>
+                                <td>weekParity == ODD vs ALL</td>
+                                <td><span class="conflict-status partial"><span class="conflict-status-dot"></span>部分</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="import" class="section">
+            <h2 class="section-title">数据导入</h2>
+            <p class="section-subtitle">
+                支持 ICS 日历格式和 JSON 自定义格式导入，内置容错解析逻辑，
+                自动识别多种字段命名规范。
+            </p>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">ICS</div>
+                    <div class="card-title">ICS 日历导入</div>
+                </div>
+                <div class="card-body">
+                    通过 <code>IcsImportParser</code> 解析标准 ICS 文件，提取课程名称、
+                    时间、地点、描述等信息，自动转换为课程数据模型。
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">JSON</div>
+                    <div class="card-title">JSON 格式导入</div>
+                </div>
+                <div class="card-body">
+                    <code>parseJsonToLessons()</code> 支持多种字段命名规范的容错解析：
+                    <ul style="padding-left: 20px; margin-top: 12px; color: var(--text-secondary);">
+                        <li>标题：<code>title</code> / <code>name</code> / <code>courseName</code></li>
+                        <li>教师：<code>teacher</code> / <code>instructor</code></li>
+                        <li>地点：<code>location</code> / <code>classroom</code></li>
+                        <li>时间：<code>startTime</code> / <code>start</code> / <code>startMinute</code></li>
+                        <li>周次：<code>startWeek</code> / <code>weekStart</code> / <code>fromWeek</code></li>
+                        <li>单双周：<code>weekParity</code> / <code>parity</code> / <code>oddEven</code></li>
+                    </ul>
+                    <p style="margin-top: 12px;">
+                        支持中英文周次标识（<code>奇数周</code> / <code>ODD</code> / <code>单周</code>）。
+                    </p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">BCK</div>
+                    <div class="card-title">备份与恢复</div>
+                </div>
+                <div class="card-body">
+                    <p style="margin-bottom: 16px;">
+                        <code>buildScheduleBackupJson()</code> 生成标准备份文件，格式版本为 <code>classingtime_backup_v2</code>，
+                        包含：
+                    </p>
+                    <ul style="padding-left: 20px; margin-bottom: 16px; color: var(--text-secondary);">
+                        <li>基础课程列表（<code>courses</code>）</li>
+                        <li>课程例外（<code>exceptions</code>）—— 调课、停课记录</li>
+                        <li>周数模式（<code>weekNumberMode</code>）</li>
+                        <li>学期起始日期（<code>semesterWeekStartDate</code>）</li>
+                        <li>时区信息（<code>timezone</code>）</li>
+                    </ul>
+                    <div class="highlight-box">
+                        <code>parseScheduleBackupJson()</code> 支持 v1 和 v2 版本的向后兼容解析，
+                        自动识别并适配不同版本的格式差异。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="section placeholder-section">
+            <h2 class="section-title">技术架构</h2>
+            <p class="section-subtitle">
+                三模块架构设计，实现移动端、穿戴端和共享逻辑的清晰分离。
+            </p>
+            <div class="placeholder-icon">[架构图]</div>
+            <p class="placeholder-text">
+                架构章节占位符 — 包含 mobile / app / shared 三模块说明、数据流向图、
+                核心组件依赖关系。
+            </p>
+        </section>
+
+        <section id="roadmap" class="section placeholder-section">
+            <h2 class="section-title">发展路线</h2>
+            <p class="section-subtitle">
+                产品迭代规划，分阶段实现核心功能和扩展能力。
+            </p>
+            <div class="placeholder-icon">[路线图]</div>
+            <p class="placeholder-text">
+                路线图章节占位符 — 包含 MVP 阶段、功能完善阶段、生态扩展阶段的时间线和里程碑。
+            </p>
+        </section>
+
+        <section id="about" class="section">
+            <h2 class="section-title">关于项目</h2>
+            <p class="section-subtitle">
+                Classing Time Table 是一个开源课程表应用，专注于为学生提供简洁、高效的课程管理体验。
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-number">技术栈</div>
+                    <div class="feature-title">Kotlin + Compose</div>
+                    <div class="feature-description">
+                        全部使用 Kotlin 开发，UI 层基于 Jetpack Compose 和 Compose for Wear，
+                        采用 MVVM 架构模式。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">同步</div>
+                    <div class="feature-title">Google Wearable Data Layer</div>
+                    <div class="feature-description">
+                        通过 Google Wearable Data Layer API 实现手机与手表的实时数据同步，
+                        支持离线队列和自动重试。
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-number">数据</div>
+                    <div class="feature-title">Room + SharedPreferences</div>
+                    <div class="feature-description">
+                        使用 Room 数据库存储课程数据，SharedPreferences 存储用户设置，
+                        支持数据导出和导入。
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="tweaks-panel">
+        <div class="tweaks-content" id="tweaksContent">
+            <div class="tweaks-header">Tweaks</div>
+
+            <div class="tweak-item">
+                <div class="tweak-label">主题模式</div>
+                <div class="tweak-options">
+                    <div class="tweak-option active" data-theme="dark">暗色</div>
+                    <div class="tweak-option" data-theme="light">亮色</div>
+                </div>
+            </div>
+
+            <div class="tweak-item">
+                <div class="tweak-label">强调色</div>
+                <div class="tweak-options">
+                    <div class="tweak-option active" data-accent="linear">Linear</div>
+                    <div class="tweak-option" data-accent="vercel">Vercel</div>
+                    <div class="tweak-option" data-accent="raycast">Raycast</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tweaks-toggle" id="tweaksToggle">⚙️</div>
+    </div>
+
+    <script>
+        const progressBar = document.getElementById('progressBar');
+        const sections = document.querySelectorAll('section');
+        const navItems = document.querySelectorAll('.nav-item');
+        const tweaksToggle = document.getElementById('tweaksToggle');
+        const tweaksContent = document.getElementById('tweaksContent');
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function updateProgress() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = (scrollTop / docHeight) * 100;
+            progressBar.style.width = `${scrollPercent}%`;
+        }
+
+        function updateActiveNav() {
+            const scrollPos = window.scrollY + 100;
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+                const sectionId = section.getAttribute('id');
+                const navItem = document.querySelector(`.nav-item[data-section="${sectionId}"]`);
+
+                if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                    navItems.forEach(item => item.classList.remove('active'));
+                    if (navItem) navItem.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', () => {
+            updateProgress();
+            updateActiveNav();
+        });
+
+        tweaksToggle.addEventListener('click', () => {
+            tweaksContent.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!tweaksContent.contains(e.target) && !tweaksToggle.contains(e.target)) {
+                tweaksContent.classList.remove('open');
+            }
+        });
+
+        document.querySelectorAll('.tweak-option[data-theme]').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.tweak-option[data-theme]').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+
+                if (option.dataset.theme === 'dark') {
+                    document.documentElement.classList.remove('light-mode');
+                } else {
+                    document.documentElement.classList.add('light-mode');
+                }
+            });
+        });
+
+        document.querySelectorAll('.tweak-option[data-accent]').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.tweak-option[data-accent]').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+
+                document.documentElement.classList.remove('vercel-accent', 'raycast-accent');
+                if (option.dataset.accent !== 'linear') {
+                    document.documentElement.classList.add(`${option.dataset.accent}-accent`);
+                }
+            });
+        });
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('open');
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('open');
+        });
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                sidebarOverlay.classList.remove('open');
+            });
+        });
+
+        updateProgress();
+        updateActiveNav();
+    </script>
+</body>
+</html>

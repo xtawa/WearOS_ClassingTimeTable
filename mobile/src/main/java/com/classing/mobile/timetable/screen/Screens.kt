@@ -2690,7 +2690,7 @@ private fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes
         "AUTH_EMAIL_INVALID" -> R.string.account_error_email_invalid
         "AUTH_PASSWORD_WEAK", "ACCOUNT_PASSWORD_WEAK" -> R.string.account_error_password_weak
         "AUTH_ACCOUNT_EXISTS", "ACCOUNT_PROFILE_CONFLICT" -> R.string.account_error_exists
-        "AUTH_RATE_LIMITED" -> R.string.account_error_rate_limited
+        "AUTH_RATE_LIMITED", "IP_RATE_LIMITED", "ACCOUNT_RATE_LIMITED", "CLIENT_RATE_LIMITED" -> R.string.account_error_rate_limited
         "AUTH_LOGIN_LOCKED" -> R.string.account_error_rate_limited
         "AUTH_EMAIL_VERIFICATION_INVALID", "AUTH_EMAIL_VERIFICATION_EXPIRED" -> R.string.account_verification_invalid
         "AUTH_EMAIL_DELIVERY_FAILED" -> R.string.account_verification_send_failed

@@ -96,3 +96,5 @@
 - `BRIEFING_INVALID_TIME`
 - `BRIEFING_MAILBOX_POOL_EXHAUSTED`
 - `BRIEFING_TEST_SEND_FAILED`
+- `IP_RATE_LIMITED` — 同一 IP 对敏感接口的请求超过 60 次/分钟（HTTP 429，携带 `Retry-After: 60`）
+- `ACCOUNT_RATE_LIMITED` — 同一账户：简报测试 5 次/分钟、简报配置变更 30 次/分钟（HTTP 429，携带 `Retry-After: 60`）
