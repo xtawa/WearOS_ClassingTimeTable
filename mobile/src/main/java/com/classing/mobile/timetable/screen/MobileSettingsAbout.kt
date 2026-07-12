@@ -88,6 +88,7 @@ import com.xtawa.classingtime.data.AccountSummary
 import com.xtawa.classingtime.data.DailyBriefingChannel
 import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.OfficialSyncFrequency
+import com.xtawa.classingtime.account.PendingEmailChange
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.update.AppUpdateRelease
@@ -1459,6 +1460,8 @@ internal fun AccountSettingsPage(
     membershipSummary: MembershipSummary,
     statusMessage: String,
     busy: Boolean,
+    pendingEmailChange: PendingEmailChange?,
+    loginLockSeconds: Int,
     onBack: () -> Unit,
     onLogin: (String, String) -> Unit,
     onLogout: () -> Unit,
@@ -1466,6 +1469,7 @@ internal fun AccountSettingsPage(
     onRedeem: (String) -> Unit,
     onOpenRegister: () -> Unit,
     onOpenPasswordReset: () -> Unit,
+    onOpenEmailChange: () -> Unit,
 ) {
     var identifier by remember { mutableStateOf(accountSummary.identifier) }
     var password by remember { mutableStateOf("") }
@@ -1527,12 +1531,28 @@ internal fun AccountSettingsPage(
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
+                pendingEmailChange?.let {
+                    Text(
+                        if (it.expiresAt > System.currentTimeMillis()) {
+                            stringResource(R.string.account_email_change_pending, it.newEmail)
+                        } else {
+                            stringResource(R.string.account_email_change_expired)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRefresh, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
                         Text(stringResource(R.string.common_refresh))
                     }
                     Button(onClick = onLogout, enabled = !busy && accountSummary.userId.isNotBlank(), shape = RoundedCornerShape(999.dp)) {
                         Text(stringResource(R.string.account_logout))
+                    }
+                }
+                if (accountSummary.userId.isNotBlank()) {
+                    TextButton(onClick = onOpenEmailChange, enabled = !busy) {
+                        Text(stringResource(R.string.account_change_email))
                     }
                 }
             }
@@ -1563,10 +1583,16 @@ internal fun AccountSettingsPage(
                 )
                 Button(
                     onClick = { onLogin(identifier, password) },
-                    enabled = !busy && identifier.isNotBlank() && password.isNotBlank(),
+                    enabled = !busy && loginLockSeconds <= 0 && identifier.isNotBlank() && password.isNotBlank(),
                     shape = RoundedCornerShape(999.dp),
                 ) {
-                    Text(stringResource(R.string.account_login))
+                    Text(
+                        if (loginLockSeconds > 0) stringResource(
+                            R.string.account_error_login_locked,
+                            loginLockSeconds / 60,
+                            loginLockSeconds % 60,
+                        ) else stringResource(R.string.account_login),
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onOpenRegister, enabled = !busy) {
@@ -1592,6 +1618,78 @@ internal fun AccountSettingsPage(
                     shape = RoundedCornerShape(999.dp),
                 ) {
                     Text(stringResource(R.string.account_redeem))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun AccountEmailChangePage(
+    contentPadding: PaddingValues,
+    username: String,
+    statusMessage: String,
+    busy: Boolean,
+    requestId: String,
+    verificationLocked: Boolean,
+    onBack: () -> Unit,
+    onRequest: (String, String) -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var code by remember(requestId) { mutableStateOf("") }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
+            .navigationBarsPadding().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SecondaryPageHeader(
+            title = stringResource(R.string.account_change_email),
+            onBack = onBack,
+            backLabel = stringResource(R.string.settings_account_title),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.account_new_email)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.account_current_password)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+                Button(
+                    onClick = { onRequest(email, password) },
+                    enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+                    shape = RoundedCornerShape(999.dp),
+                ) { Text(stringResource(R.string.account_email_change_send)) }
+                if (requestId.isNotBlank()) {
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it.filter(Char::isDigit).take(6) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.account_verification_code)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                    Button(
+                        onClick = { onConfirm(code) },
+                        enabled = !busy && !verificationLocked && code.length == 6,
+                        shape = RoundedCornerShape(999.dp),
+                    ) { Text(stringResource(R.string.account_email_change_confirm)) }
+                }
+                if (statusMessage.isNotBlank()) {
+                    Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

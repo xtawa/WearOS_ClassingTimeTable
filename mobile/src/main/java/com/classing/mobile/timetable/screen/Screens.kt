@@ -105,6 +105,7 @@ import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.account.AccountApiClient
 import com.xtawa.classingtime.account.AccountApiException
+import com.xtawa.classingtime.account.PendingEmailChange
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
@@ -205,6 +206,8 @@ fun MobileTimetableScreen() {
     var lessons by remember { mutableStateOf(emptyList<LessonUi>()) }
     var currentWeekLessons by remember { mutableStateOf(emptyList<LessonUi>()) }
     var currentWeekLessonsByDay by remember { mutableStateOf<Map<DayOfWeek, List<LessonUi>>>(emptyMap()) }
+    var displayLessons by remember { mutableStateOf(emptyList<LessonUi>()) }
+    var displayLessonsByDay by remember { mutableStateOf<Map<DayOfWeek, List<LessonUi>>>(emptyMap()) }
     var wearConnectedCount by remember { mutableIntStateOf(0) }
     var wearConnectionMessage by remember { mutableStateOf(context.getString(R.string.wear_connection_checking)) }
     var wearSyncMessage by remember {
@@ -236,6 +239,10 @@ fun MobileTimetableScreen() {
     var accountStatusMessage by remember { mutableStateOf("") }
     var accountBusy by remember { mutableStateOf(false) }
     var registrationChallengeId by remember { mutableStateOf("") }
+    var pendingEmailChange by remember { mutableStateOf<PendingEmailChange?>(null) }
+    var emailChangeRequestId by remember { mutableStateOf("") }
+    var emailChangeVerificationFailures by remember { mutableIntStateOf(0) }
+    var loginLockSeconds by remember { mutableIntStateOf(0) }
     var pendingTurnstileRegistration by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var registrationTurnstileSiteKey by remember { mutableStateOf("") }
     var dailyBriefingStatusMessage by remember { mutableStateOf("") }
@@ -251,6 +258,13 @@ fun MobileTimetableScreen() {
     var weekSettingsAutoSyncJob by remember { mutableStateOf<Job?>(null) }
     var lastProjectionDate by remember { mutableStateOf(LocalDate.now()) }
     val accountApiClient = remember { AccountApiClient() }
+
+    LaunchedEffect(loginLockSeconds) {
+        if (loginLockSeconds > 0) {
+            delay(1_000)
+            loginLockSeconds -= 1
+        }
+    }
 
     fun goToSettingsRoot() {
         settingsPageName = SettingsPage.Main.name
@@ -325,6 +339,9 @@ fun MobileTimetableScreen() {
         lessons = projection.effectiveLessonsForSync
         currentWeekLessons = projection.currentWeekLessons
         currentWeekLessonsByDay = projection.currentWeekLessonsByDay
+        val displayProjection = buildScheduleDisplayProjection(baseLessons, currentWeekLessons)
+        displayLessons = displayProjection.lessons
+        displayLessonsByDay = displayProjection.lessonsByDay
         lastProjectionDate = LocalDate.now()
     }
 
@@ -523,6 +540,7 @@ fun MobileTimetableScreen() {
             val profile = result.getOrThrow()
             accountSummary = profile.account
             membershipSummary = profile.membership.copy(lastCheckedAt = System.currentTimeMillis())
+            pendingEmailChange = profile.pendingEmailChange
             if (showStatus) {
                 accountStatusMessage = context.getString(R.string.account_synced)
             }
@@ -1571,9 +1589,9 @@ fun MobileTimetableScreen() {
                     ScheduleSubview.Timetable -> WeekBoardLayer(
                         contentPadding = innerPadding,
                         visibleDays = visibleDays,
-                        lessonsByDay = currentWeekLessonsByDay,
+                        lessonsByDay = displayLessonsByDay,
                         lessonsForDate = ::lessonsForDate,
-                        hasSchedule = lessons.isNotEmpty(),
+                        hasSchedule = baseLessons.isNotEmpty(),
                         onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
                         onLongPressLesson = {
                             editingContext = LessonEditContext(
@@ -1627,9 +1645,10 @@ fun MobileTimetableScreen() {
 
                 MobileLayer.Dashboard -> DashboardLayer(
                     contentPadding = innerPadding,
-                    lessons = currentWeekLessons,
+                    lessons = displayLessons,
                     visibleDays = visibleDays,
-                    lessonsByDay = currentWeekLessonsByDay,
+                    lessonsByDay = displayLessonsByDay,
+                    currentWeekLessonsByDay = currentWeekLessonsByDay,
                 )
 
                 MobileLayer.Settings -> when (destination.settingsPage) {
@@ -1834,6 +1853,8 @@ fun MobileTimetableScreen() {
                     membershipSummary = membershipSummary,
                     statusMessage = accountStatusMessage,
                     busy = accountBusy,
+                    pendingEmailChange = pendingEmailChange,
+                    loginLockSeconds = loginLockSeconds,
                     onBack = {
                         handleBackNavigation()
                     },
@@ -1855,6 +1876,10 @@ fun MobileTimetableScreen() {
                                     persistSettings()
                                     requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
                                 } else {
+                                    val error = session.exceptionOrNull() as? AccountApiException
+                                    if (error?.errorCode == "AUTH_LOGIN_LOCKED") {
+                                        loginLockSeconds = error.retryAfterSeconds.takeIf { it > 0 } ?: 900
+                                    }
                                     accountStatusMessage = accountErrorMessage(
                                         context,
                                         session.exceptionOrNull(),
@@ -1878,6 +1903,7 @@ fun MobileTimetableScreen() {
                                 AuthCredentialStore.clear(context)
                                 accountSummary = AccountSummary()
                                 membershipSummary = MembershipSummary()
+                                pendingEmailChange = null
                                 accountStatusMessage = context.getString(R.string.account_logged_out)
                                 persistSettings()
                             } finally {
@@ -1930,6 +1956,85 @@ fun MobileTimetableScreen() {
                     onOpenPasswordReset = {
                         accountStatusMessage = ""
                         openSettingsPage(SettingsPage.AccountPasswordReset)
+                    },
+                    onOpenEmailChange = {
+                        accountStatusMessage = ""
+                        emailChangeVerificationFailures = 0
+                        openSettingsPage(SettingsPage.AccountEmailChange)
+                    },
+                )
+
+                SettingsPage.AccountEmailChange -> AccountEmailChangePage(
+                    contentPadding = innerPadding,
+                    username = accountSummary.username,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    requestId = emailChangeRequestId,
+                    verificationLocked = emailChangeVerificationFailures >= 10,
+                    onBack = { handleBackNavigation() },
+                    onRequest = { newEmail, currentPassword ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                val result = if (accessToken == null) null else accountApiClient.requestEmailChange(
+                                    accessToken = accessToken,
+                                    username = accountSummary.username,
+                                    email = newEmail,
+                                    currentPassword = currentPassword,
+                                )
+                                if (result?.isSuccess == true) {
+                                    val request = result.getOrThrow()
+                                    emailChangeRequestId = request.requestId
+                                    emailChangeVerificationFailures = 0
+                                    pendingEmailChange = PendingEmailChange(newEmail.trim(), request.expiresAt)
+                                    accountStatusMessage = context.getString(R.string.account_email_change_sent)
+                                } else {
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        result?.exceptionOrNull(),
+                                        R.string.account_verification_send_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onConfirm = { code ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                val result = if (accessToken == null) null else accountApiClient.confirmEmailChange(
+                                    accessToken,
+                                    emailChangeRequestId,
+                                    code,
+                                )
+                                if (result?.isSuccess == true) {
+                                    AuthCredentialStore.clear(context)
+                                    accountSummary = AccountSummary()
+                                    membershipSummary = MembershipSummary()
+                                    pendingEmailChange = null
+                                    emailChangeRequestId = ""
+                                    accountStatusMessage = context.getString(R.string.account_email_change_success)
+                                    persistSettings()
+                                    openSettingsPage(SettingsPage.Account)
+                                } else {
+                                    val error = result?.exceptionOrNull()
+                                    if ((error as? AccountApiException)?.errorCode == "ACCOUNT_EMAIL_VERIFICATION_INVALID") {
+                                        emailChangeVerificationFailures += 1
+                                    }
+                                    accountStatusMessage = if (emailChangeVerificationFailures >= 10) {
+                                        context.getString(R.string.account_verification_locked)
+                                    } else {
+                                        accountErrorMessage(context, error, R.string.account_verification_invalid)
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
                     },
                 )
 
@@ -2586,11 +2691,16 @@ private fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes
         "AUTH_PASSWORD_WEAK", "ACCOUNT_PASSWORD_WEAK" -> R.string.account_error_password_weak
         "AUTH_ACCOUNT_EXISTS", "ACCOUNT_PROFILE_CONFLICT" -> R.string.account_error_exists
         "AUTH_RATE_LIMITED" -> R.string.account_error_rate_limited
+        "AUTH_LOGIN_LOCKED" -> R.string.account_error_rate_limited
         "AUTH_EMAIL_VERIFICATION_INVALID", "AUTH_EMAIL_VERIFICATION_EXPIRED" -> R.string.account_verification_invalid
         "AUTH_EMAIL_DELIVERY_FAILED" -> R.string.account_verification_send_failed
         "AUTH_TURNSTILE_INVALID", "AUTH_TURNSTILE_UNAVAILABLE" -> R.string.account_turnstile_unavailable
         "AUTH_REFRESH_REVOKED", "AUTH_ACCESS_EXPIRED", "AUTH_SESSION_REVOKED", "AUTH_REQUIRED" -> R.string.account_error_session_expired
         "AUTH_RESET_TOKEN_INVALID" -> R.string.password_reset_error_token_invalid
+        "ACCOUNT_PASSWORD_CURRENT_INVALID" -> R.string.account_error_current_password
+        "ACCOUNT_EMAIL_CONFLICT" -> R.string.account_error_email_conflict
+        "ACCOUNT_EMAIL_RATE_LIMITED" -> R.string.account_error_rate_limited
+        "ACCOUNT_EMAIL_VERIFICATION_INVALID" -> R.string.account_verification_invalid
         "MEMBERSHIP_REDEEM_INVALID", "MEMBERSHIP_REDEEM_NOT_FOUND" -> R.string.account_redeem_invalid
         "MEMBERSHIP_REDEEM_CONFLICT" -> R.string.account_redeem_used
         "BRIEFING_INVALID" -> R.string.daily_briefing_invalid_time

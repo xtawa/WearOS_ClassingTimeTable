@@ -32,12 +32,25 @@ data class RegistrationSecurityConfig(
 class AccountApiException(
     val statusCode: Int,
     val errorCode: String,
+    val retryAfterSeconds: Int = 0,
     message: String,
 ) : IllegalStateException(message)
+
+data class PendingEmailChange(
+    val newEmail: String,
+    val expiresAt: Long,
+)
+
+data class EmailChangeRequest(
+    val requestId: String,
+    val expiresAt: Long,
+    val resendAfterSeconds: Int,
+)
 
 data class AccountProfile(
     val account: AccountSummary,
     val membership: MembershipSummary,
+    val pendingEmailChange: PendingEmailChange? = null,
 )
 
 class AccountApiClient(
@@ -146,8 +159,53 @@ class AccountApiClient(
             AccountProfile(
                 account = parseAccountSummary(accountJson),
                 membership = parseMembershipSummary(membershipJson),
+                pendingEmailChange = accountJson.optJSONObject("pendingEmailChange")?.let {
+                    PendingEmailChange(
+                        newEmail = it.optString("newEmail"),
+                        expiresAt = it.optLong("expiresAt", 0L),
+                    )
+                },
             )
         }
+    }
+
+    suspend fun requestEmailChange(
+        accessToken: String,
+        username: String,
+        email: String,
+        currentPassword: String,
+    ): Result<EmailChangeRequest> {
+        return request(
+            method = "PATCH",
+            path = "/api/v1/account/me",
+            accessToken = accessToken,
+            body = JSONObject()
+                .put("username", username.trim())
+                .put("email", email.trim())
+                .put("currentPassword", currentPassword),
+        ).map { json ->
+            val change = json.getJSONObject("emailChange")
+            EmailChangeRequest(
+                requestId = change.getString("requestId"),
+                expiresAt = change.optLong("expiresAt", 0L),
+                resendAfterSeconds = change.optInt("resendAfterSeconds", 60),
+            )
+        }
+    }
+
+    suspend fun confirmEmailChange(
+        accessToken: String,
+        requestId: String,
+        verificationCode: String,
+    ): Result<Boolean> {
+        return request(
+            method = "POST",
+            path = "/api/v1/account/email/confirm",
+            accessToken = accessToken,
+            body = JSONObject()
+                .put("requestId", requestId)
+                .put("verificationCode", verificationCode.trim()),
+        ).map { it.optBoolean("sessionsRevoked", true) }
     }
 
     suspend fun redeemCode(accessToken: String, code: String): Result<MembershipSummary> {
@@ -230,6 +288,7 @@ class AccountApiClient(
                     throw AccountApiException(
                         statusCode = code,
                         errorCode = errorBody?.optString("code").orEmpty(),
+                        retryAfterSeconds = connection.getHeaderField("Retry-After")?.toIntOrNull() ?: 0,
                         message = message.ifBlank { "request failed" },
                     )
                 }

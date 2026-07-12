@@ -600,4 +600,17 @@
     <string name="account_turnstile_title">人機驗證</string>
     <string name="account_turnstile_desc">完成驗證後傳送郵件驗證碼</string>
     <string name="account_turnstile_unavailable">人機驗證暫不可用，請稍後重試</string>
+    <string name="account_error_login_locked">登入失敗次數過多，請在 %1$d:%2$02d 後重試。</string>
+    <string name="account_verification_locked">錯誤次數過多，該驗證碼已失效，請重新申請。</string>
+    <string name="account_change_email">變更電子郵件</string>
+    <string name="account_new_email">新電子郵件</string>
+    <string name="account_current_password">目前密碼</string>
+    <string name="account_email_change_send">傳送驗證碼</string>
+    <string name="account_email_change_confirm">確認變更電子郵件</string>
+    <string name="account_email_change_sent">驗證碼已傳送到新電子郵件。</string>
+    <string name="account_email_change_success">電子郵件已變更，請使用新電子郵件重新登入。</string>
+    <string name="account_email_change_pending">待驗證：%1$s</string>
+    <string name="account_email_change_expired">待確認的電子郵件變更已過期。</string>
+    <string name="account_error_current_password">目前密碼不正確。</string>
+    <string name="account_error_email_conflict">該電子郵件已被使用。</string>
 </resources>

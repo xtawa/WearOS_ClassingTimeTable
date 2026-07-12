@@ -69,6 +69,34 @@ internal data class ScheduleProjection(
     val effectiveLessonsForSync: List<LessonUi>,
 )
 
+internal data class ScheduleDisplayProjection(
+    val lessons: List<LessonUi>,
+    val lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    val isCurrentWeek: Boolean,
+)
+
+/**
+ * Keep imported courses visible even when none of their week rules match the
+ * current calendar week. The current-week projection remains authoritative for
+ * reminders and "today" status; this projection is only for browsing the
+ * timetable and dashboard instead of presenting a misleading empty import.
+ */
+internal fun buildScheduleDisplayProjection(
+    baseLessons: List<LessonUi>,
+    currentWeekLessons: List<LessonUi>,
+): ScheduleDisplayProjection {
+    val isCurrentWeek = currentWeekLessons.isNotEmpty() || baseLessons.isEmpty()
+    val displayLessons = (if (isCurrentWeek) currentWeekLessons else baseLessons)
+        .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+    return ScheduleDisplayProjection(
+        lessons = displayLessons,
+        lessonsByDay = DayOfWeek.entries.associateWith { day ->
+            displayLessons.filter { it.dayOfWeek == day }.sortedBy { it.startTime }
+        },
+        isCurrentWeek = isCurrentWeek,
+    )
+}
+
 internal data class ScheduleStateSnapshot(
     val id: String,
     val createdAt: Long,

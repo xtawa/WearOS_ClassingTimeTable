@@ -46,6 +46,7 @@ internal fun DashboardLayer(
     lessons: List<LessonUi>,
     visibleDays: List<DayOfWeek>,
     lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    currentWeekLessonsByDay: Map<DayOfWeek, List<LessonUi>>,
 ) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(LocalDateTime.now()) }
@@ -93,8 +94,8 @@ internal fun DashboardLayer(
     val busiestDay = dayCounts.maxWithOrNull(
         compareBy<Map.Entry<DayOfWeek, Int>> { it.value }.thenByDescending { it.key.value },
     )?.takeIf { it.value > 0 }
-    val todayLessons = remember(lessonsByDay, today.dayOfWeek) {
-        lessonsByDay[today.dayOfWeek].orEmpty().sortedBy { it.startTime }
+    val todayLessons = remember(currentWeekLessonsByDay, today.dayOfWeek) {
+        currentWeekLessonsByDay[today.dayOfWeek].orEmpty().sortedBy { it.startTime }
     }
     val remainingTodayLessons = remember(todayLessons, today, now) {
         todayLessons.filter { lesson ->

@@ -544,6 +544,7 @@ Rules:
     <string name="account_error_password_weak">Password must contain 8–128 characters.</string>
     <string name="account_error_exists">This username or email is already in use.</string>
     <string name="account_error_rate_limited">Too many attempts. Try again later.</string>
+    <string name="account_error_login_locked">Too many failed sign-in attempts. Try again in %1$d:%2$02d.</string>
     <string name="account_error_session_expired">Your session expired. Please sign in again.</string>
     <string name="password_reset_title">Reset password</string>
     <string name="password_reset_request_desc">Request a reset email, then paste the one-time token from the email below.</string>
@@ -625,6 +626,18 @@ Rules:
     <string name="account_verification_sent">A verification code was sent to your email.</string>
     <string name="account_verification_send_failed">Could not send the verification email.</string>
     <string name="account_verification_invalid">The verification code is invalid or expired.</string>
+    <string name="account_verification_locked">This code is no longer valid after too many attempts. Request a new code.</string>
+    <string name="account_change_email">Change email</string>
+    <string name="account_new_email">New email</string>
+    <string name="account_current_password">Current password</string>
+    <string name="account_email_change_send">Send verification code</string>
+    <string name="account_email_change_confirm">Confirm email change</string>
+    <string name="account_email_change_sent">A verification code was sent to the new email.</string>
+    <string name="account_email_change_success">Email changed. Sign in again with the new email.</string>
+    <string name="account_email_change_pending">Pending verification: %1$s</string>
+    <string name="account_email_change_expired">The pending email change has expired.</string>
+    <string name="account_error_current_password">The current password is incorrect.</string>
+    <string name="account_error_email_conflict">This email is already in use.</string>
     <string name="settings_about_rate_limited">Too many requests. Try again in %1$d seconds.</string>
     <string name="import_section_expand">Expand</string>
     <string name="import_section_collapse">Collapse</string>

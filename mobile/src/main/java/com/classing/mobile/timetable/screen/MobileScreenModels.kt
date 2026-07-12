@@ -22,6 +22,7 @@ internal enum class SettingsPage {
     WeekMode,
     ReminderKeepAlive,
     Account,
+    AccountEmailChange,
     AccountRegister,
     AccountPasswordReset,
     DailyBriefing,
