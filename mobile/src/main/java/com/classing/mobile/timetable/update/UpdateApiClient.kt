@@ -37,12 +37,32 @@ data class AppUpdateRelease(
     val artifactSize: Long,
     val sha256: String,
     val downloadUrl: String,
+	val channel: ReleaseChannel,
 )
 
 data class UpdateCheckResult(
     val updateAvailable: Boolean,
+	val forceUpdate: Boolean,
     val release: AppUpdateRelease?,
 )
+
+enum class ReleaseChannel(val apiValue: String) {
+	STABLE("STABLE"),
+	BETA("BETA"),
+}
+
+object ReleaseChannelPreference {
+	private const val PREFS = "classing_update_preferences"
+	private const val KEY_CHANNEL = "release_channel"
+
+	fun load(context: Context): ReleaseChannel = runCatching {
+		ReleaseChannel.valueOf(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_CHANNEL, ReleaseChannel.STABLE.name).orEmpty())
+	}.getOrDefault(ReleaseChannel.STABLE)
+
+	fun save(context: Context, channel: ReleaseChannel) {
+		context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_CHANNEL, channel.name).apply()
+	}
+}
 
 class ClientRequestRateLimitException(val retryAfterSeconds: Long) : IllegalStateException(
     "Request limit reached; retry in $retryAfterSeconds seconds",
@@ -52,9 +72,16 @@ internal object ClientRequestRateLimiter {
     private const val WINDOW_MILLIS = 60_000L
     private const val MAX_REQUESTS = 3
     private val requests = mutableMapOf<String, ArrayDeque<Long>>()
+	private val cooldownUntil = mutableMapOf<String, Long>()
 
     @Synchronized
     fun acquire(key: String, now: Long = System.currentTimeMillis()): Result<Unit> {
+		cooldownUntil[key]?.let { until ->
+			if (until > now) {
+				return Result.failure(ClientRequestRateLimitException(((until - now + 999L) / 1_000L).coerceAtLeast(1L)))
+			}
+			cooldownUntil.remove(key)
+		}
         val history = requests.getOrPut(key) { ArrayDeque() }
         while (history.isNotEmpty() && now - history.first() >= WINDOW_MILLIS) history.removeFirst()
         if (history.size >= MAX_REQUESTS) {
@@ -64,6 +91,11 @@ internal object ClientRequestRateLimiter {
         history.addLast(now)
         return Result.success(Unit)
     }
+
+	@Synchronized
+	fun recordCooldown(key: String, retryAfterSeconds: Long, now: Long = System.currentTimeMillis()) {
+		cooldownUntil[key] = maxOf(cooldownUntil[key] ?: 0L, now + retryAfterSeconds.coerceAtLeast(1L) * 1_000L)
+	}
 }
 
 enum class InstallLaunchResult {
@@ -76,7 +108,7 @@ class UpdateApiClient(
 ) {
     suspend fun fetchAnnouncements(): Result<List<ClientAnnouncement>> {
         ClientRequestRateLimiter.acquire("announcements").exceptionOrNull()?.let { return Result.failure(it) }
-        return requestJson("/api/v1/client/announcements?platform=ANDROID_MOBILE").map { root ->
+		return requestJson("announcements", "/api/v1/client/announcements?platform=ANDROID_MOBILE").map { root ->
         val items = root.optJSONArray("announcements") ?: return@map emptyList()
         buildList {
             for (index in 0 until items.length()) {
@@ -94,14 +126,16 @@ class UpdateApiClient(
         }
     }
 
-    suspend fun checkLatest(versionCode: Long): Result<UpdateCheckResult> {
+	suspend fun checkLatest(versionCode: Long, channel: ReleaseChannel = ReleaseChannel.STABLE): Result<UpdateCheckResult> {
         ClientRequestRateLimiter.acquire("releases").exceptionOrNull()?.let { return Result.failure(it) }
-        return requestJson(
-            "/api/v1/client/releases/latest?platform=ANDROID_MOBILE&channel=STABLE&versionCode=$versionCode",
+		return requestJson(
+			"releases",
+			"/api/v1/client/releases/latest?platform=ANDROID_MOBILE&channel=${channel.apiValue}&versionCode=$versionCode",
         ).map { root ->
             val releaseJson = root.optJSONObject("release")
             UpdateCheckResult(
                 updateAvailable = root.optBoolean("updateAvailable", false),
+				forceUpdate = root.optBoolean("forceUpdate", false),
                 release = releaseJson?.let(::parseRelease),
             )
         }
@@ -113,10 +147,14 @@ class UpdateApiClient(
         onProgress: suspend (downloadedBytes: Long, totalBytes: Long) -> Unit,
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
+			ClientRequestRateLimiter.acquire("release-download").getOrThrow()
             val directory = File(context.cacheDir, "updates").apply { mkdirs() }
             val target = File(directory, "classing-${release.versionCode}.apk")
             val partial = File(directory, "${target.name}.part")
-            partial.delete()
+			if (partial.length() > release.artifactSize && release.artifactSize > 0L) partial.delete()
+			val resumeAt = partial.length()
+			val requiredBytes = (release.artifactSize - resumeAt).coerceAtLeast(0L)
+			require(directory.usableSpace > requiredBytes + 8L * 1024L * 1024L) { "not enough storage space for update" }
             val url = if (release.downloadUrl.startsWith("http://") || release.downloadUrl.startsWith("https://")) {
                 release.downloadUrl
             } else {
@@ -128,18 +166,39 @@ class UpdateApiClient(
                 connection.connectTimeout = 15_000
                 connection.readTimeout = 60_000
                 connection.setRequestProperty("Accept", "application/vnd.android.package-archive")
+				if (resumeAt > 0L) connection.setRequestProperty("Range", "bytes=$resumeAt-")
                 val status = connection.responseCode
+				if (status == 429) {
+					val retryAfter = connection.getHeaderField("Retry-After")?.toLongOrNull()?.coerceAtLeast(1L) ?: 60L
+					ClientRequestRateLimiter.recordCooldown("release-download", retryAfter)
+					throw ClientRequestRateLimitException(retryAfter)
+				}
                 if (status !in 200..299) {
                     val error = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
                     error("HTTP $status ${error.take(160)}".trim())
                 }
-                val total = connection.getHeaderFieldLong("Content-Length", release.artifactSize)
-                    .takeIf { it > 0L } ?: release.artifactSize
+				val append = status == HttpURLConnection.HTTP_PARTIAL && resumeAt > 0L
+				if (status == HttpURLConnection.HTTP_PARTIAL) {
+					require(connection.getHeaderField("Content-Range")?.startsWith("bytes $resumeAt-") == true) { "invalid range response" }
+				}
+				if (!append && resumeAt > 0L) partial.delete()
+				val startingBytes = if (append) resumeAt else 0L
+				val responseBytes = connection.getHeaderFieldLong("Content-Length", -1L)
+				val total = release.artifactSize.takeIf { it > 0L }
+					?: (responseBytes.takeIf { it > 0L }?.plus(startingBytes) ?: 0L)
                 val digest = MessageDigest.getInstance("SHA-256")
-                var downloaded = 0L
+				if (append) partial.inputStream().use { existing ->
+					val buffer = ByteArray(DEFAULT_BUFFER_SIZE * 4)
+					while (true) {
+						val count = existing.read(buffer)
+						if (count < 0) break
+						digest.update(buffer, 0, count)
+					}
+				}
+				var downloaded = startingBytes
                 var lastPercent = -1
                 connection.inputStream.use { input ->
-                    FileOutputStream(partial).use { output ->
+					FileOutputStream(partial, append).use { output ->
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE * 4)
                         while (true) {
                             coroutineContext.ensureActive()
@@ -157,13 +216,15 @@ class UpdateApiClient(
                         output.fd.sync()
                     }
                 }
-                require(release.artifactSize <= 0L || downloaded == release.artifactSize) {
-                    "downloaded file size does not match release metadata"
-                }
+				if (release.artifactSize > 0L && downloaded != release.artifactSize) {
+					partial.delete()
+					error("downloaded file size does not match release metadata")
+				}
                 val actualHash = digest.digest().joinToString("") { "%02x".format(it) }
-                require(actualHash.equals(release.sha256, ignoreCase = true)) {
-                    "downloaded file checksum does not match release metadata"
-                }
+				if (!actualHash.equals(release.sha256, ignoreCase = true)) {
+					partial.delete()
+					error("downloaded file checksum does not match release metadata")
+				}
                 target.delete()
                 require(partial.renameTo(target)) { "downloaded file could not be finalized" }
                 withContext(Dispatchers.Main) { onProgress(downloaded, total) }
@@ -171,12 +232,10 @@ class UpdateApiClient(
             } finally {
                 connection.disconnect()
             }
-        }.onFailure {
-            File(File(context.cacheDir, "updates"), "classing-${release.versionCode}.apk.part").delete()
         }
     }
 
-    private suspend fun requestJson(path: String): Result<JSONObject> = withContext(Dispatchers.IO) {
+	private suspend fun requestJson(rateKey: String, path: String): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
             val connection = URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
             try {
@@ -187,7 +246,12 @@ class UpdateApiClient(
                 val status = connection.responseCode
                 val body = (if (status in 200..299) connection.inputStream else connection.errorStream)
                     ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-                if (status !in 200..299) error("HTTP $status ${body.take(160)}".trim())
+				if (status == 429) {
+					val retryAfter = connection.getHeaderField("Retry-After")?.toLongOrNull()?.coerceAtLeast(1L) ?: 60L
+					ClientRequestRateLimiter.recordCooldown(rateKey, retryAfter)
+					throw ClientRequestRateLimitException(retryAfter)
+				}
+				if (status !in 200..299) error("HTTP $status ${body.take(160)}".trim())
                 JSONObject(body)
             } finally {
                 connection.disconnect()
@@ -207,6 +271,7 @@ class UpdateApiClient(
         artifactSize = item.optLong("artifactSize"),
         sha256 = item.optString("sha256"),
         downloadUrl = item.optString("downloadUrl"),
+		channel = runCatching { ReleaseChannel.valueOf(item.optString("channel", ReleaseChannel.STABLE.name)) }.getOrDefault(ReleaseChannel.STABLE),
     )
 }
 

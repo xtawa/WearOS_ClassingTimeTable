@@ -1,5 +1,16 @@
 # Classing 客户端变更日志
 
+## 2026-07-13
+
+### 后端 Code review 适配：更新通道、会话撤销与可靠重试
+
+- Mobile 关于页新增持久化更新通道选择，默认 Stable，可切换 Beta；latest 请求显式携带 `channel`，响应模型保留实际通道和 `forceUpdate`。
+- 公告、更新、下载和账户请求解析 `Retry-After`，服务端 429 会建立本地冷却窗口并报告剩余秒数，避免冷却期间重复请求。
+- 官方云首次写入发送 `If-Match: "0"`，后续发送带引号的 ETag 版本；继续使用 128 字节以内 UUID 作为 `Idempotency-Key`。
+- 账户刷新遇到旧会话、`AUTH_SESSION_REVOKED`、`AUTH_REFRESH_REVOKED` 或认证必需错误时清理本地凭据并要求重新登录。
+- APK 下载先检查缓存分区容量；网络中断保留 `.part` 并使用 Range 续传，完整长度或 SHA-256 不匹配时删除损坏文件，Stable/Beta 共用相同安装流程。
+- Mobile 单元测试、Mobile/Wear Kotlin 编译作为回归门禁。
+
 ## 2026-07-12
 
 ### 安全加固：请求头长度限制

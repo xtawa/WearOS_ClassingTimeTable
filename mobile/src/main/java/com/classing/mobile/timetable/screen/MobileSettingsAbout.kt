@@ -96,6 +96,8 @@ import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.update.AppUpdateRelease
 import com.xtawa.classingtime.update.ClientRequestRateLimitException
 import com.xtawa.classingtime.update.InstallLaunchResult
+import com.xtawa.classingtime.update.ReleaseChannel
+import com.xtawa.classingtime.update.ReleaseChannelPreference
 import com.xtawa.classingtime.update.UpdateApiClient
 import com.xtawa.classingtime.update.launchUpdateInstaller
 import java.io.File
@@ -1988,6 +1990,8 @@ internal fun AboutLayer(
     var updateDownloadedBytes by remember { mutableStateOf(0L) }
     var updateTotalBytes by remember { mutableStateOf(0L) }
     var downloadedUpdateFile by remember { mutableStateOf<File?>(null) }
+	var releaseChannel by remember(context) { mutableStateOf(ReleaseChannelPreference.load(context)) }
+	var forceUpdate by remember { mutableStateOf(false) }
 
     fun showInfoDialog(title: String, content: String) {
         infoDialogTitle = title
@@ -2031,10 +2035,11 @@ internal fun AboutLayer(
             updateDownloadedBytes = 0L
             updateTotalBytes = 0L
             downloadedUpdateFile = null
-            updateApiClient.checkLatest(BuildConfig.VERSION_CODE.toLong()).fold(
+			updateApiClient.checkLatest(BuildConfig.VERSION_CODE.toLong(), releaseChannel).fold(
                 onSuccess = { result ->
                     latestRelease = result.release
                     updateAvailable = result.updateAvailable
+					forceUpdate = result.forceUpdate
                     updateStatus = when {
                         result.release == null -> context.getString(R.string.settings_about_update_no_release)
                         result.updateAvailable -> context.getString(
@@ -2176,6 +2181,38 @@ internal fun AboutLayer(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             ) {
                 Column {
+					Column(
+						modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+						verticalArrangement = Arrangement.spacedBy(8.dp),
+					) {
+						Text(
+							text = stringResource(R.string.settings_about_update_channel),
+							style = MaterialTheme.typography.labelSmall,
+							fontWeight = FontWeight.Bold,
+							color = MaterialTheme.colorScheme.onSurfaceVariant,
+						)
+						Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+							ReleaseChannel.entries.forEach { channel ->
+								FilterChip(
+									selected = releaseChannel == channel,
+									onClick = {
+										releaseChannel = channel
+										ReleaseChannelPreference.save(context, channel)
+									},
+									label = {
+										Text(
+											if (channel == ReleaseChannel.STABLE) {
+												stringResource(R.string.settings_about_update_channel_stable)
+											} else {
+												stringResource(R.string.settings_about_update_channel_beta)
+											},
+										)
+									},
+								)
+							}
+						}
+					}
+					androidx.compose.material3.HorizontalDivider()
                     Text(
                         text = stringResource(R.string.settings_about_resources_title),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -2287,7 +2324,7 @@ internal fun AboutLayer(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (release.mandatory) {
+						if (release.mandatory || forceUpdate) {
                             Text(
                                 stringResource(R.string.settings_about_update_mandatory),
                                 style = MaterialTheme.typography.labelMedium,

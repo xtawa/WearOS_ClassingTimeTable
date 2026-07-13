@@ -49,9 +49,10 @@ class OfficialCloudHttpClient {
                 readTimeout = 10_000
                 setRequestProperty("Accept", "application/json, text/plain, */*")
                 setRequestProperty("Authorization", "Bearer ${config.accountAccessToken}")
-                if (!expectedVersion.isNullOrBlank()) {
-                    setRequestProperty("If-Match", expectedVersion)
-                }
+				if (payload != null) {
+					val version = expectedVersion?.trim()?.trim('"').orEmpty().ifBlank { "0" }
+					setRequestProperty("If-Match", "\"$version\"")
+				}
                 if (payload != null) {
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")

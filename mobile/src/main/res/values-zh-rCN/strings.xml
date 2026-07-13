@@ -220,6 +220,9 @@
     <string name="settings_about_notice_failed">公告加载失败：%1$s</string>
     <string name="settings_about_notice_refresh">刷新公告</string>
     <string name="settings_about_check_update_title">检测更新</string>
+	<string name="settings_about_update_channel">更新通道</string>
+	<string name="settings_about_update_channel_stable">稳定版</string>
+	<string name="settings_about_update_channel_beta">测试版</string>
     <string name="settings_about_check_update_loading">正在检测最新版本...</string>
     <string name="settings_about_check_update_failed">检测更新失败：%1$s</string>
     <string name="settings_about_check_update_parse_failed">当前版本 %1$s，未能解析最新版本号。</string>

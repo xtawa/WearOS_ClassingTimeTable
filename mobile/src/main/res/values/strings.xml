@@ -277,6 +277,9 @@ Rules:
     <string name="settings_about_notice_failed">Failed to load announcements: %1$s</string>
     <string name="settings_about_notice_refresh">Refresh announcements</string>
     <string name="settings_about_check_update_title">Check Updates</string>
+	<string name="settings_about_update_channel">Update channel</string>
+	<string name="settings_about_update_channel_stable">Stable</string>
+	<string name="settings_about_update_channel_beta">Beta</string>
     <string name="settings_about_check_update_loading">Checking latest version...</string>
     <string name="settings_about_check_update_failed">Update check failed: %1$s</string>
     <string name="settings_about_check_update_parse_failed">Current version %1$s, latest version not found.</string>

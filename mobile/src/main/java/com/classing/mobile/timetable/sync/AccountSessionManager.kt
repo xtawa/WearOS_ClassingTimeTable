@@ -97,9 +97,9 @@ internal class AccountSessionRefreshGate {
             }
 
             val error = refreshed.exceptionOrNull()
-            val definitelyRevoked = error is AccountApiException &&
-                error.statusCode == 401 &&
-                error.errorCode == "AUTH_REFRESH_REVOKED"
+			val definitelyRevoked = error is AccountApiException &&
+				error.statusCode == 401 &&
+				error.errorCode in setOf("AUTH_REFRESH_REVOKED", "AUTH_SESSION_REVOKED", "AUTH_REQUIRED")
             if (definitelyRevoked && storedRefreshToken == attemptedRefreshToken) {
                 store.clear()
             }

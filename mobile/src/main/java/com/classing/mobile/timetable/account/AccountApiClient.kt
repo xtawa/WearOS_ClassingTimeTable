@@ -36,6 +36,25 @@ class AccountApiException(
     message: String,
 ) : IllegalStateException(message)
 
+internal object AccountRequestCooldown {
+	private val untilByPath = mutableMapOf<String, Long>()
+
+	@Synchronized
+	fun remainingSeconds(path: String, now: Long = System.currentTimeMillis()): Int {
+		val until = untilByPath[path] ?: return 0
+		if (until <= now) {
+			untilByPath.remove(path)
+			return 0
+		}
+		return ((until - now + 999L) / 1_000L).toInt().coerceAtLeast(1)
+	}
+
+	@Synchronized
+	fun record(path: String, retryAfterSeconds: Int, now: Long = System.currentTimeMillis()) {
+		untilByPath[path] = maxOf(untilByPath[path] ?: 0L, now + retryAfterSeconds.coerceAtLeast(1) * 1_000L)
+	}
+}
+
 data class PendingEmailChange(
     val newEmail: String,
     val expiresAt: Long,
@@ -258,6 +277,9 @@ class AccountApiClient(
         body: JSONObject? = null,
     ): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
+			AccountRequestCooldown.remainingSeconds(path).takeIf { it > 0 }?.let { remaining ->
+				throw AccountApiException(429, "CLIENT_COOLDOWN", remaining, "retry after $remaining seconds")
+			}
             val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = 10_000
@@ -285,10 +307,12 @@ class AccountApiClient(
                 if (code !in 200..299) {
                     val errorBody = runCatching { JSONObject(payload) }.getOrNull()
                     val message = errorBody?.optString("message").orEmpty().ifBlank { payload }
-                    throw AccountApiException(
+					val retryAfter = connection.getHeaderField("Retry-After")?.toIntOrNull() ?: 0
+					if (code == 429) AccountRequestCooldown.record(path, retryAfter)
+					throw AccountApiException(
                         statusCode = code,
                         errorCode = errorBody?.optString("code").orEmpty(),
-                        retryAfterSeconds = connection.getHeaderField("Retry-After")?.toIntOrNull() ?: 0,
+						retryAfterSeconds = retryAfter,
                         message = message.ifBlank { "request failed" },
                     )
                 }

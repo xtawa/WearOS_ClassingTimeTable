@@ -103,7 +103,7 @@ class OfficialCloudHttpClientTest {
     @Test
     fun writeJson_sendsBoundedIdempotencyKey() = runBlocking {
         OneShotHttpServer(status = 200, body = "{}").use { server ->
-            val result = OfficialCloudHttpClient().writeJson(config(server.baseUrl), "{}", "v1")
+			val result = OfficialCloudHttpClient().writeJson(config(server.baseUrl), "{}", "1")
 
             assertTrue(result.isSuccess)
             val keyLine = server.awaitRequest().lineSequence()
@@ -111,8 +111,19 @@ class OfficialCloudHttpClientTest {
             val key = keyLine.substringAfter(':').trim()
             assertTrue(key.isNotBlank())
             assertTrue(key.toByteArray(Charsets.UTF_8).size <= 128)
+			assertTrue(server.awaitRequest().contains("If-Match: \"1\"", ignoreCase = true))
         }
     }
+
+	@Test
+	fun accountSessionManager_clearsLegacyOrRevokedSession() = runBlocking {
+		val store = FakeAccountSessionStore()
+		val result = AccountSessionRefreshGate().ensureAccessToken(store) {
+			Result.failure(AccountApiException(401, "AUTH_SESSION_REVOKED", message = "sign in again"))
+		}
+		assertEquals(null, result)
+		assertEquals("", store.loadRefreshToken())
+	}
 
     private fun config(baseUrl: String) = CloudRuntimeConfig(
         provider = CloudProvider.OFFICIAL,
