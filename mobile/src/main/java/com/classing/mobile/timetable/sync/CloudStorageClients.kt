@@ -9,6 +9,7 @@ interface MobileCloudStorageClient {
 data class CloudReadResult(val payload: String?, val versionToken: String?)
 
 class CloudWriteConflictException(message: String = "Cloud document changed during sync") : Exception(message)
+class LocalCloudStateChangedException(message: String = "Local cloud data changed during sync") : Exception(message)
 class UnsafeCloudStorageException(message: String) : Exception(message)
 class CloudPermissionDeniedException(message: String) : Exception(message)
 class CloudRateLimitedException(
@@ -22,7 +23,7 @@ internal suspend fun <T> retryConditionalCloudUpdate(
     block: suspend (attempt: Int) -> T,
 ): T {
     require(maxAttempts > 0)
-    var lastConflict: CloudWriteConflictException? = null
+    var lastConflict: Exception? = null
     repeat(maxAttempts) { attempt ->
         try {
             return block(attempt)
@@ -30,6 +31,11 @@ internal suspend fun <T> retryConditionalCloudUpdate(
             lastConflict = conflict
             if (attempt + 1 < maxAttempts) {
                 kotlinx.coroutines.delay(250L shl attempt.coerceAtMost(2))
+            }
+        } catch (changed: LocalCloudStateChangedException) {
+            lastConflict = changed
+            if (attempt + 1 < maxAttempts) {
+                kotlinx.coroutines.delay(100L shl attempt.coerceAtMost(2))
             }
         }
     }

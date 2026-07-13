@@ -58,6 +58,14 @@
 ### `GET /api/v1/cloud/official/config`
 - 可选接口，返回服务端下发的限制、限流策略、最大文档大小等。
 
+### `GET /api/v1/cloud/official/events`
+- 前台近实时变更通知流，使用 `Authorization: Bearer <accessToken>` 与 `text/event-stream`。
+- `Last-Event-ID` 是最后已应用的非负整数文档版本，与文档 `ETag` 的版本一致。
+- 事件名固定为 `cloud-document`，事件 ID 为最新文档版本，`data` 仅包含 `version` 与 `updatedAt`，不携带设置或课表正文。
+- 未提供游标时服务端立即发送当前版本；游标落后时仅通知最新版本，客户端随后通过文档 GET 拉取并执行 V2 合并。
+- Mobile 仅在应用前台保持连接，401 经 single-flight 刷新后重连；后台由 WorkManager 兜底，恢复前台时立即补拉。
+- Web 登录会话期间保持连接；Wear 不直连事件流，由配对手机转发合并后的设置和课表。
+
 ## 5. 幂等与并发
 - 每次写入必须带 `Idempotency-Key`。
 - `Idempotency-Key` 长度上限 128 字节；超长返回 `400 IDEMPOTENCY_KEY_TOO_LONG`，客户端应缩短 key 后重试。

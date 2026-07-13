@@ -101,6 +101,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.account.AccountApiClient
@@ -124,6 +125,7 @@ import com.xtawa.classingtime.sync.CloudSyncEngine
 import com.xtawa.classingtime.sync.GoogleDriveAuthManager
 import com.xtawa.classingtime.sync.MobileCloudSyncV2Store
 import com.xtawa.classingtime.sync.MobileCloudSyncCoordinator
+import com.xtawa.classingtime.sync.OfficialCloudRealtimeController
 import com.xtawa.classingtime.sync.AuthCredentialStore
 import com.xtawa.classingtime.sync.AccountSessionManager
 import com.xtawa.classingtime.sync.WearSyncAckInfo
@@ -257,6 +259,7 @@ fun MobileTimetableScreen() {
     val wearSyncMutex = remember { Mutex() }
     var weekSettingsAutoSyncPending by remember { mutableStateOf(false) }
     var weekSettingsAutoSyncJob by remember { mutableStateOf<Job?>(null) }
+    var cloudSettingsSyncJob by remember { mutableStateOf<Job?>(null) }
     var lastProjectionDate by remember { mutableStateOf(LocalDate.now()) }
     val accountApiClient = remember { AccountApiClient() }
 
@@ -643,27 +646,14 @@ fun MobileTimetableScreen() {
         importPreviewSummary = buildImportPreviewSummary(importItemStates)
     }
 
-    suspend fun runCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
-        @Suppress("UNUSED_VARIABLE") val compatibilityFlags = force to alsoPushConfigToWear
-        CloudSyncEngine.enqueue(context, trigger)
-        cloudSyncStatus = context.getString(R.string.settings_cloud_sync_queued)
-    }
-
-    fun requestCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
-        coroutineScope.launch {
-            runCloudSync(trigger = trigger, force = force, alsoPushConfigToWear = alsoPushConfigToWear)
-            if (accountSummary.userId.isNotBlank()) {
-                MobileCloudSyncCoordinator.requestOfficialSettingsSync(context, trigger)
-            }
-        }
-    }
-
-    fun applySyncedSettingsState() {
+    fun applySyncedCloudState() {
         val synced = MobilePrefsStore.loadSettings(context)
+        val syncedSchedule = loadScheduleState(context)
         showWeekend = synced.showWeekend
         reminderEnabled = synced.reminderEnabled
         reminderMinutes = synced.reminderMinutes
         keepAliveLevel = KeepAliveLevel.fromRaw(synced.keepAliveLevel)
+        wearSyncMode = migrateWearSyncMode(synced.wearSyncMode)
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == synced.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(synced.semesterWeekStartDate) }.getOrDefault(semesterWeekStartDate)
         weekStartDay = parseWeekStartDay(synced.weekStartDay)
@@ -678,17 +668,51 @@ fun MobileTimetableScreen() {
         cloudDriveFileName = synced.cloudDriveFileName.ifBlank { CloudSyncContracts.DEFAULT_DRIVE_FILE_NAME }
         officialSyncFrequency = synced.officialSyncFrequency
         syncScopes = synced.syncScopes.ifEmpty { SyncScope.entries.toSet() }
+        cloudSyncStatus = synced.cloudLastResult
+        cloudLastSyncedAt = synced.cloudLastSyncedAt
+        rawIcs = synced.rawIcs
+        baseLessons = syncedSchedule.baseLessons
+        scheduleExceptions = syncedSchedule.exceptions
+        scheduleSnapshots = syncedSchedule.snapshots
         rebuildScheduleProjection()
     }
 
-    fun requestOfficialSettingsSync(trigger: String) {
-        if (accountSummary.userId.isBlank()) return
-        coroutineScope.launch {
-            val result = MobileCloudSyncCoordinator.requestOfficialSettingsSync(context, trigger)
-            if (result.getOrNull()?.success == true) {
-                applySyncedSettingsState()
+    suspend fun runCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
+        if (!MobilePrefsStore.loadSettings(context).cloudSyncEnabled) return
+        cloudSyncInProgress = true
+        try {
+            val result = MobileCloudSyncCoordinator.requestCloudSync(
+                context = context,
+                trigger = trigger,
+                force = force,
+                alsoPushConfigToWear = alsoPushConfigToWear,
+            )
+            val outcome = result.getOrNull()
+            if (outcome?.success == true) {
+                applySyncedCloudState()
+            } else {
+                cloudSyncStatus = outcome?.message ?: result.exceptionOrNull()?.message.orEmpty()
+                CloudSyncEngine.enqueue(context, trigger, markDirty = false)
             }
+        } finally {
+            cloudSyncInProgress = false
         }
+    }
+
+    fun requestCloudSync(trigger: String, force: Boolean = false, alsoPushConfigToWear: Boolean = true) {
+        if (cloudSettingsSyncJob?.isActive == true) {
+            CloudSyncEngine.enqueue(context, trigger)
+            return
+        }
+        cloudSettingsSyncJob = coroutineScope.launch {
+            if (trigger == CloudSyncContracts.TRIGGER_SETTINGS_CHANGED) delay(400L)
+            runCloudSync(trigger = trigger, force = force, alsoPushConfigToWear = alsoPushConfigToWear)
+        }
+    }
+
+    fun requestOfficialSettingsSync(trigger: String) {
+        if (accountSummary.userId.isBlank() || !cloudSyncEnabled || cloudProvider != CloudProviderUi.OFFICIAL) return
+        requestCloudSync(trigger = trigger, force = true, alsoPushConfigToWear = true)
     }
 
     fun refreshWearSyncAckStatus(force: Boolean = false) {
@@ -1005,24 +1029,17 @@ fun MobileTimetableScreen() {
         }
     }
 
-    LaunchedEffect(initialized, cloudSyncEnabled, lifecycleOwner, showOnboarding) {
+    LaunchedEffect(initialized, cloudSyncEnabled, cloudProvider, accountSummary.userId, lifecycleOwner, showOnboarding) {
         if (!initialized) return@LaunchedEffect
-        if (!showOnboarding && cloudSyncEnabled && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            CloudSyncEngine.enqueue(context, CloudSyncContracts.TRIGGER_FOREGROUND_TICK, markDirty = false)
-        }
-    }
-
-    LaunchedEffect(initialized, accountSummary.userId, lifecycleOwner, showOnboarding) {
-        if (!initialized || showOnboarding || accountSummary.userId.isBlank()) return@LaunchedEffect
-        while (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            val result = MobileCloudSyncCoordinator.requestOfficialSettingsSync(
-                context = context,
-                trigger = CloudSyncContracts.TRIGGER_FOREGROUND_TICK,
-            )
-            if (result.getOrNull()?.success == true) {
-                applySyncedSettingsState()
+        if (showOnboarding || !cloudSyncEnabled) return@LaunchedEffect
+        if (cloudProvider == CloudProviderUi.OFFICIAL && accountSummary.userId.isNotBlank()) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                OfficialCloudRealtimeController.run(context) {
+                    applySyncedCloudState()
+                }
             }
-            delay(5_000L)
+        } else if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            CloudSyncEngine.enqueue(context, CloudSyncContracts.TRIGGER_FOREGROUND_TICK, markDirty = false)
         }
     }
 

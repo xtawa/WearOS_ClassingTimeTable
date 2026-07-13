@@ -580,7 +580,6 @@ Rules:
     <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_official">Official cloud</string>
     <string name="official_cloud_membership_required">Official cloud requires an active membership.</string>
-    <string name="official_cloud_api_label">Official API</string>
     <string name="official_cloud_login_required">Sign in on this phone to use official cloud sync.</string>
     <string name="official_cloud_membership_active">Membership active. Official cloud is available.</string>
     <string name="official_cloud_membership_inactive">Membership inactive. Upgrade to unlock official cloud sync.</string>
@@ -617,7 +616,7 @@ Rules:
     <string name="settings_about_update_close">Close</string>
     <string name="settings_semester_switch_button">Switch to new semester</string>
     <string name="settings_open_web_title">Open Web</string>
-    <string name="settings_open_web_desc">Manage Classing at api-classing.underflo.ink.</string>
+    <string name="settings_open_web_desc">Manage Classing in the Web app.</string>
     <string name="settings_dev_mode_title">Dev Mode</string>
     <string name="settings_dev_mode_desc">Show build and connection details for development use.</string>
     <string name="settings_dev_mode_details_title">Build details</string>

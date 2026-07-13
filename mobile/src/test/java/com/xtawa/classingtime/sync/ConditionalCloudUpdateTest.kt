@@ -26,4 +26,16 @@ class ConditionalCloudUpdateTest {
             }
         }
     }
+
+    @Test
+    fun retriesWhenLocalStateChangesDuringMerge() = runBlocking {
+        var calls = 0
+        val result = retryConditionalCloudUpdate(maxAttempts = 3) {
+            calls += 1
+            if (calls == 1) throw LocalCloudStateChangedException()
+            "merged-latest-local-state"
+        }
+        assertEquals("merged-latest-local-state", result)
+        assertEquals(2, calls)
+    }
 }

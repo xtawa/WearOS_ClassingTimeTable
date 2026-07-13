@@ -457,15 +457,6 @@ internal fun MobileOnboardingFlow(
                                             label = { Text(stringResource(R.string.settings_cloud_sync_drive_file_name)) },
                                             singleLine = true,
                                         )
-                                    } else {
-                                        OutlinedTextField(
-                                            value = "https://api-classing.underflo.ink",
-                                            onValueChange = {},
-                                            modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.official_cloud_api_label)) },
-                                            readOnly = true,
-                                            singleLine = true,
-                                        )
                                     }
                                 }
 

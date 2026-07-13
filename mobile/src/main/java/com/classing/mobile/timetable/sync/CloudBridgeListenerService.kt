@@ -70,9 +70,16 @@ class CloudBridgeListenerService : WearableListenerService() {
     private fun handleWearSettingsPayload(payload: String) {
         if (payload.isBlank()) return
         val parsed = runCatching { JSONObject(payload) }.getOrNull() ?: return
+        val requestId = parsed.optString(WearDataLayerContracts.KEY_REQUEST_ID).orEmpty()
+        if (requestId.isNotBlank() && !markRequestIfNew(requestId)) return
         val updatedAt = parsed.optLong(WearDataLayerContracts.KEY_UPDATED_AT, 0L)
             .takeIf { it > 0L } ?: System.currentTimeMillis()
         MobilePrefsStore.saveWearSettingsSnapshot(applicationContext, payload, updatedAt)
+        val trigger = parsed.optString(WearDataLayerContracts.KEY_TRIGGER).orEmpty()
+            .ifBlank { CloudSyncContracts.TRIGGER_SETTINGS_CHANGED }
+        serviceScope.launch {
+            CloudSyncEngine.enqueue(applicationContext, trigger)
+        }
     }
 
     private fun handlePhoneCloudSyncRequestPayload(payload: String, fallbackTrigger: String) {

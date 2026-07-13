@@ -125,6 +125,8 @@ object MobilePrefsStore {
     private const val KEY_LAST_WEAR_ACK_RESULT = "last_wear_ack_result"
     private const val KEY_LAST_CLOUD_SYNC_AT = "last_cloud_sync_at"
     private const val KEY_LAST_CLOUD_SYNC_RESULT = "last_cloud_sync_result"
+    private const val KEY_OFFICIAL_CLOUD_EVENT_VERSION = "official_cloud_event_version"
+    private const val KEY_CLOUD_APPLIED_REVISION = "cloud_applied_revision"
     private const val KEY_LAST_CONFIG_PUSH_AT = "last_config_push_at"
     private const val KEY_LAST_CONFIG_PUSH_RESULT = "last_config_push_result"
     private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
@@ -572,6 +574,35 @@ object MobilePrefsStore {
 
     fun loadLocalMobileSettingsUpdatedAt(context: Context): Long {
         return prefs(context).getLong(KEY_LOCAL_MOBILE_SETTINGS_UPDATED_AT, 0L)
+    }
+
+    fun loadOfficialCloudEventVersion(context: Context, userId: String = loadSettings(context).accountSummary.userId): Long {
+        if (userId.isBlank()) return 0L
+        return prefs(context).getLong("${KEY_OFFICIAL_CLOUD_EVENT_VERSION}_$userId", 0L)
+    }
+
+    fun saveOfficialCloudEventVersion(
+        context: Context,
+        version: Long,
+        userId: String = loadSettings(context).accountSummary.userId,
+    ) {
+        if (version < 0L || userId.isBlank()) return
+        val p = prefs(context)
+        val key = "${KEY_OFFICIAL_CLOUD_EVENT_VERSION}_$userId"
+        if (version >= p.getLong(key, 0L)) {
+            p.edit().putLong(key, version).apply()
+        }
+    }
+
+    fun markCloudDataApplied(context: Context): Long {
+        val p = prefs(context)
+        val next = p.getLong(KEY_CLOUD_APPLIED_REVISION, 0L) + 1L
+        p.edit().putLong(KEY_CLOUD_APPLIED_REVISION, next).commit()
+        return next
+    }
+
+    fun loadCloudDataAppliedRevision(context: Context): Long {
+        return prefs(context).getLong(KEY_CLOUD_APPLIED_REVISION, 0L)
     }
 
     fun isOnboardingCompleted(context: Context): Boolean {

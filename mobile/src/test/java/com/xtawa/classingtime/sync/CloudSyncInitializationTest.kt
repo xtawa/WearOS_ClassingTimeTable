@@ -41,4 +41,28 @@ class CloudSyncInitializationTest {
         val result = mergeForSyncInitialization(remote, local, true, true, 21)
         assertTrue(result.document.records.getValue(CloudSyncV2.DOMAIN_TIMETABLE_LESSONS).getValue("lesson-1").isDeleted)
     }
+
+    @Test fun missingBaselineMergesNewerLocalSettingWithoutDroppingRemoteLessons() {
+        val remoteSetting = VersionedRecord(
+            id = "showWeekend",
+            payload = "{\"value\":true}",
+            version = LogicalVersion(10, "remote", 10),
+        )
+        val localSetting = remoteSetting.copy(
+            payload = "{\"value\":false}",
+            version = LogicalVersion(11, "phone", 20),
+        )
+        val remote = CloudSyncDocumentV2(records = mapOf(
+            CloudSyncV2.DOMAIN_TIMETABLE_LESSONS to mapOf(remoteLesson.id to remoteLesson),
+            CloudSyncV2.DOMAIN_MOBILE_SETTINGS to mapOf(remoteSetting.id to remoteSetting),
+        ))
+        val local = CloudSyncDocumentV2(records = mapOf(
+            CloudSyncV2.DOMAIN_MOBILE_SETTINGS to mapOf(localSetting.id to localSetting),
+        ))
+
+        val result = mergeForSyncInitialization(remote, local, true, false, 21).document
+
+        assertEquals(localSetting, result.records.getValue(CloudSyncV2.DOMAIN_MOBILE_SETTINGS).getValue("showWeekend"))
+        assertEquals(remoteLesson, result.records.getValue(CloudSyncV2.DOMAIN_TIMETABLE_LESSONS).getValue("lesson-1"))
+    }
 }

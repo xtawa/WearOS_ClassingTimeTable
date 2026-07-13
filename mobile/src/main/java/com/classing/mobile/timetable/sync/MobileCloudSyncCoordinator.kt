@@ -37,11 +37,15 @@ internal fun mergeForSyncInitialization(
     hasLocalBaseline: Boolean,
     now: Long,
 ): CloudMergeResult {
-    if (hasRemoteV2 && !hasLocalBaseline) {
-        return CloudMergeResult(document = remote.compact(now), conflicts = 0, changed = false)
-    }
+    @Suppress("UNUSED_VARIABLE") val compatibilityFlags = hasRemoteV2 to hasLocalBaseline
     return CloudSyncV2Merger.merge(remote, local, now)
 }
+
+private data class LocalCloudRevision(
+    val timetable: Long,
+    val mobileSettings: Long,
+    val wearSettings: Long,
+)
 
 object MobileCloudSyncCoordinator {
     private const val MAX_CAS_ATTEMPTS = 3
@@ -83,6 +87,7 @@ object MobileCloudSyncCoordinator {
                     val remote = parseRemote(context, read.payload, startedAt)
                     val hasLocalBaseline = MobileCloudSyncV2Store.hasLocalBaseline(context)
                     val local = MobileCloudSyncV2Store.captureLocal(context, syncScopes = syncScopes)
+                    val localRevision = captureLocalCloudRevision(context, syncScopes)
                     val merge = mergeForSyncInitialization(
                         remote = remote.document,
                         local = local,
@@ -91,7 +96,11 @@ object MobileCloudSyncCoordinator {
                         now = System.currentTimeMillis(),
                     )
                     conflicts += merge.conflicts
+                    if (localRevision != captureLocalCloudRevision(context, syncScopes)) {
+                        throw LocalCloudStateChangedException()
+                    }
                     MobileCloudSyncV2Store.applyMerged(context, merge.document, syncScopes)
+                    MobilePrefsStore.markCloudDataApplied(context)
 
                     if (read.payload != null && remote.isV2 && remote.document == merge.document) {
                         publishMergedScheduleToWear(context)
@@ -180,6 +189,7 @@ object MobileCloudSyncCoordinator {
                     val remote = parseRemote(context, read.payload, startedAt)
                     val hasLocalBaseline = MobileCloudSyncV2Store.hasLocalBaseline(context)
                     val local = MobileCloudSyncV2Store.captureLocal(context, syncScopes = syncScopes)
+                    val localRevision = captureLocalCloudRevision(context, syncScopes)
                     val merge = mergeForSyncInitialization(
                         remote = remote.document,
                         local = local,
@@ -188,7 +198,11 @@ object MobileCloudSyncCoordinator {
                         now = System.currentTimeMillis(),
                     )
                     conflicts += merge.conflicts
+                    if (localRevision != captureLocalCloudRevision(context, syncScopes)) {
+                        throw LocalCloudStateChangedException()
+                    }
                     MobileCloudSyncV2Store.applyMerged(context, merge.document, syncScopes)
+                    MobilePrefsStore.markCloudDataApplied(context)
                     if (read.payload != null && remote.isV2 && remote.document == merge.document) {
                         return@runWithAuthRefreshRetry
                     }
@@ -311,6 +325,18 @@ object MobileCloudSyncCoordinator {
             return scopes
         }
         return (scopes - SyncScope.TIMETABLE).ifEmpty { setOf(SyncScope.MOBILE_SETTINGS) }
+    }
+
+    private fun captureLocalCloudRevision(context: Context, scopes: Set<SyncScope>): LocalCloudRevision {
+        return LocalCloudRevision(
+            timetable = if (SyncScope.TIMETABLE in scopes) MobilePrefsStore.loadLocalTimetableUpdatedAt(context) else 0L,
+            mobileSettings = if (SyncScope.MOBILE_SETTINGS in scopes) MobilePrefsStore.loadLocalMobileSettingsUpdatedAt(context) else 0L,
+            wearSettings = if (SyncScope.WEAR_SETTINGS in scopes) {
+                MobilePrefsStore.loadWearSettingsSnapshot(context)?.second ?: 0L
+            } else {
+                0L
+            },
+        )
     }
 
     private suspend fun runWithAuthRefreshRetry(

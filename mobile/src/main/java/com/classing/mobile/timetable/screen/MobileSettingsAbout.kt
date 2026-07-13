@@ -1124,7 +1124,6 @@ internal fun CloudSyncSettingsPage(
         stringResource(R.string.settings_cloud_sync_never)
     }
     val officialLocked = provider == CloudProviderUi.OFFICIAL && !membershipSummary.isMember
-    val officialBaseUrl = "https://api-classing.underflo.ink"
 
     Column(
         modifier = Modifier
@@ -1281,14 +1280,6 @@ internal fun CloudSyncSettingsPage(
                         )
                     }
                 } else {
-                    OutlinedTextField(
-                        value = officialBaseUrl,
-                        onValueChange = {},
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.official_cloud_api_label)) },
-                        singleLine = true,
-                        readOnly = true,
-                    )
                     Text(
                         text = if (accountSummary.userId.isBlank()) {
                             stringResource(R.string.official_cloud_login_required)

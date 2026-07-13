@@ -548,7 +548,6 @@
     <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_official">官方云</string>
     <string name="official_cloud_membership_required">官方云需要有效会员。</string>
-    <string name="official_cloud_api_label">官方 API</string>
     <string name="official_cloud_login_required">请先在手机端登录，再使用官方云同步。</string>
     <string name="official_cloud_membership_active">会员有效，可以使用官方云。</string>
     <string name="official_cloud_membership_inactive">会员未生效，开通会员后可使用官方云。</string>
@@ -585,7 +584,7 @@
     <string name="settings_about_update_close">关闭</string>
     <string name="settings_semester_switch_button">切换至新学期</string>
     <string name="settings_open_web_title">前往 Web 端</string>
-    <string name="settings_open_web_desc">在 api-classing.underflo.ink 管理 Classing</string>
+    <string name="settings_open_web_desc">在 Web 端管理 Classing</string>
     <string name="settings_dev_mode_title">Dev Mode</string>
     <string name="settings_dev_mode_desc">显示开发所需的构建与连接详情</string>
     <string name="settings_dev_mode_details_title">构建详情</string>
