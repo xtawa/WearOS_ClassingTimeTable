@@ -45,6 +45,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -90,6 +91,7 @@ import com.xtawa.classingtime.data.AccountSummary
 import com.xtawa.classingtime.data.DailyBriefingChannel
 import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.OfficialSyncFrequency
+import com.xtawa.classingtime.account.LegalAgreementUrls
 import com.xtawa.classingtime.account.PendingEmailChange
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
@@ -1452,9 +1454,11 @@ internal fun AccountSettingsPage(
     busy: Boolean,
     pendingEmailChange: PendingEmailChange?,
     loginLockSeconds: Int,
+    legalAgreementUrls: LegalAgreementUrls,
     onBack: () -> Unit,
     onLogin: (String, String) -> Unit,
     onLogout: () -> Unit,
+    onDeleteAccount: (String, String) -> Unit,
     onRefresh: () -> Unit,
     onRedeem: (String) -> Unit,
     onOpenRegister: () -> Unit,
@@ -1464,6 +1468,11 @@ internal fun AccountSettingsPage(
     var identifier by remember { mutableStateOf(accountSummary.identifier) }
     var password by remember { mutableStateOf("") }
     var redeemCode by remember { mutableStateOf("") }
+    var loginConsentAccepted by remember { mutableStateOf(false) }
+    var deletePassword by remember { mutableStateOf("") }
+    var deleteConfirmText by remember { mutableStateOf("") }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    val legalLinksReady = legalAgreementUrls.isComplete()
 
     Column(
         modifier = Modifier
@@ -1571,9 +1580,21 @@ internal fun AccountSettingsPage(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     singleLine = true,
                 )
+                LegalAgreementConsentRow(
+                    checked = loginConsentAccepted,
+                    onCheckedChange = { loginConsentAccepted = it },
+                    urls = legalAgreementUrls,
+                )
+                if (!legalLinksReady) {
+                    Text(
+                        text = stringResource(R.string.legal_agreement_links_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 Button(
                     onClick = { onLogin(identifier, password) },
-                    enabled = !busy && loginLockSeconds <= 0 && identifier.isNotBlank() && password.isNotBlank(),
+                    enabled = !busy && loginLockSeconds <= 0 && identifier.isNotBlank() && password.isNotBlank() && loginConsentAccepted && legalLinksReady,
                     shape = RoundedCornerShape(999.dp),
                 ) {
                     Text(
@@ -1595,6 +1616,44 @@ internal fun AccountSettingsPage(
             }
         }
 
+        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.account_delete_title), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.account_delete_desc), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = deletePassword,
+                    onValueChange = { deletePassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.account_current_password)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = deleteConfirmText,
+                    onValueChange = { deleteConfirmText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.account_delete_confirm_label)) },
+                    placeholder = { Text(stringResource(R.string.account_delete_confirm_placeholder)) },
+                    singleLine = true,
+                )
+                Button(
+                    onClick = { showDeleteConfirmDialog = true },
+                    enabled = !busy && deletePassword.isNotBlank() && (deleteConfirmText == "DELETE" || deleteConfirmText == "注销账号"),
+                    shape = RoundedCornerShape(999.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                ) {
+                    Text(stringResource(R.string.account_delete_button))
+                }
+            }
+        }
+
         if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -1611,6 +1670,29 @@ internal fun AccountSettingsPage(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text(stringResource(R.string.account_delete_dialog_title)) },
+            text = { Text(stringResource(R.string.account_delete_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        onDeleteAccount(deletePassword, deleteConfirmText)
+                    },
+                ) {
+                    Text(stringResource(R.string.account_delete_button), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(stringResource(R.string.danger_clear_cancel_button))
+                }
+            },
+        )
     }
 }
 
@@ -1692,6 +1774,7 @@ internal fun AccountRegisterPage(
     statusMessage: String,
     busy: Boolean,
     challengeId: String,
+    legalAgreementUrls: LegalAgreementUrls,
     onBack: () -> Unit,
     onRequestVerification: (String, String, String) -> Unit,
     onConfirmVerification: (String) -> Unit,
@@ -1701,6 +1784,8 @@ internal fun AccountRegisterPage(
     var password by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
     var resendCooldownSeconds by remember { mutableStateOf(0) }
+    var consentAccepted by remember { mutableStateOf(false) }
+    val legalLinksReady = legalAgreementUrls.isComplete()
     LaunchedEffect(resendCooldownSeconds) {
         if (resendCooldownSeconds > 0) {
             delay(1_000)
@@ -1727,6 +1812,18 @@ internal fun AccountRegisterPage(
                 OutlinedTextField(value = username, onValueChange = { username = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_username)) }, singleLine = true)
                 OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_email)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true)
                 OutlinedTextField(value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_password)) }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
+                LegalAgreementConsentRow(
+                    checked = consentAccepted,
+                    onCheckedChange = { consentAccepted = it },
+                    urls = legalAgreementUrls,
+                )
+                if (!legalLinksReady) {
+                    Text(
+                        text = stringResource(R.string.legal_agreement_links_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
@@ -1736,7 +1833,7 @@ internal fun AccountRegisterPage(
                             resendCooldownSeconds = 60
                             onRequestVerification(username.trim(), email.trim(), password)
                         },
-                        enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password),
+                        enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password) && consentAccepted && legalLinksReady,
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(stringResource(R.string.account_send_verification))
@@ -1752,7 +1849,7 @@ internal fun AccountRegisterPage(
                     )
                     Button(
                         onClick = { onConfirmVerification(verificationCode) },
-                        enabled = !busy && isValidVerificationCode(verificationCode),
+                        enabled = !busy && isValidVerificationCode(verificationCode) && consentAccepted && legalLinksReady,
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(stringResource(R.string.account_confirm_registration))
@@ -1762,7 +1859,7 @@ internal fun AccountRegisterPage(
                             resendCooldownSeconds = 60
                             onRequestVerification(username.trim(), email.trim(), password)
                         },
-                        enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password),
+                        enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password) && consentAccepted && legalLinksReady,
                     ) {
                         Text(
                             if (resendCooldownSeconds > 0) stringResource(R.string.account_resend_verification_countdown, resendCooldownSeconds)
@@ -1772,6 +1869,71 @@ internal fun AccountRegisterPage(
                 }
             }
         }
+    }
+}
+
+private fun LegalAgreementUrls.isComplete(): Boolean =
+    privacyPolicy.isNotBlank() && termsOfService.isNotBlank() && crossBorderTransfer.isNotBlank()
+
+@Composable
+private fun LegalAgreementConsentRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    urls: LegalAgreementUrls,
+) {
+    val uriHandler = LocalUriHandler.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+            Text(
+                text = stringResource(R.string.legal_agreement_consent_prefix),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            LegalAgreementLink(
+                text = stringResource(R.string.legal_privacy_policy),
+                url = urls.privacyPolicy,
+                onOpen = uriHandler::openUri,
+            )
+            LegalAgreementLink(
+                text = stringResource(R.string.legal_terms_of_service),
+                url = urls.termsOfService,
+                onOpen = uriHandler::openUri,
+            )
+        }
+        LegalAgreementLink(
+            text = stringResource(R.string.legal_cross_border_transfer),
+            url = urls.crossBorderTransfer,
+            onOpen = uriHandler::openUri,
+        )
+    }
+}
+
+@Composable
+private fun LegalAgreementLink(
+    text: String,
+    url: String,
+    onOpen: (String) -> Unit,
+) {
+    TextButton(
+        onClick = { if (url.isNotBlank()) onOpen(url) },
+        enabled = url.isNotBlank(),
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+    ) {
+        Text(
+            text = text,
+            textDecoration = TextDecoration.Underline,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

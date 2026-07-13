@@ -11,30 +11,28 @@
 
 ## 2. 注册
 
-### `POST /api/v1/auth/register`
-请求体：
-```json
-{
-  "username": "alice",
-  "email": "alice@example.com",
-  "password": "plain-or-prehashed"
-}
-```
+直注册接口 `POST /api/v1/auth/register` 已停用，服务端返回 `AUTH_EMAIL_VERIFICATION_REQUIRED`。客户端必须使用邮箱验证注册流程：
 
-成功响应：
+- `GET /api/v1/auth/registration/config`
+- `POST /api/v1/auth/register/email/request`
+- `POST /api/v1/auth/register/email/confirm`
+
+注册申请与确认请求均必须携带 `consent`：
+
 ```json
 {
-  "session": {
-    "accessToken": "jwt-or-opaque",
-    "refreshToken": "opaque-refresh-token"
-  }
+  "privacyPolicy": true,
+  "termsOfService": true,
+  "crossBorderTransfer": true,
+  "acceptedAt": 1783698400000,
+  "client": "android-mobile"
 }
 ```
 
 约束：
 - `username` 全局唯一。
 - `email` 全局唯一。
-- 后端必须记录邮箱验证状态字段，哪怕 MVP 阶段不强制验证。
+- 后端必须记录邮箱验证状态字段，未验证用户不能登录或取得 token。
 
 ## 3. 登录
 
@@ -43,12 +41,22 @@
 ```json
 {
   "identifier": "alice@example.com",
-  "password": "plain-or-prehashed"
+  "password": "plain-or-prehashed",
+  "consent": {
+    "privacyPolicy": true,
+    "termsOfService": true,
+    "crossBorderTransfer": true,
+    "acceptedAt": 1783698400000,
+    "client": "android-mobile"
+  }
 }
 ```
 
 说明：
 - `identifier` 可为邮箱或用户名。
+- 登录和注册页面必须先通过 `GET /api/v1/auth/registration/config` 获取 `legalAgreementUrls`，并展示“您已阅读并同意《隐私政策》《用户协议》和《个人数据跨境传输协议》”复选框。
+- 未勾选三项协议或协议 URL 未成功下发时，不得提交登录、发送注册验证码、确认注册验证码或重发验证码。
+- 服务端返回 `AUTH_CONSENT_REQUIRED` 时，客户端展示协议确认错误并保持在当前页面。
 
 ## 4. 刷新 Token
 
@@ -143,6 +151,7 @@
 ## 9. 错误码建议
 - `AUTH_INVALID_CREDENTIALS`
 - `AUTH_ACCOUNT_DISABLED`
+- `AUTH_CONSENT_REQUIRED`
 - `AUTH_REFRESH_EXPIRED`
 - `AUTH_REFRESH_REVOKED`
 - `AUTH_RESET_TOKEN_INVALID`
@@ -152,3 +161,22 @@
 - `AUTH_USERNAME_ALREADY_EXISTS`
 - `IP_RATE_LIMITED` — 同一 IP 对敏感接口的请求超过 60 次/分钟（HTTP 429，携带 `Retry-After: 60`）
 - `ACCOUNT_RATE_LIMITED` — 同一账户密码修改超过 10 次/分钟（HTTP 429，携带 `Retry-After: 60`）
+
+## 10. 账号注销
+
+### `POST /api/v1/account/delete`
+请求头：
+- `Authorization: Bearer <accessToken>`
+
+请求体：
+```json
+{
+  "currentPassword": "plain-password",
+  "confirm": "DELETE"
+}
+```
+
+客户端行为：
+- 账户页展示危险操作入口，要求输入当前密码和确认文本，并弹出二次确认对话框。
+- 成功后立即清理本地 access/refresh token、账户摘要、会员缓存和待验证邮箱状态，并回到未登录状态。
+- 其他设备会在下一次接口请求、token 刷新或前台补拉时被服务端撤销。

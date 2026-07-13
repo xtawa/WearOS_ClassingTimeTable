@@ -520,6 +520,15 @@ Rules:
     <string name="account_membership_expires_at">Expires at: %1$s</string>
     <string name="account_login">Sign in</string>
     <string name="account_logout">Sign out</string>
+    <string name="account_delete_title">Delete account</string>
+    <string name="account_delete_desc">After deletion, this account will be signed out on all devices. Email and username are anonymized and the original account cannot be used to sign in again.</string>
+    <string name="account_delete_confirm_label">Type DELETE to confirm</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_button">Delete account</string>
+    <string name="account_delete_dialog_title">Confirm account deletion</string>
+    <string name="account_delete_dialog_message">This will immediately sign out all devices and make the original account unavailable. Continue?</string>
+    <string name="account_delete_success">Account deleted. All devices have been signed out.</string>
+    <string name="account_delete_failed">Could not delete this account.</string>
     <string name="account_identifier">Email or username</string>
     <string name="account_password">Password</string>
     <string name="account_register">Create account</string>
@@ -582,7 +591,7 @@ Rules:
     <string name="official_cloud_membership_required">Official cloud requires an active membership.</string>
     <string name="official_cloud_login_required">Sign in on this phone to use official cloud sync.</string>
     <string name="official_cloud_membership_active">Membership active. Official cloud is available.</string>
-    <string name="official_cloud_membership_inactive">Membership inactive. Upgrade to unlock official cloud sync.</string>
+    <string name="official_cloud_membership_inactive">Membership inactive. Official cloud will only sync settings until membership is renewed.</string>
     <string name="official_cloud_open_account">Open account</string>
     <string name="cloud_sync_scopes_title">Sync scopes</string>
     <string name="cloud_sync_scope_timetable">Timetable</string>
@@ -648,6 +657,12 @@ Rules:
     <string name="account_turnstile_title">Human verification</string>
     <string name="account_turnstile_desc">Complete the verification to send the email code.</string>
     <string name="account_turnstile_unavailable">Human verification is unavailable. Try again later.</string>
+    <string name="legal_agreement_consent_prefix">You agree to the following agreements before continuing.</string>
+    <string name="legal_privacy_policy">Privacy Policy</string>
+    <string name="legal_terms_of_service">User Agreement</string>
+    <string name="legal_cross_border_transfer">Personal Data Cross-border Transfer Agreement</string>
+    <string name="legal_agreement_links_unavailable">Agreement links are not configured yet. Please try again later.</string>
+    <string name="legal_agreement_required">Please agree to the Privacy Policy, User Agreement, and Personal Data Cross-border Transfer Agreement.</string>
     <string name="calendar_restore_original">Restore original arrangement</string>
     <string name="calendar_restore_cancelled_original">Restore cancelled class</string>
     <string name="onboarding_import_configure_title">Configure your selected setup</string>

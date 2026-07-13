@@ -6,6 +6,9 @@
 - 路径前缀：`/api/v1/cloud/official`
 - 客户端不可修改域名。
 - 登录账户可同步设置域；有效会员可额外同步课表域。
+- 已启用官方云同步的用户在会员过期后仍保持设置同步；Mobile/Wear/Web 不应继续上传或应用课表域。
+- 服务端对过期会员的 `GET /document` 只返回 `mobile.settings`、`wear.settings`、`cloud.config`、`app.commands`，对 `PUT /document` 只合并这些设置/命令域并忽略 `timetable.lessons` 与 `timetable.exceptions`。
+- 客户端本地仍可保留既有课表和设置；会员恢复后再按 V2 合并规则重新参与课表同步。
 
 ## 2. 客户端配置模型
 ```json

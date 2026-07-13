@@ -411,6 +411,15 @@
     <string name="account_membership_expires_at">到期時間：%1$s</string>
     <string name="account_login">登入</string>
     <string name="account_logout">登出</string>
+    <string name="account_delete_title">註銷帳號</string>
+    <string name="account_delete_desc">註銷後該帳號會立即登出所有裝置，電子郵件和使用者名稱將被去識別化，原帳號無法再次登入。</string>
+    <string name="account_delete_confirm_label">輸入 DELETE 確認</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_button">註銷帳號</string>
+    <string name="account_delete_dialog_title">確認註銷帳號</string>
+    <string name="account_delete_dialog_message">此操作會立即登出所有裝置，並使原帳號不可用。是否繼續？</string>
+    <string name="account_delete_success">帳號已註銷，所有裝置已登出。</string>
+    <string name="account_delete_failed">無法註銷此帳號。</string>
     <string name="account_identifier">電子郵件或使用者名稱</string>
     <string name="account_password">密碼</string>
     <string name="account_register">註冊帳戶</string>
@@ -472,7 +481,7 @@
     <string name="official_cloud_membership_required">官方雲端需要有效會員。</string>
     <string name="official_cloud_login_required">請先在手機端登入，再使用官方雲端同步。</string>
     <string name="official_cloud_membership_active">會員有效，可以使用官方雲端。</string>
-    <string name="official_cloud_membership_inactive">會員未生效，開通會員後可使用官方雲端。</string>
+    <string name="official_cloud_membership_inactive">會員未生效，官方雲端在續費前僅同步設定項。</string>
     <string name="official_cloud_open_account">開啟帳戶</string>
     <string name="cloud_sync_scopes_title">同步項目</string>
     <string name="cloud_sync_scope_timetable">課表</string>
@@ -604,6 +613,12 @@
     <string name="account_turnstile_title">人機驗證</string>
     <string name="account_turnstile_desc">完成驗證後傳送郵件驗證碼</string>
     <string name="account_turnstile_unavailable">人機驗證暫不可用，請稍後重試</string>
+    <string name="legal_agreement_consent_prefix">繼續前，您同意以下協議。</string>
+    <string name="legal_privacy_policy">《隱私政策》</string>
+    <string name="legal_terms_of_service">《使用者協議》</string>
+    <string name="legal_cross_border_transfer">《個人資料跨境傳輸協議》</string>
+    <string name="legal_agreement_links_unavailable">協議連結尚未設定，請稍後重試。</string>
+    <string name="legal_agreement_required">請先同意《隱私政策》《使用者協議》和《個人資料跨境傳輸協議》。</string>
     <string name="account_error_login_locked">登入失敗次數過多，請在 %1$d:%2$02d 後重試。</string>
     <string name="account_verification_locked">錯誤次數過多，該驗證碼已失效，請重新申請。</string>
     <string name="account_change_email">變更電子郵件</string>

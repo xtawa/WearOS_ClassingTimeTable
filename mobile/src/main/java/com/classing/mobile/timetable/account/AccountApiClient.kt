@@ -27,6 +27,13 @@ data class RegistrationVerificationChallenge(
 data class RegistrationSecurityConfig(
     val turnstileRequired: Boolean,
     val turnstileSiteKey: String,
+    val legalAgreementUrls: LegalAgreementUrls = LegalAgreementUrls(),
+)
+
+data class LegalAgreementUrls(
+    val privacyPolicy: String = "",
+    val termsOfService: String = "",
+    val crossBorderTransfer: String = "",
 )
 
 class AccountApiException(
@@ -88,7 +95,8 @@ class AccountApiClient(
                 .put("username", username.trim())
                 .put("email", email.trim())
                 .put("password", password)
-                .put("turnstileToken", turnstileToken),
+                .put("turnstileToken", turnstileToken)
+                .put("consent", legalConsent()),
         ).map { json ->
             val challenge = json.optJSONObject("challenge") ?: json
             RegistrationVerificationChallenge(
@@ -104,6 +112,13 @@ class AccountApiClient(
             RegistrationSecurityConfig(
                 turnstileRequired = json.optBoolean("turnstileRequired", false),
                 turnstileSiteKey = json.optString("turnstileSiteKey"),
+                legalAgreementUrls = json.optJSONObject("legalAgreementUrls")?.let {
+                    LegalAgreementUrls(
+                        privacyPolicy = it.optString("privacyPolicy"),
+                        termsOfService = it.optString("termsOfService"),
+                        crossBorderTransfer = it.optString("crossBorderTransfer"),
+                    )
+                } ?: LegalAgreementUrls(),
             )
         }
     }
@@ -116,7 +131,8 @@ class AccountApiClient(
             path = "/api/v1/auth/register/email/confirm",
             body = JSONObject()
                 .put("challengeId", challengeId)
-                .put("verificationCode", verificationCode.trim()),
+                .put("verificationCode", verificationCode.trim())
+                .put("consent", legalConsent()),
         )
     }
 
@@ -125,7 +141,8 @@ class AccountApiClient(
             path = "/api/v1/auth/login",
             body = JSONObject()
                 .put("identifier", identifier.trim())
-                .put("password", password),
+                .put("password", password)
+                .put("consent", legalConsent()),
         )
     }
 
@@ -142,6 +159,17 @@ class AccountApiClient(
             path = "/api/v1/auth/logout",
             accessToken = accessToken,
             body = JSONObject().put("refreshToken", refreshToken),
+        ).map { Unit }
+    }
+
+    suspend fun deleteAccount(accessToken: String, currentPassword: String, confirm: String): Result<Unit> {
+        return request(
+            method = "POST",
+            path = "/api/v1/account/delete",
+            accessToken = accessToken,
+            body = JSONObject()
+                .put("currentPassword", currentPassword)
+                .put("confirm", confirm.trim()),
         ).map { Unit }
     }
 
@@ -269,6 +297,13 @@ class AccountApiClient(
             )
         }
     }
+
+    private fun legalConsent(): JSONObject = JSONObject()
+        .put("privacyPolicy", true)
+        .put("termsOfService", true)
+        .put("crossBorderTransfer", true)
+        .put("acceptedAt", System.currentTimeMillis())
+        .put("client", "android-mobile")
 
     private suspend fun request(
         method: String,

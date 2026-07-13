@@ -106,6 +106,7 @@ import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.account.AccountApiClient
 import com.xtawa.classingtime.account.AccountApiException
+import com.xtawa.classingtime.account.LegalAgreementUrls
 import com.xtawa.classingtime.account.PendingEmailChange
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
@@ -248,6 +249,7 @@ fun MobileTimetableScreen() {
     var loginLockSeconds by remember { mutableIntStateOf(0) }
     var pendingTurnstileRegistration by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var registrationTurnstileSiteKey by remember { mutableStateOf("") }
+    var legalAgreementUrls by remember { mutableStateOf(LegalAgreementUrls()) }
     var dailyBriefingStatusMessage by remember { mutableStateOf("") }
     var dailyBriefingEnabled by remember { mutableStateOf(false) }
     var dailyBriefingChannel by remember { mutableStateOf(DailyBriefingChannel.APP_NOTIFICATION) }
@@ -267,6 +269,12 @@ fun MobileTimetableScreen() {
         if (loginLockSeconds > 0) {
             delay(1_000)
             loginLockSeconds -= 1
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        accountApiClient.registrationSecurityConfig().getOrNull()?.let { config ->
+            legalAgreementUrls = config.legalAgreementUrls
         }
     }
 
@@ -1912,6 +1920,7 @@ fun MobileTimetableScreen() {
                     busy = accountBusy,
                     pendingEmailChange = pendingEmailChange,
                     loginLockSeconds = loginLockSeconds,
+                    legalAgreementUrls = legalAgreementUrls,
                     onBack = {
                         handleBackNavigation()
                     },
@@ -1963,6 +1972,36 @@ fun MobileTimetableScreen() {
                                 pendingEmailChange = null
                                 accountStatusMessage = context.getString(R.string.account_logged_out)
                                 persistSettings()
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onDeleteAccount = { currentPassword, confirm ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
+                                } else {
+                                    val result = accountApiClient.deleteAccount(accessToken, currentPassword, confirm)
+                                    if (result.isSuccess) {
+                                        AuthCredentialStore.clear(context)
+                                        accountSummary = AccountSummary()
+                                        membershipSummary = MembershipSummary()
+                                        pendingEmailChange = null
+                                        emailChangeRequestId = ""
+                                        accountStatusMessage = context.getString(R.string.account_delete_success)
+                                        persistSettings()
+                                    } else {
+                                        accountStatusMessage = accountErrorMessage(
+                                            context,
+                                            result.exceptionOrNull(),
+                                            R.string.account_delete_failed,
+                                        )
+                                    }
+                                }
                             } finally {
                                 accountBusy = false
                             }
@@ -2100,12 +2139,14 @@ fun MobileTimetableScreen() {
                     statusMessage = accountStatusMessage,
                     busy = accountBusy,
                     challengeId = registrationChallengeId,
+                    legalAgreementUrls = legalAgreementUrls,
                     onBack = { handleBackNavigation() },
                     onRequestVerification = { username, email, password ->
                         coroutineScope.launch {
                             accountBusy = true
                             try {
                                 val security = accountApiClient.registrationSecurityConfig().getOrNull()
+                                security?.let { legalAgreementUrls = it.legalAgreementUrls }
                                 if (security?.turnstileRequired == true) {
                                     if (security.turnstileSiteKey.isBlank()) {
                                         accountStatusMessage = context.getString(R.string.account_turnstile_unavailable)
@@ -2744,6 +2785,7 @@ private fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes
         "AUTH_INVALID_CREDENTIALS" -> R.string.account_error_invalid_credentials
         "AUTH_ACCOUNT_DISABLED", "AUTH_ACCOUNT_UNAVAILABLE" -> R.string.account_error_disabled
         "AUTH_REGISTRATION_DISABLED" -> R.string.account_error_registration_disabled
+        "AUTH_CONSENT_REQUIRED" -> R.string.legal_agreement_required
         "AUTH_USERNAME_INVALID" -> R.string.account_error_username_invalid
         "AUTH_EMAIL_INVALID" -> R.string.account_error_email_invalid
         "AUTH_PASSWORD_WEAK", "ACCOUNT_PASSWORD_WEAK" -> R.string.account_error_password_weak
