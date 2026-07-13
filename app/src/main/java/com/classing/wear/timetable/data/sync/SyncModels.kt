@@ -10,6 +10,9 @@ data class RemoteSchedulePayload(
     val courses: List<RemoteCourse>,
     val sessions: List<RemoteSession>,
     val exceptions: List<RemoteException>,
+    val deletedCourseRemoteIds: Set<String> = emptySet(),
+    val deletedSessionRemoteIds: Set<String> = emptySet(),
+    val deletedExceptionRemoteIds: Set<String> = emptySet(),
 )
 
 data class RemoteSemester(

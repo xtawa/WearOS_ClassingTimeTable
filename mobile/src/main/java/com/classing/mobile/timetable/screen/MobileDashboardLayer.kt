@@ -37,6 +37,7 @@ import com.classing.shared.ui.heatmap.HeatmapLessonInput
 import com.classing.shared.ui.heatmap.buildHeatmapCells
 import com.xtawa.classingtime.R
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.delay
 
@@ -89,7 +90,6 @@ internal fun DashboardLayer(
     val dayCounts = remember(visibleDays, lessonsByDay) {
         visibleDays.associateWith { day -> lessonsByDay[day].orEmpty().size }
     }
-    val totalCount = visibleLessons.size
     val activeDayCount = dayCounts.count { it.value > 0 }
     val busiestDay = dayCounts.maxWithOrNull(
         compareBy<Map.Entry<DayOfWeek, Int>> { it.value }.thenByDescending { it.key.value },
@@ -116,6 +116,12 @@ internal fun DashboardLayer(
         todayLessons.firstOrNull { lesson ->
             LocalDateTime.of(today, lesson.startTime).isAfter(now)
         }
+    }
+    val nextLesson = remember(currentWeekLessonsByDay, now) {
+        resolveNextLessonForBoard(
+            lessonsForDate = { date: LocalDate -> currentWeekLessonsByDay[date.dayOfWeek].orEmpty() },
+            now = now,
+        )
     }
     val statusText = when {
         currentLesson != null -> stringResource(R.string.dashboard_status_in_progress, currentLesson.title)
@@ -185,8 +191,8 @@ internal fun DashboardLayer(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DashboardMetricCard(
                         modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.dashboard_total_count_title),
-                        value = totalCount.toString(),
+                        title = stringResource(R.string.dashboard_active_days_title),
+                        value = activeDayCount.toString(),
                     )
                     DashboardMetricCard(
                         modifier = Modifier.weight(1f),
@@ -221,45 +227,7 @@ internal fun DashboardLayer(
             }
         }
 
-        DashboardSectionTitle(title = stringResource(R.string.schedule_next_lesson_title))
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (nextTodayLesson == null) {
-                    Text(
-                        text = if (todayLessons.isEmpty()) {
-                            stringResource(R.string.no_classes_today)
-                        } else {
-                            stringResource(R.string.schedule_next_lesson_empty)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    Text(
-                        text = nextTodayLesson.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "${nextTodayLesson.startTime.format(clockFormatter)}-${nextTodayLesson.endTime.format(clockFormatter)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (!nextTodayLesson.location.isNullOrBlank()) {
-                        Text(
-                            text = nextTodayLesson.location,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
+        DashboardNextLessonCard(nextLesson = nextLesson, hasSchedule = lessons.isNotEmpty(), now = now)
 
         DashboardSectionTitle(title = stringResource(R.string.dashboard_today_remaining_title))
         if (remainingTodayLessons.isEmpty()) {
@@ -352,6 +320,54 @@ internal fun DashboardLayer(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardNextLessonCard(
+    nextLesson: UpcomingLessonForBoard?,
+    hasSchedule: Boolean,
+    now: LocalDateTime,
+) {
+    val countdown = when {
+        nextLesson == null -> ""
+        !now.isBefore(nextLesson.startAt) && now.isBefore(nextLesson.endAt) ->
+            stringResource(R.string.schedule_next_lesson_countdown_in_progress)
+        else -> {
+            val minutes = java.time.Duration.between(now, nextLesson.startAt).toMinutes().coerceAtLeast(0L)
+            when {
+                minutes <= 0L -> stringResource(R.string.schedule_next_lesson_countdown_soon)
+                minutes >= 60L -> stringResource(
+                    R.string.schedule_next_lesson_countdown_in_hours_minutes,
+                    minutes / 60L,
+                    minutes % 60L,
+                )
+                else -> stringResource(R.string.schedule_next_lesson_countdown_in_minutes, minutes)
+            }
+        }
+    }
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f))) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(stringResource(R.string.schedule_next_lesson_title), color = MaterialTheme.colorScheme.primary)
+            if (nextLesson == null) {
+                Text(
+                    if (hasSchedule) stringResource(R.string.schedule_next_lesson_empty)
+                    else stringResource(R.string.schedule_next_lesson_no_data),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(nextLesson.lesson.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${nextLesson.startAt.toLocalDate()}  ${nextLesson.lesson.startTime.format(clockFormatter)}-${nextLesson.lesson.endTime.format(clockFormatter)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (countdown.isNotBlank()) Text(countdown, color = MaterialTheme.colorScheme.primary)
             }
         }
     }

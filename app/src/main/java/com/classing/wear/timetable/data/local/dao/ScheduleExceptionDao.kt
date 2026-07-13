@@ -33,4 +33,7 @@ interface ScheduleExceptionDao {
 
     @Query("DELETE FROM schedule_exceptions WHERE semesterId = :semesterId AND (remoteId IS NULL OR remoteId NOT IN (:remoteIds))")
     suspend fun deleteMissingRemoteIds(semesterId: Long, remoteIds: List<String>)
+
+    @Query("DELETE FROM schedule_exceptions WHERE remoteId IN (:remoteIds)")
+    suspend fun deleteByRemoteIds(remoteIds: List<String>)
 }

@@ -32,14 +32,15 @@ class WearSyncRequestListenerService : WearableListenerService() {
             return
         }
 
-        val requestedAt = parseRequestedAt(messageEvent.data)
+        val request = parseRequest(messageEvent.data)
+        val requestedAt = request.requestedAt
         if (requestedAt > 0L && isDuplicateRequest(requestedAt)) {
             Log.i(TAG, "Ignore duplicated sync request message requestedAt=$requestedAt")
             return
         }
         if (requestedAt > 0L) markHandledRequest(requestedAt)
 
-        triggerMobileSyncPublish()
+        triggerMobileSyncPublish(request.requestId, request.forceFull)
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
@@ -55,43 +56,52 @@ class WearSyncRequestListenerService : WearableListenerService() {
             }
             if (requestedAt > 0L) markHandledRequest(requestedAt)
 
-            triggerMobileSyncPublish()
+            val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+            triggerMobileSyncPublish(
+                requestId = dataMap.getString(WearDataLayerContracts.KEY_REQUEST_ID).orEmpty(),
+                forceFull = dataMap.getBoolean(KEY_FORCE_FULL, false),
+            )
         }
     }
 
-    private fun triggerMobileSyncPublish() {
+    private fun triggerMobileSyncPublish(requestId: String, forceFull: Boolean) {
         serviceScope.launch {
             val state = MobilePrefsStore.loadTimetableState(applicationContext)
             val settings = MobilePrefsStore.loadSettings(applicationContext)
             val weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
             val semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }
                 .getOrDefault(LocalDate.now())
-            val lessons = buildFlattenedEffectiveLessons(
-                baseLessons = state.baseLessons.map { it.toLessonUi() },
-                exceptions = state.exceptions.map { it.toUi() },
-                weekNumberMode = weekNumberMode,
-                semesterWeekStartDate = semesterWeekStartDate,
-            ).map { it.toPersistedLesson() }
             val result = WearDataLayerSyncPublisher.publishLessonsSnapshot(
                 context = applicationContext,
-                lessons = lessons,
+                lessons = state.baseLessons,
                 zoneId = ZoneId.systemDefault(),
                 weekNumberMode = settings.weekNumberMode,
                 semesterWeekStartDate = semesterWeekStartDate,
+                exceptions = state.exceptions,
+                requestId = requestId.ifBlank { java.util.UUID.randomUUID().toString() },
+                forceFull = forceFull,
             )
             if (result.isSuccess) {
-                Log.i(TAG, "Wear sync request handled, published ${lessons.size} lessons")
+                Log.i(TAG, "Wear sync request handled, published ${state.baseLessons.size} lessons, forceFull=$forceFull")
             } else {
                 Log.w(TAG, "Wear sync request failed: ${result.exceptionOrNull()?.message}")
             }
         }
     }
 
-    private fun parseRequestedAt(bytes: ByteArray): Long {
+    private data class ParsedRequest(val requestedAt: Long, val requestId: String, val forceFull: Boolean)
+
+    private fun parseRequest(bytes: ByteArray): ParsedRequest {
         val raw = runCatching { String(bytes, StandardCharsets.UTF_8) }.getOrNull().orEmpty()
-        if (raw.isBlank()) return 0L
-        return runCatching { JSONObject(raw).optLong(WearDataLayerContracts.KEY_REQUESTED_AT, 0L) }
-            .getOrDefault(0L)
+        if (raw.isBlank()) return ParsedRequest(0L, "", false)
+        return runCatching {
+            val root = JSONObject(raw)
+            ParsedRequest(
+                requestedAt = root.optLong(WearDataLayerContracts.KEY_REQUESTED_AT, 0L),
+                requestId = root.optString(WearDataLayerContracts.KEY_REQUEST_ID),
+                forceFull = root.optBoolean(KEY_FORCE_FULL, false),
+            )
+        }.getOrDefault(ParsedRequest(0L, "", false))
     }
 
     private fun isDuplicateRequest(requestedAt: Long): Boolean {
@@ -109,5 +119,6 @@ class WearSyncRequestListenerService : WearableListenerService() {
         private const val TAG = "WearSyncRequestSvc"
         private const val PREF_NAME = "mobile_wear_sync_request"
         private const val KEY_LAST_REQUEST_AT = "last_request_at"
+        private const val KEY_FORCE_FULL = "forceFull"
     }
 }

@@ -321,7 +321,7 @@ class MobileJsonImportAdapterTest {
     }
 
     @Test
-    fun appendImportedLessons_keepsDuplicatesInsideImportedBatchWhenNotAlreadyExisting() {
+    fun appendImportedLessons_skipsExactDuplicatesInsideImportedBatch() {
         val imported = listOf(
             lesson(
                 id = "json-5",
@@ -337,13 +337,24 @@ class MobileJsonImportAdapterTest {
                 startTime = LocalTime.of(11, 0),
                 endTime = LocalTime.of(12, 0),
             ),
+            lesson(
+                id = "json-7",
+                title = "Biology",
+                dayOfWeek = DayOfWeek.THURSDAY,
+                startTime = LocalTime.of(11, 0),
+                endTime = LocalTime.of(12, 0),
+            ),
         )
 
         val result = appendImportedLessons(existingBaseLessons = emptyList(), existingExceptions = emptyList(), importLessons = imported)
 
         assertEquals(2, result.baseLessons.size)
         assertEquals(2, result.appliedCount)
-        assertEquals(0, result.skippedDuplicateCount)
+        assertEquals(1, result.skippedDuplicateCount)
+        assertEquals(
+            listOf("Chemistry", "Biology"),
+            result.baseLessons.map { it.title },
+        )
     }
 
     private fun lesson(

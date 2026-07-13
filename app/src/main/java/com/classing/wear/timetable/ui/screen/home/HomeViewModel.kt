@@ -100,10 +100,10 @@ class HomeViewModel(
     private suspend fun requestSyncFromPhone() {
         syncState.value = SyncState.Syncing
         val result = mobileSyncRequester.requestSyncFromPhone()
-        syncState.value = if (result.isSuccess) {
+        syncState.value = if (result.getOrNull()?.let { it > 0 } == true) {
             SyncState.Success(Instant.now())
         } else {
-            SyncState.Failed(result.exceptionOrNull()?.message ?: "sync request failed")
+            SyncState.Failed(result.exceptionOrNull()?.message ?: "Check phone connection")
         }
     }
 }

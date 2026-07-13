@@ -28,4 +28,7 @@ interface CourseSessionDao {
 
     @Query("DELETE FROM course_sessions WHERE semesterId = :semesterId AND (remoteId IS NULL OR remoteId NOT IN (:remoteIds))")
     suspend fun deleteMissingRemoteIds(semesterId: Long, remoteIds: List<String>)
+
+    @Query("DELETE FROM course_sessions WHERE remoteId IN (:remoteIds)")
+    suspend fun deleteByRemoteIds(remoteIds: List<String>)
 }

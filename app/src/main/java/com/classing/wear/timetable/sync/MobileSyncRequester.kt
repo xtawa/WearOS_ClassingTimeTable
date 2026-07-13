@@ -10,6 +10,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
+import java.util.UUID
 
 class MobileSyncRequester(
     private val context: Context,
@@ -17,16 +18,19 @@ class MobileSyncRequester(
     suspend fun requestSyncFromPhone(): Result<Int> {
         return runCatching {
             val requestedAt = System.currentTimeMillis()
+            val requestId = UUID.randomUUID().toString()
             val nodes = Wearable.getNodeClient(context).connectedNodes.await()
 
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_REQUEST).apply {
                 dataMap.putLong(WearDataLayerContracts.KEY_REQUESTED_AT, requestedAt)
                 dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
+                dataMap.putString(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
             }.asPutDataRequest().setUrgent()
             Wearable.getDataClient(context).putDataItem(request).await()
 
             val payload = JSONObject()
                 .put(WearDataLayerContracts.KEY_REQUESTED_AT, requestedAt)
+                .put(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
                 .toString()
                 .toByteArray(StandardCharsets.UTF_8)
 

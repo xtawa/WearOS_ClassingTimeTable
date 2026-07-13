@@ -184,6 +184,7 @@ fun MobileTimetableScreen() {
     var draftPreview by remember { mutableStateOf<List<CourseDraft>>(emptyList()) }
     var jsonPreview by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
     var pendingImportLessons by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
+    var pendingImportExceptions by remember { mutableStateOf<List<ScheduleExceptionUi>>(emptyList()) }
     var pendingImportConflicts by remember { mutableStateOf<List<LessonConflict>>(emptyList()) }
     var showImportConflictDialog by remember { mutableStateOf(false) }
     var importItemStates by remember { mutableStateOf<List<ImportItemState>>(emptyList()) }
@@ -353,6 +354,7 @@ fun MobileTimetableScreen() {
             endDate = date,
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
+            weekStartDay = weekStartDay,
         ).map { it.lesson }
     }
 
@@ -381,6 +383,7 @@ fun MobileTimetableScreen() {
                     reason = reason,
                     weekNumberMode = weekNumberMode,
                     semesterWeekStartDate = semesterWeekStartDate,
+                    weekStartDay = weekStartDay,
                     baseLessons = baseLessons,
                     exceptions = scheduleExceptions,
                 ),
@@ -393,6 +396,9 @@ fun MobileTimetableScreen() {
         snapshotBefore("restore_snapshot")
         baseLessons = snapshot.baseLessons
         scheduleExceptions = snapshot.exceptions
+        weekNumberMode = snapshot.weekNumberMode
+        semesterWeekStartDate = snapshot.semesterWeekStartDate
+        weekStartDay = snapshot.weekStartDay
         rebuildScheduleProjection()
         persistScheduleState()
         parseMessage = context.getString(R.string.backup_restore_success_message, snapshot.baseLessons.size)
@@ -401,11 +407,22 @@ fun MobileTimetableScreen() {
 
     fun undoLatestSnapshot() {
         val snapshot = scheduleSnapshots.maxByOrNull { it.createdAt } ?: return
-        restoreSnapshot(snapshot.id)
+        scheduleSnapshots = scheduleSnapshots.filterNot { it.id == snapshot.id }
+        baseLessons = snapshot.baseLessons
+        scheduleExceptions = snapshot.exceptions
+        weekNumberMode = snapshot.weekNumberMode
+        semesterWeekStartDate = snapshot.semesterWeekStartDate
+        weekStartDay = snapshot.weekStartDay
+        rebuildScheduleProjection()
+        persistScheduleState()
+        persistSettings()
     }
 
-    fun applyImportedLessons(importLessons: List<LessonUi>) {
-        val result = com.xtawa.classingtime.screen.applyImportedLessons(importLessons)
+    fun applyImportedLessons(
+        importLessons: List<LessonUi>,
+        importExceptions: List<ScheduleExceptionUi> = emptyList(),
+    ) {
+        val result = com.xtawa.classingtime.screen.applyImportedLessons(importLessons, importExceptions)
         baseLessons = result.baseLessons
         scheduleExceptions = result.exceptions
         rebuildScheduleProjection()
@@ -605,6 +622,7 @@ fun MobileTimetableScreen() {
             context = context,
         )
         pendingImportLessons = result.lessons
+        pendingImportExceptions = result.exceptions
         draftPreview = result.drafts
         jsonPreview = emptyList()
         parseMessage = result.message
@@ -616,6 +634,7 @@ fun MobileTimetableScreen() {
     fun applyJsonPreviewFromRaw(raw: String) {
         val result = parseJsonToLessons(raw, context)
         pendingImportLessons = result.lessons
+        pendingImportExceptions = emptyList()
         draftPreview = emptyList()
         jsonPreview = result.lessons
         parseMessage = result.message
@@ -878,7 +897,7 @@ fun MobileTimetableScreen() {
         keepAliveLevel = KeepAliveLevel.fromRaw(settings.keepAliveLevel)
         rawIcs = settings.rawIcs.takeUnless { it.contains("PRODID:-//Classing//Schedule Demo//EN") }.orEmpty()
         parseMessage = settings.parseMessage.ifBlank { context.getString(R.string.initial_parse_message) }
-        wearSyncMode = WearSyncMode.entries.firstOrNull { it.name == settings.wearSyncMode } ?: WearSyncMode.AUTO
+        wearSyncMode = migrateWearSyncMode(settings.wearSyncMode)
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
         weekStartDay = parseWeekStartDay(settings.weekStartDay)
@@ -946,7 +965,7 @@ fun MobileTimetableScreen() {
         com.xtawa.classingtime.MainActivity.sharedImportText = null
         if (sharedUri != null) {
             val content = runCatching {
-                context.contentResolver.openInputStream(sharedUri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                context.contentResolver.openInputStream(sharedUri)?.use { decodeImportBytes(it.readBytes()) }
             }.getOrNull()
             if (!content.isNullOrBlank()) {
                 val isIcs = sharedMime?.contains("calendar") == true ||
@@ -1215,6 +1234,7 @@ fun MobileTimetableScreen() {
                 rawIcs = ""
                 rawJson = ""
                 pendingImportLessons = emptyList()
+                pendingImportExceptions = emptyList()
                 pendingImportConflicts = emptyList()
                 showImportConflictDialog = false
                 draftPreview = emptyList()
@@ -1239,12 +1259,13 @@ fun MobileTimetableScreen() {
                 if (pendingImportLessons.isEmpty()) {
                     parseMessage = context.getString(R.string.no_pending_import_message)
                 } else {
-                    val conflicts = detectLessonConflicts(pendingImportLessons)
+                    val conflicts = detectImportConflicts(pendingImportLessons, lessons)
                     if (conflicts.isEmpty()) {
                         snapshotBefore("import_replace")
-                        applyImportedLessons(pendingImportLessons)
+                        applyImportedLessons(pendingImportLessons, pendingImportExceptions)
                         parseMessage = context.getString(R.string.import_confirmed_message, pendingImportLessons.size)
                         pendingImportLessons = emptyList()
+                        pendingImportExceptions = emptyList()
                         draftPreview = emptyList()
                         jsonPreview = emptyList()
                         warnings = emptyList()
@@ -1262,7 +1283,11 @@ fun MobileTimetableScreen() {
                 if (pendingImportLessons.isEmpty()) {
                     parseMessage = context.getString(R.string.no_pending_import_message)
                 } else {
-                    val conflicts = detectLessonConflicts(pendingImportLessons)
+                    val conflicts = if (jsonImportMode == JsonImportMode.REPLACE) {
+                        detectLessonConflicts(pendingImportLessons)
+                    } else {
+                        detectImportConflicts(pendingImportLessons, lessons)
+                    }
                     if (conflicts.isEmpty()) {
                         if (jsonImportMode == JsonImportMode.REPLACE) {
                             snapshotBefore("json_replace")
@@ -1286,9 +1311,13 @@ fun MobileTimetableScreen() {
             onConfirmSelectiveImport = { selectedLessons ->
                 val skippedCount = pendingImportLessons.size - selectedLessons.size
                 snapshotBefore("import_selective_replace")
-                applyImportedLessons(selectedLessons)
+                applyImportedLessons(
+                    selectedLessons,
+                    pendingImportExceptions.filter { it.lessonId in selectedLessons.map(LessonUi::id).toSet() },
+                )
                 parseMessage = context.getString(R.string.import_selective_applied, selectedLessons.size, skippedCount)
                 pendingImportLessons = emptyList()
+                pendingImportExceptions = emptyList()
                 pendingImportConflicts = emptyList()
                 showImportConflictDialog = false
                 draftPreview = emptyList()
@@ -1335,7 +1364,7 @@ fun MobileTimetableScreen() {
             },
             onIcsFileSelected = { uri ->
                 val content = runCatching {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    context.contentResolver.openInputStream(uri)?.use { decodeImportBytes(it.readBytes()) }
                 }.getOrNull()
                 if (content.isNullOrBlank()) {
                     parseMessage = context.getString(R.string.import_file_read_failed)
@@ -1347,7 +1376,7 @@ fun MobileTimetableScreen() {
             },
             onJsonFileSelected = { uri ->
                 val content = runCatching {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    context.contentResolver.openInputStream(uri)?.use { decodeImportBytes(it.readBytes()) }
                 }.getOrNull()
                 if (content.isNullOrBlank()) {
                     parseMessage = context.getString(R.string.import_file_read_failed)
@@ -1604,6 +1633,9 @@ fun MobileTimetableScreen() {
 
                     ScheduleSubview.Calendar -> CalendarMonthLayer(
                         contentPadding = innerPadding,
+                        cancelledExceptionProvider = { date ->
+                            scheduleExceptions.filter { it.date == date && it.type == ScheduleExceptionKind.CANCEL }
+                        },
                         occurrenceProvider = { date ->
                             buildEffectiveOccurrencesForDateRange(
                                 baseLessons = baseLessons,
@@ -1612,6 +1644,7 @@ fun MobileTimetableScreen() {
                                 endDate = date,
                                 weekNumberMode = weekNumberMode,
                                 semesterWeekStartDate = semesterWeekStartDate,
+                                weekStartDay = weekStartDay,
                             )
                         },
                         onBackToTimetable = { scheduleSubviewName = ScheduleSubview.Timetable.name },
@@ -1639,6 +1672,13 @@ fun MobileTimetableScreen() {
                                 allowedScopes = setOf(LessonEditScope.SingleOccurrence),
                                 isNewLesson = true,
                             )
+                        },
+                        onRestoreOriginal = { lessonId, date ->
+                            snapshotBefore("restore_original_occurrence")
+                            scheduleExceptions = restoreOriginalOccurrence(scheduleExceptions, lessonId, date)
+                            rebuildScheduleProjection()
+                            persistScheduleState()
+                            syncReminderWork()
                         },
                     )
                 }
@@ -2576,8 +2616,9 @@ fun MobileTimetableScreen() {
                     parseMessage = buildJsonImportMessage(jsonImportMode, result)
                 } else {
                     snapshotBefore("import_replace_with_conflict")
-                    applyImportedLessons(pendingImportLessons)
+                    applyImportedLessons(pendingImportLessons, pendingImportExceptions)
                     parseMessage = context.getString(R.string.import_confirmed_with_conflict_message, importSize)
+                    pendingImportExceptions = emptyList()
                 }
             }
             pendingImportLessons = emptyList()

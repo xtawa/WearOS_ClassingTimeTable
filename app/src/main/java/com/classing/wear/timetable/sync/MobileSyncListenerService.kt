@@ -35,6 +35,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
 class MobileSyncListenerService : WearableListenerService() {
@@ -87,6 +89,11 @@ class MobileSyncListenerService : WearableListenerService() {
             incomingRevision,
         ).takeIf { it > 0L } ?: incomingRevision
         val lessonCount = parsed.optJSONArray("lessons")?.length() ?: 0
+        val requestId = parsed.optString(WearDataLayerContracts.KEY_REQUEST_ID)
+        if (requestId.isNotBlank() && !claimRequest(requestId)) {
+            Log.i(TAG, "Ignore duplicate mobile sync requestId=$requestId")
+            return
+        }
         val source = SyncSource.fromWire(parsed.optString(WearDataLayerContracts.KEY_SOURCE))
             .takeUnless { it == SyncSource.UNKNOWN }
             ?: SyncSource.fromWire(sourceHint)
@@ -108,6 +115,7 @@ class MobileSyncListenerService : WearableListenerService() {
             )
         ) {
             val reason = "stale_skipped: incoming=$incomingStamp current=$currentStamp"
+            if (requestId.isNotBlank()) markRequestHandled(requestId)
             persistApplyStatus(
                 success = true,
                 lessonCount = lessonCount,
@@ -129,12 +137,28 @@ class MobileSyncListenerService : WearableListenerService() {
                     errorMessage = "stale_skipped",
                 ),
                 source = ackSource,
+                requestId = requestId,
             )
             Log.i(TAG, "Skip stale mobile sync payload: $reason")
             return
         }
 
         serviceScope.launch {
+            applyMutex.withLock {
+            val latestStamp = WearSyncStampStore.load(applicationContext, SyncDomain.TIMETABLE)
+            if (!SyncArbitrator.shouldApply(SyncDomain.TIMETABLE, incomingStamp, latestStamp)) {
+                val reason = "stale_skipped_after_queue: incoming=$incomingStamp current=$latestStamp"
+                if (requestId.isNotBlank()) markRequestHandled(requestId)
+                persistApplyStatus(true, lessonCount, "stale_skipped", reason)
+                sendSyncAckToMobile(
+                    sourceNodeId,
+                    lessonCount,
+                    ApplyResult(true, 0, "stale_skipped"),
+                    ackSource,
+                    requestId,
+                )
+                return@withLock
+            }
             val result = applyPayloadToWearDb(parsed)
             persistApplyStatus(
                 success = result.success,
@@ -161,11 +185,16 @@ class MobileSyncListenerService : WearableListenerService() {
                         level = current.keepAliveLevel,
                     )
                 }
+            } else if (parsed.optString(WearDataLayerContracts.KEY_SYNC_MODE).equals("INCREMENTAL", ignoreCase = true)) {
+                requestFullRecovery(requestId)
             }
 
+            if (requestId.isNotBlank()) markRequestHandled(requestId)
+
             WearSurfaceUpdateRequester.requestAll(applicationContext)
-            sendSyncAckToMobile(sourceNodeId, lessonCount, result, ackSource)
+            sendSyncAckToMobile(sourceNodeId, lessonCount, result, ackSource, requestId)
             Log.i(TAG, "Received mobile sync payload with $lessonCount lessons, applied=${result.success}")
+            }
         }
     }
 
@@ -207,6 +236,13 @@ class MobileSyncListenerService : WearableListenerService() {
         val slotMap = linkedMapOf<String, RemoteTimeSlot>()
         val courses = mutableListOf<RemoteCourse>()
         val sessions = mutableListOf<RemoteSession>()
+        val exceptions = mutableListOf<RemoteException>()
+        val payloadVersion = root.optLong(WearDataLayerContracts.KEY_REVISION, System.currentTimeMillis())
+        val syncMode = if (root.optString(WearDataLayerContracts.KEY_SYNC_MODE).equals("INCREMENTAL", ignoreCase = true)) {
+            SyncMode.DELTA
+        } else {
+            SyncMode.FULL
+        }
 
         for (index in 0 until lessons.length()) {
             val item = lessons.optJSONObject(index) ?: continue
@@ -226,11 +262,12 @@ class MobileSyncListenerService : WearableListenerService() {
                     label = "${start}-${end}",
                     startTime = start,
                     endTime = end,
-                    version = System.currentTimeMillis(),
+                    version = payloadVersion,
                 )
             }
 
-            val courseRemoteId = "mobile-course-$index"
+            val stableLessonId = item.optString("id").ifBlank { "legacy-$index" }
+            val courseRemoteId = "mobile-course-$stableLessonId"
             val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
             val endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30)
             val weekParity = parseWeekParity(item.optString("weekParity", "ALL"))
@@ -243,11 +280,11 @@ class MobileSyncListenerService : WearableListenerService() {
                 note = item.optString("note"),
                 colorLabel = "teal",
                 isFavorite = false,
-                version = System.currentTimeMillis(),
+                version = payloadVersion,
             )
 
             sessions += RemoteSession(
-                remoteId = "mobile-session-$index",
+                remoteId = "mobile-session-$stableLessonId",
                 semesterRemoteId = semesterRemoteId,
                 courseRemoteId = courseRemoteId,
                 dayOfWeek = dayOfWeek,
@@ -255,27 +292,139 @@ class MobileSyncListenerService : WearableListenerService() {
                 startWeek = startWeek,
                 endWeek = endWeek,
                 weekParity = weekParity,
-                version = System.currentTimeMillis(),
+                version = payloadVersion,
             )
         }
 
+        val exceptionItems = root.optJSONArray("exceptions")
+        if (exceptionItems != null) {
+            for (index in 0 until exceptionItems.length()) {
+                val item = exceptionItems.optJSONObject(index) ?: continue
+                val exceptionId = item.optString("id")
+                if (exceptionId.isBlank()) continue
+                val type = item.optString("type").uppercase()
+                val date = runCatching { LocalDate.parse(item.optString("date")) }.getOrNull() ?: continue
+                val lessonId = item.optNullableString("lessonId")
+                var syntheticCourseId: String? = null
+                var syntheticSlotId: String? = null
+                if (type == "MAKE_UP" || type == "RESCHEDULE") {
+                    val startMinute = item.optInt("startMinute", -1)
+                    val endMinute = item.optInt("endMinute", -1)
+                    if (startMinute >= 0 && endMinute > startMinute) {
+                        val start = LocalTime.of(startMinute / 60, startMinute % 60)
+                        val end = LocalTime.of(endMinute / 60, endMinute % 60)
+                        syntheticSlotId = "mobile-exception-slot-$exceptionId"
+                        slotMap[syntheticSlotId] = RemoteTimeSlot(
+                            remoteId = syntheticSlotId,
+                            semesterRemoteId = semesterRemoteId,
+                            indexInDay = slotMap.size + 1,
+                            label = "$start-$end",
+                            startTime = start,
+                            endTime = end,
+                            version = payloadVersion,
+                        )
+                        syntheticCourseId = "mobile-exception-course-$exceptionId"
+                        courses += RemoteCourse(
+                            remoteId = syntheticCourseId,
+                            semesterRemoteId = semesterRemoteId,
+                            name = item.optNullableString("title").orEmpty().ifBlank { "Adjusted course" },
+                            teacher = item.optNullableString("teacher").orEmpty(),
+                            classroom = item.optNullableString("location").orEmpty(),
+                            note = item.optNullableString("note").orEmpty(),
+                            colorLabel = "teal",
+                            isFavorite = false,
+                            version = payloadVersion,
+                        )
+                    }
+                }
+
+                exceptions += RemoteException(
+                    remoteId = "mobile-exception-$exceptionId",
+                    semesterRemoteId = semesterRemoteId,
+                    sessionRemoteId = lessonId?.let { "mobile-session-$it" },
+                    exceptionType = type,
+                    date = date,
+                    reason = item.optNullableString("note").orEmpty(),
+                    courseRemoteId = if (type == "MAKE_UP") syntheticCourseId else null,
+                    timeSlotRemoteId = if (type == "MAKE_UP") syntheticSlotId else null,
+                    dayOfWeek = item.optInt("dayOfWeek", date.dayOfWeek.value).coerceIn(1, 7),
+                    newCourseRemoteId = if (type == "RESCHEDULE") syntheticCourseId else null,
+                    newTimeSlotRemoteId = if (type == "RESCHEDULE") syntheticSlotId else null,
+                    version = payloadVersion,
+                )
+            }
+        }
+
         val payload = RemoteSchedulePayload(
-            dataVersion = System.currentTimeMillis(),
+            dataVersion = payloadVersion,
             semesters = listOf(semester),
             timeSlots = slotMap.values.toList(),
             courses = courses,
             sessions = sessions,
-            exceptions = emptyList<RemoteException>(),
+            exceptions = exceptions,
+            deletedCourseRemoteIds = root.stringSet("deletedLessonIds") { "mobile-course-$it" },
+            deletedSessionRemoteIds = root.stringSet("deletedLessonIds") { "mobile-session-$it" },
+            deletedExceptionRemoteIds = root.stringSet("deletedExceptionIds") { "mobile-exception-$it" },
         )
 
         val application = applicationContext as? ClassingTimetableApplication
             ?: return ApplyResult(success = false, appliedLessonCount = 0, errorMessage = "Application container unavailable")
         val applier = SyncPayloadApplier(application.appContainer.database)
         return runCatching {
-            applier.apply(payload, SyncMode.FULL)
+            applier.apply(payload, syncMode)
             ApplyResult(success = true, appliedLessonCount = courses.size)
         }.getOrElse { error ->
             ApplyResult(success = false, appliedLessonCount = courses.size, errorMessage = error.message ?: "Unknown apply error")
+        }
+    }
+
+    private fun requestFullRecovery(originalRequestId: String) {
+        val prefs = getSharedPreferences(RECOVERY_PREFS, Context.MODE_PRIVATE)
+        if (originalRequestId.isNotBlank() && prefs.getString(KEY_LAST_RECOVERY_FOR, null) == originalRequestId) return
+        prefs.edit().putString(KEY_LAST_RECOVERY_FOR, originalRequestId).apply()
+        val requestId = java.util.UUID.randomUUID().toString()
+        val requestedAt = System.currentTimeMillis()
+        val payload = JSONObject()
+            .put(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
+            .put(WearDataLayerContracts.KEY_REQUESTED_AT, requestedAt)
+            .put("forceFull", true)
+            .toString()
+        val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_REQUEST).apply {
+            dataMap.putString(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
+            dataMap.putLong(WearDataLayerContracts.KEY_REQUESTED_AT, requestedAt)
+            dataMap.putBoolean("forceFull", true)
+            dataMap.putString(WearDataLayerContracts.KEY_REQUEST_PAYLOAD, payload)
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(this).putDataItem(request)
+    }
+
+    private fun claimRequest(requestId: String): Boolean = synchronized(requestClaimLock) {
+        val alreadyHandled = getSharedPreferences(REQUEST_DEDUPE_PREFS, Context.MODE_PRIVATE).contains(requestId)
+        !alreadyHandled && requestIdsInFlight.add(requestId)
+    }
+
+    private fun markRequestHandled(requestId: String) {
+        val prefs = getSharedPreferences(REQUEST_DEDUPE_PREFS, Context.MODE_PRIVATE)
+        val cutoff = System.currentTimeMillis() - REQUEST_DEDUPE_TTL_MS
+        val editor = prefs.edit()
+        prefs.all.forEach { (key, value) ->
+            if ((value as? Long ?: 0L) < cutoff) editor.remove(key)
+        }
+        editor.putLong(requestId, System.currentTimeMillis()).commit()
+        synchronized(requestClaimLock) { requestIdsInFlight.remove(requestId) }
+    }
+
+    private fun JSONObject.optNullableString(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        return optString(key).takeIf { it.isNotBlank() }
+    }
+
+    private fun JSONObject.stringSet(key: String, transform: (String) -> String): Set<String> {
+        val values = optJSONArray(key) ?: return emptySet()
+        return buildSet {
+            for (index in 0 until values.length()) {
+                values.optString(index).takeIf { it.isNotBlank() }?.let { add(transform(it)) }
+            }
         }
     }
 
@@ -284,6 +433,7 @@ class MobileSyncListenerService : WearableListenerService() {
         requestedLessonCount: Int,
         result: ApplyResult,
         source: String,
+        requestId: String,
     ) {
         val syncedAt = System.currentTimeMillis()
 
@@ -294,6 +444,12 @@ class MobileSyncListenerService : WearableListenerService() {
             dataMap.putLong(WearDataLayerContracts.KEY_SYNCED_AT, syncedAt)
             dataMap.putString(WearDataLayerContracts.KEY_SOURCE, source)
             dataMap.putString(WearDataLayerContracts.KEY_ERROR, result.errorMessage.orEmpty())
+            dataMap.putString(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
+            dataMap.putString(WearDataLayerContracts.KEY_ACK_STATUS, when {
+                !result.success -> "failed"
+                result.errorMessage == "stale_skipped" -> "stale"
+                else -> "applied"
+            })
             dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, syncedAt)
         }.asPutDataRequest().setUrgent()
 
@@ -311,6 +467,12 @@ class MobileSyncListenerService : WearableListenerService() {
                 .put(WearDataLayerContracts.KEY_SYNCED_AT, syncedAt)
                 .put(WearDataLayerContracts.KEY_SOURCE, source)
                 .put(WearDataLayerContracts.KEY_ERROR, result.errorMessage.orEmpty())
+                .put(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
+                .put(WearDataLayerContracts.KEY_ACK_STATUS, when {
+                    !result.success -> "failed"
+                    result.errorMessage == "stale_skipped" -> "stale"
+                    else -> "applied"
+                })
                 .toString()
                 .toByteArray(StandardCharsets.UTF_8)
 
@@ -360,5 +522,12 @@ class MobileSyncListenerService : WearableListenerService() {
 
     companion object {
         private const val TAG = "MobileSyncListener"
+        private const val RECOVERY_PREFS = "wear_sync_full_recovery"
+        private const val KEY_LAST_RECOVERY_FOR = "last_recovery_for"
+        private const val REQUEST_DEDUPE_PREFS = "wear_sync_request_dedupe"
+        private const val REQUEST_DEDUPE_TTL_MS = 24 * 60 * 60 * 1000L
+        private val applyMutex = Mutex()
+        private val requestClaimLock = Any()
+        private val requestIdsInFlight = mutableSetOf<String>()
     }
 }

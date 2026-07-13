@@ -178,16 +178,56 @@ internal fun parseToLessons(
 
     val result = parser.parse(raw)
     val drafts = adapter.toDrafts(result)
-    val lessons = drafts.mapIndexedNotNull { index, draft ->
-        draft.toLessonUi(
+    val baseDrafts = drafts.filter { it.recurrenceId == null }
+    val lessons = baseDrafts.flatMapIndexed { index, draft ->
+        val base = draft.toLessonUi(
             index = index,
             zoneId = zoneId,
             untitled = untitled,
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
-        )
+        ) ?: return@flatMapIndexed emptyList()
+        val byDays = parseRRuleByDays(draft.recurrence).ifEmpty { listOf(base.dayOfWeek) }
+        byDays.map { day -> base.copy(id = "${base.id}-${day.name}", dayOfWeek = day) }
     }
         .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+    val lessonsByUid = lessons.groupBy { lesson ->
+        baseDrafts.firstOrNull { draft -> lesson.id.startsWith(baseDrafts.indexOf(draft).toString() + "-") }
+            ?.sourceRaw?.get("UID").orEmpty()
+    }
+    val exceptions = buildList {
+        baseDrafts.forEachIndexed { index, draft ->
+            val matchingLessons = lessons.filter { it.id.startsWith("$index-") }
+            draft.excludes.forEach { excluded ->
+                val date = excluded.atZone(zoneId).toLocalDate()
+                matchingLessons.firstOrNull { it.dayOfWeek == date.dayOfWeek }?.let { lesson ->
+                    add(ScheduleExceptionUi("ics-exdate-${lesson.id}-$date", lesson.id, ScheduleExceptionKind.CANCEL, date))
+                }
+            }
+        }
+        drafts.filter { it.recurrenceId != null }.forEachIndexed { index, draft ->
+            val uid = draft.sourceRaw["UID"].orEmpty()
+            val date = draft.recurrenceId!!.atZone(zoneId).toLocalDate()
+            val source = lessonsByUid[uid].orEmpty().firstOrNull { it.dayOfWeek == date.dayOfWeek }
+                ?: lessonsByUid[uid].orEmpty().firstOrNull()
+            val replacement = draft.toLessonUi(index + baseDrafts.size, zoneId, untitled, weekNumberMode, semesterWeekStartDate)
+            if (source != null && replacement != null) {
+                add(ScheduleExceptionUi(
+                    id = "ics-recurrence-${source.id}-$date",
+                    lessonId = source.id,
+                    type = ScheduleExceptionKind.RESCHEDULE,
+                    date = date,
+                    title = replacement.title,
+                    teacher = replacement.teacher,
+                    location = replacement.location,
+                    note = replacement.note,
+                    dayOfWeek = replacement.dayOfWeek,
+                    startTime = replacement.startTime,
+                    endTime = replacement.endTime,
+                ))
+            }
+        }
+    }
 
     if (drafts.isNotEmpty() && lessons.isEmpty()) {
         return ParseOutcome(
@@ -204,6 +244,7 @@ internal fun parseToLessons(
             drafts = drafts,
             message = context.getString(R.string.parse_success_preview_message, lessons.size),
             warnings = result.payload.warnings,
+            exceptions = exceptions,
         )
 
         is ImportResult.PartialSuccess -> ParseOutcome(
@@ -211,6 +252,7 @@ internal fun parseToLessons(
             drafts = drafts,
             message = context.getString(R.string.parse_partial_preview_message, lessons.size, result.droppedLines.size),
             warnings = result.payload.warnings + result.droppedLines.take(8),
+            exceptions = exceptions,
         )
 
         is ImportResult.Failure -> ParseOutcome(
@@ -323,6 +365,10 @@ internal fun inferWeekRuleFromDraft(
             mode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
         )
+    } ?: properties["COUNT"]?.toIntOrNull()?.takeIf { it > 0 }?.let { count ->
+        val daysPerWeek = parseRRuleByDays(recurrence).size.coerceAtLeast(1)
+        val interval = properties["INTERVAL"]?.toIntOrNull()?.coerceAtLeast(1) ?: 1
+        startWeekByMode + ((count - 1) / daysPerWeek) * interval
     } ?: DEFAULT_END_WEEK
     val clampedStart = startWeekByMode.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK)
     val clampedEnd = endWeekByUntil.coerceIn(clampedStart, DEFAULT_END_WEEK)
@@ -381,14 +427,30 @@ internal fun weekIndexForMode(
     date: LocalDate,
     mode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    weekStartDay: DayOfWeek = DayOfWeek.MONDAY,
 ): Int {
-    val anchor = when (mode) {
-        WeekNumberMode.SEMESTER -> semesterWeekStartDate
-        WeekNumberMode.NATURAL -> LocalDate.of(date.get(WeekFields.ISO.weekBasedYear()), 1, 4)
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    if (mode == WeekNumberMode.NATURAL) {
+        return date.get(WeekFields.of(weekStartDay, 4).weekOfWeekBasedYear())
     }
+    val anchor = resolveVisibleWeekStart(semesterWeekStartDate, weekStartDay)
     val dayOffset = java.time.temporal.ChronoUnit.DAYS.between(anchor, date)
     return floorDiv(dayOffset, 7).toInt() + 1
+}
+
+internal fun parseRRuleByDays(rrule: String?): List<DayOfWeek> {
+    val value = rrule?.let(::parseRRuleProperties)?.get("BYDAY").orEmpty()
+    return value.split(',').mapNotNull { token ->
+        when (token.trim().takeLast(2).uppercase()) {
+            "MO" -> DayOfWeek.MONDAY
+            "TU" -> DayOfWeek.TUESDAY
+            "WE" -> DayOfWeek.WEDNESDAY
+            "TH" -> DayOfWeek.THURSDAY
+            "FR" -> DayOfWeek.FRIDAY
+            "SA" -> DayOfWeek.SATURDAY
+            "SU" -> DayOfWeek.SUNDAY
+            else -> null
+        }
+    }.distinct()
 }
 
 internal fun parseManualTime(raw: String): LocalTime? {

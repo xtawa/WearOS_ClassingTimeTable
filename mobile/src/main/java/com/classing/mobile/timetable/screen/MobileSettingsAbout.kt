@@ -56,6 +56,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.delay
 import com.classing.shared.sync.SyncChangeLogEntry
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.BuildConfig
@@ -992,11 +994,6 @@ internal fun WearCommunicationSettingsPage(
                         onClick = { onWearSyncModeChange(WearSyncMode.WEARABLE_API) },
                         label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
                     )
-                    FilterChip(
-                        selected = wearSyncMode == WearSyncMode.WEAROS_APP,
-                        onClick = { onWearSyncModeChange(WearSyncMode.WEAROS_APP) },
-                        label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
-                    )
                 }
                 if (wearSyncMode == WearSyncMode.AUTO) {
                     Text(
@@ -1614,7 +1611,7 @@ internal fun AccountSettingsPage(
                 OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_redeem_code)) }, singleLine = true)
                 Button(
                     onClick = { onRedeem(redeemCode) },
-                    enabled = !busy && accountSummary.userId.isNotBlank(),
+                    enabled = !busy && accountSummary.userId.isNotBlank() && isValidRedeemCode(redeemCode),
                     shape = RoundedCornerShape(999.dp),
                 ) {
                     Text(stringResource(R.string.account_redeem))
@@ -1710,6 +1707,13 @@ internal fun AccountRegisterPage(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
+    var resendCooldownSeconds by remember { mutableStateOf(0) }
+    LaunchedEffect(resendCooldownSeconds) {
+        if (resendCooldownSeconds > 0) {
+            delay(1_000)
+            resendCooldownSeconds -= 1
+        }
+    }
     Column(
         modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
             .navigationBarsPadding().verticalScroll(rememberScrollState()),
@@ -1735,8 +1739,11 @@ internal fun AccountRegisterPage(
                 }
                 if (challengeId.isBlank()) {
                     Button(
-                        onClick = { onRequestVerification(username, email, password) },
-                        enabled = !busy && username.isNotBlank() && email.isNotBlank() && password.length >= 8,
+                        onClick = {
+                            resendCooldownSeconds = 60
+                            onRequestVerification(username.trim(), email.trim(), password)
+                        },
+                        enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password),
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(stringResource(R.string.account_send_verification))
@@ -1752,16 +1759,22 @@ internal fun AccountRegisterPage(
                     )
                     Button(
                         onClick = { onConfirmVerification(verificationCode) },
-                        enabled = !busy && verificationCode.length == 6,
+                        enabled = !busy && isValidVerificationCode(verificationCode),
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(stringResource(R.string.account_confirm_registration))
                     }
                     TextButton(
-                        onClick = { onRequestVerification(username, email, password) },
-                        enabled = !busy,
+                        onClick = {
+                            resendCooldownSeconds = 60
+                            onRequestVerification(username.trim(), email.trim(), password)
+                        },
+                        enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password),
                     ) {
-                        Text(stringResource(R.string.account_resend_verification))
+                        Text(
+                            if (resendCooldownSeconds > 0) stringResource(R.string.account_resend_verification_countdown, resendCooldownSeconds)
+                            else stringResource(R.string.account_resend_verification)
+                        )
                     }
                 }
             }
@@ -1825,6 +1838,13 @@ internal fun AccountPasswordResetPage(
     var email by remember { mutableStateOf(initialEmail) }
     var token by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
+    var requestCooldownSeconds by remember { mutableStateOf(0) }
+    LaunchedEffect(requestCooldownSeconds) {
+        if (requestCooldownSeconds > 0) {
+            delay(1_000)
+            requestCooldownSeconds -= 1
+        }
+    }
     Column(
         modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
             .navigationBarsPadding().verticalScroll(rememberScrollState()),
@@ -1840,15 +1860,21 @@ internal fun AccountPasswordResetPage(
             Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.password_reset_request_desc), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_email)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true)
-                Button(onClick = { onRequestPasswordReset(email) }, enabled = !busy && email.isNotBlank(), shape = RoundedCornerShape(999.dp)) {
-                    Text(stringResource(R.string.password_reset_send_email))
+                Button(onClick = {
+                    requestCooldownSeconds = 60
+                    onRequestPasswordReset(email.trim())
+                }, enabled = !busy && requestCooldownSeconds == 0 && isValidEmail(email), shape = RoundedCornerShape(999.dp)) {
+                    Text(
+                        if (requestCooldownSeconds > 0) stringResource(R.string.password_reset_send_countdown, requestCooldownSeconds)
+                        else stringResource(R.string.password_reset_send_email)
+                    )
                 }
                 OutlinedTextField(value = token, onValueChange = { token = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.password_reset_token)) }, singleLine = true)
                 OutlinedTextField(value = newPassword, onValueChange = { newPassword = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.password_reset_new_password)) }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
-                Button(onClick = { onConfirmPasswordReset(token, newPassword) }, enabled = !busy && token.isNotBlank() && newPassword.length >= 8, shape = RoundedCornerShape(999.dp)) {
+                Button(onClick = { onConfirmPasswordReset(token.trim(), newPassword) }, enabled = !busy && token.isNotBlank() && isValidPassword(newPassword), shape = RoundedCornerShape(999.dp)) {
                     Text(stringResource(R.string.password_reset_confirm))
                 }
             }
@@ -2196,11 +2222,6 @@ internal fun AboutLayer(
                     )
                 }
             }
-            Text(
-                            text = stringResource(R.string.settings_about_icp_pending),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Spacer(modifier = Modifier.height(8.dp))
         }
 

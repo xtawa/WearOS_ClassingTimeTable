@@ -153,4 +153,44 @@ class MobileScheduleStateTest {
         assertEquals("Advanced Math", nextLesson?.lesson?.title)
         assertEquals(LocalDateTime.of(2026, 3, 9, 10, 0), nextLesson?.startAt)
     }
+
+    @Test
+    fun createScheduleSnapshot_preservesAllWeekSettings() {
+        val snapshot = createScheduleSnapshot(
+            reason = "test",
+            weekNumberMode = WeekNumberMode.SEMESTER,
+            semesterWeekStartDate = semesterStart,
+            weekStartDay = DayOfWeek.SUNDAY,
+            baseLessons = listOf(baseLesson),
+            exceptions = emptyList(),
+            createdAt = 1L,
+        )
+
+        assertEquals(WeekNumberMode.SEMESTER, snapshot.weekNumberMode)
+        assertEquals(semesterStart, snapshot.semesterWeekStartDate)
+        assertEquals(DayOfWeek.SUNDAY, snapshot.weekStartDay)
+    }
+
+    @Test
+    fun weekIndexForMode_respectsConfiguredWeekStart() {
+        val semesterStartOnWednesday = LocalDate.of(2026, 3, 4)
+
+        assertEquals(2, weekIndexForMode(LocalDate.of(2026, 3, 8), WeekNumberMode.SEMESTER, semesterStartOnWednesday, DayOfWeek.SUNDAY))
+        assertEquals(1, weekIndexForMode(LocalDate.of(2026, 3, 8), WeekNumberMode.SEMESTER, semesterStartOnWednesday, DayOfWeek.MONDAY))
+        assertEquals(2, weekIndexForMode(LocalDate.of(2026, 3, 9), WeekNumberMode.SEMESTER, semesterStartOnWednesday, DayOfWeek.MONDAY))
+    }
+
+    @Test
+    fun restoreOriginalOccurrence_removesOnlyMatchingDateAndLesson() {
+        val targetDate = LocalDate.of(2026, 3, 9)
+        val exceptions = listOf(
+            ScheduleExceptionUi("one", "math-base", ScheduleExceptionKind.CANCEL, targetDate),
+            ScheduleExceptionUi("two", "math-base", ScheduleExceptionKind.CANCEL, targetDate.plusWeeks(1)),
+            ScheduleExceptionUi("three", "other", ScheduleExceptionKind.CANCEL, targetDate),
+        )
+
+        val restored = restoreOriginalOccurrence(exceptions, "math-base", targetDate)
+
+        assertEquals(listOf("two", "three"), restored.map { it.id })
+    }
 }

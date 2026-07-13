@@ -15,6 +15,7 @@ import com.xtawa.classingtime.screen.toLessonUi
 import com.xtawa.classingtime.screen.toUi
 import java.time.LocalDateTime
 import java.time.LocalDate
+import java.time.DayOfWeek
 import java.util.concurrent.TimeUnit
 
 object ReminderScheduler {
@@ -71,6 +72,7 @@ object ReminderScheduler {
             endDate = LocalDate.now().plusDays(7),
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
+            weekStartDay = runCatching { DayOfWeek.valueOf(settings.weekStartDay) }.getOrDefault(DayOfWeek.MONDAY),
         )
         val next = ReminderRuntime.findNextAlarm(
             occurrences = occurrences,

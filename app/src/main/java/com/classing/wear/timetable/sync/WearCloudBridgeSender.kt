@@ -21,10 +21,12 @@ class WearCloudBridgeSender(
         return runCatching {
             val updatedAt = System.currentTimeMillis()
             val (deviceId, revision) = nextVersion()
+            val requestId = UUID.randomUUID().toString()
             val snapshot = settingsRepository.exportWearSettingsSnapshot()
             val payload = JSONObject(snapshot)
                 .put(WearDataLayerContracts.KEY_FORMAT, "classing_wear_settings_v2")
                 .put(WearDataLayerContracts.KEY_DEVICE_ID, deviceId)
+                .put(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
                 .put(WearDataLayerContracts.KEY_LOGICAL_COUNTER, revision)
                 .put(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
                 .put(WearDataLayerContracts.KEY_REVISION, revision)
@@ -37,6 +39,7 @@ class WearCloudBridgeSender(
                 dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, updatedAt)
                 dataMap.putLong(WearDataLayerContracts.KEY_REVISION, revision)
                 dataMap.putString(WearDataLayerContracts.KEY_DEVICE_ID, deviceId)
+                dataMap.putString(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
                 dataMap.putString(WearDataLayerContracts.KEY_SOURCE, SyncSource.WEAR_LOCAL.wireValue)
                 dataMap.putString(WearDataLayerContracts.KEY_TRIGGER, trigger)
             }.asPutDataRequest().setUrgent()
@@ -84,9 +87,11 @@ class WearCloudBridgeSender(
     suspend fun requestPhoneCloudSync(trigger: String): Result<Int> {
         return runCatching {
             val requestedAt = System.currentTimeMillis()
+            val requestId = UUID.randomUUID().toString()
             val payloadObject = JSONObject()
                 .put(WearDataLayerContracts.KEY_TRIGGER, trigger)
                 .put(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
+                .put(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
             val payload = payloadObject
                 .toString()
                 .toByteArray(StandardCharsets.UTF_8)
@@ -94,6 +99,7 @@ class WearCloudBridgeSender(
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_PHONE_CLOUD_SYNC_REQUEST).apply {
                 dataMap.putLong(WearDataLayerContracts.KEY_UPDATED_AT, requestedAt)
                 dataMap.putString(WearDataLayerContracts.KEY_TRIGGER, trigger)
+                dataMap.putString(WearDataLayerContracts.KEY_REQUEST_ID, requestId)
                 dataMap.putString(
                     WearDataLayerContracts.KEY_REQUEST_PAYLOAD,
                     payloadObject.toString(),

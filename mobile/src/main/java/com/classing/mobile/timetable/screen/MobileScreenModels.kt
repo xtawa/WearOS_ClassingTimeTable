@@ -179,6 +179,7 @@ internal data class ParseOutcome(
     val drafts: List<CourseDraft>,
     val message: String,
     val warnings: List<String>,
+    val exceptions: List<ScheduleExceptionUi> = emptyList(),
 )
 
 internal data class JsonParseOutcome(

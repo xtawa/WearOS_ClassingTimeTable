@@ -20,6 +20,7 @@ data class ParsedEvent(
     val description: String?,
     val rRule: String?,
     val exDates: List<Instant>,
+    val recurrenceId: Instant? = null,
     val rawFields: Map<String, String>,
 )
 
@@ -37,6 +38,7 @@ data class CourseDraft(
     val end: Instant?,
     val recurrence: String?,
     val excludes: List<Instant>,
+    val recurrenceId: Instant? = null,
     val sourceRaw: Map<String, String>,
 )
 
@@ -56,6 +58,7 @@ class ScheduleImportAdapter {
                 end = it.dtEnd,
                 recurrence = it.rRule,
                 excludes = it.exDates,
+                recurrenceId = it.recurrenceId,
                 sourceRaw = it.rawFields,
             )
         }

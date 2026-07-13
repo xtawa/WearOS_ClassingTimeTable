@@ -121,6 +121,7 @@ class DefaultScheduleRepositoryHeatmapTest {
         override suspend fun upsertAll(courses: List<CourseEntity>) = Unit
         override suspend fun deleteBySemester(semesterId: Long) = Unit
         override suspend fun deleteMissingRemoteIds(semesterId: Long, remoteIds: List<String>) = Unit
+        override suspend fun deleteByRemoteIds(remoteIds: List<String>) = Unit
     }
 
     private class FakeCourseSessionDao(sessions: List<CourseSessionEntity>) : CourseSessionDao {
@@ -133,6 +134,7 @@ class DefaultScheduleRepositoryHeatmapTest {
         override suspend fun upsertAll(sessions: List<CourseSessionEntity>) = Unit
         override suspend fun deleteBySemester(semesterId: Long) = Unit
         override suspend fun deleteMissingRemoteIds(semesterId: Long, remoteIds: List<String>) = Unit
+        override suspend fun deleteByRemoteIds(remoteIds: List<String>) = Unit
     }
 
     private class FakeTimeSlotDao(slots: List<TimeSlotEntity>) : TimeSlotDao {
@@ -160,5 +162,6 @@ class DefaultScheduleRepositoryHeatmapTest {
         override suspend fun upsertAll(exceptions: List<ScheduleExceptionEntity>) = Unit
         override suspend fun deleteBySemester(semesterId: Long) = Unit
         override suspend fun deleteMissingRemoteIds(semesterId: Long, remoteIds: List<String>) = Unit
+        override suspend fun deleteByRemoteIds(remoteIds: List<String>) = Unit
     }
 }

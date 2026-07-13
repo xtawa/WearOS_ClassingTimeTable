@@ -3,6 +3,8 @@ package com.xtawa.classingtime.sync
 import android.content.Context
 import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
+import com.classing.shared.sync.CloudMergeResult
+import com.classing.shared.sync.CloudSyncDocumentV2
 import com.classing.shared.sync.CloudSyncV2
 import com.classing.shared.sync.CloudSyncV2Merger
 import com.classing.shared.sync.WearDataLayerContracts
@@ -27,6 +29,19 @@ data class CloudSyncOutcome(
     val syncedAt: Long,
     val pushedConfigNodes: Int,
 )
+
+internal fun mergeForSyncInitialization(
+    remote: CloudSyncDocumentV2,
+    local: CloudSyncDocumentV2,
+    hasRemoteV2: Boolean,
+    hasLocalBaseline: Boolean,
+    now: Long,
+): CloudMergeResult {
+    if (hasRemoteV2 && !hasLocalBaseline) {
+        return CloudMergeResult(document = remote.compact(now), conflicts = 0, changed = false)
+    }
+    return CloudSyncV2Merger.merge(remote, local, now)
+}
 
 object MobileCloudSyncCoordinator {
     private const val MAX_CAS_ATTEMPTS = 3
@@ -66,8 +81,15 @@ object MobileCloudSyncCoordinator {
                     runtimeConfig = refreshedConfig
                     val read = client.readJson(runtimeConfig).getOrElse { throw it }
                     val remote = parseRemote(context, read.payload, startedAt)
+                    val hasLocalBaseline = MobileCloudSyncV2Store.hasLocalBaseline(context)
                     val local = MobileCloudSyncV2Store.captureLocal(context, syncScopes = syncScopes)
-                    val merge = CloudSyncV2Merger.merge(remote.document, local, System.currentTimeMillis())
+                    val merge = mergeForSyncInitialization(
+                        remote = remote.document,
+                        local = local,
+                        hasRemoteV2 = read.payload != null && remote.isV2,
+                        hasLocalBaseline = hasLocalBaseline,
+                        now = System.currentTimeMillis(),
+                    )
                     conflicts += merge.conflicts
                     MobileCloudSyncV2Store.applyMerged(context, merge.document, syncScopes)
 
@@ -156,8 +178,15 @@ object MobileCloudSyncCoordinator {
                     runtimeConfig = refreshedConfig
                     val read = client.readJson(runtimeConfig).getOrElse { throw it }
                     val remote = parseRemote(context, read.payload, startedAt)
+                    val hasLocalBaseline = MobileCloudSyncV2Store.hasLocalBaseline(context)
                     val local = MobileCloudSyncV2Store.captureLocal(context, syncScopes = syncScopes)
-                    val merge = CloudSyncV2Merger.merge(remote.document, local, System.currentTimeMillis())
+                    val merge = mergeForSyncInitialization(
+                        remote = remote.document,
+                        local = local,
+                        hasRemoteV2 = read.payload != null && remote.isV2,
+                        hasLocalBaseline = hasLocalBaseline,
+                        now = System.currentTimeMillis(),
+                    )
                     conflicts += merge.conflicts
                     MobileCloudSyncV2Store.applyMerged(context, merge.document, syncScopes)
                     if (read.payload != null && remote.isV2 && remote.document == merge.document) {
@@ -205,20 +234,15 @@ object MobileCloudSyncCoordinator {
         val state = MobilePrefsStore.loadTimetableState(context)
         val weekMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         val semesterStart = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
-        val lessons = buildFlattenedEffectiveLessons(
-            baseLessons = state.baseLessons.map { it.toLessonUi() },
-            exceptions = state.exceptions.map { it.toUi() },
-            weekNumberMode = weekMode,
-            semesterWeekStartDate = semesterStart,
-        ).map { it.toPersistedLesson() }
         WearDataLayerSyncPublisher.publishLessonsSnapshot(
             context = context,
-            lessons = lessons,
+            lessons = state.baseLessons,
             zoneId = ZoneId.systemDefault(),
             source = WearDataLayerContracts.SOURCE_CLOUD_SYNC,
             allowDisconnectedQueue = true,
             weekNumberMode = settings.weekNumberMode,
             semesterWeekStartDate = semesterStart,
+            exceptions = state.exceptions,
         )
         MobilePrefsStore.loadWearSettingsSnapshot(context)?.let { (payload, revision) ->
             WearDataLayerSyncPublisher.publishWearSettingsSnapshot(context, payload, revision)

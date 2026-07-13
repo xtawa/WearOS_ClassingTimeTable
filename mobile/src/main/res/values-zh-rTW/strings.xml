@@ -591,6 +591,8 @@
     <string name="account_verification_code">郵件驗證碼</string>
     <string name="account_confirm_registration">驗證並建立帳戶</string>
     <string name="account_resend_verification">重新傳送驗證碼</string>
+    <string name="account_resend_verification_countdown">%1$d 秒後重新傳送</string>
+    <string name="password_reset_send_countdown">%1$d 秒後可再次傳送</string>
     <string name="account_verification_sent">驗證碼已傳送至信箱</string>
     <string name="account_verification_send_failed">驗證郵件傳送失敗</string>
     <string name="account_verification_invalid">驗證碼無效或已過期</string>
@@ -613,4 +615,8 @@
     <string name="account_email_change_expired">待確認的電子郵件變更已過期。</string>
     <string name="account_error_current_password">目前密碼不正確。</string>
     <string name="account_error_email_conflict">該電子郵件已被使用。</string>
+    <string name="calendar_restore_original">恢復原安排</string>
+    <string name="calendar_restore_cancelled_original">恢復已取消課程</string>
+    <string name="onboarding_import_configure_title">設定所選方案</string>
+    <string name="onboarding_import_configure_subtitle">繼續前確認並設定下一步操作。</string>
 </resources>

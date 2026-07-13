@@ -38,6 +38,7 @@ data class PersistedScheduleSnapshot(
     val reason: String,
     val weekNumberMode: String,
     val semesterWeekStartDate: String,
+    val weekStartDay: String = "MONDAY",
     val baseLessons: List<PersistedLesson>,
     val exceptions: List<PersistedScheduleException>,
 )
@@ -466,6 +467,7 @@ object MobilePrefsStore {
                             reason = item.optString("reason"),
                             weekNumberMode = item.optString("weekNumberMode", "NATURAL"),
                             semesterWeekStartDate = item.optString("semesterWeekStartDate", ""),
+                            weekStartDay = item.optString("weekStartDay", "MONDAY"),
                             baseLessons = parseLessonList(item.optJSONArray("baseLessons")?.toString()),
                             exceptions = parseExceptionList(item.optJSONArray("exceptions")?.toString()),
                         ),
@@ -485,6 +487,7 @@ object MobilePrefsStore {
                     .put("reason", snapshot.reason)
                     .put("weekNumberMode", snapshot.weekNumberMode)
                     .put("semesterWeekStartDate", snapshot.semesterWeekStartDate)
+                    .put("weekStartDay", snapshot.weekStartDay)
                     .put("baseLessons", buildLessonArray(snapshot.baseLessons))
                     .put("exceptions", buildExceptionArray(snapshot.exceptions)),
             )

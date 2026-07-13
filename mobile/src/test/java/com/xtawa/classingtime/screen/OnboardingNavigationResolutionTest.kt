@@ -9,6 +9,12 @@ import java.time.LocalDate
 
 class OnboardingNavigationResolutionTest {
     @Test
+    fun previousStep_matchesToolbarAndSystemBackBehavior() {
+        assertEquals(1, previousOnboardingStep(2))
+        assertEquals(0, previousOnboardingStep(1))
+        assertEquals(0, previousOnboardingStep(0))
+    }
+    @Test
     fun shouldCompleteOnImportSelection_returnsFalseForLaterOption() {
         assertFalse(shouldCompleteOnImportSelection(OnboardingImportTarget.NONE))
     }

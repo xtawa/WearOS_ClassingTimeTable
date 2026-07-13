@@ -623,6 +623,8 @@ Rules:
     <string name="account_verification_code">Email verification code</string>
     <string name="account_confirm_registration">Verify and create account</string>
     <string name="account_resend_verification">Resend code</string>
+    <string name="account_resend_verification_countdown">Resend in %1$d s</string>
+    <string name="password_reset_send_countdown">Send again in %1$d s</string>
     <string name="account_verification_sent">A verification code was sent to your email.</string>
     <string name="account_verification_send_failed">Could not send the verification email.</string>
     <string name="account_verification_invalid">The verification code is invalid or expired.</string>
@@ -644,4 +646,8 @@ Rules:
     <string name="account_turnstile_title">Human verification</string>
     <string name="account_turnstile_desc">Complete the verification to send the email code.</string>
     <string name="account_turnstile_unavailable">Human verification is unavailable. Try again later.</string>
+    <string name="calendar_restore_original">Restore original arrangement</string>
+    <string name="calendar_restore_cancelled_original">Restore cancelled class</string>
+    <string name="onboarding_import_configure_title">Configure your selected setup</string>
+    <string name="onboarding_import_configure_subtitle">Review the next action before continuing.</string>
 </resources>

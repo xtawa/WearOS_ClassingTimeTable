@@ -183,10 +183,13 @@ internal fun persistScheduleState(
     )
 }
 
-internal fun applyImportedLessons(importLessons: List<LessonUi>): ScheduleMutationResult {
+internal fun applyImportedLessons(
+    importLessons: List<LessonUi>,
+    importExceptions: List<ScheduleExceptionUi> = emptyList(),
+): ScheduleMutationResult {
     return ScheduleMutationResult(
         baseLessons = sortLessons(importLessons),
-        exceptions = emptyList(),
+        exceptions = importExceptions,
     )
 }
 
@@ -213,12 +216,17 @@ internal fun appendImportedLessons(
     existingExceptions: List<ScheduleExceptionUi>,
     importLessons: List<LessonUi>,
 ): JsonImportApplyResult {
-    val existingFingerprints = existingBaseLessons
+    val seenFingerprints = existingBaseLessons
         .asSequence()
         .map(::buildLessonDuplicateFingerprint)
-        .toSet()
-    val uniqueImports = importLessons.filter { lesson ->
-        buildLessonDuplicateFingerprint(lesson) !in existingFingerprints
+        .toMutableSet()
+    val uniqueImports = mutableListOf<LessonUi>()
+    for (lesson in importLessons) {
+        val fingerprint = buildLessonDuplicateFingerprint(lesson)
+        if (fingerprint !in seenFingerprints) {
+            seenFingerprints.add(fingerprint)
+            uniqueImports.add(lesson)
+        }
     }
 
     return JsonImportApplyResult(

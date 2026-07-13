@@ -159,7 +159,6 @@ class SettingsViewModel(
 
     private suspend fun notifyCloudSettingsChanged() {
         wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
-        wearCloudBridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
     }
 }
 

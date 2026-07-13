@@ -103,6 +103,7 @@ internal data class ScheduleStateSnapshot(
     val reason: String,
     val weekNumberMode: WeekNumberMode,
     val semesterWeekStartDate: LocalDate,
+    val weekStartDay: DayOfWeek,
     val baseLessons: List<LessonUi>,
     val exceptions: List<ScheduleExceptionUi>,
 )
@@ -151,6 +152,7 @@ internal fun PersistedScheduleSnapshot.toUi(): ScheduleStateSnapshot {
         reason = reason,
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == weekNumberMode } ?: WeekNumberMode.NATURAL,
         semesterWeekStartDate = runCatching { LocalDate.parse(semesterWeekStartDate) }.getOrDefault(LocalDate.now()),
+        weekStartDay = runCatching { DayOfWeek.valueOf(weekStartDay) }.getOrDefault(DayOfWeek.MONDAY),
         baseLessons = baseLessons.map { it.toLessonUi() },
         exceptions = exceptions.map { it.toUi() },
     )
@@ -163,6 +165,7 @@ internal fun ScheduleStateSnapshot.toPersisted(): PersistedScheduleSnapshot {
         reason = reason,
         weekNumberMode = weekNumberMode.name,
         semesterWeekStartDate = semesterWeekStartDate.toString(),
+        weekStartDay = weekStartDay.name,
         baseLessons = baseLessons.map { it.toPersistedLesson() },
         exceptions = exceptions.map { it.toPersisted() },
     )
@@ -184,6 +187,7 @@ internal fun buildScheduleProjection(
         endDate = weekStart.plusDays(6),
         weekNumberMode = weekNumberMode,
         semesterWeekStartDate = semesterWeekStartDate,
+        weekStartDay = weekStartDay,
     )
     val currentWeekLessons = currentWeekOccurrences.map { it.lesson }
     val currentWeekLessonsByDay = DayOfWeek.entries.associateWith { day ->
@@ -212,6 +216,7 @@ internal fun buildEffectiveOccurrencesForDateRange(
     endDate: LocalDate,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    weekStartDay: DayOfWeek = DayOfWeek.MONDAY,
 ): List<EffectiveLessonOccurrence> {
     if (endDate.isBefore(startDate)) return emptyList()
     val exceptionMap = exceptions.groupBy { it.date }
@@ -222,6 +227,7 @@ internal fun buildEffectiveOccurrencesForDateRange(
             date = date,
             mode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
+            weekStartDay = weekStartDay,
         )
         val dayLessons = baseLessons
             .filter { it.dayOfWeek == date.dayOfWeek && it.matchesWeek(weekIndex) }
@@ -311,6 +317,7 @@ internal fun createScheduleSnapshot(
     reason: String,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    weekStartDay: DayOfWeek = DayOfWeek.MONDAY,
     baseLessons: List<LessonUi>,
     exceptions: List<ScheduleExceptionUi>,
     createdAt: Long = System.currentTimeMillis(),
@@ -321,6 +328,7 @@ internal fun createScheduleSnapshot(
         reason = reason,
         weekNumberMode = weekNumberMode,
         semesterWeekStartDate = semesterWeekStartDate,
+        weekStartDay = weekStartDay,
         baseLessons = baseLessons.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }),
         exceptions = exceptions.sortedWith(compareBy<ScheduleExceptionUi> { it.date }.thenBy { it.startTime }),
     )
@@ -332,6 +340,12 @@ internal fun capSnapshots(
 ): List<ScheduleStateSnapshot> {
     return snapshots.sortedByDescending { it.createdAt }.take(maxSize)
 }
+
+internal fun restoreOriginalOccurrence(
+    exceptions: List<ScheduleExceptionUi>,
+    lessonId: String,
+    date: LocalDate,
+): List<ScheduleExceptionUi> = exceptions.filterNot { it.lessonId == lessonId && it.date == date }
 
 internal fun resolveVisibleWeekStart(now: LocalDate, weekStartDay: DayOfWeek): LocalDate {
     val offset = (7 + (now.dayOfWeek.value - weekStartDay.value)) % 7

@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.screen
 
 import android.app.DatePickerDialog
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -152,6 +153,10 @@ internal fun MobileOnboardingFlow(
         )
     }
 
+    BackHandler(enabled = stepIndex > 0) {
+        stepIndex = previousOnboardingStep(stepIndex)
+    }
+
     Scaffold(
         topBar = {
             Surface(color = MaterialTheme.colorScheme.surface) {
@@ -163,7 +168,7 @@ internal fun MobileOnboardingFlow(
                 ) {
                     if (stepIndex > 0) {
                         Button(
-                            onClick = { stepIndex = (stepIndex - 1).coerceAtLeast(0) },
+                            onClick = { stepIndex = previousOnboardingStep(stepIndex) },
                             shape = RoundedCornerShape(999.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -298,7 +303,7 @@ internal fun MobileOnboardingFlow(
 
                 1 -> {
                     Text(
-                        text = stringResource(R.string.onboarding_import_title),
+                        text = stringResource(R.string.onboarding_import_configure_title),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.ExtraBold,
                     )
@@ -358,7 +363,7 @@ internal fun MobileOnboardingFlow(
                         fontWeight = FontWeight.ExtraBold,
                     )
                     Text(
-                        text = when (importTarget) {
+                        text = stringResource(R.string.onboarding_import_configure_subtitle) + "\n" + when (importTarget) {
                             OnboardingImportTarget.CLOUD_SYNC -> stringResource(R.string.onboarding_import_option_cloud_desc)
                             OnboardingImportTarget.ICS -> stringResource(R.string.onboarding_import_option_ics_desc)
                             OnboardingImportTarget.JSON -> stringResource(R.string.onboarding_import_option_json_desc)
@@ -527,11 +532,6 @@ internal fun MobileOnboardingFlow(
                                     selected = wearSyncMode == WearSyncMode.WEARABLE_API,
                                     onClick = { wearSyncMode = WearSyncMode.WEARABLE_API },
                                     label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
-                                )
-                                FilterChip(
-                                    selected = wearSyncMode == WearSyncMode.WEAROS_APP,
-                                    onClick = { wearSyncMode = WearSyncMode.WEAROS_APP },
-                                    label = { Text(stringResource(R.string.settings_wear_sync_mode_wearos_app)) },
                                 )
                             }
                         }
@@ -706,6 +706,8 @@ internal fun MobileOnboardingFlow(
         }
     }
 }
+
+internal fun previousOnboardingStep(stepIndex: Int): Int = (stepIndex - 1).coerceAtLeast(0)
 
 @Composable
 private fun OnboardingOptionCard(

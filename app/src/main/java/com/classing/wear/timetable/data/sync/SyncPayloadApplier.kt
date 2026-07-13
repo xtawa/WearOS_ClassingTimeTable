@@ -39,6 +39,15 @@ class SyncPayloadApplier(
             val sessionIdMap = mutableMapOf<String, Long>()
             var activeSemesterId: Long? = null
 
+            if (mode == SyncMode.DELTA) {
+                payload.deletedExceptionRemoteIds.takeIf { it.isNotEmpty() }
+                    ?.let { exceptionDao.deleteByRemoteIds(it.toList()) }
+                payload.deletedSessionRemoteIds.takeIf { it.isNotEmpty() }
+                    ?.let { sessionDao.deleteByRemoteIds(it.toList()) }
+                payload.deletedCourseRemoteIds.takeIf { it.isNotEmpty() }
+                    ?.let { courseDao.deleteByRemoteIds(it.toList()) }
+            }
+
             suspend fun resolveSemesterId(remoteId: String): Long? {
                 semesterIdMap[remoteId]?.let { return it }
                 val id = semesterDao.getByRemoteId(remoteId)?.localId

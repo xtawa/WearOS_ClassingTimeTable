@@ -112,6 +112,19 @@ internal fun detectLessonConflicts(lessons: List<LessonUi>): List<LessonConflict
     return conflicts
 }
 
+internal fun detectImportConflicts(
+    imported: List<LessonUi>,
+    existing: List<LessonUi>,
+): List<LessonConflict> {
+    val withinImport = detectLessonConflicts(imported)
+    val withExisting = imported.flatMap { candidate ->
+        findConflictsWithExisting(candidate, existing).map { current ->
+            LessonConflict(first = candidate, second = current)
+        }
+    }
+    return withinImport + withExisting
+}
+
 internal fun findConflictsWithExisting(candidate: LessonUi, existing: List<LessonUi>): List<LessonUi> {
     return existing
         .asSequence()
@@ -350,7 +363,8 @@ internal suspend fun syncLessonsToWear(
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
 ): Result<WearSyncDispatchResult> {
-    val persisted = lessons.map { it.toPersistedLesson() }
+    val persistedState = MobilePrefsStore.loadTimetableState(context)
+    val persisted = persistedState.baseLessons.ifEmpty { lessons.map { it.toPersistedLesson() } }
     return WearDataLayerSyncPublisher.publishLessonsSnapshot(
         context = context,
         lessons = persisted,
@@ -359,6 +373,7 @@ internal suspend fun syncLessonsToWear(
         allowDisconnectedQueue = allowDisconnectedQueue,
         weekNumberMode = weekNumberMode.name,
         semesterWeekStartDate = semesterWeekStartDate,
+        exceptions = persistedState.exceptions,
     )
 }
 
@@ -395,7 +410,7 @@ internal fun detectWearAutoSyncPlan(companion: WearOsCompanionInfo?): WearAutoDe
         WearAutoDetectionResult(
             companionInfo = companion,
             variant = WearAutoVariant.CN_LE,
-            effectiveMode = WearSyncMode.WEAROS_APP,
+            effectiveMode = WearSyncMode.WEARABLE_API,
         )
     } else {
         WearAutoDetectionResult(
@@ -410,7 +425,7 @@ internal fun resolveWearSyncMode(context: Context, selectedMode: WearSyncMode): 
     if (selectedMode != WearSyncMode.AUTO) {
         return WearSyncModeResolution(
             selectedMode = selectedMode,
-            effectiveMode = selectedMode,
+            effectiveMode = WearSyncMode.WEARABLE_API,
             autoDetection = null,
         )
     }
@@ -420,6 +435,12 @@ internal fun resolveWearSyncMode(context: Context, selectedMode: WearSyncMode): 
         effectiveMode = detection.effectiveMode,
         autoDetection = detection,
     )
+}
+
+internal fun migrateWearSyncMode(raw: String): WearSyncMode = when (raw) {
+    WearSyncMode.WEARABLE_API.name -> WearSyncMode.WEARABLE_API
+    WearSyncMode.WEAROS_APP.name -> WearSyncMode.WEARABLE_API
+    else -> WearSyncMode.AUTO
 }
 
 internal fun findWearOsCompanionInfo(context: Context): WearOsCompanionInfo? {
@@ -455,7 +476,7 @@ internal fun wearSyncModeLabel(context: Context, mode: WearSyncMode): String {
     return when (mode) {
         WearSyncMode.AUTO -> context.getString(R.string.settings_wear_sync_mode_auto)
         WearSyncMode.WEARABLE_API -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
-        WearSyncMode.WEAROS_APP -> context.getString(R.string.settings_wear_sync_mode_wearos_app)
+        WearSyncMode.WEAROS_APP -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
     }
 }
 
@@ -546,7 +567,7 @@ internal fun formatWearSyncAckMessage(context: Context, ack: WearSyncAckInfo): S
 internal fun resolveWearSyncSourceLabel(context: Context, source: String): String {
     return when (source.uppercase()) {
         WearDataLayerContracts.SOURCE_WEARABLE_API -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
-        WearDataLayerContracts.SOURCE_WEAROS_APP -> context.getString(R.string.settings_wear_sync_mode_wearos_app)
+        WearDataLayerContracts.SOURCE_WEAROS_APP -> context.getString(R.string.settings_wear_sync_mode_wearable_api)
         else -> source.ifBlank { "unknown" }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,8 +46,20 @@ fun CloudSyncScreen(
     val prefs = remember { context.getSharedPreferences(MobileSyncPrefs.PREF_NAME, android.content.Context.MODE_PRIVATE) }
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
-    val lastSyncAt = prefs.getLong(MobileSyncPrefs.KEY_LAST_SYNC_AT, 0L)
-    val cloudSnapshot = remember(status, lastSyncAt) {
+    var snapshotVersion by remember { mutableStateOf(0L) }
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT || key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT) {
+                snapshotVersion = System.nanoTime()
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    val lastSyncAt = remember(snapshotVersion) {
+        prefs.getLong(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT, 0L)
+    }
+    val cloudSnapshot = remember(snapshotVersion) {
         parseWearCloudSnapshot(prefs.getString(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT, "").orEmpty())
     }
     val lastSyncText = if (lastSyncAt > 0L) {

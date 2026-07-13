@@ -41,6 +41,8 @@ object MobileCloudSyncV2Store {
         return runCatching { MobileCloudSyncV2Json.fromJson(JSONObject(raw)) }.getOrDefault(CloudSyncDocumentV2())
     }
 
+    fun hasLocalBaseline(context: Context): Boolean = prefs(context).contains(KEY_DOCUMENT)
+
     fun saveDocument(context: Context, document: CloudSyncDocumentV2) {
         val maxCounter = document.records.values.flatMap { it.values }.maxOfOrNull { it.version.counter } ?: 0L
         val p = prefs(context)

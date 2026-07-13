@@ -8,7 +8,7 @@ import org.junit.Test
 class WearSyncModeResolutionTest {
 
     @Test
-    fun detectWearAutoSyncPlan_returnsWearOsAppForCnLe() {
+    fun detectWearAutoSyncPlan_usesDataLayerForCnLe() {
         val companion = WearOsCompanionInfo(
             packageName = "com.google.android.wearable.app.cn",
             versionName = "2.5.0",
@@ -18,7 +18,7 @@ class WearSyncModeResolutionTest {
         val result = detectWearAutoSyncPlan(companion)
 
         assertEquals(WearAutoVariant.CN_LE, result.variant)
-        assertEquals(WearSyncMode.WEAROS_APP, result.effectiveMode)
+        assertEquals(WearSyncMode.WEARABLE_API, result.effectiveMode)
     }
 
     @Test
@@ -48,5 +48,11 @@ class WearSyncModeResolutionTest {
         assertTrue(isLeVersion("3.1.0-le"))
         assertTrue(isLeVersion("3_1_0_LE_build"))
         assertFalse(isLeVersion("3.1.0"))
+    }
+
+    @Test fun legacyWearOsAppSettingMigratesToDataLayer() {
+        assertEquals(WearSyncMode.WEARABLE_API, migrateWearSyncMode("WEAROS_APP"))
+        assertEquals(WearSyncMode.WEARABLE_API, migrateWearSyncMode("WEARABLE_API"))
+        assertEquals(WearSyncMode.AUTO, migrateWearSyncMode("AUTO"))
     }
 }

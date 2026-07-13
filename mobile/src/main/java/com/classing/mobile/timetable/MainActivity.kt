@@ -3,8 +3,10 @@ package com.xtawa.classingtime
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +34,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val darkTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = !darkTheme
         CloudSyncEngine.schedulePeriodic(this)
         handleIncomingIntent(intent)
         setContent { MobileApp() }

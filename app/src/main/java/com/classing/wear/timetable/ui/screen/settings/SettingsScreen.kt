@@ -8,6 +8,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
+import android.Manifest
+import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,7 +27,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -47,6 +56,7 @@ import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import org.json.JSONObject
+import com.classing.wear.timetable.sync.MobileSyncPrefs
 
 @Composable
 fun SettingsScreen(
@@ -68,13 +78,24 @@ fun SettingsScreen(
     onOpenCloudSync: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> onToggleReminder(granted) }
     val listState = rememberScalingLazyListState()
     val haptic = LocalHapticFeedback.current
-    val context = LocalContext.current
     val syncSuccessText = stringResource(R.string.settings_sync_feedback_success)
     val syncCheckPhoneText = stringResource(R.string.settings_sync_feedback_check_phone)
-    val cloudSnapshot = remember(context) {
-        loadWearCloudSummary(context)
+    var cloudSnapshot by remember(context) { mutableStateOf(loadWearCloudSummary(context)) }
+    DisposableEffect(context) {
+        val prefs = context.getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT || key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT) {
+                cloudSnapshot = loadWearCloudSummary(context)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
     LaunchedEffect(state.syncFeedback) {
@@ -129,7 +150,16 @@ fun SettingsScreen(
                 checked = state.preferences.remindersEnabled,
                 onCheckedChange = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleReminder(it)
+                    if (!it) {
+                        onToggleReminder(false)
+                    } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        onToggleReminder(true)
+                    } else {
+                        onToggleReminder(false)
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                 },
             )
         }

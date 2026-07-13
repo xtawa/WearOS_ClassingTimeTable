@@ -3,6 +3,7 @@ package com.xtawa.classingtime.screen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -46,9 +47,11 @@ import java.util.Locale
 internal fun CalendarMonthLayer(
     contentPadding: PaddingValues,
     occurrenceProvider: (LocalDate) -> List<EffectiveLessonOccurrence>,
+    cancelledExceptionProvider: (LocalDate) -> List<ScheduleExceptionUi>,
     onBackToTimetable: () -> Unit,
     onEditOccurrence: (EffectiveLessonOccurrence, LocalDate) -> Unit,
     onAddMakeUpLesson: (LocalDate) -> Unit,
+    onRestoreOriginal: (String, LocalDate) -> Unit,
 ) {
     val context = LocalContext.current
     val locale = Locale.getDefault()
@@ -57,6 +60,7 @@ internal fun CalendarMonthLayer(
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("yyyy-MM", locale) }
     val dayTitleFormatter = remember(locale) { DateTimeFormatter.ofPattern("MM-dd", locale) }
     var displayedMonth by remember { mutableStateOf(currentMonth) }
+    var selectedDate by remember { mutableStateOf(today) }
 
     val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
     val offsetToWeekStart = (7 + (today.dayOfWeek.value - firstDayOfWeek.value)) % 7
@@ -161,6 +165,21 @@ internal fun CalendarMonthLayer(
             }
         }
 
+        item(key = "month-grid-$displayedMonth") {
+            MonthDateGrid(
+                displayedMonth = displayedMonth,
+                firstDayOfWeek = firstDayOfWeek,
+                today = today,
+                selectedDate = selectedDate,
+                occurrenceProvider = occurrenceProvider,
+                onSelect = { date ->
+                    selectedDate = date
+                    expandedState = expandedState + (date to true)
+                    if (date.isBefore(today)) pastDaysExpanded = true
+                },
+            )
+        }
+
         items(upcomingDates, key = { it.toString() }) { date ->
             val dayLessons = occurrenceProvider(date).sortedBy { it.lesson.startTime }
             val expanded = expandedState[date] ?: false
@@ -182,6 +201,8 @@ internal fun CalendarMonthLayer(
                 },
                 onEditOccurrence = onEditOccurrence,
                 onAddMakeUpLesson = onAddMakeUpLesson,
+                cancelledExceptions = cancelledExceptionProvider(date),
+                onRestoreOriginal = onRestoreOriginal,
             )
         }
 
@@ -241,6 +262,8 @@ internal fun CalendarMonthLayer(
                                         },
                                         onEditOccurrence = onEditOccurrence,
                                         onAddMakeUpLesson = onAddMakeUpLesson,
+                                        cancelledExceptions = cancelledExceptionProvider(date),
+                                        onRestoreOriginal = onRestoreOriginal,
                                     )
                                 }
                             }
@@ -250,6 +273,60 @@ internal fun CalendarMonthLayer(
             }
         }
     }
+}
+
+@Composable
+private fun MonthDateGrid(
+    displayedMonth: YearMonth,
+    firstDayOfWeek: DayOfWeek,
+    today: LocalDate,
+    selectedDate: LocalDate,
+    occurrenceProvider: (LocalDate) -> List<EffectiveLessonOccurrence>,
+    onSelect: (LocalDate) -> Unit,
+) {
+    val cells = buildMonthGridDates(displayedMonth, firstDayOfWeek)
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            cells.chunked(7).forEach { week ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (week + List(7 - week.size) { null }).forEach { date ->
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(if (date != null) Modifier.clickable { onSelect(date) } else Modifier),
+                            shape = CircleShape,
+                            color = when (date) {
+                                selectedDate -> MaterialTheme.colorScheme.primaryContainer
+                                today -> MaterialTheme.colorScheme.secondaryContainer
+                                else -> MaterialTheme.colorScheme.surface
+                            },
+                        ) {
+                            Box(Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                                if (date != null) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.bodySmall)
+                                        Text(
+                                            text = if (occurrenceProvider(date).isEmpty()) " " else "•",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+internal fun buildMonthGridDates(displayedMonth: YearMonth, firstDayOfWeek: DayOfWeek): List<LocalDate?> {
+    val leading = (7 + displayedMonth.atDay(1).dayOfWeek.value - firstDayOfWeek.value) % 7
+    val cells: List<LocalDate?> = List(leading) { null } +
+        (1..displayedMonth.lengthOfMonth()).map(displayedMonth::atDay)
+    val trailing = (7 - cells.size % 7) % 7
+    return cells + List(trailing) { null }
 }
 
 @Composable
@@ -264,6 +341,8 @@ private fun TimelineDayCard(
     onToggle: () -> Unit,
     onEditOccurrence: (EffectiveLessonOccurrence, LocalDate) -> Unit,
     onAddMakeUpLesson: (LocalDate) -> Unit,
+    cancelledExceptions: List<ScheduleExceptionUi>,
+    onRestoreOriginal: (String, LocalDate) -> Unit,
 ) {
     val inCurrentWeek = isWithinWeek(date, weekStart, weekEnd)
     val isToday = date == today
@@ -353,7 +432,18 @@ private fun TimelineDayCard(
                                 occurrence = occurrence,
                                 onClick = { onEditOccurrence(occurrence, date) },
                             )
+                            if (occurrence.origin == EffectiveLessonOrigin.RESCHEDULED && occurrence.sourceLessonId != null) {
+                                TextButton(onClick = { onRestoreOriginal(occurrence.sourceLessonId, date) }) {
+                                    Text(stringResource(R.string.calendar_restore_original))
+                                }
+                            }
                         }
+                    }
+                }
+                cancelledExceptions.forEach { exception ->
+                    val lessonId = exception.lessonId ?: return@forEach
+                    TextButton(onClick = { onRestoreOriginal(lessonId, date) }) {
+                        Text(stringResource(R.string.calendar_restore_cancelled_original))
                     }
                 }
             }
