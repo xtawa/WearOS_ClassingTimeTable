@@ -21,6 +21,7 @@ internal enum class SettingsPage {
     BackupRestore,
     WeekMode,
     ReminderKeepAlive,
+    AskAi,
     Account,
     AccountEmailChange,
     AccountRegister,

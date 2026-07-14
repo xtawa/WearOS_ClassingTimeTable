@@ -1714,6 +1714,7 @@ fun MobileTimetableScreen() {
                     visibleDays = visibleDays,
                     lessonsByDay = displayLessonsByDay,
                     currentWeekLessonsByDay = currentWeekLessonsByDay,
+                    onOpenAskAi = { openSettingsPage(SettingsPage.AskAi) },
                 )
 
                 MobileLayer.Settings -> when (destination.settingsPage) {
@@ -1743,6 +1744,15 @@ fun MobileTimetableScreen() {
                     onClearAllSchedules = {
                         showClearAllConfirmDialog = true
                     },
+                )
+
+                SettingsPage.AskAi -> AskAiSettingsPage(
+                    contentPadding = innerPadding,
+                    loggedIn = accountSummary.userId.isNotBlank(),
+                    member = membershipSummary.isMember,
+                    lessons = displayLessons,
+                    onBack = { handleBackNavigation() },
+                    onOpenAccount = { openSettingsPage(SettingsPage.Account) },
                 )
 
                 SettingsPage.Import -> importContent(innerPadding, destination.showImportJsonPromptPage)

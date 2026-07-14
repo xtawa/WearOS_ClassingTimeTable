@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,6 +49,7 @@ internal fun DashboardLayer(
     visibleDays: List<DayOfWeek>,
     lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
     currentWeekLessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    onOpenAskAi: () -> Unit,
 ) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(LocalDateTime.now()) }
@@ -164,6 +166,10 @@ internal fun DashboardLayer(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        Button(onClick = onOpenAskAi, modifier = Modifier.fillMaxWidth()) {
+            Text("Ask AI · 课表助手")
         }
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
