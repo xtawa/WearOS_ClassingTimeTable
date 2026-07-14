@@ -50,7 +50,6 @@ fun HomeScreen(
     state: HomeUiState,
     onOpenWeek: () -> Unit,
     onOpenSearch: () -> Unit,
-    onOpenAskAi: () -> Unit,
     onOpenSettings: () -> Unit,
     onLessonClick: (Long) -> Unit,
     onRetrySync: () -> Unit,
@@ -80,7 +79,6 @@ fun HomeScreen(
             QuickActionsRow(
                 onOpenWeek = onOpenWeek,
                 onOpenSearch = onOpenSearch,
-                onOpenAskAi = onOpenAskAi,
                 onOpenSettings = onOpenSettings,
             )
         }
@@ -308,7 +306,6 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
 private fun QuickActionsRow(
     onOpenWeek: () -> Unit,
     onOpenSearch: () -> Unit,
-    onOpenAskAi: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     Row(
@@ -328,10 +325,6 @@ private fun QuickActionsRow(
         QuickActionIcon(
             icon = { Icon(Icons.Filled.Search, contentDescription = null) },
             onClick = onOpenSearch,
-        )
-        QuickActionIcon(
-            icon = { Text(text = "AI", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) },
-            onClick = onOpenAskAi,
         )
         QuickActionIcon(
             icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
@@ -441,7 +434,6 @@ private fun HomeScreenPreview() {
             ),
             onOpenWeek = {},
             onOpenSearch = {},
-            onOpenAskAi = {},
             onOpenSettings = {},
             onLessonClick = {},
             onRetrySync = {},

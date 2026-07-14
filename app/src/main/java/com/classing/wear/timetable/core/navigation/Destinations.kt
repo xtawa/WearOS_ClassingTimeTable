@@ -4,7 +4,6 @@ sealed class Destinations(val route: String) {
     data object Home : Destinations("home")
     data object Week : Destinations("week")
     data object Search : Destinations("search")
-    data object AskAi : Destinations("ask_ai")
     data object Settings : Destinations("settings")
     data object CloudSync : Destinations("cloud_sync")
     data object About : Destinations("about")

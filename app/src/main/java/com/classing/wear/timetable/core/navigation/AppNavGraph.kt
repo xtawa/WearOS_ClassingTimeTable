@@ -18,7 +18,6 @@ import com.classing.wear.timetable.ui.screen.detail.CourseDetailViewModel
 import com.classing.wear.timetable.ui.screen.home.HomeScreen
 import com.classing.wear.timetable.ui.screen.home.HomeViewModel
 import com.classing.wear.timetable.ui.screen.settings.AboutScreen
-import com.classing.wear.timetable.ui.screen.settings.AskAiWearScreen
 import com.classing.wear.timetable.ui.screen.settings.CloudSyncScreen
 import com.classing.wear.timetable.ui.screen.settings.SettingsScreen
 import com.classing.wear.timetable.ui.screen.settings.SettingsViewModel
@@ -53,15 +52,10 @@ fun AppNavGraph(appContainer: AppContainer) {
                 state = state,
                 onOpenWeek = { navController.navigate(Destinations.Week.route) },
                 onOpenSearch = { navController.navigate(Destinations.Search.route) },
-                onOpenAskAi = { navController.navigate(Destinations.AskAi.route) },
                 onOpenSettings = { navController.navigate(Destinations.Settings.route) },
                 onLessonClick = { courseId -> navController.navigate(Destinations.CourseDetail.createRoute(courseId)) },
                 onRetrySync = vm::retrySync,
             )
-        }
-
-        composable(Destinations.AskAi.route) {
-            AskAiWearScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Destinations.Search.route) {
