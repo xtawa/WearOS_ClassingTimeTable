@@ -1751,6 +1751,12 @@ fun MobileTimetableScreen() {
                     loggedIn = accountSummary.userId.isNotBlank(),
                     member = membershipSummary.isMember,
                     lessons = displayLessons,
+                    currentDate = LocalDate.now(zoneId),
+                    currentWeek = weekIndexForMode(LocalDate.now(zoneId), weekNumberMode, semesterWeekStartDate, weekStartDay),
+                    timezone = zoneId.id,
+                    weekNumberMode = weekNumberMode,
+                    semesterWeekStartDate = semesterWeekStartDate,
+                    weekStartDay = weekStartDay,
                     onBack = { handleBackNavigation() },
                     onOpenAccount = { openSettingsPage(SettingsPage.Account) },
                 )

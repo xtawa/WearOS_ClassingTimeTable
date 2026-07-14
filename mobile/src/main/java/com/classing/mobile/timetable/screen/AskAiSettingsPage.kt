@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.account.AiApiClient
 import com.xtawa.classingtime.account.AiUsageSummary
 import com.xtawa.classingtime.sync.AccountSessionManager
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -39,6 +40,12 @@ internal fun AskAiSettingsPage(
     loggedIn: Boolean,
     member: Boolean,
     lessons: List<LessonUi>,
+    currentDate: LocalDate,
+    currentWeek: Int,
+    timezone: String,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+    weekStartDay: java.time.DayOfWeek,
     onBack: () -> Unit,
     onOpenAccount: () -> Unit,
 ) {
@@ -83,7 +90,15 @@ internal fun AskAiSettingsPage(
                         val token = AccountSessionManager.ensureAccessToken(context)
                         if (token == null) { status = "登录状态已失效，请重新登录"; return@launch }
                         sending = true; status = "正在询问…"
-                        val snapshot = if (conversationId.isBlank()) timetableSnapshot(lessons) else null
+                        val snapshot = if (conversationId.isBlank()) timetableSnapshot(
+                            lessons = lessons,
+                            currentDate = currentDate,
+                            currentWeek = currentWeek,
+                            timezone = timezone,
+                            weekNumberMode = weekNumberMode,
+                            semesterWeekStartDate = semesterWeekStartDate,
+                            weekStartDay = weekStartDay,
+                        ) else null
                         client.chat(token, conversationId.takeIf { it.isNotBlank() }, question.trim(), snapshot)
                             .onSuccess { (id, reply) -> conversationId = id; answer = reply; question = ""; status = ""; client.usage(token).onSuccess { usage = it } }
                             .onFailure { status = it.message ?: "Ask AI 暂时不可用" }
@@ -101,6 +116,52 @@ private fun AccessCard(message: String, action: String, onClick: () -> Unit) {
     Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text(message); Button(onClick = onClick) { Text(action) } } }
 }
 
-private fun timetableSnapshot(lessons: List<LessonUi>): JSONObject = JSONObject().put("lessons", JSONArray().apply {
-    lessons.forEach { lesson -> put(JSONObject().put("title", lesson.title).put("teacher", lesson.teacher).put("location", lesson.location).put("note", lesson.note).put("dayOfWeek", lesson.dayOfWeek.name).put("startTime", lesson.startTime.toString()).put("endTime", lesson.endTime.toString()).put("startWeek", lesson.startWeek).put("endWeek", lesson.endWeek).put("weekParity", lesson.weekParity.name)) }
-})
+internal data class AskAiScheduleContext(
+    val currentDate: String,
+    val currentDayOfWeek: String,
+    val currentWeek: Int,
+    val timezone: String,
+    val weekNumberMode: String,
+    val semesterWeekStartDate: String,
+    val weekStartDay: String,
+)
+
+internal fun buildAskAiScheduleContext(
+    currentDate: LocalDate,
+    currentWeek: Int,
+    timezone: String,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+    weekStartDay: java.time.DayOfWeek,
+): AskAiScheduleContext = AskAiScheduleContext(
+    currentDate = currentDate.toString(),
+    currentDayOfWeek = currentDate.dayOfWeek.name,
+    currentWeek = currentWeek,
+    timezone = timezone,
+    weekNumberMode = weekNumberMode.name,
+    semesterWeekStartDate = semesterWeekStartDate.toString(),
+    weekStartDay = weekStartDay.name,
+)
+
+internal fun timetableSnapshot(
+    lessons: List<LessonUi>,
+    currentDate: LocalDate,
+    currentWeek: Int,
+    timezone: String,
+    weekNumberMode: WeekNumberMode,
+    semesterWeekStartDate: LocalDate,
+    weekStartDay: java.time.DayOfWeek,
+): JSONObject {
+    val context = buildAskAiScheduleContext(currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay)
+    return JSONObject()
+        .put("currentDate", context.currentDate)
+        .put("currentDayOfWeek", context.currentDayOfWeek)
+        .put("currentWeek", context.currentWeek)
+        .put("timezone", context.timezone)
+        .put("weekNumberMode", context.weekNumberMode)
+        .put("semesterWeekStartDate", context.semesterWeekStartDate)
+        .put("weekStartDay", context.weekStartDay)
+        .put("lessons", JSONArray().apply {
+        lessons.forEach { lesson -> put(JSONObject().put("title", lesson.title).put("teacher", lesson.teacher).put("location", lesson.location).put("note", lesson.note).put("dayOfWeek", lesson.dayOfWeek.name).put("startTime", lesson.startTime.toString()).put("endTime", lesson.endTime.toString()).put("startWeek", lesson.startWeek).put("endWeek", lesson.endWeek).put("weekParity", lesson.weekParity.name)) }
+        })
+}
