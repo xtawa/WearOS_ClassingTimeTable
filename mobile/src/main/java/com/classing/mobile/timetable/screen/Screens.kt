@@ -285,6 +285,10 @@ fun MobileTimetableScreen() {
     }
 
     fun openSettingsPage(page: SettingsPage, importFocusMethod: ImportFocusMethod? = null) {
+        if (layerName != MobileLayer.Settings.name) {
+            previousMainLayerName = layerName
+            layerName = MobileLayer.Settings.name
+        }
         settingsPageName = page.name
         showImportJsonPromptPage = false
         onboardingImportFocusMethod = if (page == SettingsPage.Import) importFocusMethod else null
