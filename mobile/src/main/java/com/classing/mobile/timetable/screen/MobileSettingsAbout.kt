@@ -785,6 +785,7 @@ internal fun ReminderKeepAliveSettingsPage(
 @Composable
 internal fun SyncCommunicationSettingsPage(
     contentPadding: PaddingValues,
+    devModeEnabled: Boolean,
     localScheduleUpdatedAt: Long,
     lastSnapshotAt: Long,
     wearConnectionMessage: String,
@@ -870,57 +871,61 @@ internal fun SyncCommunicationSettingsPage(
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_local_updated, localUpdatedText),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_snapshot_updated, snapshotText),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_wear_connection, wearConnectionMessage),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_wear_push, wearPushStatus.ifBlank { "-" }),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_wear_ack, wearAckStatus.ifBlank { "-" }),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_cloud_summary, cloudSummary),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_cloud_result, cloudSyncStatus.ifBlank { "-" }),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.settings_sync_diag_config_push, configPushStatus.ifBlank { "-" }),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                if (devModeEnabled) {
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_local_updated, localUpdatedText),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_snapshot_updated, snapshotText),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_wear_connection, wearConnectionMessage),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_wear_push, wearPushStatus.ifBlank { "-" }),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_wear_ack, wearAckStatus.ifBlank { "-" }),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_cloud_summary, cloudSummary),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_cloud_result, cloudSyncStatus.ifBlank { "-" }),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_sync_diag_config_push, configPushStatus.ifBlank { "-" }),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onRefreshWearStatus, shape = RoundedCornerShape(999.dp)) {
-                        Text(stringResource(R.string.settings_sync_diag_refresh_wear))
-                    }
                     Button(onClick = onSyncWearNow, shape = RoundedCornerShape(999.dp)) {
                         Text(stringResource(R.string.settings_sync_diag_sync_wear))
                     }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onTestCloudConnection, shape = RoundedCornerShape(999.dp)) {
-                        Text(stringResource(R.string.settings_sync_diag_test_cloud))
-                    }
                     Button(onClick = onSyncCloudNow, shape = RoundedCornerShape(999.dp)) {
                         Text(stringResource(R.string.settings_sync_diag_sync_cloud))
+                    }
+                }
+                if (devModeEnabled) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onRefreshWearStatus, shape = RoundedCornerShape(999.dp)) {
+                            Text(stringResource(R.string.settings_sync_diag_refresh_wear))
+                        }
+                        Button(onClick = onTestCloudConnection, shape = RoundedCornerShape(999.dp)) {
+                            Text(stringResource(R.string.settings_sync_diag_test_cloud))
+                        }
                     }
                 }
             }
@@ -1085,6 +1090,7 @@ internal fun WearCommunicationSettingsPage(
 @Composable
 internal fun CloudSyncSettingsPage(
     contentPadding: PaddingValues,
+    devModeEnabled: Boolean,
     provider: CloudProviderUi,
     enabled: Boolean,
     serverUrl: String,
@@ -1418,7 +1424,7 @@ internal fun CloudSyncSettingsPage(
                 }
             }
         }
-        if (recentChanges.isNotEmpty()) {
+        if (devModeEnabled && recentChanges.isNotEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(14.dp),

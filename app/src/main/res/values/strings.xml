@@ -128,6 +128,7 @@
     <string name="settings_keepalive_eco">Eco</string>
     <string name="settings_keepalive_balanced">Balanced</string>
     <string name="settings_keepalive_aggressive">Enhanced</string>
+    <string name="settings_reminder_protection_menu">Reminder protection settings</string>
     <string name="settings_exact_alarm_status">Exact alarms: %1$s</string>
     <string name="settings_battery_optimization_status">Battery optimization: %1$s</string>
     <string name="settings_authorized">Authorized</string>

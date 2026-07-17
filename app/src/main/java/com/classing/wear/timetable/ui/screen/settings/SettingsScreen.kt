@@ -469,6 +469,7 @@ private fun KeepAliveStatusCard(
     onOpenExactAlarmSettings: () -> Unit,
 ) {
     val status = rememberKeepAliveStatus(context)
+    var protectionMenuExpanded by remember { mutableStateOf(false) }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(
             modifier = Modifier
@@ -476,40 +477,52 @@ private fun KeepAliveStatusCard(
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                text = stringResource(
-                    R.string.settings_exact_alarm_status,
-                    if (status.canScheduleExactAlarm) stringResource(R.string.settings_authorized) else stringResource(R.string.settings_not_authorized),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                text = stringResource(
-                    R.string.settings_battery_optimization_status,
-                    if (status.ignoringBatteryOptimizations) stringResource(R.string.settings_enabled) else stringResource(R.string.settings_disabled),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(
+            Button(
+                onClick = { protectionMenuExpanded = !protectionMenuExpanded },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                shape = RoundedCornerShape(999.dp),
             ) {
+                Text(stringResource(R.string.settings_reminder_protection_menu))
+            }
+            if (protectionMenuExpanded) {
                 Button(
-                    onClick = onOpenBatteryOptimizationSettings,
+                    onClick = {
+                        protectionMenuExpanded = false
+                        onOpenExactAlarmSettings()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(999.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     ),
-                ) { Text(stringResource(R.string.settings_battery_short)) }
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.settings_exact_alarm_status,
+                            if (status.canScheduleExactAlarm) stringResource(R.string.settings_authorized) else stringResource(R.string.settings_not_authorized),
+                        ),
+                    )
+                }
                 Button(
-                    onClick = onOpenExactAlarmSettings,
+                    onClick = {
+                        protectionMenuExpanded = false
+                        onOpenBatteryOptimizationSettings()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(999.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     ),
-                ) { Text(stringResource(R.string.settings_alarm_short)) }
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.settings_battery_optimization_status,
+                            if (status.ignoringBatteryOptimizations) stringResource(R.string.settings_enabled) else stringResource(R.string.settings_disabled),
+                        ),
+                    )
+                }
             }
         }
     }

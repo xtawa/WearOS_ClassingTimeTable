@@ -2345,6 +2345,7 @@ fun MobileTimetableScreen() {
 
                 SettingsPage.SyncCommunication -> SyncCommunicationSettingsPage(
                     contentPadding = innerPadding,
+                    devModeEnabled = devModeEnabled,
                     localScheduleUpdatedAt = MobilePrefsStore.loadLocalTimetableUpdatedAt(context),
                     lastSnapshotAt = MobilePrefsStore.loadLastSnapshotAt(context),
                     wearConnectionMessage = wearConnectionMessage,
@@ -2454,6 +2455,7 @@ fun MobileTimetableScreen() {
 
                 SettingsPage.CloudSync -> CloudSyncSettingsPage(
                     contentPadding = innerPadding,
+                    devModeEnabled = devModeEnabled,
                     provider = cloudProvider,
                     enabled = cloudSyncEnabled,
                     serverUrl = cloudServerUrl,

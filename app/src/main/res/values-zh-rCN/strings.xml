@@ -127,6 +127,7 @@
     <string name="settings_keepalive_eco">省电</string>
     <string name="settings_keepalive_balanced">均衡</string>
     <string name="settings_keepalive_aggressive">增强</string>
+    <string name="settings_reminder_protection_menu">提醒保护设置</string>
     <string name="settings_exact_alarm_status">精确闹钟：%1$s</string>
     <string name="settings_battery_optimization_status">电池优化白名单：%1$s</string>
     <string name="settings_authorized">已授权</string>
