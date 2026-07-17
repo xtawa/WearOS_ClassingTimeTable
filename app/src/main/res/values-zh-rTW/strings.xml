@@ -113,10 +113,12 @@
     <string name="heatmap_empty_desc">請先在手機端匯入課程並同步到 Wear。</string>
     <string name="heatmap_legend_less">少</string>
     <string name="heatmap_legend_more">多</string>
-    <string name="settings_cloud_sync_phone_managed">雲端同步通常由手機管理。若未收到帳號狀態，可在下方使用安全 QR Code 登入。</string>
-    <string name="settings_cloud_sync_last_phone_snapshot">最近手機快照：%1$s</string>
+    <string name="settings_cloud_sync_phone_managed">QR Code 登入後，手錶設定會直連官方雲端同步；課表同步仍由手機統一管理。</string>
+    <string name="settings_cloud_sync_last_phone_snapshot">最近雲端同步：%1$s</string>
     <string name="settings_cloud_sync_request_queued">請求已排隊等待手機處理</string>
     <string name="settings_cloud_sync_request_failed">無法將請求加入佇列</string>
+    <string name="settings_cloud_sync_direct_success">官方雲端同步完成</string>
+    <string name="settings_cloud_sync_direct_failed">官方雲端同步失敗，請檢查網路後重試</string>
     <string name="settings_section_keep_alive">背景保活</string>
     <string name="settings_phone_account">帳號</string>
     <string name="settings_phone_account_summary">已登入：%1$s\n會員：%2$s\n同步方式：%3$s</string>
@@ -145,6 +147,9 @@
     <string name="settings_qr_login_qr_description">Wear 帳號登入 QR Code</string>
     <string name="settings_qr_login_cancel">取消 QR Code 登入</string>
     <string name="settings_qr_login_success">手錶登入成功</string>
+    <string name="settings_qr_login_syncing">登入成功，正在同步官方雲端…</string>
+    <string name="settings_qr_login_sync_success">登入成功並已同步官方雲端</string>
+    <string name="settings_qr_login_sync_failed">登入成功，但官方雲端同步失敗，請點選立即同步重試</string>
     <string name="settings_qr_login_expired">QR Code 已過期，請重新產生</string>
     <string name="settings_qr_login_failed">QR Code 登入失敗，請檢查網路後重試</string>
     <string name="settings_qr_logout_button">登出手錶帳號</string>

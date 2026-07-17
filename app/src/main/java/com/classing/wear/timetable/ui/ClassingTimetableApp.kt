@@ -13,6 +13,7 @@ import androidx.lifecycle.Lifecycle
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.wear.timetable.core.AppContainer
 import com.classing.wear.timetable.core.navigation.AppNavGraph
+import com.classing.wear.timetable.account.WearDirectAccountStore
 import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +31,9 @@ fun ClassingTimetableApp(appContainer: AppContainer) {
         context.deleteSharedPreferences("wear_cloud_config")
         appContainer.wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_APP_START)
         appContainer.wearCloudBridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_APP_START)
+        if (WearDirectAccountStore.load(context) != null) {
+            appContainer.wearOfficialCloudSyncCoordinator.sync(CloudSyncContracts.TRIGGER_APP_START)
+        }
     }
 
     LaunchedEffect(lifecycleOwner) {

@@ -9,6 +9,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
 data class WearDeviceAuthorization(
@@ -98,6 +100,26 @@ class WearQrAuthApiClient(
             acceptStatuses = setOf(HttpURLConnection.HTTP_OK, HttpURLConnection.HTTP_UNAUTHORIZED),
         )
         Unit
+    }
+
+    suspend fun refresh(session: WearDirectAccountSession): Result<WearDirectAccountSession> = runCatching {
+        val response = request(
+            path = "/api/v1/auth/refresh",
+            body = JSONObject().put("refreshToken", session.refreshToken),
+            acceptStatuses = setOf(HttpURLConnection.HTTP_OK),
+        )
+        val refreshed = response.json.optJSONObject("session") ?: response.json
+        val accessToken = refreshed.optString("accessToken")
+        val refreshToken = refreshed.optString("refreshToken")
+        require(accessToken.isNotBlank() && refreshToken.isNotBlank()) {
+            "Authentication response missing tokens"
+        }
+        session.copy(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            accessExpiresAt = refreshed.optLong("accessExpiresAt", 0L),
+            refreshExpiresAt = refreshed.optLong("refreshExpiresAt", 0L),
+        )
     }
 
     private data class HttpResponse(val statusCode: Int, val json: JSONObject)
@@ -204,4 +226,71 @@ object WearDirectAccountStore {
     fun clear(context: Context) {
         prefs(context).edit().clear().apply()
     }
+}
+
+/** Serializes refresh-token rotation for every direct Wear cloud caller. */
+object WearDirectAccountSessionManager {
+    private val refreshMutex = Mutex()
+
+    suspend fun ensureSession(
+        context: Context,
+        apiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
+        now: Long = System.currentTimeMillis(),
+    ): WearDirectAccountSession? = refreshMutex.withLock {
+        val current = WearDirectAccountStore.load(context, now) ?: return@withLock null
+        if (current.accessToken.isNotBlank() && current.accessExpiresAt > now + ACCESS_EXPIRY_SKEW_MS) {
+            return@withLock current
+        }
+        refreshLocked(context, current, apiClient, now)
+    }
+
+    suspend fun refreshAfterUnauthorized(
+        context: Context,
+        rejectedAccessToken: String,
+        apiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
+        now: Long = System.currentTimeMillis(),
+    ): WearDirectAccountSession? = refreshMutex.withLock {
+        val current = WearDirectAccountStore.load(context, now) ?: return@withLock null
+        if (current.accessToken.isNotBlank() &&
+            current.accessToken != rejectedAccessToken &&
+            current.accessExpiresAt > now + ACCESS_EXPIRY_SKEW_MS
+        ) {
+            return@withLock current
+        }
+        refreshLocked(context, current, apiClient, now)
+    }
+
+    private suspend fun refreshLocked(
+        context: Context,
+        current: WearDirectAccountSession,
+        apiClient: WearQrAuthApiClient,
+        now: Long,
+    ): WearDirectAccountSession? {
+        if (current.refreshToken.isBlank() || current.refreshExpiresAt <= now) {
+            WearDirectAccountStore.clear(context)
+            return null
+        }
+        val attemptedRefreshToken = current.refreshToken
+        val result = apiClient.refresh(current)
+        if (result.isSuccess) {
+            return result.getOrThrow().also { WearDirectAccountStore.save(context, it) }
+        }
+
+        val latest = WearDirectAccountStore.load(context, now)
+        if (latest != null && latest.refreshToken != attemptedRefreshToken &&
+            latest.accessToken.isNotBlank() && latest.accessExpiresAt > now
+        ) {
+            return latest
+        }
+        val error = result.exceptionOrNull()
+        val definitelyRevoked = error is WearQrAuthException &&
+            error.statusCode == HttpURLConnection.HTTP_UNAUTHORIZED &&
+            error.errorCode in setOf("AUTH_REFRESH_REVOKED", "AUTH_SESSION_REVOKED", "AUTH_REQUIRED")
+        if (definitelyRevoked && latest?.refreshToken == attemptedRefreshToken) {
+            WearDirectAccountStore.clear(context)
+        }
+        return null
+    }
+
+    private const val ACCESS_EXPIRY_SKEW_MS = 60_000L
 }

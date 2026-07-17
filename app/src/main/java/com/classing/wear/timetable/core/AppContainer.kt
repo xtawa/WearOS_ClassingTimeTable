@@ -11,6 +11,7 @@ import com.classing.wear.timetable.data.repository.DefaultScheduleRepository
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
+import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.worker.AutoSyncController
 import com.classing.wear.timetable.worker.ReminderWorkController
@@ -22,6 +23,7 @@ interface AppContainer {
     val settingsRepository: SettingsRepository
     val mobileSyncRequester: MobileSyncRequester
     val wearCloudBridgeSender: WearCloudBridgeSender
+    val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator
     val autoSyncController: AutoSyncController
     val reminderWorkController: ReminderWorkController
 }
@@ -55,6 +57,8 @@ class DefaultAppContainer(
 
     override val mobileSyncRequester: MobileSyncRequester = MobileSyncRequester(appContext)
     override val wearCloudBridgeSender: WearCloudBridgeSender = WearCloudBridgeSender(appContext, settingsRepository)
+    override val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator =
+        WearOfficialCloudSyncCoordinator(appContext, settingsRepository)
     override val autoSyncController: AutoSyncController = AutoSyncController(appContext)
     override val reminderWorkController: ReminderWorkController = ReminderWorkController(appContext)
 }

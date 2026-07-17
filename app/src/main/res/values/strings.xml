@@ -114,10 +114,12 @@
     <string name="heatmap_empty_desc">Import on phone and sync to Wear first.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
-    <string name="settings_cloud_sync_phone_managed">The phone normally manages cloud sync. If no account snapshot arrives, use secure QR sign in below.</string>
-    <string name="settings_cloud_sync_last_phone_snapshot">Last phone snapshot: %1$s</string>
+    <string name="settings_cloud_sync_phone_managed">After QR sign in, this watch syncs Wear settings directly with official cloud. Timetable sync remains phone-managed.</string>
+    <string name="settings_cloud_sync_last_phone_snapshot">Last cloud sync: %1$s</string>
     <string name="settings_cloud_sync_request_queued">Request queued for phone</string>
     <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
+    <string name="settings_cloud_sync_direct_success">Official cloud sync complete</string>
+    <string name="settings_cloud_sync_direct_failed">Official cloud sync failed. Check the connection and try again.</string>
     <string name="settings_section_keep_alive">Keep alive</string>
     <string name="settings_phone_account">Account</string>
     <string name="settings_phone_account_summary">Signed in: %1$s\nMembership: %2$s\nProvider: %3$s</string>
@@ -146,6 +148,9 @@
     <string name="settings_qr_login_qr_description">Wear account sign-in QR code</string>
     <string name="settings_qr_login_cancel">Cancel QR sign in</string>
     <string name="settings_qr_login_success">Signed in on this watch</string>
+    <string name="settings_qr_login_syncing">Signed in. Syncing official cloud…</string>
+    <string name="settings_qr_login_sync_success">Signed in and synced official cloud</string>
+    <string name="settings_qr_login_sync_failed">Signed in, but official cloud sync failed. Try Sync now.</string>
     <string name="settings_qr_login_expired">The QR code expired. Create a new one.</string>
     <string name="settings_qr_login_failed">QR sign in failed. Check the network and try again.</string>
     <string name="settings_qr_logout_button">Sign out on watch</string>

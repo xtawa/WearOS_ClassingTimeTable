@@ -126,6 +126,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                             settingsRepository = appContainer.settingsRepository,
                             mobileSyncRequester = appContainer.mobileSyncRequester,
                             wearCloudBridgeSender = appContainer.wearCloudBridgeSender,
+                            wearOfficialCloudSyncCoordinator = appContainer.wearOfficialCloudSyncCoordinator,
                             autoSyncController = appContainer.autoSyncController,
                             reminderWorkController = appContainer.reminderWorkController,
                         )
@@ -157,6 +158,7 @@ fun AppNavGraph(appContainer: AppContainer) {
         composable(Destinations.CloudSync.route) {
             CloudSyncScreen(
                 settingsRepository = appContainer.settingsRepository,
+                wearOfficialCloudSyncCoordinator = appContainer.wearOfficialCloudSyncCoordinator,
                 onBack = { navController.popBackStack() },
             )
         }

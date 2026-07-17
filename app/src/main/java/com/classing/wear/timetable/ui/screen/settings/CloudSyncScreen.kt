@@ -34,6 +34,7 @@ import com.classing.wear.timetable.R
 import com.classing.wear.timetable.account.WearDeviceAuthorization
 import com.classing.wear.timetable.account.WearDeviceAuthorizationPoll
 import com.classing.wear.timetable.account.WearDirectAccountSession
+import com.classing.wear.timetable.account.WearDirectAccountSessionManager
 import com.classing.wear.timetable.account.WearDirectAccountStore
 import com.classing.wear.timetable.account.WearQrAuthApiClient
 import com.classing.wear.timetable.account.WearQrAuthException
@@ -41,6 +42,7 @@ import com.classing.wear.timetable.account.createWearLoginQrBitmap
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
+import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
 import com.classing.wear.timetable.ui.component.screenPadding
 import java.time.Instant
 import java.time.LocalDateTime
@@ -53,13 +55,18 @@ import org.json.JSONObject
 @Composable
 fun CloudSyncScreen(
     settingsRepository: SettingsRepository,
+    wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator,
     onBack: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val bridgeSender = remember { WearCloudBridgeSender(context, settingsRepository) }
+    val directCloudSync = wearOfficialCloudSyncCoordinator
     val qrAuthApi = remember { WearQrAuthApiClient() }
     val prefs = remember { context.getSharedPreferences(MobileSyncPrefs.PREF_NAME, android.content.Context.MODE_PRIVATE) }
+    val directPrefs = remember {
+        context.getSharedPreferences(WearOfficialCloudSyncCoordinator.PREF_NAME, android.content.Context.MODE_PRIVATE)
+    }
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
     var qrBusy by remember { mutableStateOf(false) }
@@ -75,8 +82,22 @@ fun CloudSyncScreen(
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
+    DisposableEffect(directPrefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == WearOfficialCloudSyncCoordinator.KEY_LAST_SYNC_AT ||
+                key == WearOfficialCloudSyncCoordinator.KEY_LAST_ERROR
+            ) {
+                snapshotVersion = System.nanoTime()
+            }
+        }
+        directPrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { directPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val lastSyncAt = remember(snapshotVersion) {
-        prefs.getLong(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT, 0L)
+        maxOf(
+            prefs.getLong(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT, 0L),
+            directPrefs.getLong(WearOfficialCloudSyncCoordinator.KEY_LAST_SYNC_AT, 0L),
+        )
     }
     val cloudSnapshot = remember(snapshotVersion) {
         parseWearCloudSnapshot(prefs.getString(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT, "").orEmpty())
@@ -84,7 +105,7 @@ fun CloudSyncScreen(
     val effectiveLoggedIn = cloudSnapshot.loggedIn || directSession != null
     val effectiveMember = directSession?.isMember ?: cloudSnapshot.isMember
     val effectiveTier = directSession?.membershipTier ?: cloudSnapshot.membershipTier
-    val effectiveProvider = if (directSession != null && cloudSnapshot.provider.isBlank()) "OFFICIAL" else cloudSnapshot.provider
+    val effectiveProvider = if (directSession != null) "OFFICIAL" else cloudSnapshot.provider
 
     LaunchedEffect(authorization?.authorizationId) {
         val active = authorization ?: return@LaunchedEffect
@@ -94,6 +115,12 @@ fun CloudSyncScreen(
             val result = qrAuthApi.poll(active)
             if (result.isFailure) {
                 val error = result.exceptionOrNull()
+                val fatal = error is WearQrAuthException &&
+                    error.statusCode in 400..499 && error.statusCode != 429
+                if (!fatal) {
+                    status = context.getString(R.string.settings_qr_login_waiting)
+                    continue
+                }
                 status = if (error is WearQrAuthException && error.errorCode == "DEVICE_AUTH_EXPIRED") {
                     context.getString(R.string.settings_qr_login_expired)
                 } else {
@@ -109,8 +136,15 @@ fun CloudSyncScreen(
                     WearDirectAccountStore.save(context, poll.session)
                     directSession = poll.session
                     authorization = null
+                    status = context.getString(R.string.settings_qr_login_syncing)
+                    val syncResult = directCloudSync.sync(CloudSyncContracts.TRIGGER_APP_START)
+                    directSession = WearDirectAccountStore.load(context)
                     qrBusy = false
-                    status = context.getString(R.string.settings_qr_login_success)
+                    status = if (syncResult.isSuccess) {
+                        context.getString(R.string.settings_qr_login_sync_success)
+                    } else {
+                        context.getString(R.string.settings_qr_login_sync_failed)
+                    }
                     return@LaunchedEffect
                 }
             }
@@ -240,7 +274,11 @@ fun CloudSyncScreen(
                     onClick = {
                         scope.launch {
                             qrBusy = true
-                            qrAuthApi.logout(session)
+                            val latestSession = WearDirectAccountSessionManager.ensureSession(
+                                context = context,
+                                apiClient = qrAuthApi,
+                            ) ?: WearDirectAccountStore.load(context) ?: session
+                            qrAuthApi.logout(latestSession)
                             WearDirectAccountStore.clear(context)
                             directSession = null
                             qrBusy = false
@@ -260,12 +298,19 @@ fun CloudSyncScreen(
                 onClick = {
                     scope.launch {
                         syncing = true
+                        val directResult = if (directSession != null) {
+                            directCloudSync.sync(CloudSyncContracts.TRIGGER_MANUAL)
+                        } else {
+                            null
+                        }
                         val settingsResult = bridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_MANUAL)
                         val requestResult = bridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_MANUAL)
-                        status = if (settingsResult.isSuccess && requestResult.isSuccess) {
-                            context.getString(R.string.settings_cloud_sync_request_queued)
-                        } else {
-                            context.getString(R.string.settings_cloud_sync_request_failed)
+                        directSession = WearDirectAccountStore.load(context)
+                        status = when {
+                            directResult?.isSuccess == true -> context.getString(R.string.settings_cloud_sync_direct_success)
+                            directResult != null -> context.getString(R.string.settings_cloud_sync_direct_failed)
+                            settingsResult.isSuccess && requestResult.isSuccess -> context.getString(R.string.settings_cloud_sync_request_queued)
+                            else -> context.getString(R.string.settings_cloud_sync_request_failed)
                         }
                         syncing = false
                     }

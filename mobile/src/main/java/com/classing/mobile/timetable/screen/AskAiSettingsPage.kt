@@ -83,7 +83,7 @@ internal fun AskAiSettingsPage(
                         Text("本月已用 ${item.used}${if (item.limit < 0) " 次（不限量）" else " / ${item.limit} 次"}", modifier = Modifier.padding(14.dp))
                     }
                 }
-                if (answer.isNotBlank()) Card { Text(answer, modifier = Modifier.padding(14.dp)) }
+                if (answer.isNotBlank()) Card { MarkdownText(answer, modifier = Modifier.padding(14.dp)) }
                 OutlinedTextField(question, { question = it }, modifier = Modifier.fillMaxWidth(), label = { Text("关于课表的问题") }, minLines = 3, enabled = !sending)
                 Button(enabled = !sending && question.isNotBlank(), onClick = {
                     scope.launch {

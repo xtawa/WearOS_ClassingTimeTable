@@ -8,6 +8,7 @@ import com.classing.wear.timetable.domain.model.KeepAliveLevel
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
+import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.worker.AutoSyncController
@@ -17,12 +18,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val mobileSyncRequester: MobileSyncRequester,
     private val wearCloudBridgeSender: WearCloudBridgeSender,
+    private val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator,
     private val autoSyncController: AutoSyncController,
     private val reminderWorkController: ReminderWorkController,
 ) : ViewModel() {
@@ -31,6 +35,7 @@ class SettingsViewModel(
     val uiState = _uiState.asStateFlow()
     private val syncMessage = MutableStateFlow(WearI18n.syncNever())
     private val syncFeedback = MutableStateFlow<SyncFeedback?>(null)
+    private var directCloudSyncJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -159,6 +164,15 @@ class SettingsViewModel(
 
     private suspend fun notifyCloudSettingsChanged() {
         wearCloudBridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+        directCloudSyncJob?.cancel()
+        directCloudSyncJob = viewModelScope.launch {
+            delay(DIRECT_SYNC_DEBOUNCE_MS)
+            wearOfficialCloudSyncCoordinator.sync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+        }
+    }
+
+    private companion object {
+        const val DIRECT_SYNC_DEBOUNCE_MS = 750L
     }
 }
 

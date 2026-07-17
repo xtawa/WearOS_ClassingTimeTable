@@ -6,6 +6,8 @@
 
 普通情况下仍优先使用手机下发的账号摘要；二维码是无法自动获得登录状态时的备用入口。
 
+二维码兑换成功后，Wear 会立即使用独立会话直连官方云，同步 `wear.settings`。之后 Wear 设置变更、手动同步、应用启动和 30 分钟后台任务都会继续同步该设置域；课表仍由 Mobile 完成 V2 合并后通过 Data Layer 下发。
+
 ## 2. 安全模型
 
 - 二维码只包含公开的 `authorizationId`，不包含 access token、refresh token 或轮询密钥。
@@ -15,6 +17,8 @@
 - Wear 兑换成功后得到独立会话；退出、密码重置、账号停用等现有会话撤销规则继续生效。
 - Mobile 扫码后必须显示确认对话框，避免静默批准陌生设备。
 - Wear Token 不进入 Data Layer 快照或官方云文档。
+- Wear 官方云请求使用独立会话，并在 access token 过期或返回 401 时通过 single-flight 刷新后重试一次。
+- Wear 不连接官方云 SSE；前台实时事件与课表合并仍由 Mobile 负责。
 
 ## 3. 接口
 

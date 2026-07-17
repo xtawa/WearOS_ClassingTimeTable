@@ -67,7 +67,7 @@
 - 事件名固定为 `cloud-document`，事件 ID 为最新文档版本，`data` 仅包含 `version` 与 `updatedAt`，不携带设置或课表正文。
 - 未提供游标时服务端立即发送当前版本；游标落后时仅通知最新版本，客户端随后通过文档 GET 拉取并执行 V2 合并。
 - Mobile 仅在应用前台保持连接，401 经 single-flight 刷新后重连；后台由 WorkManager 兜底，恢复前台时立即补拉。
-- Web 登录会话期间保持连接；Wear 不直连事件流，由配对手机转发合并后的设置和课表。
+- Web 登录会话期间保持连接；Wear 不直连事件流。二维码登录后的独立会话仅通过 GET/PUT 直连同步 `wear.settings`，课表由配对手机转发合并结果。
 
 ## 5. 幂等与并发
 - 每次写入必须带 `Idempotency-Key`。

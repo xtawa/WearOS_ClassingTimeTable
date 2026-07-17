@@ -113,10 +113,12 @@
     <string name="heatmap_empty_desc">请先在手机端导入课程并同步到 Wear。</string>
     <string name="heatmap_legend_less">少</string>
     <string name="heatmap_legend_more">多</string>
-    <string name="settings_cloud_sync_phone_managed">云同步通常由手机管理。若未收到账号状态，可在下方使用安全二维码登录。</string>
-    <string name="settings_cloud_sync_last_phone_snapshot">最近手机快照：%1$s</string>
+    <string name="settings_cloud_sync_phone_managed">二维码登录后，手表设置会直连官方云同步；课表同步仍由手机统一管理。</string>
+    <string name="settings_cloud_sync_last_phone_snapshot">最近云同步：%1$s</string>
     <string name="settings_cloud_sync_request_queued">请求已排队等待手机处理</string>
     <string name="settings_cloud_sync_request_failed">无法将请求加入队列</string>
+    <string name="settings_cloud_sync_direct_success">官方云同步完成</string>
+    <string name="settings_cloud_sync_direct_failed">官方云同步失败，请检查网络后重试</string>
     <string name="settings_section_keep_alive">保活</string>
     <string name="settings_phone_account">账号</string>
     <string name="settings_phone_account_summary">已登录：%1$s\n会员：%2$s\n同步方式：%3$s</string>
@@ -145,6 +147,9 @@
     <string name="settings_qr_login_qr_description">Wear 账号登录二维码</string>
     <string name="settings_qr_login_cancel">取消二维码登录</string>
     <string name="settings_qr_login_success">手表登录成功</string>
+    <string name="settings_qr_login_syncing">登录成功，正在同步官方云…</string>
+    <string name="settings_qr_login_sync_success">登录成功并已同步官方云</string>
+    <string name="settings_qr_login_sync_failed">登录成功，但官方云同步失败，请点击立即同步重试</string>
     <string name="settings_qr_login_expired">二维码已过期，请重新生成</string>
     <string name="settings_qr_login_failed">二维码登录失败，请检查网络后重试</string>
     <string name="settings_qr_logout_button">退出手表账号</string>
