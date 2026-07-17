@@ -162,6 +162,15 @@ class AccountApiClient(
         ).map { Unit }
     }
 
+    suspend fun approveWearDeviceLogin(accessToken: String, authorizationId: String): Result<Unit> {
+        return request(
+            method = "POST",
+            path = "/api/v1/auth/device/qr/approve",
+            accessToken = accessToken,
+            body = JSONObject().put("authorizationId", authorizationId.trim()),
+        ).map { Unit }
+    }
+
     suspend fun deleteAccount(accessToken: String, currentPassword: String, confirm: String): Result<Unit> {
         return request(
             method = "POST",

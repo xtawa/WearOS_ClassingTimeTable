@@ -667,4 +667,15 @@ Rules:
     <string name="calendar_restore_cancelled_original">Restore cancelled class</string>
     <string name="onboarding_import_configure_title">Configure your selected setup</string>
     <string name="onboarding_import_configure_subtitle">Review the next action before continuing.</string>
+    <string name="account_wear_qr_title">Wear QR sign in</string>
+    <string name="account_wear_qr_desc">Scan the QR code shown on Wear to approve a separate, secure watch session.</string>
+    <string name="account_wear_qr_scan">Scan Wear QR</string>
+    <string name="account_wear_qr_invalid">This is not a valid Classing Wear sign-in QR code.</string>
+    <string name="account_wear_qr_scan_failed">Could not scan the QR code.</string>
+    <string name="account_wear_qr_approved">Wear sign in approved.</string>
+    <string name="account_wear_qr_approve_failed">Could not approve Wear sign in.</string>
+    <string name="account_wear_qr_confirm_title">Approve Wear sign in?</string>
+    <string name="account_wear_qr_confirm_message">Only continue if this QR code is currently displayed on your watch. A separate account session will be created for that watch.</string>
+    <string name="account_wear_qr_confirm">Approve</string>
+    <string name="account_wear_qr_cancel">Cancel</string>
 </resources>

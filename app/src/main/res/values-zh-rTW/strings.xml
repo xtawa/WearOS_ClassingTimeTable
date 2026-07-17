@@ -113,12 +113,12 @@
     <string name="heatmap_empty_desc">請先在手機端匯入課程並同步到 Wear。</string>
     <string name="heatmap_legend_less">少</string>
     <string name="heatmap_legend_more">多</string>
-    <string name="settings_cloud_sync_phone_managed">雲端存取由手機管理。中斷連線時，手錶會保留本機資料並排隊等待請求。</string>
+    <string name="settings_cloud_sync_phone_managed">雲端同步通常由手機管理。若未收到帳號狀態，可在下方使用安全 QR Code 登入。</string>
     <string name="settings_cloud_sync_last_phone_snapshot">最近手機快照：%1$s</string>
     <string name="settings_cloud_sync_request_queued">請求已排隊等待手機處理</string>
     <string name="settings_cloud_sync_request_failed">無法將請求加入佇列</string>
     <string name="settings_section_keep_alive">背景保活</string>
-    <string name="settings_phone_account">手機帳戶</string>
+    <string name="settings_phone_account">帳號</string>
     <string name="settings_phone_account_summary">已登入：%1$s\n會員：%2$s\n同步方式：%3$s</string>
     <string name="common_yes">是</string>
     <string name="common_no">否</string>
@@ -137,4 +137,15 @@
     <string name="settings_alarm_short">鬧鐘</string>
     <string name="settings_about_summary">%1$s\n版本 %2$s\nICP 備案號：待補充</string>
     <string name="reminder_unknown_class">課程</string>
+    <string name="settings_qr_login_button">QR Code 登入</string>
+    <string name="settings_qr_login_creating">正在建立安全登入碼…</string>
+    <string name="settings_qr_login_waiting">等待手機核准登入</string>
+    <string name="settings_qr_login_instruction">在已登入的手機上開啟「帳號」，點選「掃描 Wear QR Code」。QR Code 5 分鐘後失效。</string>
+    <string name="settings_qr_login_qr_description">Wear 帳號登入 QR Code</string>
+    <string name="settings_qr_login_cancel">取消 QR Code 登入</string>
+    <string name="settings_qr_login_success">手錶登入成功</string>
+    <string name="settings_qr_login_expired">QR Code 已過期，請重新產生</string>
+    <string name="settings_qr_login_failed">QR Code 登入失敗，請檢查網路後重試</string>
+    <string name="settings_qr_logout_button">登出手錶帳號</string>
+    <string name="settings_qr_logout_success">已登出手錶帳號</string>
 </resources>

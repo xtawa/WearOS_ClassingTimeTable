@@ -2074,6 +2074,30 @@ fun MobileTimetableScreen() {
                         emailChangeVerificationFailures = 0
                         openSettingsPage(SettingsPage.AccountEmailChange)
                     },
+                    onApproveWearLogin = { authorizationId ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
+                                } else {
+                                    val result = accountApiClient.approveWearDeviceLogin(accessToken, authorizationId)
+                                    accountStatusMessage = if (result.isSuccess) {
+                                        context.getString(R.string.account_wear_qr_approved)
+                                    } else {
+                                        accountErrorMessage(
+                                            context,
+                                            result.exceptionOrNull(),
+                                            R.string.account_wear_qr_approve_failed,
+                                        )
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
                 )
 
                 SettingsPage.AccountEmailChange -> AccountEmailChangePage(

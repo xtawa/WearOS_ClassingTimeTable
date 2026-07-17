@@ -57,6 +57,7 @@ import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import org.json.JSONObject
 import com.classing.wear.timetable.sync.MobileSyncPrefs
+import com.classing.wear.timetable.account.WearDirectAccountStore
 
 @Composable
 fun SettingsScreen(
@@ -359,6 +360,14 @@ private data class WearCloudSummary(
 )
 
 private fun loadWearCloudSummary(context: Context): WearCloudSummary {
+    WearDirectAccountStore.load(context)?.let { direct ->
+        return WearCloudSummary(
+            loggedIn = true,
+            isMember = direct.isMember,
+            membershipTier = direct.membershipTier,
+            provider = "OFFICIAL",
+        )
+    }
     val prefs = context.getSharedPreferences("wear_mobile_sync", Context.MODE_PRIVATE)
     val json = runCatching {
         JSONObject(prefs.getString("last_phone_cloud_snapshot", "").orEmpty())

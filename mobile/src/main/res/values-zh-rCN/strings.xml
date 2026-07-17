@@ -636,4 +636,15 @@
     <string name="calendar_restore_cancelled_original">恢复已取消课程</string>
     <string name="onboarding_import_configure_title">配置所选方案</string>
     <string name="onboarding_import_configure_subtitle">继续前确认并配置下一步操作。</string>
+    <string name="account_wear_qr_title">Wear 二维码登录</string>
+    <string name="account_wear_qr_desc">扫描 Wear 上显示的二维码，为手表批准一个独立且安全的登录会话。</string>
+    <string name="account_wear_qr_scan">扫描 Wear 二维码</string>
+    <string name="account_wear_qr_invalid">这不是有效的 Classing Wear 登录二维码</string>
+    <string name="account_wear_qr_scan_failed">未能扫描二维码</string>
+    <string name="account_wear_qr_approved">已批准 Wear 登录</string>
+    <string name="account_wear_qr_approve_failed">未能批准 Wear 登录</string>
+    <string name="account_wear_qr_confirm_title">批准 Wear 登录？</string>
+    <string name="account_wear_qr_confirm_message">仅当这个二维码正在你的手表上显示时继续。系统将为该手表创建独立账号会话。</string>
+    <string name="account_wear_qr_confirm">批准</string>
+    <string name="account_wear_qr_cancel">取消</string>
 </resources>

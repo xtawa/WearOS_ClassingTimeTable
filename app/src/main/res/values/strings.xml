@@ -114,12 +114,12 @@
     <string name="heatmap_empty_desc">Import on phone and sync to Wear first.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
-    <string name="settings_cloud_sync_phone_managed">Cloud access is managed by the phone. This watch keeps its local data and queues requests while disconnected.</string>
+    <string name="settings_cloud_sync_phone_managed">The phone normally manages cloud sync. If no account snapshot arrives, use secure QR sign in below.</string>
     <string name="settings_cloud_sync_last_phone_snapshot">Last phone snapshot: %1$s</string>
     <string name="settings_cloud_sync_request_queued">Request queued for phone</string>
     <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
     <string name="settings_section_keep_alive">Keep alive</string>
-    <string name="settings_phone_account">Phone account</string>
+    <string name="settings_phone_account">Account</string>
     <string name="settings_phone_account_summary">Signed in: %1$s\nMembership: %2$s\nProvider: %3$s</string>
     <string name="common_yes">Yes</string>
     <string name="common_no">No</string>
@@ -138,4 +138,15 @@
     <string name="settings_alarm_short">Alarm</string>
     <string name="settings_about_summary">%1$s\nVersion %2$s\nICP filing: pending</string>
     <string name="reminder_unknown_class">Class</string>
+    <string name="settings_qr_login_button">QR sign in</string>
+    <string name="settings_qr_login_creating">Creating a secure sign-in code…</string>
+    <string name="settings_qr_login_waiting">Waiting for approval on phone</string>
+    <string name="settings_qr_login_instruction">On a signed-in phone, open Account and tap “Scan Wear QR”. This code expires in 5 minutes.</string>
+    <string name="settings_qr_login_qr_description">Wear account sign-in QR code</string>
+    <string name="settings_qr_login_cancel">Cancel QR sign in</string>
+    <string name="settings_qr_login_success">Signed in on this watch</string>
+    <string name="settings_qr_login_expired">The QR code expired. Create a new one.</string>
+    <string name="settings_qr_login_failed">QR sign in failed. Check the network and try again.</string>
+    <string name="settings_qr_logout_button">Sign out on watch</string>
+    <string name="settings_qr_logout_success">Signed out on this watch</string>
 </resources>

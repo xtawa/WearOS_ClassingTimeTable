@@ -93,6 +93,7 @@ import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.OfficialSyncFrequency
 import com.xtawa.classingtime.account.LegalAgreementUrls
 import com.xtawa.classingtime.account.PendingEmailChange
+import com.xtawa.classingtime.account.parseWearLoginAuthorizationId
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.update.AppUpdateRelease
@@ -112,6 +113,9 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.util.Locale
 import kotlinx.coroutines.launch
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 
 @Composable
 internal fun SettingsLayer(
@@ -1464,6 +1468,7 @@ internal fun AccountSettingsPage(
     onOpenRegister: () -> Unit,
     onOpenPasswordReset: () -> Unit,
     onOpenEmailChange: () -> Unit,
+    onApproveWearLogin: (String) -> Unit,
 ) {
     var identifier by remember { mutableStateOf(accountSummary.identifier) }
     var password by remember { mutableStateOf("") }
@@ -1472,7 +1477,16 @@ internal fun AccountSettingsPage(
     var deletePassword by remember { mutableStateOf("") }
     var deleteConfirmText by remember { mutableStateOf("") }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var wearScanMessage by remember { mutableStateOf("") }
+    var pendingWearAuthorizationId by remember { mutableStateOf<String?>(null) }
     val legalLinksReady = legalAgreementUrls.isComplete()
+    val context = LocalContext.current
+    val wearLoginScanner = remember(context) {
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        GmsBarcodeScanning.getClient(context, options)
+    }
 
     Column(
         modifier = Modifier
@@ -1616,6 +1630,44 @@ internal fun AccountSettingsPage(
             }
         }
 
+        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.account_wear_qr_title), fontWeight = FontWeight.SemiBold)
+                Text(
+                    stringResource(R.string.account_wear_qr_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        wearScanMessage = ""
+                        wearLoginScanner.startScan()
+                            .addOnSuccessListener { barcode ->
+                                val authorizationId = barcode.rawValue?.let(::parseWearLoginAuthorizationId)
+                                if (authorizationId == null) {
+                                    wearScanMessage = context.getString(R.string.account_wear_qr_invalid)
+                                } else {
+                                    pendingWearAuthorizationId = authorizationId
+                                }
+                            }
+                            .addOnFailureListener {
+                                wearScanMessage = context.getString(R.string.account_wear_qr_scan_failed)
+                            }
+                    },
+                    enabled = !busy,
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(stringResource(R.string.account_wear_qr_scan))
+                }
+                if (wearScanMessage.isNotBlank()) {
+                    Text(wearScanMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
         if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -1690,6 +1742,29 @@ internal fun AccountSettingsPage(
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
                     Text(stringResource(R.string.danger_clear_cancel_button))
+                }
+            },
+        )
+    }
+
+    pendingWearAuthorizationId?.let { authorizationId ->
+        AlertDialog(
+            onDismissRequest = { pendingWearAuthorizationId = null },
+            title = { Text(stringResource(R.string.account_wear_qr_confirm_title)) },
+            text = { Text(stringResource(R.string.account_wear_qr_confirm_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingWearAuthorizationId = null
+                        onApproveWearLogin(authorizationId)
+                    },
+                ) {
+                    Text(stringResource(R.string.account_wear_qr_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingWearAuthorizationId = null }) {
+                    Text(stringResource(R.string.account_wear_qr_cancel))
                 }
             },
         )

@@ -134,6 +134,8 @@ dependencies {
 
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.wear.tiles:tiles:1.4.1")
     implementation("androidx.wear.tiles:tiles-material:1.4.1")
     implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.2.1")

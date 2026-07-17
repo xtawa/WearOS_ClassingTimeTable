@@ -405,6 +405,6 @@ fun MobileSettings.toWearCloudSnapshot(
         .put("isMember", membershipSummary.isMember)
         .put("membershipTier", membershipSummary.tier)
         .put("membershipExpiresAt", membershipSummary.expiresAt)
-        .put("officialAvailable", accountSummary.userId.isNotBlank() && membershipSummary.isMember)
+        .put("officialAvailable", accountSummary.userId.isNotBlank())
         .put(WearDataLayerContracts.KEY_CLOUD_PROVIDER, cloudProvider)
 }
