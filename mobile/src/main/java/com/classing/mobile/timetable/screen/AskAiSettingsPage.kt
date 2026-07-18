@@ -3,6 +3,7 @@ package com.xtawa.classingtime.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -27,7 +29,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.account.AiApiClient
-import com.xtawa.classingtime.account.AiUsageSummary
+import com.xtawa.classingtime.account.AiConversationSummary
+import com.xtawa.classingtime.account.AiMessageSummary
+import com.xtawa.classingtime.account.AiModelOption
 import com.xtawa.classingtime.sync.AccountSessionManager
 import java.time.LocalDate
 import kotlinx.coroutines.launch
@@ -52,17 +56,23 @@ internal fun AskAiSettingsPage(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val client = remember { AiApiClient() }
-    var usage by remember { mutableStateOf<AiUsageSummary?>(null) }
+    var models by remember { mutableStateOf<List<AiModelOption>>(emptyList()) }
+    var selectedModel by remember { mutableStateOf("deepseek-v4-flash") }
+    var conversations by remember { mutableStateOf<List<AiConversationSummary>>(emptyList()) }
+    var messages by remember { mutableStateOf<List<AiMessageSummary>>(emptyList()) }
     var conversationId by remember { mutableStateOf("") }
     var question by remember { mutableStateOf("") }
-    var answer by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
 
     LaunchedEffect(loggedIn, member) {
         if (loggedIn && member) {
             AccountSessionManager.ensureAccessToken(context)?.let { token ->
-                client.usage(token).onSuccess { usage = it }.onFailure { status = it.message.orEmpty() }
+                client.models(token).onSuccess { (defaultModel, items) ->
+                    models = items
+                    if (items.none { it.id == selectedModel }) selectedModel = defaultModel
+                }.onFailure { status = it.message.orEmpty() }
+                client.conversations(token).onSuccess { conversations = it }.onFailure { status = it.message.orEmpty() }
             }
         }
     }
@@ -76,16 +86,57 @@ internal fun AskAiSettingsPage(
         when {
             !loggedIn -> AccessCard("请先登录后使用 Ask AI", "去登录", onOpenAccount)
             !member -> AccessCard("Ask AI 为会员功能，请开通会员后使用。", "开通会员", onOpenAccount)
-            lessons.isEmpty() -> Text("导入课表后即可开始提问。", color = MaterialTheme.colorScheme.error)
             else -> {
-                usage?.let { item ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                        Text("本月已用 ${item.used}${if (item.limit < 0) " 次（不限量）" else " / ${item.limit} 次"}", modifier = Modifier.padding(14.dp))
+                if (lessons.isEmpty() && conversationId.isBlank()) Text("导入课表后可新建对话；已有对话仍可继续读取。", color = MaterialTheme.colorScheme.error)
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("选择模型", fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            models.forEach { item ->
+                                FilterChip(
+                                    selected = selectedModel == item.id,
+                                    onClick = { selectedModel = item.id },
+                                    label = { Text(item.name.removePrefix("DeepSeek ")) },
+                                )
+                            }
+                        }
+                        models.firstOrNull { it.id == selectedModel }?.let { Text(it.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-                if (answer.isNotBlank()) Card { MarkdownText(answer, modifier = Modifier.padding(14.dp)) }
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("过往对话", fontWeight = FontWeight.SemiBold)
+                            TextButton(onClick = { conversationId = ""; messages = emptyList(); status = "" }) { Text("新对话") }
+                        }
+                        if (conversations.isEmpty()) Text("暂无历史对话", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        conversations.forEach { item ->
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        val token = AccountSessionManager.ensureAccessToken(context) ?: return@launch
+                                        conversationId = item.conversationId
+                                        status = "正在读取对话…"
+                                        client.messages(token, item.conversationId)
+                                            .onSuccess { messages = it; status = "" }
+                                            .onFailure { status = it.message ?: "读取对话失败" }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(item.title, modifier = Modifier.fillMaxWidth()) }
+                        }
+                    }
+                }
+                messages.forEach { item ->
+                    Card(colors = CardDefaults.cardColors(containerColor = if (item.role == "USER") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(if (item.role == "USER") "你" else "Ask AI", fontWeight = FontWeight.SemiBold)
+                            if (item.role == "USER") Text(item.content) else MarkdownText(item.content)
+                        }
+                    }
+                }
                 OutlinedTextField(question, { question = it }, modifier = Modifier.fillMaxWidth(), label = { Text("关于课表的问题") }, minLines = 3, enabled = !sending)
-                Button(enabled = !sending && question.isNotBlank(), onClick = {
+                Button(enabled = !sending && question.isNotBlank() && selectedModel.isNotBlank() && (conversationId.isNotBlank() || lessons.isNotEmpty()), onClick = {
                     scope.launch {
                         val token = AccountSessionManager.ensureAccessToken(context)
                         if (token == null) { status = "登录状态已失效，请重新登录"; return@launch }
@@ -99,8 +150,14 @@ internal fun AskAiSettingsPage(
                             semesterWeekStartDate = semesterWeekStartDate,
                             weekStartDay = weekStartDay,
                         ) else null
-                        client.chat(token, conversationId.takeIf { it.isNotBlank() }, question.trim(), snapshot)
-                            .onSuccess { (id, reply) -> conversationId = id; answer = reply; question = ""; status = ""; client.usage(token).onSuccess { usage = it } }
+                        val sentQuestion = question.trim()
+                        client.chat(token, conversationId.takeIf { it.isNotBlank() }, sentQuestion, snapshot, selectedModel)
+                            .onSuccess { (id, reply) ->
+                                conversationId = id
+                                messages = messages + AiMessageSummary("local-user-${System.nanoTime()}", "USER", sentQuestion, System.currentTimeMillis()) + AiMessageSummary("local-ai-${System.nanoTime()}", "ASSISTANT", reply, System.currentTimeMillis())
+                                question = ""; status = ""
+                                client.conversations(token).onSuccess { conversations = it }
+                            }
                             .onFailure { status = it.message ?: "Ask AI 暂时不可用" }
                         sending = false
                     }

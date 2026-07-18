@@ -92,8 +92,12 @@ import com.xtawa.classingtime.data.DailyBriefingChannel
 import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.OfficialSyncFrequency
 import com.xtawa.classingtime.account.LegalAgreementUrls
+import com.xtawa.classingtime.account.AccountApiClient
+import com.xtawa.classingtime.account.AiApiClient
+import com.xtawa.classingtime.account.AiUsageSummary
 import com.xtawa.classingtime.account.PendingEmailChange
 import com.xtawa.classingtime.account.parseWearLoginAuthorizationId
+import com.xtawa.classingtime.sync.AccountSessionManager
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.update.AppUpdateRelease
@@ -1487,6 +1491,19 @@ internal fun AccountSettingsPage(
     var pendingWearAuthorizationId by remember { mutableStateOf<String?>(null) }
     val legalLinksReady = legalAgreementUrls.isComplete()
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    val aiClient = remember { AiApiClient() }
+    var aiUsage by remember { mutableStateOf<AiUsageSummary?>(null) }
+    var aiUsageError by remember { mutableStateOf("") }
+    LaunchedEffect(accountSummary.userId, membershipSummary.isMember) {
+        aiUsage = null
+        aiUsageError = ""
+        if (accountSummary.userId.isNotBlank() && membershipSummary.isMember) {
+            AccountSessionManager.ensureAccessToken(context)?.let { token ->
+                aiClient.usage(token).onSuccess { aiUsage = it }.onFailure { aiUsageError = it.message.orEmpty() }
+            }
+        }
+    }
     val wearLoginScanner = remember(context) {
         val options = GmsBarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
@@ -1574,6 +1591,31 @@ internal fun AccountSettingsPage(
                         Text(stringResource(R.string.account_change_email))
                     }
                 }
+                if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) {
+                    Button(
+                        onClick = { uriHandler.openUri(AccountApiClient.BASE_URL + "/?view=membership") },
+                        enabled = !busy,
+                        shape = RoundedCornerShape(999.dp),
+                    ) { Text(stringResource(R.string.account_open_membership)) }
+                }
+            }
+        }
+
+        if (accountSummary.userId.isNotBlank() && membershipSummary.isMember) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.account_ai_quota_title), fontWeight = FontWeight.SemiBold)
+                aiUsage?.let { usage ->
+                    val remaining = if (usage.limit < 0) -1 else (usage.limit - usage.used - usage.reserved).coerceAtLeast(0)
+                    Text(if (remaining < 0) stringResource(R.string.account_ai_quota_unlimited) else stringResource(R.string.account_ai_quota_remaining, remaining, usage.limit))
+                    LinearProgressIndicator(
+                        progress = { if (usage.limit <= 0) 0f else ((usage.used + usage.reserved).toFloat() / usage.limit).coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(stringResource(R.string.account_ai_quota_reset, LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(usage.resetAt), java.time.ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))), style = MaterialTheme.typography.bodySmall)
+                } ?: Text(if (aiUsageError.isBlank()) stringResource(R.string.account_ai_quota_loading) else aiUsageError, style = MaterialTheme.typography.bodySmall)
             }
         }
 

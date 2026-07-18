@@ -518,6 +518,12 @@ Rules:
     <string name="account_signed_in_as">Signed in as %1$s</string>
     <string name="account_membership_status">Membership: %1$s</string>
     <string name="account_membership_expires_at">Expires at: %1$s</string>
+    <string name="account_open_membership">Open membership page</string>
+    <string name="account_ai_quota_title">Ask AI monthly compute</string>
+    <string name="account_ai_quota_remaining">%1$d of %2$d points remaining</string>
+    <string name="account_ai_quota_unlimited">Unlimited compute points</string>
+    <string name="account_ai_quota_reset">Resets at %1$s</string>
+    <string name="account_ai_quota_loading">Loading compute balance…</string>
     <string name="account_login">Sign in</string>
     <string name="account_logout">Sign out</string>
     <string name="account_delete_title">Delete account</string>

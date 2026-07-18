@@ -15,15 +15,37 @@ data class AiUsageSummary(
     val resetAt: Long,
 )
 
+data class AiModelOption(val id: String, val name: String, val description: String)
+data class AiConversationSummary(val conversationId: String, val title: String, val updatedAt: Long)
+data class AiMessageSummary(val messageId: String, val role: String, val content: String, val createdAt: Long)
+
 class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
     suspend fun usage(accessToken: String): Result<AiUsageSummary> = request("GET", "/api/v1/ai/usage/me", accessToken).map { body ->
         val usage = body.optJSONObject("usage") ?: body
         AiUsageSummary(usage.optInt("limit"), usage.optInt("used"), usage.optInt("reserved"), usage.optLong("resetAt"))
     }
 
-    suspend fun chat(accessToken: String, conversationId: String?, message: String, timetableSnapshot: JSONObject?): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun models(accessToken: String): Result<Pair<String, List<AiModelOption>>> = request("GET", "/api/v1/ai/models", accessToken).map { body ->
+        body.optString("defaultModel", "deepseek-v4-flash") to body.optJSONArray("models").toObjects { item ->
+            AiModelOption(item.optString("id"), item.optString("name"), item.optString("description"))
+        }
+    }
+
+    suspend fun conversations(accessToken: String): Result<List<AiConversationSummary>> = request("GET", "/api/v1/ai/conversations?limit=30", accessToken).map { body ->
+        body.optJSONArray("conversations").toObjects { item ->
+            AiConversationSummary(item.optString("conversationId"), item.optString("title"), item.optLong("updatedAt"))
+        }
+    }
+
+    suspend fun messages(accessToken: String, conversationId: String): Result<List<AiMessageSummary>> = request("GET", "/api/v1/ai/conversations/$conversationId/messages", accessToken).map { body ->
+        body.optJSONArray("messages").toObjects { item ->
+            AiMessageSummary(item.optString("messageId"), item.optString("role"), item.optString("content"), item.optLong("createdAt"))
+        }
+    }
+
+    suspend fun chat(accessToken: String, conversationId: String?, message: String, timetableSnapshot: JSONObject?, model: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         runCatching {
-            val body = JSONObject().put("clientRequestId", java.util.UUID.randomUUID().toString()).put("message", message)
+            val body = JSONObject().put("clientRequestId", java.util.UUID.randomUUID().toString()).put("message", message).put("model", model)
             if (!conversationId.isNullOrBlank()) body.put("conversationId", conversationId)
             if (conversationId.isNullOrBlank()) body.put("timetableSnapshot", timetableSnapshot ?: throw IllegalArgumentException("timetable required"))
             val connection = open("POST", "/api/v1/ai/chat", accessToken, body)
@@ -74,5 +96,10 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
         val raw = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
         val body = runCatching { JSONObject(raw) }.getOrNull()
         return AccountApiException(status, body?.optString("code").orEmpty(), message = body?.optString("message").orEmpty().ifBlank { "Ask AI request failed" })
+    }
+
+    private fun <T> JSONArray?.toObjects(transform: (JSONObject) -> T): List<T> {
+        if (this == null) return emptyList()
+        return buildList { for (index in 0 until length()) optJSONObject(index)?.let { add(transform(it)) } }
     }
 }
