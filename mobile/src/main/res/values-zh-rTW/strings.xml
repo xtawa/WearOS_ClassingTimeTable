@@ -636,15 +636,16 @@
     <string name="calendar_restore_cancelled_original">恢復已取消課程</string>
     <string name="onboarding_import_configure_title">設定所選方案</string>
     <string name="onboarding_import_configure_subtitle">繼續前確認並設定下一步操作。</string>
-    <string name="account_wear_qr_title">Wear QR Code 登入</string>
-    <string name="account_wear_qr_desc">掃描 Wear 顯示的 QR Code，為手錶核准獨立且安全的登入工作階段。</string>
-    <string name="account_wear_qr_scan">掃描 Wear QR Code</string>
-    <string name="account_wear_qr_invalid">這不是有效的 Classing Wear 登入 QR Code</string>
+    <string name="account_wear_qr_title">裝置 QR Code 登入</string>
+    <string name="account_wear_qr_desc">掃描 Classing Web 或 Wear 顯示的 QR Code，為該裝置核准獨立且安全的登入工作階段。</string>
+    <string name="account_wear_qr_scan">掃描裝置 QR Code</string>
+    <string name="account_wear_qr_invalid">這不是有效的 Classing 裝置登入 QR Code</string>
     <string name="account_wear_qr_scan_failed">無法掃描 QR Code</string>
-    <string name="account_wear_qr_approved">已核准 Wear 登入</string>
-    <string name="account_wear_qr_approve_failed">無法核准 Wear 登入</string>
-    <string name="account_wear_qr_confirm_title">核准 Wear 登入？</string>
-    <string name="account_wear_qr_confirm_message">僅在此 QR Code 正顯示於你的手錶時繼續。系統會為該手錶建立獨立帳號工作階段。</string>
+    <string name="account_wear_qr_approved">已核准裝置登入</string>
+    <string name="account_wear_qr_approve_failed">無法核准裝置登入</string>
+    <string name="account_wear_qr_confirm_title">核准裝置登入？</string>
+    <string name="account_wear_qr_confirm_message">僅在此 QR Code 正顯示於你的 Classing Web 或 Wear 裝置時繼續。系統會為該裝置建立獨立帳號工作階段。</string>
     <string name="account_wear_qr_confirm">核准</string>
     <string name="account_wear_qr_cancel">取消</string>
+    <string name="account_ai_credit_balance">永久餘額：%1$d 點</string>
 </resources>

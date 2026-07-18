@@ -12,17 +12,19 @@ data class AiUsageSummary(
     val limit: Int,
     val used: Int,
     val reserved: Int,
+    val creditBalance: Int,
     val resetAt: Long,
 )
 
 data class AiModelOption(val id: String, val name: String, val description: String)
 data class AiConversationSummary(val conversationId: String, val title: String, val updatedAt: Long)
 data class AiMessageSummary(val messageId: String, val role: String, val content: String, val createdAt: Long)
+data class AiChatResult(val conversationId: String, val reply: String, val truncated: Boolean)
 
 class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
     suspend fun usage(accessToken: String): Result<AiUsageSummary> = request("GET", "/api/v1/ai/usage/me", accessToken).map { body ->
         val usage = body.optJSONObject("usage") ?: body
-        AiUsageSummary(usage.optInt("limit"), usage.optInt("used"), usage.optInt("reserved"), usage.optLong("resetAt"))
+        AiUsageSummary(usage.optInt("limit"), usage.optInt("used"), usage.optInt("reserved"), usage.optInt("creditBalance"), usage.optLong("resetAt"))
     }
 
     suspend fun models(accessToken: String): Result<Pair<String, List<AiModelOption>>> = request("GET", "/api/v1/ai/models", accessToken).map { body ->
@@ -43,7 +45,7 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
         }
     }
 
-    suspend fun chat(accessToken: String, conversationId: String?, message: String, timetableSnapshot: JSONObject?, model: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun chat(accessToken: String, conversationId: String?, message: String, timetableSnapshot: JSONObject?, model: String): Result<AiChatResult> = withContext(Dispatchers.IO) {
         runCatching {
             val body = JSONObject().put("clientRequestId", java.util.UUID.randomUUID().toString()).put("message", message).put("model", model)
             if (!conversationId.isNullOrBlank()) body.put("conversationId", conversationId)
@@ -54,6 +56,7 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
                 if (code !in 200..299) throw apiError(connection, code)
                 var currentConversationId = conversationId.orEmpty()
                 val reply = StringBuilder()
+                var truncated = false
                 var event = ""
                 connection.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines -> lines.forEach { line ->
                     when {
@@ -63,13 +66,14 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
                             when (event) {
                                 "conversation" -> currentConversationId = data.optString("conversationId", currentConversationId)
                                 "delta" -> reply.append(data.optString("text"))
+                                "done" -> truncated = data.optBoolean("truncated", false)
                                 "error" -> throw AccountApiException(502, data.optString("code"), message = data.optString("message", "Ask AI failed"))
                             }
                             event = ""
                         }
                     }
                 } }
-                currentConversationId to reply.toString()
+                AiChatResult(currentConversationId, reply.toString(), truncated)
             } finally { connection.disconnect() }
         }
     }
@@ -87,7 +91,7 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
 
     private fun open(method: String, path: String, token: String, body: JSONObject?): HttpURLConnection =
         (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
-            requestMethod = method; connectTimeout = 10_000; readTimeout = 90_000; doInput = true
+            requestMethod = method; connectTimeout = 10_000; readTimeout = 200_000; doInput = true
             setRequestProperty("Authorization", "Bearer $token"); setRequestProperty("Accept", "application/json, text/event-stream")
             if (body != null) { doOutput = true; setRequestProperty("Content-Type", "application/json; charset=utf-8"); OutputStreamWriter(outputStream, Charsets.UTF_8).use { it.write(body.toString()) } }
         }

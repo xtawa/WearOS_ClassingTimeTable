@@ -103,6 +103,38 @@ internal fun AskAiSettingsPage(
                         models.firstOrNull { it.id == selectedModel }?.let { Text(it.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
+                OutlinedTextField(question, { question = it }, modifier = Modifier.fillMaxWidth(), label = { Text("关于课表的问题") }, minLines = 3, enabled = !sending)
+                Button(enabled = !sending && question.isNotBlank() && selectedModel.isNotBlank() && (conversationId.isNotBlank() || lessons.isNotEmpty()), onClick = {
+                    scope.launch {
+                        val token = AccountSessionManager.ensureAccessToken(context)
+                        if (token == null) { status = "登录状态已失效，请重新登录"; return@launch }
+                        sending = true; status = "正在询问…"
+                        val snapshot = if (conversationId.isBlank()) timetableSnapshot(
+                            lessons = lessons,
+                            currentDate = currentDate,
+                            currentWeek = currentWeek,
+                            timezone = timezone,
+                            weekNumberMode = weekNumberMode,
+                            semesterWeekStartDate = semesterWeekStartDate,
+                            weekStartDay = weekStartDay,
+                        ) else null
+                        val sentQuestion = question.trim()
+                        client.chat(token, conversationId.takeIf { it.isNotBlank() }, sentQuestion, snapshot, selectedModel)
+                            .onSuccess { result ->
+                                conversationId = result.conversationId
+                                messages = messages + AiMessageSummary("local-user-${System.nanoTime()}", "USER", sentQuestion, System.currentTimeMillis()) + AiMessageSummary("local-ai-${System.nanoTime()}", "ASSISTANT", result.reply, System.currentTimeMillis())
+                                if (result.truncated) {
+                                    question = "请从刚才中断的位置继续，不要重复已有内容。"
+                                    status = "回答达到长度上限，已准备好继续生成。"
+                                } else {
+                                    question = ""; status = ""
+                                }
+                                client.conversations(token).onSuccess { conversations = it }
+                            }
+                            .onFailure { status = it.message ?: "Ask AI 暂时不可用" }
+                        sending = false
+                    }
+                }) { Text(if (sending) "发送中…" else "发送") }
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -135,33 +167,6 @@ internal fun AskAiSettingsPage(
                         }
                     }
                 }
-                OutlinedTextField(question, { question = it }, modifier = Modifier.fillMaxWidth(), label = { Text("关于课表的问题") }, minLines = 3, enabled = !sending)
-                Button(enabled = !sending && question.isNotBlank() && selectedModel.isNotBlank() && (conversationId.isNotBlank() || lessons.isNotEmpty()), onClick = {
-                    scope.launch {
-                        val token = AccountSessionManager.ensureAccessToken(context)
-                        if (token == null) { status = "登录状态已失效，请重新登录"; return@launch }
-                        sending = true; status = "正在询问…"
-                        val snapshot = if (conversationId.isBlank()) timetableSnapshot(
-                            lessons = lessons,
-                            currentDate = currentDate,
-                            currentWeek = currentWeek,
-                            timezone = timezone,
-                            weekNumberMode = weekNumberMode,
-                            semesterWeekStartDate = semesterWeekStartDate,
-                            weekStartDay = weekStartDay,
-                        ) else null
-                        val sentQuestion = question.trim()
-                        client.chat(token, conversationId.takeIf { it.isNotBlank() }, sentQuestion, snapshot, selectedModel)
-                            .onSuccess { (id, reply) ->
-                                conversationId = id
-                                messages = messages + AiMessageSummary("local-user-${System.nanoTime()}", "USER", sentQuestion, System.currentTimeMillis()) + AiMessageSummary("local-ai-${System.nanoTime()}", "ASSISTANT", reply, System.currentTimeMillis())
-                                question = ""; status = ""
-                                client.conversations(token).onSuccess { conversations = it }
-                            }
-                            .onFailure { status = it.message ?: "Ask AI 暂时不可用" }
-                        sending = false
-                    }
-                }) { Text(if (sending) "发送中…" else "发送") }
             }
         }
         if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.error)
