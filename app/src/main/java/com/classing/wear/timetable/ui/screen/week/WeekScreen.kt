@@ -155,7 +155,7 @@ private fun CircleActionButton(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Box(
-            modifier = Modifier.size(30.dp),
+            modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(

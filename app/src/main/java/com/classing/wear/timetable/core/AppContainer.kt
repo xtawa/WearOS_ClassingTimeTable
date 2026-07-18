@@ -58,7 +58,7 @@ class DefaultAppContainer(
     override val mobileSyncRequester: MobileSyncRequester = MobileSyncRequester(appContext)
     override val wearCloudBridgeSender: WearCloudBridgeSender = WearCloudBridgeSender(appContext, settingsRepository)
     override val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator =
-        WearOfficialCloudSyncCoordinator(appContext, settingsRepository)
+        WearOfficialCloudSyncCoordinator(appContext, settingsRepository, database)
     override val autoSyncController: AutoSyncController = AutoSyncController(appContext)
     override val reminderWorkController: ReminderWorkController = ReminderWorkController(appContext)
 }

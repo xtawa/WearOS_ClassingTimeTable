@@ -64,6 +64,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -193,9 +196,24 @@ internal fun WeekBoardLayer(
                         Text(stringResource(R.string.no_classes), style = MaterialTheme.typography.bodySmall)
                     } else {
                         lessons.forEach { lesson ->
+                            val lessonSummary = stringResource(
+                                R.string.lesson_summary_format,
+                                dayLabel(lesson.dayOfWeek, context),
+                                lesson.startTime.format(clockFormatter),
+                                lesson.endTime.format(clockFormatter),
+                                lesson.title,
+                            )
+                            val editLessonLabel = stringResource(R.string.lesson_edit_dialog_title)
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .semantics {
+                                        contentDescription = lessonSummary
+                                        onLongClick(label = editLessonLabel) {
+                                            onLongPressLesson(lesson)
+                                            true
+                                        }
+                                    }
                                     .pointerInput(lesson.id) {
                                         detectTapGestures(
                                             onLongPress = { onLongPressLesson(lesson) },

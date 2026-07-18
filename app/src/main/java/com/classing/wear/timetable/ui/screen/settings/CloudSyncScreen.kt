@@ -4,6 +4,8 @@ import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +16,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +46,7 @@ import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
 import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
+import com.classing.wear.timetable.sync.WearSyncModeStore
 import com.classing.wear.timetable.ui.component.screenPadding
 import java.time.Instant
 import java.time.LocalDateTime
@@ -72,6 +76,9 @@ fun CloudSyncScreen(
     var qrBusy by remember { mutableStateOf(false) }
     var authorization by remember { mutableStateOf<WearDeviceAuthorization?>(null) }
     var directSession by remember { mutableStateOf<WearDirectAccountSession?>(WearDirectAccountStore.load(context)) }
+    var independentMode by remember {
+        mutableStateOf(directSession != null && WearSyncModeStore.isIndependentModeEnabled(context))
+    }
     var snapshotVersion by remember { mutableStateOf(0L) }
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -268,6 +275,29 @@ fun CloudSyncScreen(
                 }
             }
         }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth(0.78f)) {
+                            Text(stringResource(R.string.settings_independent_mode_title), style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                stringResource(R.string.settings_independent_mode_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = independentMode,
+                            onCheckedChange = { independentMode = WearSyncModeStore.setIndependentMode(context, it) },
+                            enabled = directSession != null,
+                        )
+                    }
+            }
+        }
         directSession?.let { session ->
             item {
                 Button(
@@ -279,8 +309,10 @@ fun CloudSyncScreen(
                                 apiClient = qrAuthApi,
                             ) ?: WearDirectAccountStore.load(context) ?: session
                             qrAuthApi.logout(latestSession)
+                            WearSyncModeStore.setIndependentMode(context, false)
                             WearDirectAccountStore.clear(context)
                             directSession = null
+                            independentMode = false
                             qrBusy = false
                             status = context.getString(R.string.settings_qr_logout_success)
                         }
@@ -298,7 +330,7 @@ fun CloudSyncScreen(
                 onClick = {
                     scope.launch {
                         syncing = true
-                        val directResult = if (directSession != null) {
+                        val directResult = if (independentMode && directSession != null) {
                             directCloudSync.sync(CloudSyncContracts.TRIGGER_MANUAL)
                         } else {
                             null

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -285,19 +290,34 @@ private fun MonthDateGrid(
     onSelect: (LocalDate) -> Unit,
 ) {
     val cells = buildMonthGridDates(displayedMonth, firstDayOfWeek)
+    val dateSemanticsFormatter = remember { DateTimeFormatter.ISO_LOCAL_DATE }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             cells.chunked(7).forEach { week ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (week + List(7 - week.size) { null }).forEach { date ->
+                        val isSelected = date == selectedDate
+                        val isToday = date == today
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .then(if (date != null) Modifier.clickable { onSelect(date) } else Modifier),
+                                .heightIn(min = 48.dp)
+                                .then(
+                                    if (date != null) {
+                                        Modifier
+                                            .semantics {
+                                                contentDescription = date.format(dateSemanticsFormatter)
+                                                selected = isSelected
+                                            }
+                                            .clickable(role = Role.Button) { onSelect(date) }
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                             shape = CircleShape,
-                            color = when (date) {
-                                selectedDate -> MaterialTheme.colorScheme.primaryContainer
-                                today -> MaterialTheme.colorScheme.secondaryContainer
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.primaryContainer
+                                isToday -> MaterialTheme.colorScheme.secondaryContainer
                                 else -> MaterialTheme.colorScheme.surface
                             },
                         ) {

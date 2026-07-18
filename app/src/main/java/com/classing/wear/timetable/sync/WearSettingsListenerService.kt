@@ -24,6 +24,7 @@ class WearSettingsListenerService : WearableListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (WearSyncModeStore.isIndependentModeEnabled(applicationContext)) return
         when (messageEvent.path) {
             WearDataLayerContracts.PATH_APPLY_WEAR_SETTINGS -> {
                 applySnapshot(String(messageEvent.data, StandardCharsets.UTF_8), System.currentTimeMillis())
@@ -36,6 +37,7 @@ class WearSettingsListenerService : WearableListenerService() {
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
+        if (WearSyncModeStore.isIndependentModeEnabled(applicationContext)) return
         dataEvents.forEach { event ->
             if (event.type != DataEvent.TYPE_CHANGED) {
                 return@forEach

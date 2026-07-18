@@ -5,7 +5,7 @@
     <string name="reminder_notification_title">上課提醒</string>
     <string name="reminder_notification_default_content">課程即將開始</string>
 
-    <string name="common_loading">載入中...</string>
+    <string name="common_loading">載入中…</string>
     <string name="common_load_failed">載入失敗</string>
     <string name="common_retry">重試</string>
     <string name="common_date_week_label">%1$s · %2$s</string>
@@ -119,6 +119,8 @@
     <string name="settings_cloud_sync_request_failed">無法將請求加入佇列</string>
     <string name="settings_cloud_sync_direct_success">官方雲端同步完成</string>
     <string name="settings_cloud_sync_direct_failed">官方雲端同步失敗，請檢查網路後重試</string>
+    <string name="settings_independent_mode_title">獨立模式</string>
+    <string name="settings_independent_mode_description">僅使用官方雲端同步，停用手機藍牙同步。</string>
     <string name="settings_section_keep_alive">背景保活</string>
     <string name="settings_phone_account">帳號</string>
     <string name="settings_phone_account_summary">已登入：%1$s\n會員：%2$s\n同步方式：%3$s</string>

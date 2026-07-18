@@ -8,7 +8,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.classing.wear.timetable.ClassingTimetableApplication
 import com.classing.shared.sync.CloudSyncContracts
-import com.classing.wear.timetable.account.WearDirectAccountStore
+import com.classing.wear.timetable.sync.WearSyncModeStore
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(
@@ -18,18 +18,16 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         val app = applicationContext as ClassingTimetableApplication
-        val hasDirectSession = WearDirectAccountStore.load(applicationContext) != null
-        val directResult = if (hasDirectSession) {
-            app.appContainer.wearOfficialCloudSyncCoordinator.sync(CloudSyncContracts.TRIGGER_FOREGROUND_TICK)
-        } else {
-            null
+        val independentMode = WearSyncModeStore.isIndependentModeEnabled(applicationContext)
+        if (independentMode) {
+            val directResult = app.appContainer.wearOfficialCloudSyncCoordinator
+                .sync(CloudSyncContracts.TRIGGER_FOREGROUND_TICK)
+            return if (directResult.isSuccess) Result.success() else Result.retry()
         }
         val result = app.appContainer.mobileSyncRequester.requestSyncFromPhone()
-        if (directResult?.isSuccess == true || result.getOrDefault(0) > 0) return Result.success()
-        if (!hasDirectSession && result.isSuccess) return Result.success()
+        if (result.getOrDefault(0) > 0 || result.isSuccess) return Result.success()
 
-        val message = directResult?.exceptionOrNull()?.message
-            ?: result.exceptionOrNull()?.message.orEmpty()
+        val message = result.exceptionOrNull()?.message.orEmpty()
         return if (message.contains("No connected phone", ignoreCase = true)) {
             Result.success()
         } else {

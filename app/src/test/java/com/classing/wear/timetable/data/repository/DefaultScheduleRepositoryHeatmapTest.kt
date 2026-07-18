@@ -105,6 +105,7 @@ class DefaultScheduleRepositoryHeatmapTest {
         override fun observeActiveSemester(): Flow<SemesterEntity?> = flow
         override suspend fun getById(semesterId: Long): SemesterEntity? = flow.value
         override suspend fun getByRemoteId(remoteId: String): SemesterEntity? = flow.value
+        override suspend fun getAll(): List<SemesterEntity> = listOfNotNull(flow.value)
         override suspend fun upsert(semester: SemesterEntity): Long = semester.localId
         override suspend fun upsertAll(semesters: List<SemesterEntity>) = Unit
         override suspend fun setActiveSemester(semesterId: Long) = Unit

@@ -2,9 +2,16 @@ package com.classing.wear.timetable.sync
 
 import android.content.Context
 import com.classing.shared.sync.CloudSyncV2
+import com.classing.shared.sync.SyncDomain
+import com.classing.shared.sync.SyncSource
+import com.classing.shared.sync.SyncStamp
 import com.classing.wear.timetable.account.WearDirectAccountSessionManager
 import com.classing.wear.timetable.account.WearQrAuthApiClient
+import com.classing.wear.timetable.data.local.AppDatabase
+import com.classing.wear.timetable.data.sync.SyncPayloadApplier
+import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.domain.repository.SettingsRepository
+import com.classing.wear.timetable.widget.WearSurfaceUpdateRequester
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -18,8 +25,10 @@ import org.json.JSONObject
 
 data class WearOfficialCloudSyncOutcome(
     val syncedAt: Long,
+    val documentVersion: Long,
     val uploaded: Boolean,
     val appliedRemoteSettings: Boolean,
+    val appliedRemoteLessons: Int,
 )
 
 class WearOfficialCloudLoginRequiredException : IllegalStateException("Wear official cloud requires login")
@@ -56,13 +65,13 @@ class WearOfficialCloudHttpClient(
         accessToken: String,
         payload: String,
         expectedVersion: String,
-    ): Result<Unit> = request(
+    ): Result<String> = request(
         method = "PUT",
         path = "/api/v1/cloud/official/document",
         accessToken = accessToken,
         payload = payload,
         expectedVersion = expectedVersion,
-    ).map { Unit }
+    ).map { it.etag }
 
     private data class Response(val body: String, val etag: String)
 
@@ -129,12 +138,17 @@ class WearOfficialCloudHttpClient(
 class WearOfficialCloudSyncCoordinator(
     context: Context,
     private val settingsRepository: SettingsRepository,
+    private val database: AppDatabase,
     private val httpClient: WearOfficialCloudHttpClient = WearOfficialCloudHttpClient(),
     private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
 ) {
     private val appContext = context.applicationContext
     private val state = WearOfficialCloudState(appContext)
     private val mutex = Mutex()
+
+    fun lastDocumentVersion(): Long = appContext
+        .getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        .getLong(KEY_DOCUMENT_VERSION, 0L)
 
     suspend fun sync(trigger: String): Result<WearOfficialCloudSyncOutcome> = mutex.withLock {
         runCatching {
@@ -151,7 +165,7 @@ class WearOfficialCloudSyncCoordinator(
             }
             throw lastConflict ?: WearOfficialCloudConflictException()
         }.onSuccess { outcome ->
-            state.saveSuccess(outcome.syncedAt)
+            state.saveSuccess(outcome.syncedAt, outcome.documentVersion)
         }.onFailure { error ->
             state.saveFailure(error.message.orEmpty().ifBlank { error.javaClass.simpleName })
         }
@@ -159,7 +173,7 @@ class WearOfficialCloudSyncCoordinator(
 
     private suspend fun syncOnce(trigger: String): WearOfficialCloudSyncOutcome {
         val authenticatedRead = withAuthenticatedSession { token -> httpClient.read(token) }
-        state.ensureAccount(authenticatedRead.session.userId)
+        val accountChanged = state.ensureAccount(authenticatedRead.session.userId)
         val read = authenticatedRead.value
         val root = JSONObject(read.payload)
         require(root.optString("format") == CloudSyncV2.DOCUMENT_FORMAT) {
@@ -169,11 +183,11 @@ class WearOfficialCloudSyncCoordinator(
         val baseline = state.loadBaseline()
         val merge = mergeWearSettings(root, localBefore, baseline, trigger)
 
-        if (merge.uploaded) {
+        val resolvedVersion = if (merge.uploaded) {
             withAuthenticatedSession { token ->
                 httpClient.write(token, merge.document.toString(), read.versionToken)
-            }
-        }
+            }.value
+        } else read.versionToken
 
         val localAfterNetwork = JSONObject(settingsRepository.exportWearSettingsSnapshot())
         if (!jsonObjectsEqual(localBefore, localAfterNetwork)) {
@@ -184,13 +198,45 @@ class WearOfficialCloudSyncCoordinator(
             throw WearLocalCloudStateChangedException()
         }
         settingsRepository.applyWearSettingsSnapshot(merge.resolvedSettings.toString())
+        val appliedRemoteLessons = applyRemoteTimetable(root, force = accountChanged)
         state.saveBaseline(merge.resolvedSettings)
         return WearOfficialCloudSyncOutcome(
             syncedAt = System.currentTimeMillis(),
+            documentVersion = resolvedVersion.trim().trim('"').toLongOrNull() ?: 0L,
             uploaded = merge.uploaded,
             appliedRemoteSettings = merge.appliedRemoteSettings,
+            appliedRemoteLessons = appliedRemoteLessons,
         )
     }
+
+    private suspend fun applyRemoteTimetable(document: JSONObject, force: Boolean): Int =
+        WearTimetableApplyLock.mutex.withLock {
+            val snapshot = OfficialCloudTimetableMapper.map(
+                document = document,
+                missingDomainsAreEmpty = force,
+            ) ?: return@withLock 0
+            val incomingStamp = SyncStamp(
+                revision = snapshot.revision,
+                source = SyncSource.CLOUD_PULL,
+                appliedAt = System.currentTimeMillis(),
+            )
+            val current = WearSyncStampStore.load(appContext, SyncDomain.TIMETABLE)
+            if (!force &&
+                !com.classing.shared.sync.SyncArbitrator.shouldApply(SyncDomain.TIMETABLE, incomingStamp, current)
+            ) {
+                return@withLock 0
+            }
+            SyncPayloadApplier(database).apply(snapshot.payload, SyncMode.FULL)
+            WearSyncStampStore.save(appContext, SyncDomain.TIMETABLE, incomingStamp)
+            WearSyncStampStore.saveDecision(
+                context = appContext,
+                domain = SyncDomain.TIMETABLE,
+                decision = "applied",
+                reason = "official cloud timetable applied revision=${snapshot.revision} lessons=${snapshot.lessonCount}",
+            )
+            WearSurfaceUpdateRequester.requestAll(appContext)
+            snapshot.lessonCount
+        }
 
     private data class AuthenticatedResult<T>(
         val session: com.classing.wear.timetable.account.WearDirectAccountSession,
@@ -393,8 +439,8 @@ class WearOfficialCloudSyncCoordinator(
             prefs.edit().putString(KEY_BASELINE, value.toString()).apply()
         }
 
-        fun ensureAccount(userId: String) {
-            if (prefs.getString(KEY_USER_ID, "").orEmpty() == userId) return
+        fun ensureAccount(userId: String): Boolean {
+            if (prefs.getString(KEY_USER_ID, "").orEmpty() == userId) return false
             prefs.edit()
                 .putString(KEY_USER_ID, userId)
                 .remove(KEY_BASELINE)
@@ -402,7 +448,9 @@ class WearOfficialCloudSyncCoordinator(
                 .remove(KEY_COUNTER)
                 .remove(KEY_LAST_SYNC_AT)
                 .remove(KEY_LAST_ERROR)
+                .remove(KEY_DOCUMENT_VERSION)
                 .commit()
+            return true
         }
 
         fun deviceId(): String = prefs.getString(KEY_DEVICE_ID, null)
@@ -418,9 +466,10 @@ class WearOfficialCloudSyncCoordinator(
             return WearLogicalVersion(next, deviceId(), now)
         }
 
-        fun saveSuccess(syncedAt: Long) {
+        fun saveSuccess(syncedAt: Long, documentVersion: Long) {
             prefs.edit()
                 .putLong(KEY_LAST_SYNC_AT, syncedAt)
+                .putLong(KEY_DOCUMENT_VERSION, documentVersion)
                 .putString(KEY_LAST_ERROR, "")
                 .apply()
         }
@@ -437,6 +486,7 @@ class WearOfficialCloudSyncCoordinator(
         const val PREF_NAME = "wear_official_cloud_sync"
         const val KEY_LAST_SYNC_AT = "last_sync_at"
         const val KEY_LAST_ERROR = "last_error"
+        const val KEY_DOCUMENT_VERSION = "document_version"
         private const val KEY_BASELINE = "baseline"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_DEVICE_ID = "device_id"

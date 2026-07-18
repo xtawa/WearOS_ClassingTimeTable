@@ -5,7 +5,7 @@
     <string name="reminder_notification_title">Class Reminder</string>
     <string name="reminder_notification_default_content">Class starts soon</string>
 
-    <string name="common_loading">Loading...</string>
+    <string name="common_loading">Loading…</string>
     <string name="common_load_failed">Load failed</string>
     <string name="common_retry">Retry</string>
     <string name="common_date_week_label">%1$s · %2$s</string>
@@ -120,6 +120,8 @@
     <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
     <string name="settings_cloud_sync_direct_success">Official cloud sync complete</string>
     <string name="settings_cloud_sync_direct_failed">Official cloud sync failed. Check the connection and try again.</string>
+    <string name="settings_independent_mode_title">Independent mode</string>
+    <string name="settings_independent_mode_description">Use official cloud only. Phone Bluetooth sync is disabled.</string>
     <string name="settings_section_keep_alive">Keep alive</string>
     <string name="settings_phone_account">Account</string>
     <string name="settings_phone_account_summary">Signed in: %1$s\nMembership: %2$s\nProvider: %3$s</string>

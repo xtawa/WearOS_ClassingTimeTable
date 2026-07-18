@@ -35,7 +35,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
@@ -54,6 +53,7 @@ class MobileSyncListenerService : WearableListenerService() {
     )
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (WearSyncModeStore.isIndependentModeEnabled(applicationContext)) return
         if (messageEvent.path != WearDataLayerContracts.PATH_SYNC_LESSONS) {
             super.onMessageReceived(messageEvent)
             return
@@ -64,6 +64,7 @@ class MobileSyncListenerService : WearableListenerService() {
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
+        if (WearSyncModeStore.isIndependentModeEnabled(applicationContext)) return
         dataEvents.forEach { event ->
             if (event.type != DataEvent.TYPE_CHANGED) return@forEach
             if (event.dataItem.uri.path != WearDataLayerContracts.PATH_SYNC_LESSONS) return@forEach
@@ -144,7 +145,7 @@ class MobileSyncListenerService : WearableListenerService() {
         }
 
         serviceScope.launch {
-            applyMutex.withLock {
+            WearTimetableApplyLock.mutex.withLock {
             val latestStamp = WearSyncStampStore.load(applicationContext, SyncDomain.TIMETABLE)
             if (!SyncArbitrator.shouldApply(SyncDomain.TIMETABLE, incomingStamp, latestStamp)) {
                 val reason = "stale_skipped_after_queue: incoming=$incomingStamp current=$latestStamp"
@@ -526,7 +527,6 @@ class MobileSyncListenerService : WearableListenerService() {
         private const val KEY_LAST_RECOVERY_FOR = "last_recovery_for"
         private const val REQUEST_DEDUPE_PREFS = "wear_sync_request_dedupe"
         private const val REQUEST_DEDUPE_TTL_MS = 24 * 60 * 60 * 1000L
-        private val applyMutex = Mutex()
         private val requestClaimLock = Any()
         private val requestIdsInFlight = mutableSetOf<String>()
     }

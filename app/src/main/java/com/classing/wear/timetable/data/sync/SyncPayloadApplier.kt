@@ -237,19 +237,14 @@ class SyncPayloadApplier(
         payload.semesters.forEach { semester ->
             val semesterId = semesterIdMap[semester.remoteId] ?: return@forEach
 
+            // Delete dependants before their referenced rows. The previous slot/course-first
+            // order failed whenever an old session still referenced a row being pruned.
             pruneSemesterRows(
-                remoteIds = payload.timeSlots
+                remoteIds = payload.exceptions
                     .filter { it.semesterRemoteId == semester.remoteId }
-                    .map(RemoteTimeSlot::remoteId),
-                deleteAll = { slotDao.deleteBySemester(semesterId) },
-                deleteMissing = { remoteIds -> slotDao.deleteMissingRemoteIds(semesterId, remoteIds) },
-            )
-            pruneSemesterRows(
-                remoteIds = payload.courses
-                    .filter { it.semesterRemoteId == semester.remoteId }
-                    .map(RemoteCourse::remoteId),
-                deleteAll = { courseDao.deleteBySemester(semesterId) },
-                deleteMissing = { remoteIds -> courseDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+                    .map(RemoteException::remoteId),
+                deleteAll = { exceptionDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> exceptionDao.deleteMissingRemoteIds(semesterId, remoteIds) },
             )
             pruneSemesterRows(
                 remoteIds = payload.sessions
@@ -259,15 +254,33 @@ class SyncPayloadApplier(
                 deleteMissing = { remoteIds -> sessionDao.deleteMissingRemoteIds(semesterId, remoteIds) },
             )
             pruneSemesterRows(
-                remoteIds = payload.exceptions
+                remoteIds = payload.courses
                     .filter { it.semesterRemoteId == semester.remoteId }
-                    .map(RemoteException::remoteId),
-                deleteAll = { exceptionDao.deleteBySemester(semesterId) },
-                deleteMissing = { remoteIds -> exceptionDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+                    .map(RemoteCourse::remoteId),
+                deleteAll = { courseDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> courseDao.deleteMissingRemoteIds(semesterId, remoteIds) },
+            )
+            pruneSemesterRows(
+                remoteIds = payload.timeSlots
+                    .filter { it.semesterRemoteId == semester.remoteId }
+                    .map(RemoteTimeSlot::remoteId),
+                deleteAll = { slotDao.deleteBySemester(semesterId) },
+                deleteMissing = { remoteIds -> slotDao.deleteMissingRemoteIds(semesterId, remoteIds) },
             )
         }
 
         val remoteSemesterIds = payload.semesters.map(RemoteSemester::remoteId)
+        val obsoleteSemesterIds = semesterDao.getAll()
+            .filter { it.remoteId == null || it.remoteId !in remoteSemesterIds }
+            .map { it.localId }
+        obsoleteSemesterIds.forEach { semesterId ->
+            // Clear the dependent graph explicitly before replacing semesters. This keeps full
+            // sync safe across older database schemas and source/mode switches.
+            exceptionDao.deleteBySemester(semesterId)
+            sessionDao.deleteBySemester(semesterId)
+            courseDao.deleteBySemester(semesterId)
+            slotDao.deleteBySemester(semesterId)
+        }
         if (remoteSemesterIds.isEmpty()) {
             semesterDao.deleteAll()
         } else {

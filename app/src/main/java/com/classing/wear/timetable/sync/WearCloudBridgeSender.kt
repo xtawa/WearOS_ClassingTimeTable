@@ -18,6 +18,7 @@ class WearCloudBridgeSender(
     private val settingsRepository: SettingsRepository,
 ) {
     suspend fun publishWearSettingsSnapshot(trigger: String): Result<Int> {
+        if (WearSyncModeStore.isIndependentModeEnabled(context)) return Result.success(0)
         return runCatching {
             val updatedAt = System.currentTimeMillis()
             val (deviceId, revision) = nextVersion()
@@ -85,6 +86,7 @@ class WearCloudBridgeSender(
     }
 
     suspend fun requestPhoneCloudSync(trigger: String): Result<Int> {
+        if (WearSyncModeStore.isIndependentModeEnabled(context)) return Result.success(0)
         return runCatching {
             val requestedAt = System.currentTimeMillis()
             val requestId = UUID.randomUUID().toString()

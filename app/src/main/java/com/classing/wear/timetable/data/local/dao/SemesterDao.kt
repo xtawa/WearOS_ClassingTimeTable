@@ -17,6 +17,9 @@ interface SemesterDao {
     @Query("SELECT * FROM semesters WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): SemesterEntity?
 
+    @Query("SELECT * FROM semesters")
+    suspend fun getAll(): List<SemesterEntity>
+
     @Upsert
     suspend fun upsert(semester: SemesterEntity): Long
 

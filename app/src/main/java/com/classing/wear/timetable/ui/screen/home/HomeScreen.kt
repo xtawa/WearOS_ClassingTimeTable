@@ -25,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -313,6 +315,7 @@ private fun QuickActionsRow(
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         QuickActionIcon(
+            label = stringResource(R.string.home_action_this_week),
             icon = {
                 Text(
                     text = stringResource(R.string.home_action_week_short),
@@ -323,10 +326,12 @@ private fun QuickActionsRow(
             onClick = onOpenWeek,
         )
         QuickActionIcon(
+            label = stringResource(R.string.home_action_search),
             icon = { Icon(Icons.Filled.Search, contentDescription = null) },
             onClick = onOpenSearch,
         )
         QuickActionIcon(
+            label = stringResource(R.string.home_action_settings),
             icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
             onClick = onOpenSettings,
         )
@@ -335,16 +340,20 @@ private fun QuickActionsRow(
 
 @Composable
 private fun QuickActionIcon(
+    label: String,
     icon: @Composable () -> Unit,
     onClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
+        modifier = Modifier.semantics {
+            contentDescription = label
+        },
         shape = CircleShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Box(
-            modifier = Modifier.size(46.dp),
+            modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center,
         ) {
             icon()

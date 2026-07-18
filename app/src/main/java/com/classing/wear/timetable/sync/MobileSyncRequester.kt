@@ -16,6 +16,7 @@ class MobileSyncRequester(
     private val context: Context,
 ) {
     suspend fun requestSyncFromPhone(): Result<Int> {
+        if (WearSyncModeStore.isIndependentModeEnabled(context)) return Result.success(0)
         return runCatching {
             val requestedAt = System.currentTimeMillis()
             val requestId = UUID.randomUUID().toString()
