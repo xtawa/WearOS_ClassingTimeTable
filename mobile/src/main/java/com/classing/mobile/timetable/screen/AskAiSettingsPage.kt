@@ -65,8 +65,8 @@ internal fun AskAiSettingsPage(
     var status by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
 
-    LaunchedEffect(loggedIn, member) {
-        if (loggedIn && member) {
+    LaunchedEffect(loggedIn) {
+        if (loggedIn) {
             AccountSessionManager.ensureAccessToken(context)?.let { token ->
                 client.models(token).onSuccess { (defaultModel, items) ->
                     models = items
@@ -85,8 +85,15 @@ internal fun AskAiSettingsPage(
         Text("基于当前课表提问。新对话会将此课表快照随首个问题发送。", color = MaterialTheme.colorScheme.onSurfaceVariant)
         when {
             !loggedIn -> AccessCard("请先登录后使用 Ask AI", "去登录", onOpenAccount)
-            !member -> AccessCard("Ask AI 为会员功能，请开通会员后使用。", "开通会员", onOpenAccount)
             else -> {
+                if (!member) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("免费账户每月可使用 500 点 AI 额度。", fontWeight = FontWeight.SemiBold)
+                            Text("永久额度仅限有效会员使用；会员过期后将冻结，续费即可恢复。", color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    }
+                }
                 if (lessons.isEmpty() && conversationId.isBlank()) Text("导入课表后可新建对话；已有对话仍可继续读取。", color = MaterialTheme.colorScheme.error)
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

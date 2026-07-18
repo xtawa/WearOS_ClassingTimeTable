@@ -1498,7 +1498,7 @@ internal fun AccountSettingsPage(
     LaunchedEffect(accountSummary.userId, membershipSummary.isMember) {
         aiUsage = null
         aiUsageError = ""
-        if (accountSummary.userId.isNotBlank() && membershipSummary.isMember) {
+        if (accountSummary.userId.isNotBlank()) {
             AccountSessionManager.ensureAccessToken(context)?.let { token ->
                 aiClient.usage(token).onSuccess { aiUsage = it }.onFailure { aiUsageError = it.message.orEmpty() }
             }
@@ -1601,20 +1601,26 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isNotBlank() && membershipSummary.isMember) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(stringResource(R.string.account_ai_quota_title), fontWeight = FontWeight.SemiBold)
                 aiUsage?.let { usage ->
-                    val remaining = if (usage.limit < 0) -1 else (usage.limit + usage.creditBalance - usage.used - usage.reserved).coerceAtLeast(0)
+                    val remaining = if (usage.limit < 0) -1 else (usage.limit + usage.creditAvailable - usage.used - usage.reserved).coerceAtLeast(0)
                     Text(if (remaining < 0) stringResource(R.string.account_ai_quota_unlimited) else stringResource(R.string.account_ai_quota_remaining, remaining, usage.limit))
                     LinearProgressIndicator(
                         progress = { if (usage.limit <= 0) 0f else ((usage.used + usage.reserved).toFloat() / usage.limit).coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(stringResource(R.string.account_ai_credit_balance, usage.creditBalance), style = MaterialTheme.typography.bodySmall)
+                    if (usage.creditFrozen) {
+                        Text(stringResource(R.string.account_ai_credit_frozen), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
+                    if (!usage.isMember) {
+                        Text(stringResource(R.string.account_ai_free_quota_hint), style = MaterialTheme.typography.bodySmall)
+                    }
                     Text(stringResource(R.string.account_ai_quota_reset, LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(usage.resetAt), java.time.ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))), style = MaterialTheme.typography.bodySmall)
                 } ?: Text(if (aiUsageError.isBlank()) stringResource(R.string.account_ai_quota_loading) else aiUsageError, style = MaterialTheme.typography.bodySmall)
             }

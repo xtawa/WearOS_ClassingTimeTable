@@ -648,4 +648,6 @@
     <string name="account_wear_qr_confirm">批准</string>
     <string name="account_wear_qr_cancel">取消</string>
     <string name="account_ai_credit_balance">永久余额：%1$d 点</string>
+    <string name="account_ai_credit_frozen">会员已过期，永久余额已冻结；续费后自动恢复。</string>
+    <string name="account_ai_free_quota_hint">免费账户每月可使用 500 点 AI 额度；永久额度仅限有效会员使用。</string>
 </resources>

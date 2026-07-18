@@ -525,6 +525,8 @@ Rules:
     <string name="account_ai_quota_reset">Resets at %1$s</string>
     <string name="account_ai_quota_loading">Loading compute balance…</string>
     <string name="account_ai_credit_balance">Permanent balance: %1$d points</string>
+    <string name="account_ai_credit_frozen">Membership expired. Permanent balance is frozen and will be restored after renewal.</string>
+    <string name="account_ai_free_quota_hint">Free accounts receive 500 AI points each month. Permanent points require an active membership.</string>
     <string name="account_login">Sign in</string>
     <string name="account_logout">Sign out</string>
     <string name="account_delete_title">Delete account</string>
