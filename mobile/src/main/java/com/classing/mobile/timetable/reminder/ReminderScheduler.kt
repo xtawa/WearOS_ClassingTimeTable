@@ -13,14 +13,14 @@ import com.xtawa.classingtime.screen.WeekNumberMode
 import com.xtawa.classingtime.screen.buildEffectiveOccurrencesForDateRange
 import com.xtawa.classingtime.screen.toLessonUi
 import com.xtawa.classingtime.screen.toUi
-import java.time.LocalDateTime
-import java.time.LocalDate
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 
 object ReminderScheduler {
     private const val UNIQUE_REMINDER_WORK = "mobile_lesson_reminder_periodic"
-    private const val REMINDER_ALARM_REQUEST_CODE = 22031
+    private const val LEGACY_REMINDER_ALARM_REQUEST_CODE = 22031
 
     fun sync(
         context: Context,
@@ -32,7 +32,8 @@ object ReminderScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (!enabled) {
             manager.cancelUniqueWork(UNIQUE_REMINDER_WORK)
-            cancelAlarm(context, alarmManager)
+            cancelScheduledAlarms(context, alarmManager)
+            ReminderReconcileStore.clear(context)
             return
         }
 
@@ -44,7 +45,11 @@ object ReminderScheduler {
         )
 
         if (keepAliveLevel == KeepAliveLevel.ECO) {
-            cancelAlarm(context, alarmManager)
+            cancelScheduledAlarms(context, alarmManager)
+            ReminderReconcileStore.save(
+                context,
+                ReminderReconcileState(lastReconcileAt = System.currentTimeMillis()),
+            )
             return
         }
         refreshNextAlarm(context, keepAliveLevel, reminderMinutes)
@@ -57,7 +62,11 @@ object ReminderScheduler {
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (keepAliveLevel == KeepAliveLevel.ECO) {
-            cancelAlarm(context, alarmManager)
+            cancelScheduledAlarms(context, alarmManager)
+            ReminderReconcileStore.save(
+                context,
+                ReminderReconcileState(lastReconcileAt = System.currentTimeMillis()),
+            )
             return
         }
 
@@ -80,43 +89,108 @@ object ReminderScheduler {
             leadMinutes = reminderMinutes.coerceIn(5, 60),
         )
         if (next == null) {
-            cancelAlarm(context, alarmManager)
+            cancelScheduledAlarms(context, alarmManager)
+            ReminderReconcileStore.save(
+                context,
+                ReminderReconcileState(lastReconcileAt = System.currentTimeMillis()),
+            )
             return
         }
 
-        val alarmIntent = Intent(context, LessonReminderAlarmReceiver::class.java).apply {
-            putExtra(LessonReminderAlarmReceiver.EXTRA_LESSON_ID, next.lessonId)
-            putExtra(LessonReminderAlarmReceiver.EXTRA_LESSON_TITLE, next.title)
-            putExtra(LessonReminderAlarmReceiver.EXTRA_LESSON_LOCATION, next.location)
-            putExtra(LessonReminderAlarmReceiver.EXTRA_START_MINUTE, next.startMinute)
-            putExtra(LessonReminderAlarmReceiver.EXTRA_REMINDER_KEY, next.reminderKey)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            REMINDER_ALARM_REQUEST_CODE,
-            alarmIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        val canExact = keepAliveLevel == KeepAliveLevel.AGGRESSIVE && canUseExactAlarm(alarmManager)
-        when {
-            canExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.triggerAtMillis, pendingIntent)
-            }
-
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.triggerAtMillis, pendingIntent)
-            }
-
-            else -> {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, next.triggerAtMillis, pendingIntent)
-            }
-        }
+        reconcileNextAlarm(context, alarmManager, next, keepAliveLevel)
     }
 
     fun cancelAlarm(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        cancelAlarm(context, alarmManager)
+        cancelScheduledAlarms(context, alarmManager)
+        ReminderReconcileStore.clear(context)
+    }
+
+    private fun reconcileNextAlarm(
+        context: Context,
+        alarmManager: AlarmManager,
+        next: NextReminderAlarm,
+        keepAliveLevel: KeepAliveLevel,
+    ) {
+        val previous = ReminderReconcileStore.load(context)
+        val requestCode = ReminderRuntime.requestCodeForReminder(next.reminderKey)
+        var keptScheduledKey = previous.scheduledReminderKey
+        var keptScheduledRequestCode = previous.scheduledRequestCode
+        var keptScheduledTriggerAtMillis = previous.scheduledTriggerAtMillis
+
+        if (previous.scheduledRequestCode > 0 && previous.scheduledRequestCode != requestCode) {
+            cancelAlarm(context, alarmManager, previous.scheduledRequestCode)
+            keptScheduledKey = null
+            keptScheduledRequestCode = 0
+            keptScheduledTriggerAtMillis = 0L
+        }
+        cancelAlarm(context, alarmManager, LEGACY_REMINDER_ALARM_REQUEST_CODE)
+
+        val result = scheduleAlarm(context, alarmManager, next, requestCode, keepAliveLevel)
+        val reconciledAt = System.currentTimeMillis()
+        val reconcileState = if (result.isSuccess) {
+            ReminderReconcileState(
+                desiredReminderKey = next.reminderKey,
+                desiredRequestCode = requestCode,
+                desiredTriggerAtMillis = next.triggerAtMillis,
+                scheduledReminderKey = next.reminderKey,
+                scheduledRequestCode = requestCode,
+                scheduledTriggerAtMillis = next.triggerAtMillis,
+                lastFailure = null,
+                lastReconcileAt = reconciledAt,
+            )
+        } else {
+            ReminderReconcileState(
+                desiredReminderKey = next.reminderKey,
+                desiredRequestCode = requestCode,
+                desiredTriggerAtMillis = next.triggerAtMillis,
+                scheduledReminderKey = keptScheduledKey,
+                scheduledRequestCode = keptScheduledRequestCode,
+                scheduledTriggerAtMillis = keptScheduledTriggerAtMillis,
+                lastFailure = result.exceptionOrNull()?.message ?: "Alarm scheduling failed",
+                lastReconcileAt = reconciledAt,
+            )
+        }
+        ReminderReconcileStore.save(context, reconcileState)
+    }
+
+    private fun scheduleAlarm(
+        context: Context,
+        alarmManager: AlarmManager,
+        next: NextReminderAlarm,
+        requestCode: Int,
+        keepAliveLevel: KeepAliveLevel,
+    ): kotlin.Result<Unit> {
+        return runCatching {
+            val alarmIntent = Intent(context, LessonReminderAlarmReceiver::class.java).apply {
+                putExtra(LessonReminderAlarmReceiver.EXTRA_LESSON_ID, next.lessonId)
+                putExtra(LessonReminderAlarmReceiver.EXTRA_LESSON_TITLE, next.title)
+                putExtra(LessonReminderAlarmReceiver.EXTRA_LESSON_LOCATION, next.location)
+                putExtra(LessonReminderAlarmReceiver.EXTRA_START_MINUTE, next.startMinute)
+                putExtra(LessonReminderAlarmReceiver.EXTRA_REMINDER_KEY, next.reminderKey)
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                requestCode,
+                alarmIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+            val canExact = keepAliveLevel == KeepAliveLevel.AGGRESSIVE && canUseExactAlarm(alarmManager)
+            when {
+                canExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.triggerAtMillis, pendingIntent)
+                }
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.triggerAtMillis, pendingIntent)
+                }
+
+                else -> {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, next.triggerAtMillis, pendingIntent)
+                }
+            }
+        }
     }
 
     private fun canUseExactAlarm(alarmManager: AlarmManager): Boolean {
@@ -127,10 +201,22 @@ object ReminderScheduler {
         }
     }
 
-    private fun cancelAlarm(context: Context, alarmManager: AlarmManager) {
+    private fun cancelScheduledAlarms(context: Context, alarmManager: AlarmManager) {
+        val state = ReminderReconcileStore.load(context)
+        val requestCodes = buildSet {
+            add(LEGACY_REMINDER_ALARM_REQUEST_CODE)
+            if (state.desiredRequestCode > 0) add(state.desiredRequestCode)
+            if (state.scheduledRequestCode > 0) add(state.scheduledRequestCode)
+        }
+        requestCodes.forEach { requestCode ->
+            cancelAlarm(context, alarmManager, requestCode)
+        }
+    }
+
+    private fun cancelAlarm(context: Context, alarmManager: AlarmManager, requestCode: Int) {
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            REMINDER_ALARM_REQUEST_CODE,
+            requestCode,
             Intent(context, LessonReminderAlarmReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
