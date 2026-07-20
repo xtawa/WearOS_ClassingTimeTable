@@ -6,10 +6,35 @@ interface ImportParser {
     fun parse(raw: String): ImportResult
 }
 
+data class ImportWarning(
+    val eventTitle: String?,
+    val field: String,
+    val rawValue: String,
+    val reason: String,
+)
+
+data class ImportSummary(
+    val importedCount: Int,
+    val skippedCount: Int,
+    val warnings: List<ImportWarning>,
+)
+
 data class ParsedSchedulePayload(
     val events: List<ParsedEvent>,
     val source: String,
     val warnings: List<String>,
+    val summary: ImportSummary = ImportSummary(
+        importedCount = events.size,
+        skippedCount = 0,
+        warnings = warnings.map {
+            ImportWarning(
+                eventTitle = null,
+                field = "IMPORT",
+                rawValue = "",
+                reason = it,
+            )
+        },
+    ),
 )
 
 data class ParsedEvent(
