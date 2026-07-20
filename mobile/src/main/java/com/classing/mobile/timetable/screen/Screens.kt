@@ -674,7 +674,11 @@ fun MobileTimetableScreen() {
         dailyBriefingEnabled = synced.dailyBriefingEnabled
         dailyBriefingChannel = synced.dailyBriefingChannel
         dailyBriefingTime = synced.dailyBriefingTime
-        val syncedCloudProvider = CloudProviderUi.entries.firstOrNull { it.name == synced.cloudProvider }
+        val syncedCloudProvider = if (synced.cloudProvider.isBlank()) {
+            CloudProviderUi.WEBDAV
+        } else {
+            CloudProviderUi.entries.firstOrNull { it.name == synced.cloudProvider }
+        }
         cloudProvider = syncedCloudProvider ?: cloudProvider
         cloudSyncEnabled = synced.cloudSyncEnabled && syncedCloudProvider != null
         cloudServerUrl = synced.cloudServerUrl
@@ -940,7 +944,11 @@ fun MobileTimetableScreen() {
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
         weekStartDay = parseWeekStartDay(settings.weekStartDay)
-        val loadedCloudProvider = CloudProviderUi.entries.firstOrNull { it.name == settings.cloudProvider }
+        val loadedCloudProvider = if (settings.cloudProvider.isBlank()) {
+            CloudProviderUi.WEBDAV
+        } else {
+            CloudProviderUi.entries.firstOrNull { it.name == settings.cloudProvider }
+        }
         cloudProvider = loadedCloudProvider ?: CloudProviderUi.WEBDAV
         cloudSyncEnabled = settings.cloudSyncEnabled && loadedCloudProvider != null
         cloudServerUrl = settings.cloudServerUrl
