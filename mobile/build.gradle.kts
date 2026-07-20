@@ -21,6 +21,11 @@ val driveOauthRedirectScheme = (
         ?: (project.findProperty("DRIVE_OAUTH_REDIRECT_SCHEME") as String?)
         ?: ""
     ).trim()
+val apiBaseUrl = (
+    localProps.getProperty("API_BASE_URL")
+        ?: (project.findProperty("API_BASE_URL") as String?)
+        ?: "https://api-classing.underflo.ink"
+    ).trim()
 val releaseStoreFilePath = (
     localProps.getProperty("RELEASE_STORE_FILE")
         ?: (project.findProperty("RELEASE_STORE_FILE") as String?)
@@ -59,6 +64,7 @@ android {
         versionName = "1.0.6"
         buildConfigField("String", "DRIVE_OAUTH_CLIENT_ID", "\"$driveOauthClientId\"")
         buildConfigField("String", "DRIVE_OAUTH_REDIRECT_SCHEME", "\"$driveOauthRedirectScheme\"")
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     signingConfigs {
