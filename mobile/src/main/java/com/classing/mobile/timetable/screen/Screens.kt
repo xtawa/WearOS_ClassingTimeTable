@@ -674,8 +674,13 @@ fun MobileTimetableScreen() {
         dailyBriefingEnabled = synced.dailyBriefingEnabled
         dailyBriefingChannel = synced.dailyBriefingChannel
         dailyBriefingTime = synced.dailyBriefingTime
-        cloudProvider = CloudProviderUi.entries.firstOrNull { it.name == synced.cloudProvider } ?: cloudProvider
-        cloudSyncEnabled = synced.cloudSyncEnabled
+        val syncedCloudProvider = if (synced.cloudProvider.isBlank()) {
+            CloudProviderUi.WEBDAV
+        } else {
+            CloudProviderUi.entries.firstOrNull { it.name == synced.cloudProvider }
+        }
+        cloudProvider = syncedCloudProvider ?: cloudProvider
+        cloudSyncEnabled = synced.cloudSyncEnabled && syncedCloudProvider != null
         cloudServerUrl = synced.cloudServerUrl
         cloudRemotePath = synced.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
         cloudUsername = synced.cloudUsername
@@ -939,8 +944,13 @@ fun MobileTimetableScreen() {
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == settings.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(settings.semesterWeekStartDate) }.getOrDefault(LocalDate.now())
         weekStartDay = parseWeekStartDay(settings.weekStartDay)
-        cloudProvider = CloudProviderUi.entries.firstOrNull { it.name == settings.cloudProvider } ?: CloudProviderUi.WEBDAV
-        cloudSyncEnabled = settings.cloudSyncEnabled
+        val loadedCloudProvider = if (settings.cloudProvider.isBlank()) {
+            CloudProviderUi.WEBDAV
+        } else {
+            CloudProviderUi.entries.firstOrNull { it.name == settings.cloudProvider }
+        }
+        cloudProvider = loadedCloudProvider ?: CloudProviderUi.WEBDAV
+        cloudSyncEnabled = settings.cloudSyncEnabled && loadedCloudProvider != null
         cloudServerUrl = settings.cloudServerUrl
         cloudRemotePath = settings.cloudRemotePath.ifBlank { CloudSyncContracts.DEFAULT_REMOTE_PATH }
         cloudUsername = settings.cloudUsername
@@ -1205,12 +1215,23 @@ fun MobileTimetableScreen() {
     ) {
         ReminderRuntime.resolveStatus(context)
     }
-    val keepAliveStatusText = buildString {
-        append("精确闹钟: ")
-        append(if (keepAliveRuntimeStatus.canScheduleExactAlarm) "已授权" else "未授权")
-        append(" · 电池优化白名单: ")
-        append(if (keepAliveRuntimeStatus.ignoringBatteryOptimizations) "已加入" else "未加入")
-    }
+    val keepAliveStatusText = stringResource(
+        R.string.keepalive_runtime_status,
+        stringResource(
+            if (keepAliveRuntimeStatus.canScheduleExactAlarm) {
+                R.string.keepalive_status_authorized
+            } else {
+                R.string.keepalive_status_not_authorized
+            },
+        ),
+        stringResource(
+            if (keepAliveRuntimeStatus.ignoringBatteryOptimizations) {
+                R.string.keepalive_status_whitelisted
+            } else {
+                R.string.keepalive_status_not_whitelisted
+            },
+        ),
+    )
     val autoDetection = remember {
         detectWearAutoSyncPlan(findWearOsCompanionInfo(context))
     }
