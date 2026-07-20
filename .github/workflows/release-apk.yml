@@ -32,6 +32,13 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Prepare Gradle wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/\r$//' ./gradlew
+          chmod +x ./gradlew
+
       - name: Prepare release signing
         env:
           RELEASE_SIGNING_ENV: ${{ secrets.RELEASE_SIGNING_ENV }}
@@ -61,6 +68,7 @@ jobs:
               "DRIVE_OAUTH_CLIENT_ID",
               "DRIVE_OAUTH_REDIRECT_SCHEME",
           }
+
           required = {
               "RELEASE_KEYSTORE_BASE64",
               "RELEASE_STORE_PASSWORD",
@@ -69,72 +77,155 @@ jobs:
           }
 
           values = {}
-          for line_number, raw_line in enumerate(Path(".env").read_text(encoding="utf-8").splitlines(), 1):
+
+          env_path = Path(".env")
+          for line_number, raw_line in enumerate(
+              env_path.read_text(encoding="utf-8").splitlines(),
+              1,
+          ):
               line = raw_line.strip()
+
               if not line or line.startswith("#"):
                   continue
+
               if "=" not in line:
-                  raise SystemExit(f"Invalid .env entry on line {line_number}: expected KEY=VALUE")
+                  raise SystemExit(
+                      f"Invalid .env entry on line {line_number}: expected KEY=VALUE"
+                  )
+
               key, value = line.split("=", 1)
               key = key.strip()
               value = value.strip()
+
               if key not in allowed:
-                  raise SystemExit(f"Unsupported .env key on line {line_number}: {key}")
-              if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                  raise SystemExit(
+                      f"Unsupported .env key on line {line_number}: {key}"
+                  )
+
+              if (
+                  len(value) >= 2
+                  and value[0] == value[-1]
+                  and value[0] in "\"'"
+              ):
                   value = value[1:-1]
+
               values[key] = value
 
-          missing = sorted(key for key in required if not values.get(key))
+          missing = sorted(
+              key for key in required
+              if not values.get(key)
+          )
+
           if missing:
-              raise SystemExit("Missing required .env values: " + ", ".join(missing))
+              raise SystemExit(
+                  "Missing required .env values: " + ", ".join(missing)
+              )
 
           try:
+              encoded_keystore = "".join(
+                  values["RELEASE_KEYSTORE_BASE64"].split()
+              )
               keystore = base64.b64decode(
-                  "".join(values["RELEASE_KEYSTORE_BASE64"].split()),
+                  encoded_keystore,
                   validate=True,
               )
           except (binascii.Error, ValueError) as error:
-              raise SystemExit(f"RELEASE_KEYSTORE_BASE64 is invalid: {error}") from error
+              raise SystemExit(
+                  f"RELEASE_KEYSTORE_BASE64 is invalid: {error}"
+              ) from error
 
-          keystore_path = Path(os.environ["RUNNER_TEMP"]) / "classing-release.jks"
+          if not keystore:
+              raise SystemExit(
+                  "Decoded release keystore is empty."
+              )
+
+          keystore_path = (
+              Path(os.environ["RUNNER_TEMP"])
+              / "classing-release.jks"
+          )
           keystore_path.write_bytes(keystore)
 
           gradle_properties = {
-              "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE": str(keystore_path),
-              "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD": values["RELEASE_STORE_PASSWORD"],
-              "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS": values["RELEASE_KEY_ALIAS"],
-              "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD": values["RELEASE_KEY_PASSWORD"],
+              "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE":
+                  str(keystore_path),
+              "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD":
+                  values["RELEASE_STORE_PASSWORD"],
+              "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS":
+                  values["RELEASE_KEY_ALIAS"],
+              "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD":
+                  values["RELEASE_KEY_PASSWORD"],
           }
-          for optional_key in ("DRIVE_OAUTH_CLIENT_ID", "DRIVE_OAUTH_REDIRECT_SCHEME"):
-              if values.get(optional_key):
-                  gradle_properties[f"ORG_GRADLE_PROJECT_{optional_key}"] = values[optional_key]
 
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as github_env:
+          for optional_key in (
+              "DRIVE_OAUTH_CLIENT_ID",
+              "DRIVE_OAUTH_REDIRECT_SCHEME",
+          ):
+              if values.get(optional_key):
+                  gradle_properties[
+                      f"ORG_GRADLE_PROJECT_{optional_key}"
+                  ] = values[optional_key]
+
+          with open(
+              os.environ["GITHUB_ENV"],
+              "a",
+              encoding="utf-8",
+          ) as github_env:
               for key, value in gradle_properties.items():
                   delimiter = f"CLASSING_{key}_END"
-                  github_env.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
-                  if key != "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE":
+
+                  github_env.write(
+                      f"{key}<<{delimiter}\n"
+                      f"{value}\n"
+                      f"{delimiter}\n"
+                  )
+
+                  if (
+                      key
+                      != "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE"
+                  ):
                       print(f"::add-mask::{value}")
           PY
 
       - name: Validate release keystore
         shell: bash
         run: |
+          set -euo pipefail
+
+          if [[ ! -s "$ORG_GRADLE_PROJECT_RELEASE_STORE_FILE" ]]; then
+            echo "Release keystore does not exist or is empty." >&2
+            exit 1
+          fi
+
           keytool -list \
             -keystore "$ORG_GRADLE_PROJECT_RELEASE_STORE_FILE" \
             -storepass "$ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD" \
-            -alias "$ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS" >/dev/null
+            -alias "$ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS" \
+            >/dev/null
 
       - name: Build release APKs
         shell: bash
-        run: ./gradlew --no-daemon --max-workers=2 :app:assembleRelease :mobile:assembleRelease
+        run: |
+          set -euo pipefail
+
+          ./gradlew \
+            --no-daemon \
+            --max-workers=2 \
+            :app:assembleRelease \
+            :mobile:assembleRelease
 
       - name: Verify signatures and collect artifacts
         shell: bash
         run: |
           set -euo pipefail
 
-          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          apksigner="$(
+            find "$ANDROID_HOME/build-tools" \
+              -type f \
+              -name apksigner \
+              | sort -V \
+              | tail -n 1
+          )"
+
           if [[ -z "$apksigner" ]]; then
             echo "Android apksigner was not found." >&2
             exit 1
@@ -142,13 +233,44 @@ jobs:
 
           wear_apk="app/build/outputs/apk/release/app-release.apk"
           mobile_apk="mobile/build/outputs/apk/release/mobile-release.apk"
-          "$apksigner" verify --verbose --print-certs "$wear_apk"
-          "$apksigner" verify --verbose --print-certs "$mobile_apk"
 
+          if [[ ! -f "$wear_apk" ]]; then
+            echo "Wear release APK was not generated: $wear_apk" >&2
+            exit 1
+          fi
+
+          if [[ ! -f "$mobile_apk" ]]; then
+            echo "Mobile release APK was not generated: $mobile_apk" >&2
+            exit 1
+          fi
+
+          "$apksigner" verify \
+            --verbose \
+            --print-certs \
+            "$wear_apk"
+
+          "$apksigner" verify \
+            --verbose \
+            --print-certs \
+            "$mobile_apk"
+
+          rm -rf release-artifacts
           mkdir -p release-artifacts
-          install -m 0644 "$wear_apk" release-artifacts/Classing-Wear-release.apk
-          install -m 0644 "$mobile_apk" release-artifacts/Classing-Mobile-release.apk
-          (cd release-artifacts && sha256sum ./*.apk > SHA256SUMS)
+
+          install \
+            -m 0644 \
+            "$wear_apk" \
+            release-artifacts/Classing-Wear-release.apk
+
+          install \
+            -m 0644 \
+            "$mobile_apk" \
+            release-artifacts/Classing-Mobile-release.apk
+
+          (
+            cd release-artifacts
+            sha256sum ./*.apk > SHA256SUMS
+          )
 
       - name: Upload release APKs
         uses: actions/upload-artifact@v4
@@ -163,6 +285,7 @@ jobs:
         shell: bash
         run: |
           rm -f .env
+
           if [[ -n "${ORG_GRADLE_PROJECT_RELEASE_STORE_FILE:-}" ]]; then
             rm -f "$ORG_GRADLE_PROJECT_RELEASE_STORE_FILE"
           fi
