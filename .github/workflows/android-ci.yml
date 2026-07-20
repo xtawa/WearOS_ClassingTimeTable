@@ -25,4 +25,13 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - name: Test, lint, and assemble release APKs
-        run: ./gradlew --no-daemon --max-workers=2 test lint assembleRelease
+        run: ./gradlew --no-daemon --max-workers=2 test lint :app:assembleRelease :mobile:assembleRelease
+      - name: Upload R8 mappings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-mapping-${{ github.sha }}
+          path: |
+            app/build/outputs/mapping/release/
+            mobile/build/outputs/mapping/release/
+          if-no-files-found: ignore
