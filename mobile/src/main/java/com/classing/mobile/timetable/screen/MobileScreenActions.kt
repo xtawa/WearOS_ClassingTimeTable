@@ -21,8 +21,6 @@ import com.xtawa.classingtime.sync.toWearCloudSnapshot
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 internal data class SyncAckUpdate(
@@ -139,7 +137,7 @@ internal fun persistSettings(
     )
     DailyBriefingScheduler.sync(context, settings)
     CloudSyncEngine.schedulePeriodic(context)
-    CoroutineScope(Dispatchers.IO).launch {
+    MobileApplicationScope.launch {
         WearDataLayerSyncPublisher.publishCloudSnapshot(
             context = context.applicationContext,
             payload = settings.toWearCloudSnapshot(
