@@ -4,8 +4,8 @@ import android.app.AlarmManager
 import android.content.Context
 import android.os.Build
 import android.os.PowerManager
-import com.xtawa.classingtime.screen.EffectiveLessonOccurrence
 import com.xtawa.classingtime.data.PersistedLesson
+import com.xtawa.classingtime.screen.EffectiveLessonOccurrence
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -29,9 +29,16 @@ object ReminderRuntime {
     const val DEDUP_PREF_NAME = "mobile_timetable_prefs"
     const val DEDUP_KEY_NOTIFIED_DATE = "reminder_notified_date"
     const val DEDUP_KEY_NOTIFIED_KEYS = "reminder_notified_keys"
+    private const val REQUEST_CODE_BASE = 40_000
+    private const val REQUEST_CODE_SPAN = 20_000
 
     fun reminderKey(date: LocalDate, lessonId: String, startMinute: Int): String {
         return "$date:$lessonId:$startMinute"
+    }
+
+    fun requestCodeForReminder(reminderKey: String): Int {
+        val safeHash = reminderKey.hashCode() and Int.MAX_VALUE
+        return REQUEST_CODE_BASE + (safeHash % REQUEST_CODE_SPAN)
     }
 
     fun resolveStatus(context: Context): KeepAliveRuntimeStatus {
@@ -108,5 +115,4 @@ object ReminderRuntime {
         }
         return candidates.minByOrNull { it.triggerAtMillis }
     }
-
 }
