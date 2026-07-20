@@ -20,31 +20,25 @@ class SyncWorker(
     override suspend fun doWork(): Result {
         val app = applicationContext as ClassingTimetableApplication
         val independentMode = WearSyncModeStore.isIndependentModeEnabled(applicationContext)
-        val syncResult = if (independentMode) {
-            app.appContainer.wearOfficialCloudSyncCoordinator.sync(CloudSyncContracts.TRIGGER_FOREGROUND_TICK)
-                .fold(
-                    onSuccess = { Result.success() },
-                    onFailure = { Result.retry() },
-                )
+        val syncShouldRetry = if (independentMode) {
+            app.appContainer.wearOfficialCloudSyncCoordinator
+                .sync(CloudSyncContracts.TRIGGER_FOREGROUND_TICK)
+                .isFailure
         } else {
             val result = app.appContainer.mobileSyncRequester.requestSyncFromPhone()
             if (result.getOrDefault(0) > 0 || result.isSuccess) {
-                Result.success()
+                false
             } else {
                 val message = result.exceptionOrNull()?.message.orEmpty()
-                if (message.contains("No connected phone", ignoreCase = true)) {
-                    Result.success()
-                } else {
-                    Result.retry()
-                }
+                !message.contains("No connected phone", ignoreCase = true)
             }
         }
 
         val reminderResult = refreshRemindersFromSettings(app)
-        return when {
-            syncResult == Result.retry() -> Result.retry()
-            reminderResult.isFailure -> Result.retry()
-            else -> Result.success()
+        return if (syncShouldRetry || reminderResult.isFailure) {
+            Result.retry()
+        } else {
+            Result.success()
         }
     }
 
