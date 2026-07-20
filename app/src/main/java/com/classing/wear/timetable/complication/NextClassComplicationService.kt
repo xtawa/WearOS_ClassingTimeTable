@@ -21,16 +21,16 @@ class NextClassComplicationService : SuspendingComplicationDataSourceService() {
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         val preview = NextClassSnapshot(
             hasLesson = true,
-            courseTitle = "Advanced Android",
-            weekText = "Week 3",
-            dateText = "03-14 Fri",
+            courseTitle = WearI18n.complicationPreviewCourseTitle(),
+            weekText = WearI18n.complicationPreviewWeekText(),
+            dateText = WearI18n.complicationPreviewDateText(),
             timeText = "09:00-10:40",
-            teacherText = "Li",
-            locationText = "A-301",
-            countdownText = "In 20 min",
-            shortComplicationText = "09:00 Android",
-            longComplicationText = "Advanced Android 09:00-10:40 @ A-301",
-            contentDescription = "Preview next class",
+            teacherText = WearI18n.complicationPreviewTeacherText(),
+            locationText = WearI18n.complicationPreviewLocationText(),
+            countdownText = WearI18n.complicationPreviewCountdownText(),
+            shortComplicationText = WearI18n.complicationPreviewShortText(),
+            longComplicationText = WearI18n.complicationPreviewLongText(),
+            contentDescription = WearI18n.complicationPreviewContentDescription(),
         )
         return buildData(type, preview)
     }
