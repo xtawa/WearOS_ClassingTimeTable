@@ -2,6 +2,7 @@
 .gradle/
 .gradle-user-codex/
 local.properties
+.env
 .idea/
 /build/
 **/build/

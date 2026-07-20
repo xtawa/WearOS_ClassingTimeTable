@@ -263,7 +263,9 @@ fun MobileTimetableScreen() {
     var weekSettingsAutoSyncJob by remember { mutableStateOf<Job?>(null) }
     var cloudSettingsSyncJob by remember { mutableStateOf<Job?>(null) }
     var lastProjectionDate by remember { mutableStateOf(LocalDate.now()) }
-    val accountApiClient = remember { AccountApiClient() }
+    val accountApiClient = remember(context) {
+        AccountApiClient(deviceId = MobileCloudSyncV2Store.deviceId(context))
+    }
 
     LaunchedEffect(loginLockSeconds) {
         if (loginLockSeconds > 0) {

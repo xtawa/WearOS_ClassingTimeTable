@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="wear_direct_account.xml" />
+    <exclude domain="sharedpref" path="wear_official_cloud_sync.xml" />
+    <exclude domain="sharedpref" path="wear_sync_identity.xml" />
+</full-backup-content>

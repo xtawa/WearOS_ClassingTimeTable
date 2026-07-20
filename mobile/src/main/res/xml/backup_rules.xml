@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="mobile_auth_credentials.xml" />
+    <exclude domain="sharedpref" path="mobile_cloud_credentials.xml" />
+    <exclude domain="sharedpref" path="mobile_cloud_sync_v2_state.xml" />
+</full-backup-content>

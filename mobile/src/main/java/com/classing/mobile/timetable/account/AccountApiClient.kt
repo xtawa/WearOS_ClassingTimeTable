@@ -81,6 +81,7 @@ data class AccountProfile(
 
 class AccountApiClient(
     private val baseUrl: String = BASE_URL,
+    private val deviceId: String = "",
 ) {
     suspend fun requestRegistrationVerification(
         username: String,
@@ -330,6 +331,9 @@ class AccountApiClient(
                 readTimeout = 10_000
                 setRequestProperty("Accept", "application/json")
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                if (deviceId.isNotBlank()) {
+                    setRequestProperty("X-Classing-Device-ID", deviceId.take(128))
+                }
                 if (!accessToken.isNullOrBlank()) {
                     setRequestProperty("Authorization", "Bearer $accessToken")
                 }

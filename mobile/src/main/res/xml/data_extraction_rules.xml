@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="sharedpref" path="mobile_auth_credentials.xml" />
+        <exclude domain="sharedpref" path="mobile_cloud_credentials.xml" />
+        <exclude domain="sharedpref" path="mobile_cloud_sync_v2_state.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="mobile_auth_credentials.xml" />
+        <exclude domain="sharedpref" path="mobile_cloud_credentials.xml" />
+        <exclude domain="sharedpref" path="mobile_cloud_sync_v2_state.xml" />
+    </device-transfer>
+</data-extraction-rules>

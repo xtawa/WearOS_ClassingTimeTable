@@ -647,6 +647,12 @@
     <string name="account_wear_qr_confirm_message">僅在此 QR Code 正顯示於你的 Classing Web 或 Wear 裝置時繼續。系統會為該裝置建立獨立帳號工作階段。</string>
     <string name="account_wear_qr_confirm">核准</string>
     <string name="account_wear_qr_cancel">取消</string>
+    <string name="account_open_membership">開啟會員頁面</string>
+    <string name="account_ai_quota_title">Ask AI 每月算力</string>
+    <string name="account_ai_quota_remaining">剩餘 %1$d / %2$d 點</string>
+    <string name="account_ai_quota_unlimited">算力點數不限</string>
+    <string name="account_ai_quota_reset">於 %1$s 重設</string>
+    <string name="account_ai_quota_loading">正在載入算力餘額…</string>
     <string name="account_ai_credit_balance">永久餘額：%1$d 點</string>
     <string name="account_ai_credit_frozen">會員已過期，永久餘額已凍結；續費後自動恢復。</string>
     <string name="account_ai_free_quota_hint">免費帳戶每月可使用 500 點 AI 額度；永久額度僅限有效會員使用。</string>

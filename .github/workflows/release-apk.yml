@@ -1,0 +1,168 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build signed release APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare release signing
+        env:
+          RELEASE_SIGNING_ENV: ${{ secrets.RELEASE_SIGNING_ENV }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${RELEASE_SIGNING_ENV:-}" ]]; then
+            echo "Missing GitHub secret RELEASE_SIGNING_ENV." >&2
+            echo "Paste the complete contents of .env into that secret." >&2
+            exit 1
+          fi
+
+          printf '%s\n' "$RELEASE_SIGNING_ENV" > .env
+
+          python3 <<'PY'
+          import base64
+          import binascii
+          import os
+          from pathlib import Path
+
+          allowed = {
+              "RELEASE_KEYSTORE_BASE64",
+              "RELEASE_STORE_PASSWORD",
+              "RELEASE_KEY_ALIAS",
+              "RELEASE_KEY_PASSWORD",
+              "DRIVE_OAUTH_CLIENT_ID",
+              "DRIVE_OAUTH_REDIRECT_SCHEME",
+          }
+          required = {
+              "RELEASE_KEYSTORE_BASE64",
+              "RELEASE_STORE_PASSWORD",
+              "RELEASE_KEY_ALIAS",
+              "RELEASE_KEY_PASSWORD",
+          }
+
+          values = {}
+          for line_number, raw_line in enumerate(Path(".env").read_text(encoding="utf-8").splitlines(), 1):
+              line = raw_line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              if "=" not in line:
+                  raise SystemExit(f"Invalid .env entry on line {line_number}: expected KEY=VALUE")
+              key, value = line.split("=", 1)
+              key = key.strip()
+              value = value.strip()
+              if key not in allowed:
+                  raise SystemExit(f"Unsupported .env key on line {line_number}: {key}")
+              if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                  value = value[1:-1]
+              values[key] = value
+
+          missing = sorted(key for key in required if not values.get(key))
+          if missing:
+              raise SystemExit("Missing required .env values: " + ", ".join(missing))
+
+          try:
+              keystore = base64.b64decode(
+                  "".join(values["RELEASE_KEYSTORE_BASE64"].split()),
+                  validate=True,
+              )
+          except (binascii.Error, ValueError) as error:
+              raise SystemExit(f"RELEASE_KEYSTORE_BASE64 is invalid: {error}") from error
+
+          keystore_path = Path(os.environ["RUNNER_TEMP"]) / "classing-release.jks"
+          keystore_path.write_bytes(keystore)
+
+          gradle_properties = {
+              "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE": str(keystore_path),
+              "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD": values["RELEASE_STORE_PASSWORD"],
+              "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS": values["RELEASE_KEY_ALIAS"],
+              "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD": values["RELEASE_KEY_PASSWORD"],
+          }
+          for optional_key in ("DRIVE_OAUTH_CLIENT_ID", "DRIVE_OAUTH_REDIRECT_SCHEME"):
+              if values.get(optional_key):
+                  gradle_properties[f"ORG_GRADLE_PROJECT_{optional_key}"] = values[optional_key]
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as github_env:
+              for key, value in gradle_properties.items():
+                  delimiter = f"CLASSING_{key}_END"
+                  github_env.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
+                  if key != "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE":
+                      print(f"::add-mask::{value}")
+          PY
+
+      - name: Validate release keystore
+        shell: bash
+        run: |
+          keytool -list \
+            -keystore "$ORG_GRADLE_PROJECT_RELEASE_STORE_FILE" \
+            -storepass "$ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD" \
+            -alias "$ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS" >/dev/null
+
+      - name: Build release APKs
+        shell: bash
+        run: ./gradlew --no-daemon --max-workers=2 :app:assembleRelease :mobile:assembleRelease
+
+      - name: Verify signatures and collect artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [[ -z "$apksigner" ]]; then
+            echo "Android apksigner was not found." >&2
+            exit 1
+          fi
+
+          wear_apk="app/build/outputs/apk/release/app-release.apk"
+          mobile_apk="mobile/build/outputs/apk/release/mobile-release.apk"
+          "$apksigner" verify --verbose --print-certs "$wear_apk"
+          "$apksigner" verify --verbose --print-certs "$mobile_apk"
+
+          mkdir -p release-artifacts
+          install -m 0644 "$wear_apk" release-artifacts/Classing-Wear-release.apk
+          install -m 0644 "$mobile_apk" release-artifacts/Classing-Mobile-release.apk
+          (cd release-artifacts && sha256sum ./*.apk > SHA256SUMS)
+
+      - name: Upload release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: classing-release-${{ github.ref_name }}
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f .env
+          if [[ -n "${ORG_GRADLE_PROJECT_RELEASE_STORE_FILE:-}" ]]; then
+            rm -f "$ORG_GRADLE_PROJECT_RELEASE_STORE_FILE"
+          fi
