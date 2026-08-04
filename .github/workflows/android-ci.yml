@@ -17,6 +17,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      CLASSING_API_BASE_URL: ${{ secrets.CLASSING_API_BASE_URL }}
+      CLASSING_SIGNATURE_REGISTER_TOKEN: ${{ secrets.CLASSING_SIGNATURE_REGISTER_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -45,3 +48,65 @@ jobs:
           done
       - name: Test, lint, and assemble release APKs
         run: ./gradlew --no-daemon --max-workers=2 test lint assembleRelease
+      - name: Upload release APK artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apks
+          path: |
+            mobile/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+      - name: Register release signing certificates
+        if: github.event_name != 'pull_request' && env.CLASSING_API_BASE_URL != '' && env.CLASSING_SIGNATURE_REGISTER_TOKEN != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build_tools_dir="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          apksigner="$build_tools_dir/apksigner"
+          aapt="$build_tools_dir/aapt"
+          base_url="${CLASSING_API_BASE_URL%/}"
+          items=()
+
+          register_apk() {
+            local platform="$1"
+            local apk="$2"
+            [[ -f "$apk" ]] || return 0
+
+            local manifest package version_code cert artifact
+            manifest="$($aapt dump badging "$apk" | head -n 1)"
+            package="${manifest#package: name='}"
+            package="${package%%'*}"
+            version_code="${manifest#* versionCode='}"
+            version_code="${version_code%%'*}"
+            cert="$($apksigner verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2; exit}' | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+            artifact="$(basename "$apk")"
+
+            if [[ -z "$package" || -z "$version_code" || -z "$cert" ]]; then
+              echo "Failed to extract signing metadata from $apk" >&2
+              exit 1
+            fi
+
+            echo "Registering $platform $artifact versionCode=$version_code certSha256=$cert"
+            items+=("{\"packageName\":\"$package\",\"platform\":\"$platform\",\"versionCode\":$version_code,\"certSha256\":\"$cert\",\"artifactName\":\"$artifact\"}")
+          }
+
+          for apk in mobile/build/outputs/apk/release/*.apk; do
+            register_apk "ANDROID_MOBILE" "$apk"
+          done
+          for apk in app/build/outputs/apk/release/*.apk; do
+            register_apk "ANDROID_WEAR" "$apk"
+          done
+
+          if [[ "${#items[@]}" -eq 0 ]]; then
+            echo "No release APKs found to register." >&2
+            exit 1
+          fi
+
+          payload="{\"certificates\":[$(IFS=,; echo "${items[*]}")]}"
+          curl -fsS \
+            -X POST "$base_url/api/v1/client/signing-certificates/register" \
+            -H "Content-Type: application/json" \
+            -H "X-Classing-Release-Key: $CLASSING_SIGNATURE_REGISTER_TOKEN" \
+            --data "$payload"
