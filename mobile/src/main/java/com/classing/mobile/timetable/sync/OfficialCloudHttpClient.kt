@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.sync
 
+import com.xtawa.classingtime.security.ClientSignatureException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -78,7 +79,11 @@ class OfficialCloudHttpClient {
                     throw CloudAuthExpiredException("Official cloud authorization expired")
                 }
                 if (status == HttpURLConnection.HTTP_FORBIDDEN) {
-                    throw CloudPermissionDeniedException("Official cloud permission denied")
+                    val errorCode = parseErrorCode(body)
+                    if (errorCode == "CLIENT_SIGNATURE_INVALID" || errorCode == "CLIENT_SIGNATURE_POLICY_MISSING") {
+                        throw ClientSignatureException("签名异常，客户端可能被非法修改，已禁止使用在线功能")
+                    }
+                    throw CloudPermissionDeniedException(parseErrorMessage(body).ifBlank { "Official cloud permission denied" })
                 }
                 if (status == 429) {
                     val errorCode = parseErrorCode(body)
@@ -119,5 +124,9 @@ class OfficialCloudHttpClient {
 
     private fun parseErrorCode(body: String): String = runCatching {
         org.json.JSONObject(body).optString("code")
+    }.getOrDefault("")
+
+    private fun parseErrorMessage(body: String): String = runCatching {
+        org.json.JSONObject(body).optString("message")
     }.getOrDefault("")
 }
