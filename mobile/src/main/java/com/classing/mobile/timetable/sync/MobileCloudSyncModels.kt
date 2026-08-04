@@ -332,6 +332,7 @@ fun MobileSettings.toCloudRuntimeConfig(
     driveAccessTokenExpireAt: Long,
     driveAccessTokenRefreshAfterAt: Long,
     accountAccessToken: String,
+    officialMemberAuthorized: Boolean = false,
 ): CloudRuntimeConfig {
     val provider = CloudProvider.fromWire(cloudProvider)
     return CloudRuntimeConfig(
@@ -350,7 +351,7 @@ fun MobileSettings.toCloudRuntimeConfig(
         driveAccessTokenExpireAt = driveAccessTokenExpireAt,
         driveAccessTokenRefreshAfterAt = driveAccessTokenRefreshAfterAt,
         accountAccessToken = accountAccessToken,
-        officialMemberAuthorized = membershipSummary.isMember,
+        officialMemberAuthorized = provider == CloudProvider.OFFICIAL && officialMemberAuthorized,
     )
 }
 
