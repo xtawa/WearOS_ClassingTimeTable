@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -30,6 +31,24 @@ data class RegistrationSecurityConfig(
     val legalAgreementUrls: LegalAgreementUrls = LegalAgreementUrls(),
 )
 
+data class WearLoginDebugInfo(
+    val stage: String,
+    val terminal: Boolean,
+    val loginSucceeded: Boolean?,
+    val approvalSucceeded: Boolean?,
+    val code: String,
+    val reason: String,
+    val authorizationId: String,
+    val serverTimestampMs: Long,
+)
+
+data class WearDeviceLoginApproval(
+    val status: String,
+    val authorizationId: String,
+    val expiresAt: Long,
+    val debug: WearLoginDebugInfo?,
+)
+
 data class LegalAgreementUrls(
     val privacyPolicy: String = "",
     val termsOfService: String = "",
@@ -40,6 +59,7 @@ class AccountApiException(
     val statusCode: Int,
     val errorCode: String,
     val retryAfterSeconds: Int = 0,
+    val debugInfo: WearLoginDebugInfo? = null,
     message: String,
 ) : IllegalStateException(message)
 
@@ -163,13 +183,70 @@ class AccountApiClient(
         ).map { Unit }
     }
 
-    suspend fun approveWearDeviceLogin(accessToken: String, authorizationId: String): Result<Unit> {
+    suspend fun approveWearDeviceLogin(
+        accessToken: String,
+        authorizationId: String,
+        debug: Boolean = false,
+    ): Result<WearDeviceLoginApproval> {
         return request(
             method = "POST",
             path = "/api/v1/auth/device/qr/approve",
             accessToken = accessToken,
-            body = JSONObject().put("authorizationId", authorizationId.trim()),
-        ).map { Unit }
+            body = JSONObject()
+                .put("authorizationId", authorizationId.trim())
+                .put("debug", debug),
+            debugRequest = debug,
+        ).map { response ->
+            WearDeviceLoginApproval(
+                status = response.optString("status"),
+                authorizationId = response.optString("authorizationId", authorizationId.trim()),
+                expiresAt = response.optLong("expiresAt", 0L),
+                debug = response.optJSONObject("debug")?.toWearLoginDebugInfo(),
+            )
+        }
+    }
+
+    suspend fun awaitWearDeviceLoginDebug(
+        accessToken: String,
+        authorizationId: String,
+        attempts: Int = 10,
+    ): Result<WearLoginDebugInfo> {
+        repeat(attempts.coerceIn(1, 30)) { attempt ->
+            val response = request(
+                method = "POST",
+                path = "/api/v1/auth/device/qr/status",
+                accessToken = accessToken,
+                body = JSONObject()
+                    .put("authorizationId", authorizationId.trim())
+                    .put("debug", true),
+                debugRequest = true,
+            )
+            if (response.isFailure) {
+                return Result.failure(response.exceptionOrNull() ?: IllegalStateException("Wear login status failed"))
+            }
+            val debug = response.getOrThrow().optJSONObject("debug")?.toWearLoginDebugInfo()
+                ?: return Result.failure(IllegalStateException("Wear login status response missing debug information"))
+            if (debug.terminal) return Result.success(debug)
+            if (attempt + 1 < attempts) delay(1_000)
+        }
+        val debug = WearLoginDebugInfo(
+            stage = "MOBILE_STATUS",
+            terminal = true,
+            loginSucceeded = false,
+            approvalSucceeded = true,
+            code = "DEVICE_LOGIN_DEBUG_TIMEOUT",
+            reason = "Wear did not complete login within the debug observation window",
+            authorizationId = authorizationId.trim(),
+            serverTimestampMs = System.currentTimeMillis(),
+        )
+        return Result.failure(
+            AccountApiException(
+                statusCode = 408,
+                errorCode = debug.code,
+                debugInfo = debug,
+                message = debug.reason,
+            ),
+        )
     }
 
     suspend fun deleteAccount(accessToken: String, currentPassword: String, confirm: String): Result<Unit> {
@@ -320,10 +397,11 @@ class AccountApiClient(
         path: String,
         accessToken: String? = null,
         body: JSONObject? = null,
+        debugRequest: Boolean = false,
     ): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
 			AccountRequestCooldown.remainingSeconds(path).takeIf { it > 0 }?.let { remaining ->
-				throw AccountApiException(429, "CLIENT_COOLDOWN", remaining, "retry after $remaining seconds")
+				throw AccountApiException(429, "CLIENT_COOLDOWN", remaining, message = "retry after $remaining seconds")
 			}
             val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
@@ -336,6 +414,9 @@ class AccountApiClient(
                 }
                 if (!accessToken.isNullOrBlank()) {
                     setRequestProperty("Authorization", "Bearer $accessToken")
+                }
+                if (debugRequest) {
+                    setRequestProperty("X-Classing-Debug", "true")
                 }
                 doInput = true
                 if (body != null) {
@@ -357,10 +438,11 @@ class AccountApiClient(
                     val message = errorBody?.optString("message").orEmpty().ifBlank { payload }
 					val retryAfter = connection.getHeaderField("Retry-After")?.toIntOrNull() ?: 0
 					if (code == 429) AccountRequestCooldown.record(path, retryAfter)
-					throw AccountApiException(
+                    throw AccountApiException(
                         statusCode = code,
                         errorCode = errorBody?.optString("code").orEmpty(),
 						retryAfterSeconds = retryAfter,
+                        debugInfo = errorBody?.optJSONObject("debug")?.toWearLoginDebugInfo(),
                         message = message.ifBlank { "request failed" },
                     )
                 }
@@ -396,3 +478,17 @@ class AccountApiClient(
         const val BASE_URL: String = "https://api-classing.underflo.ink"
     }
 }
+
+private fun JSONObject.toWearLoginDebugInfo(): WearLoginDebugInfo = WearLoginDebugInfo(
+    stage = optString("stage"),
+    terminal = optBoolean("terminal", false),
+    loginSucceeded = nullableBoolean("loginSucceeded"),
+    approvalSucceeded = nullableBoolean("approvalSucceeded"),
+    code = optString("code"),
+    reason = optString("reason"),
+    authorizationId = optString("authorizationId"),
+    serverTimestampMs = optLong("serverTimestampMs", 0L),
+)
+
+private fun JSONObject.nullableBoolean(name: String): Boolean? =
+    if (has(name) && !isNull(name)) optBoolean(name) else null

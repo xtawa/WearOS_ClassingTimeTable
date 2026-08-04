@@ -108,6 +108,7 @@ import com.xtawa.classingtime.account.AccountApiClient
 import com.xtawa.classingtime.account.AccountApiException
 import com.xtawa.classingtime.account.LegalAgreementUrls
 import com.xtawa.classingtime.account.PendingEmailChange
+import com.xtawa.classingtime.account.WearLoginDebugInfo
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
@@ -2088,14 +2089,36 @@ fun MobileTimetableScreen() {
                                 if (accessToken == null) {
                                     accountStatusMessage = context.getString(R.string.account_error_session_expired)
                                 } else {
-                                    val result = accountApiClient.approveWearDeviceLogin(accessToken, authorizationId)
+                                    val result = accountApiClient.approveWearDeviceLogin(
+                                        accessToken = accessToken,
+                                        authorizationId = authorizationId,
+                                        debug = devModeEnabled,
+                                    )
                                     accountStatusMessage = if (result.isSuccess) {
-                                        context.getString(R.string.account_wear_qr_approved)
+                                        val approval = result.getOrThrow()
+                                        val finalDebug = if (devModeEnabled) {
+                                            val statusResult = accountApiClient.awaitWearDeviceLoginDebug(accessToken, authorizationId)
+                                            statusResult.getOrNull()
+                                                ?: (statusResult.exceptionOrNull() as? AccountApiException)?.debugInfo
+                                                ?: approval.debug
+                                        } else {
+                                            approval.debug
+                                        }
+                                        wearLoginDebugMessage(
+                                            context.getString(R.string.account_wear_qr_approved),
+                                            devModeEnabled,
+                                            finalDebug,
+                                        )
                                     } else {
-                                        accountErrorMessage(
-                                            context,
-                                            result.exceptionOrNull(),
-                                            R.string.account_wear_qr_approve_failed,
+                                        val error = result.exceptionOrNull()
+                                        wearLoginDebugMessage(
+                                            accountErrorMessage(
+                                                context,
+                                                error,
+                                                R.string.account_wear_qr_approve_failed,
+                                            ),
+                                            devModeEnabled,
+                                            (error as? AccountApiException)?.debugInfo,
                                         )
                                     }
                                 }
@@ -2856,6 +2879,28 @@ private fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes
         else -> fallbackRes
     }
     return context.getString(resource)
+}
+
+private fun wearLoginDebugMessage(base: String, debugEnabled: Boolean, debug: WearLoginDebugInfo?): String {
+    if (!debugEnabled || debug == null) return base
+    val approval = debug.approvalSucceeded?.toString() ?: "unknown"
+    val login = when (debug.loginSucceeded) {
+        true -> "succeeded"
+        false -> if (debug.terminal) "failed" else "pending"
+        null -> "unknown"
+    }
+    return buildString {
+        append(base)
+        append("\nDebug: stage=").append(debug.stage.ifBlank { "unknown" })
+        append(", approval=").append(approval)
+        append(", login=").append(login)
+        append(", terminal=").append(debug.terminal)
+        append(", code=").append(debug.code.ifBlank { "unknown" })
+        append("\nReason: ").append(debug.reason.ifBlank { "not provided" })
+        if (debug.authorizationId.isNotBlank()) {
+            append("\nAuthorization: ").append(debug.authorizationId)
+        }
+    }
 }
 
 private data class MobileContentDestination(
