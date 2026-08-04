@@ -39,6 +39,26 @@ jobs:
           sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
 
+      - name: Download Gradle distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon --version; then
+              exit 0
+            fi
+
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "Failed to download the Gradle distribution after $attempt attempts." >&2
+              exit 1
+            fi
+
+            delay=$((attempt * 15))
+            echo "Gradle download failed; retrying in ${delay}s..." >&2
+            sleep "$delay"
+          done
+
       - name: Prepare release signing
         env:
           RELEASE_SIGNING_ENV: ${{ secrets.RELEASE_SIGNING_ENV }}
