@@ -1,6 +1,8 @@
 package com.xtawa.classingtime.account
 
+import android.content.Context
 import com.xtawa.classingtime.BuildConfig
+import com.xtawa.classingtime.security.ClientIntegrity
 import com.xtawa.classingtime.data.AccountSummary
 import com.xtawa.classingtime.data.DailyBriefingChannel
 import com.xtawa.classingtime.data.MembershipSummary
@@ -103,7 +105,10 @@ data class AccountProfile(
 class AccountApiClient(
     private val baseUrl: String = BASE_URL,
     private val deviceId: String = "",
+    appContext: Context? = null,
 ) {
+    private val appContext = appContext?.applicationContext
+
     suspend fun requestRegistrationVerification(
         username: String,
         email: String,
@@ -279,6 +284,14 @@ class AccountApiClient(
         ).map { Unit }
     }
 
+    suspend fun fetchMembershipStatus(accessToken: String): Result<MembershipSummary> {
+        return request(
+            method = "GET",
+            path = "/api/v1/membership/status",
+            accessToken = accessToken,
+        ).map { parseMembershipSummary(it) }
+    }
+
     suspend fun fetchProfile(accessToken: String): Result<AccountProfile> {
         return runCatching {
             val accountJson = request(
@@ -286,14 +299,10 @@ class AccountApiClient(
                 path = "/api/v1/account/me",
                 accessToken = accessToken,
             ).getOrThrow()
-            val membershipJson = request(
-                method = "GET",
-                path = "/api/v1/membership/status",
-                accessToken = accessToken,
-            ).getOrThrow()
+            val membership = fetchMembershipStatus(accessToken).getOrThrow()
             AccountProfile(
                 account = parseAccountSummary(accountJson),
-                membership = parseMembershipSummary(membershipJson),
+                membership = membership,
                 pendingEmailChange = accountJson.optJSONObject("pendingEmailChange")?.let {
                     PendingEmailChange(
                         newEmail = it.optString("newEmail"),
@@ -386,6 +395,10 @@ class AccountApiClient(
         }
     }
 
+    private fun shouldVerifyClientSignature(path: String): Boolean {
+        return path != "/api/v1/auth/registration/config"
+    }
+
     private fun legalConsent(): JSONObject = JSONObject()
         .put("privacyPolicy", true)
         .put("termsOfService", true)
@@ -401,6 +414,9 @@ class AccountApiClient(
         debugRequest: Boolean = false,
     ): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
+            if (shouldVerifyClientSignature(path)) {
+                appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
+            }
 			AccountRequestCooldown.remainingSeconds(path).takeIf { it > 0 }?.let { remaining ->
 				throw AccountApiException(429, "CLIENT_COOLDOWN", remaining, message = "retry after $remaining seconds")
 			}
@@ -410,6 +426,7 @@ class AccountApiClient(
                 readTimeout = 10_000
                 setRequestProperty("Accept", "application/json")
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                appContext?.let { ClientIntegrity.applyHeaders(this, it) }
                 if (deviceId.isNotBlank()) {
                     setRequestProperty("X-Classing-Device-ID", deviceId.take(128))
                 }

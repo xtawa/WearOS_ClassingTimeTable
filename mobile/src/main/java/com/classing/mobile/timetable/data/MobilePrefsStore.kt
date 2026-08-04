@@ -515,7 +515,8 @@ object MobilePrefsStore {
     private fun parseMembershipSummary(raw: String?): MembershipSummary {
         val json = runCatching { JSONObject(raw ?: "") }.getOrNull() ?: return MembershipSummary()
         return MembershipSummary(
-            isMember = json.optBoolean("isMember", false),
+            // SharedPreferences are editable on rooted devices; do not restore entitlements from disk.
+            isMember = false,
             tier = json.optString("tier", "FREE").ifBlank { "FREE" },
             expiresAt = json.optLong("expiresAt", 0L),
             lastCheckedAt = json.optLong("lastCheckedAt", 0L),
@@ -532,7 +533,7 @@ object MobilePrefsStore {
 
     private fun buildMembershipSummaryJson(summary: MembershipSummary): JSONObject {
         return JSONObject()
-            .put("isMember", summary.isMember)
+            .put("isMember", false)
             .put("tier", summary.tier)
             .put("expiresAt", summary.expiresAt)
             .put("lastCheckedAt", summary.lastCheckedAt)

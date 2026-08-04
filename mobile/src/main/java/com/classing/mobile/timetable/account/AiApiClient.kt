@@ -1,5 +1,7 @@
 package com.xtawa.classingtime.account
 
+import android.content.Context
+import com.xtawa.classingtime.security.ClientIntegrity
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
@@ -24,7 +26,12 @@ data class AiConversationSummary(val conversationId: String, val title: String, 
 data class AiMessageSummary(val messageId: String, val role: String, val content: String, val createdAt: Long)
 data class AiChatResult(val conversationId: String, val reply: String, val truncated: Boolean)
 
-class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
+class AiApiClient(
+    private val baseUrl: String = AccountApiClient.BASE_URL,
+    appContext: Context? = null,
+) {
+    private val appContext = appContext?.applicationContext
+
     suspend fun usage(accessToken: String): Result<AiUsageSummary> = request("GET", "/api/v1/ai/usage/me", accessToken).map { body ->
         val usage = body.optJSONObject("usage") ?: body
         AiUsageSummary(
@@ -59,6 +66,7 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
 
     suspend fun chat(accessToken: String, conversationId: String?, message: String, timetableSnapshot: JSONObject?, model: String): Result<AiChatResult> = withContext(Dispatchers.IO) {
         runCatching {
+            appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
             val body = JSONObject().put("clientRequestId", java.util.UUID.randomUUID().toString()).put("message", message).put("model", model)
             if (!conversationId.isNullOrBlank()) body.put("conversationId", conversationId)
             if (conversationId.isNullOrBlank()) body.put("timetableSnapshot", timetableSnapshot ?: throw IllegalArgumentException("timetable required"))
@@ -92,6 +100,7 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
 
     private suspend fun request(method: String, path: String, token: String): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
+            appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
             val connection = open(method, path, token, null)
             try {
                 val code = connection.responseCode
@@ -105,6 +114,7 @@ class AiApiClient(private val baseUrl: String = AccountApiClient.BASE_URL) {
         (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method; connectTimeout = 10_000; readTimeout = 200_000; doInput = true
             setRequestProperty("Authorization", "Bearer $token"); setRequestProperty("Accept", "application/json, text/event-stream")
+            appContext?.let { ClientIntegrity.applyHeaders(this, it) }
             if (body != null) { doOutput = true; setRequestProperty("Content-Type", "application/json; charset=utf-8"); OutputStreamWriter(outputStream, Charsets.UTF_8).use { it.write(body.toString()) } }
         }
 

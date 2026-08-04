@@ -28,6 +28,10 @@ data class CloudRuntimeConfig(
     val driveAccessTokenRefreshAfterAt: Long,
     val accountAccessToken: String,
     val officialMemberAuthorized: Boolean,
+    val clientPackageName: String = "",
+    val clientPlatform: String = "",
+    val clientVersionCode: Long = 0L,
+    val clientSigningCertSha256: String = "",
 ) {
     fun isComplete(): Boolean {
         if (!enabled) return false
@@ -332,6 +336,11 @@ fun MobileSettings.toCloudRuntimeConfig(
     driveAccessTokenExpireAt: Long,
     driveAccessTokenRefreshAfterAt: Long,
     accountAccessToken: String,
+    officialMemberAuthorized: Boolean = false,
+    clientPackageName: String = "",
+    clientPlatform: String = "",
+    clientVersionCode: Long = 0L,
+    clientSigningCertSha256: String = "",
 ): CloudRuntimeConfig {
     val provider = CloudProvider.fromWire(cloudProvider)
     return CloudRuntimeConfig(
@@ -350,7 +359,11 @@ fun MobileSettings.toCloudRuntimeConfig(
         driveAccessTokenExpireAt = driveAccessTokenExpireAt,
         driveAccessTokenRefreshAfterAt = driveAccessTokenRefreshAfterAt,
         accountAccessToken = accountAccessToken,
-        officialMemberAuthorized = membershipSummary.isMember,
+        officialMemberAuthorized = provider == CloudProvider.OFFICIAL && officialMemberAuthorized,
+        clientPackageName = clientPackageName,
+        clientPlatform = clientPlatform,
+        clientVersionCode = clientVersionCode,
+        clientSigningCertSha256 = clientSigningCertSha256,
     )
 }
 

@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.sync
 
+import com.xtawa.classingtime.security.ClientSignatureException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -49,6 +50,7 @@ class OfficialCloudHttpClient {
                 readTimeout = 10_000
                 setRequestProperty("Accept", "application/json, text/plain, */*")
                 setRequestProperty("Authorization", "Bearer ${config.accountAccessToken}")
+                applyClientIntegrityHeaders(this, config)
 				if (payload != null) {
 					val version = expectedVersion?.trim()?.trim('"').orEmpty().ifBlank { "0" }
 					setRequestProperty("If-Match", "\"$version\"")
@@ -77,7 +79,11 @@ class OfficialCloudHttpClient {
                     throw CloudAuthExpiredException("Official cloud authorization expired")
                 }
                 if (status == HttpURLConnection.HTTP_FORBIDDEN) {
-                    throw CloudPermissionDeniedException("Official cloud permission denied")
+                    val errorCode = parseErrorCode(body)
+                    if (errorCode == "CLIENT_SIGNATURE_INVALID" || errorCode == "CLIENT_SIGNATURE_POLICY_MISSING") {
+                        throw ClientSignatureException("签名异常，客户端可能被非法修改，已禁止使用在线功能")
+                    }
+                    throw CloudPermissionDeniedException(parseErrorMessage(body).ifBlank { "Official cloud permission denied" })
                 }
                 if (status == 429) {
                     val errorCode = parseErrorCode(body)
@@ -101,7 +107,26 @@ class OfficialCloudHttpClient {
         }
     }
 
+    private fun applyClientIntegrityHeaders(connection: HttpURLConnection, config: CloudRuntimeConfig) {
+        if (config.clientPlatform.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Client-Platform", config.clientPlatform)
+        }
+        if (config.clientPackageName.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Package-Name", config.clientPackageName)
+        }
+        if (config.clientVersionCode > 0L) {
+            connection.setRequestProperty("X-Classing-Version-Code", config.clientVersionCode.toString())
+        }
+        if (config.clientSigningCertSha256.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Signing-Cert-Sha256", config.clientSigningCertSha256)
+        }
+    }
+
     private fun parseErrorCode(body: String): String = runCatching {
         org.json.JSONObject(body).optString("code")
+    }.getOrDefault("")
+
+    private fun parseErrorMessage(body: String): String = runCatching {
+        org.json.JSONObject(body).optString("message")
     }.getOrDefault("")
 }

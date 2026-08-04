@@ -11,6 +11,7 @@ import com.classing.wear.timetable.data.local.AppDatabase
 import com.classing.wear.timetable.data.sync.SyncPayloadApplier
 import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.domain.repository.SettingsRepository
+import com.classing.wear.timetable.security.ClientIntegrity
 import com.classing.wear.timetable.widget.WearSurfaceUpdateRequester
 import java.net.HttpURLConnection
 import java.net.URL
@@ -49,7 +50,10 @@ data class WearOfficialCloudReadResult(
 
 class WearOfficialCloudHttpClient(
     private val baseUrl: String = WearQrAuthApiClient.BASE_URL,
+    context: Context? = null,
 ) {
+    private val appContext = context?.applicationContext
+
     suspend fun read(accessToken: String): Result<WearOfficialCloudReadResult> = request(
         method = "GET",
         path = "/api/v1/cloud/official/document",
@@ -83,6 +87,7 @@ class WearOfficialCloudHttpClient(
         expectedVersion: String? = null,
     ): Result<Response> = withContext(Dispatchers.IO) {
         runCatching {
+            appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
             val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = 10_000
@@ -90,6 +95,7 @@ class WearOfficialCloudHttpClient(
                 setRequestProperty("Accept", "application/json")
                 setRequestProperty("Authorization", "Bearer $accessToken")
                 setRequestProperty("User-Agent", "Classing-WearOS")
+                appContext?.let { ClientIntegrity.applyHeaders(this, it) }
                 if (payload != null) {
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
@@ -139,7 +145,7 @@ class WearOfficialCloudSyncCoordinator(
     context: Context,
     private val settingsRepository: SettingsRepository,
     private val database: AppDatabase,
-    private val httpClient: WearOfficialCloudHttpClient = WearOfficialCloudHttpClient(),
+    private val httpClient: WearOfficialCloudHttpClient = WearOfficialCloudHttpClient(context = context),
     private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
 ) {
     private val appContext = context.applicationContext
