@@ -145,7 +145,7 @@ class WearOfficialCloudSyncCoordinator(
     context: Context,
     private val settingsRepository: SettingsRepository,
     private val database: AppDatabase,
-    private val httpClient: WearOfficialCloudHttpClient = WearOfficialCloudHttpClient(context),
+    private val httpClient: WearOfficialCloudHttpClient = WearOfficialCloudHttpClient(context = context),
     private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
 ) {
     private val appContext = context.applicationContext
