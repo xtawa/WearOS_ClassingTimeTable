@@ -1,0 +1,160 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "manual_v3_baseline_pending_gradle_regeneration",
+    "entities": [
+      {
+        "tableName": "semesters",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `name` TEXT NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `totalWeeks` INTEGER NOT NULL, `isActive` INTEGER NOT NULL, `version` INTEGER NOT NULL)",
+        "fields": [
+          { "fieldPath": "localId", "columnName": "localId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "remoteId", "columnName": "remoteId", "affinity": "TEXT", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "name", "columnName": "name", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "startDate", "columnName": "startDate", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "endDate", "columnName": "endDate", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "totalWeeks", "columnName": "totalWeeks", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "isActive", "columnName": "isActive", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "version", "columnName": "version", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" }
+        ],
+        "primaryKey": { "autoGenerate": true, "columnNames": ["localId"] },
+        "indices": [
+          { "name": "index_semesters_remoteId", "unique": false, "columnNames": ["remoteId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_semesters_remoteId` ON `${TABLE_NAME}` (`remoteId`)" },
+          { "name": "index_semesters_isActive", "unique": false, "columnNames": ["isActive"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_semesters_isActive` ON `${TABLE_NAME}` (`isActive`)" }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "time_slots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `semesterId` INTEGER NOT NULL, `indexInDay` INTEGER NOT NULL, `label` TEXT NOT NULL, `startTime` TEXT NOT NULL, `endTime` TEXT NOT NULL, `version` INTEGER NOT NULL, FOREIGN KEY(`semesterId`) REFERENCES `semesters`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        "fields": [
+          { "fieldPath": "localId", "columnName": "localId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "remoteId", "columnName": "remoteId", "affinity": "TEXT", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "semesterId", "columnName": "semesterId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "indexInDay", "columnName": "indexInDay", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "label", "columnName": "label", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "startTime", "columnName": "startTime", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "endTime", "columnName": "endTime", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "version", "columnName": "version", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" }
+        ],
+        "primaryKey": { "autoGenerate": true, "columnNames": ["localId"] },
+        "indices": [
+          { "name": "index_time_slots_semesterId", "unique": false, "columnNames": ["semesterId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_time_slots_semesterId` ON `${TABLE_NAME}` (`semesterId`)" },
+          { "name": "index_time_slots_remoteId", "unique": false, "columnNames": ["remoteId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_time_slots_remoteId` ON `${TABLE_NAME}` (`remoteId`)" }
+        ],
+        "foreignKeys": [
+          { "table": "semesters", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["semesterId"], "referencedColumns": ["localId"] }
+        ]
+      },
+      {
+        "tableName": "courses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `semesterId` INTEGER NOT NULL, `name` TEXT NOT NULL, `teacher` TEXT NOT NULL, `classroom` TEXT NOT NULL, `note` TEXT NOT NULL, `colorLabel` TEXT NOT NULL, `isFavorite` INTEGER NOT NULL, `version` INTEGER NOT NULL, FOREIGN KEY(`semesterId`) REFERENCES `semesters`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        "fields": [
+          { "fieldPath": "localId", "columnName": "localId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "remoteId", "columnName": "remoteId", "affinity": "TEXT", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "semesterId", "columnName": "semesterId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "name", "columnName": "name", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "teacher", "columnName": "teacher", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "classroom", "columnName": "classroom", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "note", "columnName": "note", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "colorLabel", "columnName": "colorLabel", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "isFavorite", "columnName": "isFavorite", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "version", "columnName": "version", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" }
+        ],
+        "primaryKey": { "autoGenerate": true, "columnNames": ["localId"] },
+        "indices": [
+          { "name": "index_courses_semesterId", "unique": false, "columnNames": ["semesterId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_courses_semesterId` ON `${TABLE_NAME}` (`semesterId`)" },
+          { "name": "index_courses_remoteId", "unique": false, "columnNames": ["remoteId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_courses_remoteId` ON `${TABLE_NAME}` (`remoteId`)" }
+        ],
+        "foreignKeys": [
+          { "table": "semesters", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["semesterId"], "referencedColumns": ["localId"] }
+        ]
+      },
+      {
+        "tableName": "course_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `semesterId` INTEGER NOT NULL, `courseId` INTEGER NOT NULL, `dayOfWeek` INTEGER NOT NULL, `timeSlotId` INTEGER NOT NULL, `startWeek` INTEGER NOT NULL, `endWeek` INTEGER NOT NULL, `weekParity` TEXT NOT NULL, `version` INTEGER NOT NULL, FOREIGN KEY(`courseId`) REFERENCES `courses`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`semesterId`) REFERENCES `semesters`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`timeSlotId`) REFERENCES `time_slots`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        "fields": [
+          { "fieldPath": "localId", "columnName": "localId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "remoteId", "columnName": "remoteId", "affinity": "TEXT", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "semesterId", "columnName": "semesterId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "courseId", "columnName": "courseId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "dayOfWeek", "columnName": "dayOfWeek", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "timeSlotId", "columnName": "timeSlotId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "startWeek", "columnName": "startWeek", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "endWeek", "columnName": "endWeek", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "weekParity", "columnName": "weekParity", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "version", "columnName": "version", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" }
+        ],
+        "primaryKey": { "autoGenerate": true, "columnNames": ["localId"] },
+        "indices": [
+          { "name": "index_course_sessions_courseId", "unique": false, "columnNames": ["courseId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_course_sessions_courseId` ON `${TABLE_NAME}` (`courseId`)" },
+          { "name": "index_course_sessions_semesterId", "unique": false, "columnNames": ["semesterId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_course_sessions_semesterId` ON `${TABLE_NAME}` (`semesterId`)" },
+          { "name": "index_course_sessions_timeSlotId", "unique": false, "columnNames": ["timeSlotId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_course_sessions_timeSlotId` ON `${TABLE_NAME}` (`timeSlotId`)" },
+          { "name": "index_course_sessions_remoteId", "unique": false, "columnNames": ["remoteId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_course_sessions_remoteId` ON `${TABLE_NAME}` (`remoteId`)" }
+        ],
+        "foreignKeys": [
+          { "table": "courses", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["courseId"], "referencedColumns": ["localId"] },
+          { "table": "semesters", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["semesterId"], "referencedColumns": ["localId"] },
+          { "table": "time_slots", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["timeSlotId"], "referencedColumns": ["localId"] }
+        ]
+      },
+      {
+        "tableName": "schedule_exceptions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `semesterId` INTEGER NOT NULL, `sessionId` INTEGER, `exceptionType` TEXT NOT NULL, `date` TEXT NOT NULL, `reason` TEXT NOT NULL, `courseId` INTEGER, `timeSlotId` INTEGER, `dayOfWeek` INTEGER, `newCourseId` INTEGER, `newTimeSlotId` INTEGER, `version` INTEGER NOT NULL, FOREIGN KEY(`semesterId`) REFERENCES `semesters`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`sessionId`) REFERENCES `course_sessions`(`localId`) ON UPDATE NO ACTION ON DELETE SET NULL)",
+        "fields": [
+          { "fieldPath": "localId", "columnName": "localId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "remoteId", "columnName": "remoteId", "affinity": "TEXT", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "semesterId", "columnName": "semesterId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "sessionId", "columnName": "sessionId", "affinity": "INTEGER", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "exceptionType", "columnName": "exceptionType", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "date", "columnName": "date", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "reason", "columnName": "reason", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "courseId", "columnName": "courseId", "affinity": "INTEGER", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "timeSlotId", "columnName": "timeSlotId", "affinity": "INTEGER", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "dayOfWeek", "columnName": "dayOfWeek", "affinity": "INTEGER", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "newCourseId", "columnName": "newCourseId", "affinity": "INTEGER", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "newTimeSlotId", "columnName": "newTimeSlotId", "affinity": "INTEGER", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "version", "columnName": "version", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" }
+        ],
+        "primaryKey": { "autoGenerate": true, "columnNames": ["localId"] },
+        "indices": [
+          { "name": "index_schedule_exceptions_semesterId", "unique": false, "columnNames": ["semesterId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_schedule_exceptions_semesterId` ON `${TABLE_NAME}` (`semesterId`)" },
+          { "name": "index_schedule_exceptions_sessionId", "unique": false, "columnNames": ["sessionId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_schedule_exceptions_sessionId` ON `${TABLE_NAME}` (`sessionId`)" },
+          { "name": "index_schedule_exceptions_date", "unique": false, "columnNames": ["date"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_schedule_exceptions_date` ON `${TABLE_NAME}` (`date`)" },
+          { "name": "index_schedule_exceptions_remoteId", "unique": false, "columnNames": ["remoteId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_schedule_exceptions_remoteId` ON `${TABLE_NAME}` (`remoteId`)" }
+        ],
+        "foreignKeys": [
+          { "table": "semesters", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["semesterId"], "referencedColumns": ["localId"] },
+          { "table": "course_sessions", "onDelete": "SET NULL", "onUpdate": "NO ACTION", "columns": ["sessionId"], "referencedColumns": ["localId"] }
+        ]
+      },
+      {
+        "tableName": "reminders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `semesterId` INTEGER NOT NULL, `targetType` TEXT NOT NULL, `targetId` INTEGER NOT NULL, `minutesBefore` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `version` INTEGER NOT NULL, FOREIGN KEY(`semesterId`) REFERENCES `semesters`(`localId`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        "fields": [
+          { "fieldPath": "localId", "columnName": "localId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "remoteId", "columnName": "remoteId", "affinity": "TEXT", "notNull": false, "defaultValue": "undefined" },
+          { "fieldPath": "semesterId", "columnName": "semesterId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "targetType", "columnName": "targetType", "affinity": "TEXT", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "targetId", "columnName": "targetId", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "minutesBefore", "columnName": "minutesBefore", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "enabled", "columnName": "enabled", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" },
+          { "fieldPath": "version", "columnName": "version", "affinity": "INTEGER", "notNull": true, "defaultValue": "undefined" }
+        ],
+        "primaryKey": { "autoGenerate": true, "columnNames": ["localId"] },
+        "indices": [
+          { "name": "index_reminders_semesterId", "unique": false, "columnNames": ["semesterId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_reminders_semesterId` ON `${TABLE_NAME}` (`semesterId`)" },
+          { "name": "index_reminders_remoteId", "unique": false, "columnNames": ["remoteId"], "orders": ["ASC"], "createSql": "CREATE INDEX IF NOT EXISTS `index_reminders_remoteId` ON `${TABLE_NAME}` (`remoteId`)" }
+        ],
+        "foreignKeys": [
+          { "table": "semesters", "onDelete": "CASCADE", "onUpdate": "NO ACTION", "columns": ["semesterId"], "referencedColumns": ["localId"] }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'manual_v3_baseline_pending_gradle_regeneration')"
+    ]
+  }
+}

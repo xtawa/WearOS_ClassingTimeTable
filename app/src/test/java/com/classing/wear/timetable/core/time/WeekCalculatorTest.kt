@@ -20,8 +20,10 @@ class WeekCalculatorTest {
     @Test
     fun weekStart_respects_locale_first_day() {
         val date = LocalDate.of(2026, 3, 18)
+        val sundayFirst = Locale.forLanguageTag("en-US-u-fw-sun")
+        val mondayFirst = Locale.forLanguageTag("zh-CN-u-fw-mon")
 
-        assertEquals(LocalDate.of(2026, 3, 15), WeekCalculator.weekStart(date, Locale.US))
-        assertEquals(LocalDate.of(2026, 3, 16), WeekCalculator.weekStart(date, Locale.CHINA))
+        assertEquals(LocalDate.of(2026, 3, 15), WeekCalculator.weekStart(date, sundayFirst))
+        assertEquals(LocalDate.of(2026, 3, 16), WeekCalculator.weekStart(date, mondayFirst))
     }
 }

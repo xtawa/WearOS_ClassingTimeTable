@@ -27,7 +27,7 @@ import com.classing.wear.timetable.data.local.entity.TimeSlotEntity
         ReminderEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
 abstract class AppDatabase : RoomDatabase() {

@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.classing.shared.time.nextMinuteDelay
 import com.classing.shared.ui.heatmap.HeatmapLessonInput
 import com.classing.shared.ui.heatmap.buildHeatmapCells
 import com.xtawa.classingtime.R
@@ -41,6 +42,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 internal fun DashboardLayer(
@@ -55,11 +57,10 @@ internal fun DashboardLayer(
     var now by remember { mutableStateOf(LocalDateTime.now()) }
 
     LaunchedEffect(Unit) {
-        while (true) {
+        while (isActive) {
             val current = LocalDateTime.now()
             now = current
-            val delayMillis = ((60 - current.second) * 1_000L) - (current.nano / 1_000_000L)
-            delay(delayMillis.coerceAtLeast(1L))
+            delay(nextMinuteDelay(current).toMillis())
         }
     }
 

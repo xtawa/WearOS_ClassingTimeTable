@@ -192,4 +192,76 @@ object WearI18n {
             Lang.EN -> "Show countdown after integrating Complication API"
         }
     }
+
+    fun complicationPreviewCourseTitle(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "高级 Android"
+            Lang.ZH_TW -> "進階 Android"
+            Lang.EN -> "Advanced Android"
+        }
+    }
+
+    fun complicationPreviewWeekText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "第3周"
+            Lang.ZH_TW -> "第3週"
+            Lang.EN -> "Week 3"
+        }
+    }
+
+    fun complicationPreviewDateText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "03-14 周五"
+            Lang.ZH_TW -> "03-14 週五"
+            Lang.EN -> "03-14 Fri"
+        }
+    }
+
+    fun complicationPreviewTeacherText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "李老师"
+            Lang.ZH_TW -> "李老師"
+            Lang.EN -> "Li"
+        }
+    }
+
+    fun complicationPreviewLocationText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "A-301"
+            Lang.ZH_TW -> "A-301"
+            Lang.EN -> "A-301"
+        }
+    }
+
+    fun complicationPreviewCountdownText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "20分钟后"
+            Lang.ZH_TW -> "20分鐘後"
+            Lang.EN -> "In 20 min"
+        }
+    }
+
+    fun complicationPreviewShortText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "09:00 Android"
+            Lang.ZH_TW -> "09:00 Android"
+            Lang.EN -> "09:00 Android"
+        }
+    }
+
+    fun complicationPreviewLongText(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "高级 Android 09:00-10:40 @ A-301"
+            Lang.ZH_TW -> "進階 Android 09:00-10:40 @ A-301"
+            Lang.EN -> "Advanced Android 09:00-10:40 @ A-301"
+        }
+    }
+
+    fun complicationPreviewContentDescription(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "下节课预览"
+            Lang.ZH_TW -> "下節課預覽"
+            Lang.EN -> "Preview next class"
+        }
+    }
 }

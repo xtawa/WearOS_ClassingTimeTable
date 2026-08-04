@@ -44,7 +44,7 @@ fun buildHeatmapCells(
         days.forEach { day ->
             slotMap.forEach { (slotKey, slotIndex) ->
                 val count = counts[day to slotKey] ?: 0
-                val label = slotKey.split("-").firstOrNull() ?: slotKey
+                val label = slotKey.substringBefore("-")
                 add(
                     HeatmapCell(
                         dayOfWeek = day,
