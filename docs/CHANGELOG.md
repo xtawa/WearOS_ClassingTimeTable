@@ -1,5 +1,45 @@
 # Classing 客户端变更日志
 
+## 2026-08-04
+
+### Release APK 混淆、在线会员实时校验与客户端签名完整性
+
+**影响端：** Android Mobile、Android Wear、GitHub Actions、classing-backend
+
+**前端版本要求：** WearOS_ClassingTimeTable PR #15（已合并）
+
+**后端版本要求：** classing_backend PR #6 合并并部署
+
+**主要变更：**
+
+- Mobile 与 Wear release 构建启用 R8 混淆和资源压缩，保留必要的堆栈、泛型、内部类与注解元数据。
+- 官方云课表同步不再信任持久化 JSON 中的 `MembershipSummary.isMember`；执行会员限定课表域同步前，使用当前会话实时调用 `GET /api/v1/membership/status`。
+- 网络失败、会话刷新失败、签名校验失败或会员响应无效时，不再使用本地 `isMember=true` 放行课表同步。
+- Mobile 与 Wear release 客户端读取安装包签名证书 SHA-256，在在线功能前调用 `POST /api/v1/client/signature/check`。
+- 在线请求携带 `X-Classing-Client-Platform`、`X-Classing-Package-Name`、`X-Classing-Version-Code`、`X-Classing-Signing-Cert-Sha256`。
+- Android CI 上传 Mobile/Wear release APK artifact，并通过 `POST /api/v1/client/signing-certificates/register` 将产物证书登记到后端。
+- GitHub Actions 使用 `CLASSING_API_BASE_URL` 与 `CLASSING_SIGNATURE_REGISTER_TOKEN`；后端使用相同值配置 `RELEASE_SIGNING_REGISTER_TOKEN`。
+- 后端 `CLIENT_SIGNATURE_REQUIRED=false` 时保留无签名头的同源 Web 管理台请求；Android release 客户端仍主动预检并发送签名头。
+- 新增 Ask AI 完整接口文档，并更新账户、会员、官方云、每日简报、邮箱变更和 Wear 二维码登录接口契约。
+
+**安全边界：**
+
+- 证书 allowlist 可识别普通重新打包与重新签名 APK。
+- HTTP 签名头可被完全修改的客户端伪造；需要更强保证时应增加 Play Integrity 或其他平台证明。
+
+**详细文档：**
+
+- [API-客户端签名校验与证书注册.md](./API-客户端签名校验与证书注册.md)
+- [API-Ask-AI.md](./API-Ask-AI.md)
+- [API-兑换码与会员状态.md](./API-兑换码与会员状态.md)
+- [API-官方云同步与同步项目.md](./API-官方云同步与同步项目.md)
+- [API-每日简报与邮件集群投递.md](./API-每日简报与邮件集群投递.md)
+- [API-账户会员密码重置.md](./API-账户会员密码重置.md)
+- [API-邮箱变更安全流程.md](./API-邮箱变更安全流程.md)
+- [API-Wear二维码登录.md](./API-Wear二维码登录.md)
+
+---
+
 ## 2026-07-17
 
 ### Mobile Ask AI Markdown 富文本
