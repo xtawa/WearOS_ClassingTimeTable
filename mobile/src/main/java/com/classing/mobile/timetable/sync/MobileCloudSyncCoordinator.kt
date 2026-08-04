@@ -12,6 +12,8 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.account.AccountApiClient
 import com.xtawa.classingtime.data.MembershipSummary
+import com.xtawa.classingtime.security.ClientIntegrity
+import com.xtawa.classingtime.security.ClientSignatureException
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.screen.WeekNumberMode
 import com.xtawa.classingtime.screen.buildFlattenedEffectiveLessons
@@ -295,6 +297,11 @@ object MobileCloudSyncCoordinator {
         } else {
             settings.membershipSummary
         }
+        val clientIntegrity = if (provider == CloudProvider.OFFICIAL && accountAccessToken.isNotBlank()) {
+            ClientIntegrity.snapshot(context)
+        } else {
+            null
+        }
         return settings.toCloudRuntimeConfig(
             password = password,
             driveAccessToken = driveToken,
@@ -302,6 +309,10 @@ object MobileCloudSyncCoordinator {
             driveAccessTokenRefreshAfterAt = driveTokenRefreshAfterAt,
             accountAccessToken = accountAccessToken,
             officialMemberAuthorized = verifiedMembership.isMember,
+            clientPackageName = clientIntegrity?.packageName.orEmpty(),
+            clientPlatform = clientIntegrity?.platform.orEmpty(),
+            clientVersionCode = clientIntegrity?.versionCode ?: 0L,
+            clientSigningCertSha256 = clientIntegrity?.signingCertSha256.orEmpty(),
         )
     }
 
@@ -311,6 +322,7 @@ object MobileCloudSyncCoordinator {
     ): CloudRuntimeConfig {
         val accessToken = AccountSessionManager.ensureAccessToken(context).orEmpty()
         val verifiedMembership = fetchVerifiedMembershipSummary(context, settings, accessToken)
+        val clientIntegrity = if (accessToken.isNotBlank()) ClientIntegrity.snapshot(context) else null
         return CloudRuntimeConfig(
             provider = CloudProvider.OFFICIAL,
             enabled = true,
@@ -324,6 +336,10 @@ object MobileCloudSyncCoordinator {
             driveAccessTokenRefreshAfterAt = 0L,
             accountAccessToken = accessToken,
             officialMemberAuthorized = verifiedMembership.isMember,
+            clientPackageName = clientIntegrity?.packageName.orEmpty(),
+            clientPlatform = clientIntegrity?.platform.orEmpty(),
+            clientVersionCode = clientIntegrity?.versionCode ?: 0L,
+            clientSigningCertSha256 = clientIntegrity?.signingCertSha256.orEmpty(),
         )
     }
 
@@ -341,8 +357,11 @@ object MobileCloudSyncCoordinator {
         accessToken: String,
     ): MembershipSummary {
         if (accessToken.isBlank()) return MembershipSummary()
-        val verified = AccountApiClient().fetchMembershipStatus(accessToken)
-            .getOrElse { return MembershipSummary() }
+        val verified = AccountApiClient(appContext = context.applicationContext).fetchMembershipStatus(accessToken)
+            .getOrElse { error ->
+                if (error is ClientSignatureException) throw error
+                return MembershipSummary()
+            }
             .copy(lastCheckedAt = System.currentTimeMillis())
         if (verified != settings.membershipSummary) {
             MobilePrefsStore.saveSettings(
