@@ -49,6 +49,7 @@ class OfficialCloudHttpClient {
                 readTimeout = 10_000
                 setRequestProperty("Accept", "application/json, text/plain, */*")
                 setRequestProperty("Authorization", "Bearer ${config.accountAccessToken}")
+                applyClientIntegrityHeaders(this, config)
 				if (payload != null) {
 					val version = expectedVersion?.trim()?.trim('"').orEmpty().ifBlank { "0" }
 					setRequestProperty("If-Match", "\"$version\"")
@@ -98,6 +99,21 @@ class OfficialCloudHttpClient {
             } finally {
                 connection.disconnect()
             }
+        }
+    }
+
+    private fun applyClientIntegrityHeaders(connection: HttpURLConnection, config: CloudRuntimeConfig) {
+        if (config.clientPlatform.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Client-Platform", config.clientPlatform)
+        }
+        if (config.clientPackageName.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Package-Name", config.clientPackageName)
+        }
+        if (config.clientVersionCode > 0L) {
+            connection.setRequestProperty("X-Classing-Version-Code", config.clientVersionCode.toString())
+        }
+        if (config.clientSigningCertSha256.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Signing-Cert-Sha256", config.clientSigningCertSha256)
         }
     }
 
