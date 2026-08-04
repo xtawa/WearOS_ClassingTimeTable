@@ -55,7 +55,7 @@ internal fun AskAiSettingsPage(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val client = remember { AiApiClient() }
+    val client = remember(context) { AiApiClient(appContext = context.applicationContext) }
     var models by remember { mutableStateOf<List<AiModelOption>>(emptyList()) }
     var selectedModel by remember { mutableStateOf("deepseek-v4-flash") }
     var conversations by remember { mutableStateOf<List<AiConversationSummary>>(emptyList()) }
