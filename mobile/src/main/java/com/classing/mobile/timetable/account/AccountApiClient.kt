@@ -279,6 +279,14 @@ class AccountApiClient(
         ).map { Unit }
     }
 
+    suspend fun fetchMembershipStatus(accessToken: String): Result<MembershipSummary> {
+        return request(
+            method = "GET",
+            path = "/api/v1/membership/status",
+            accessToken = accessToken,
+        ).map { parseMembershipSummary(it) }
+    }
+
     suspend fun fetchProfile(accessToken: String): Result<AccountProfile> {
         return runCatching {
             val accountJson = request(
@@ -286,14 +294,10 @@ class AccountApiClient(
                 path = "/api/v1/account/me",
                 accessToken = accessToken,
             ).getOrThrow()
-            val membershipJson = request(
-                method = "GET",
-                path = "/api/v1/membership/status",
-                accessToken = accessToken,
-            ).getOrThrow()
+            val membership = fetchMembershipStatus(accessToken).getOrThrow()
             AccountProfile(
                 account = parseAccountSummary(accountJson),
-                membership = parseMembershipSummary(membershipJson),
+                membership = membership,
                 pendingEmailChange = accountJson.optJSONObject("pendingEmailChange")?.let {
                     PendingEmailChange(
                         newEmail = it.optString("newEmail"),
