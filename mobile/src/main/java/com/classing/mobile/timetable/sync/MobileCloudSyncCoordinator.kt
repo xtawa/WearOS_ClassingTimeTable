@@ -11,6 +11,7 @@ import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.account.AccountApiClient
+import com.xtawa.classingtime.data.MembershipSummary
 import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.screen.WeekNumberMode
 import com.xtawa.classingtime.screen.buildFlattenedEffectiveLessons
@@ -76,7 +77,7 @@ object MobileCloudSyncCoordinator {
             }
 
             var runtimeConfig = config
-            val syncScopes = effectiveSyncScopes(current, runtimeConfig.provider)
+            val syncScopes = effectiveSyncScopes(current, runtimeConfig)
             val client = storageClient(config.provider)
             var conflicts = 0
             var wrote = false
@@ -289,12 +290,18 @@ object MobileCloudSyncCoordinator {
                 MobilePrefsStore.saveSettings(context, settings.copy(cloudDriveTokenExpireAt = refreshed.expireAt))
             }
         }
+        val verifiedMembership = if (provider == CloudProvider.OFFICIAL) {
+            fetchVerifiedMembershipSummary(context, settings, accountAccessToken)
+        } else {
+            settings.membershipSummary
+        }
         return settings.toCloudRuntimeConfig(
             password = password,
             driveAccessToken = driveToken,
             driveAccessTokenExpireAt = driveTokenExpireAt,
             driveAccessTokenRefreshAfterAt = driveTokenRefreshAfterAt,
             accountAccessToken = accountAccessToken,
+            officialMemberAuthorized = verifiedMembership.isMember,
         )
     }
 
@@ -303,6 +310,7 @@ object MobileCloudSyncCoordinator {
         settings: MobileSettings,
     ): CloudRuntimeConfig {
         val accessToken = AccountSessionManager.ensureAccessToken(context).orEmpty()
+        val verifiedMembership = fetchVerifiedMembershipSummary(context, settings, accessToken)
         return CloudRuntimeConfig(
             provider = CloudProvider.OFFICIAL,
             enabled = true,
@@ -315,16 +323,34 @@ object MobileCloudSyncCoordinator {
             driveAccessTokenExpireAt = 0L,
             driveAccessTokenRefreshAfterAt = 0L,
             accountAccessToken = accessToken,
-            officialMemberAuthorized = settings.membershipSummary.isMember,
+            officialMemberAuthorized = verifiedMembership.isMember,
         )
     }
 
-    private fun effectiveSyncScopes(settings: MobileSettings, provider: CloudProvider): Set<SyncScope> {
+    private fun effectiveSyncScopes(settings: MobileSettings, config: CloudRuntimeConfig): Set<SyncScope> {
         val scopes = settings.syncScopes.ifEmpty { SyncScope.entries.toSet() }
-        if (provider != CloudProvider.OFFICIAL || settings.membershipSummary.isMember) {
+        if (config.provider != CloudProvider.OFFICIAL || config.officialMemberAuthorized) {
             return scopes
         }
         return (scopes - SyncScope.TIMETABLE).ifEmpty { setOf(SyncScope.MOBILE_SETTINGS) }
+    }
+
+    private suspend fun fetchVerifiedMembershipSummary(
+        context: Context,
+        settings: MobileSettings,
+        accessToken: String,
+    ): MembershipSummary {
+        if (accessToken.isBlank()) return MembershipSummary()
+        val verified = AccountApiClient().fetchMembershipStatus(accessToken)
+            .getOrElse { return MembershipSummary() }
+            .copy(lastCheckedAt = System.currentTimeMillis())
+        if (verified != settings.membershipSummary) {
+            MobilePrefsStore.saveSettings(
+                context,
+                MobilePrefsStore.loadSettings(context).copy(membershipSummary = verified),
+            )
+        }
+        return verified
     }
 
     private fun captureLocalCloudRevision(context: Context, scopes: Set<SyncScope>): LocalCloudRevision {
@@ -364,7 +390,15 @@ object MobileCloudSyncCoordinator {
             context = context,
             rejectedAccessToken = config.accountAccessToken,
         ) ?: return null
-        return config.copy(accountAccessToken = accessToken)
+        val verifiedMembership = fetchVerifiedMembershipSummary(
+            context = context,
+            settings = MobilePrefsStore.loadSettings(context),
+            accessToken = accessToken,
+        )
+        return config.copy(
+            accountAccessToken = accessToken,
+            officialMemberAuthorized = verifiedMembership.isMember,
+        )
     }
 
     private suspend fun refreshDriveRuntimeConfigSilently(
