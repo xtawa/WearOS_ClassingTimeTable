@@ -3,6 +3,7 @@ package com.classing.wear.timetable.sync
 import android.content.Context
 import com.classing.wear.timetable.account.WearDirectAccountSessionManager
 import com.classing.wear.timetable.account.WearQrAuthApiClient
+import com.classing.wear.timetable.security.ClientIntegrity
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
@@ -16,13 +17,17 @@ import org.json.JSONObject
 /** A foreground-only SSE connection. The stream carries versions, never the timetable document. */
 class WearOfficialCloudEventClient(
     private val baseUrl: String = WearQrAuthApiClient.BASE_URL,
+    context: Context? = null,
 ) {
+    private val appContext = context?.applicationContext
+
     suspend fun listen(
         accessToken: String,
         lastEventId: Long,
         shouldContinue: () -> Boolean = { true },
         onDocumentVersion: suspend (Long) -> Unit,
     ) = withContext(Dispatchers.IO) {
+        appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
         val connection = (URL("$baseUrl/api/v1/cloud/official/events").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
@@ -31,6 +36,7 @@ class WearOfficialCloudEventClient(
             setRequestProperty("Authorization", "Bearer $accessToken")
             setRequestProperty("Cache-Control", "no-cache")
             setRequestProperty("User-Agent", "Classing-WearOS")
+            appContext?.let { ClientIntegrity.applyHeaders(this, it) }
             if (lastEventId > 0L) setRequestProperty("Last-Event-ID", lastEventId.toString())
         }
         val cancellation = currentCoroutineContext()[Job]?.invokeOnCompletion { connection.disconnect() }
@@ -83,7 +89,7 @@ class WearOfficialCloudEventClient(
 class WearOfficialCloudEventSubscriber(
     context: Context,
     private val coordinator: WearOfficialCloudSyncCoordinator,
-    private val eventClient: WearOfficialCloudEventClient = WearOfficialCloudEventClient(),
+    private val eventClient: WearOfficialCloudEventClient = WearOfficialCloudEventClient(context),
     private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
 ) {
     private val appContext = context.applicationContext
