@@ -574,6 +574,11 @@
     <string name="keepalive_refresh_status">重新整理狀態</string>
     <string name="keepalive_battery_whitelist">電池白名單</string>
     <string name="keepalive_exact_alarm">精確鬧鐘</string>
+    <string name="keepalive_runtime_status">精確鬧鐘：%1$s · 電池白名單：%2$s</string>
+    <string name="keepalive_status_authorized">已授權</string>
+    <string name="keepalive_status_not_authorized">未授權</string>
+    <string name="keepalive_status_whitelisted">已加入白名單</string>
+    <string name="keepalive_status_not_whitelisted">未加入白名單</string>
     <string name="settings_about_icp_pending">ICP 備案號：待補充</string>
     <string name="cloud_connection_success">%1$s 連線成功。</string>
     <string name="cloud_connection_failed">%1$s 連線失敗。</string>
