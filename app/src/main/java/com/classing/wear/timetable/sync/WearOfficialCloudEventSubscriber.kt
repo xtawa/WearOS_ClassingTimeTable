@@ -89,7 +89,7 @@ class WearOfficialCloudEventClient(
 class WearOfficialCloudEventSubscriber(
     context: Context,
     private val coordinator: WearOfficialCloudSyncCoordinator,
-    private val eventClient: WearOfficialCloudEventClient = WearOfficialCloudEventClient(context),
+    private val eventClient: WearOfficialCloudEventClient = WearOfficialCloudEventClient(context = context),
     private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
 ) {
     private val appContext = context.applicationContext
