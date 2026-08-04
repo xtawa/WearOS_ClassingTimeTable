@@ -12,12 +12,39 @@ import com.classing.wear.timetable.widget.NextClassSnapshot
 import com.classing.wear.timetable.widget.NextClassSnapshotProvider
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.guava.future
 
 class NextClassTileService : TileService() {
+    private val tileScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
-        val snapshot = runBlocking { snapshotProvider().loadSnapshot() }
-        val tile = TileBuilders.Tile.Builder()
+        return tileScope.future {
+            val snapshot = runCatching { snapshotProvider().loadSnapshot() }
+                .getOrElse { unavailableSnapshot() }
+            buildTile(snapshot)
+        }
+    }
+
+    override fun onTileResourcesRequest(
+        requestParams: RequestBuilders.ResourcesRequest,
+    ): ListenableFuture<ResourceBuilders.Resources> {
+        val resources = ResourceBuilders.Resources.Builder()
+            .setVersion(RESOURCES_VERSION)
+            .build()
+        return Futures.immediateFuture(resources)
+    }
+
+    override fun onDestroy() {
+        tileScope.cancel()
+        super.onDestroy()
+    }
+
+    private fun buildTile(snapshot: NextClassSnapshot): TileBuilders.Tile {
+        return TileBuilders.Tile.Builder()
             .setResourcesVersion(RESOURCES_VERSION)
             .setFreshnessIntervalMillis(TILE_FRESHNESS_INTERVAL_MILLIS)
             .setTimeline(
@@ -34,21 +61,27 @@ class NextClassTileService : TileService() {
                     .build(),
             )
             .build()
-        return Futures.immediateFuture(tile)
-    }
-
-    override fun onTileResourcesRequest(
-        requestParams: RequestBuilders.ResourcesRequest,
-    ): ListenableFuture<ResourceBuilders.Resources> {
-        val resources = ResourceBuilders.Resources.Builder()
-            .setVersion(RESOURCES_VERSION)
-            .build()
-        return Futures.immediateFuture(resources)
     }
 
     private fun snapshotProvider(): NextClassSnapshotProvider {
         val app = applicationContext as ClassingTimetableApplication
         return NextClassSnapshotProvider(app.appContainer)
+    }
+
+    private fun unavailableSnapshot(): NextClassSnapshot {
+        return NextClassSnapshot(
+            hasLesson = false,
+            courseTitle = "暂时无法加载",
+            weekText = "",
+            dateText = "Classing",
+            timeText = "稍后重试",
+            teacherText = "",
+            locationText = "",
+            countdownText = "",
+            shortComplicationText = "--",
+            longComplicationText = "暂时无法加载课程",
+            contentDescription = "暂时无法加载课程",
+        )
     }
 
     private fun buildRoot(snapshot: NextClassSnapshot): LayoutElementBuilders.LayoutElement {

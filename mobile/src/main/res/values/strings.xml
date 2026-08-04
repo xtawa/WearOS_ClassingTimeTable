@@ -615,6 +615,11 @@ Rules:
     <string name="keepalive_refresh_status">Refresh status</string>
     <string name="keepalive_battery_whitelist">Battery whitelist</string>
     <string name="keepalive_exact_alarm">Exact alarms</string>
+    <string name="keepalive_runtime_status">Exact alarms: %1$s · Battery whitelist: %2$s</string>
+    <string name="keepalive_status_authorized">authorized</string>
+    <string name="keepalive_status_not_authorized">not authorized</string>
+    <string name="keepalive_status_whitelisted">allowed</string>
+    <string name="keepalive_status_not_whitelisted">not allowed</string>
     <string name="settings_about_icp_pending">ICP filing: pending</string>
     <string name="cloud_connection_success">%1$s connection succeeded.</string>
     <string name="cloud_connection_failed">%1$s connection failed.</string>

@@ -3,7 +3,9 @@ package com.xtawa.classingtime.reminder
 import com.xtawa.classingtime.data.PersistedLesson
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReminderRuntimeTest {
@@ -43,5 +45,20 @@ class ReminderRuntimeTest {
 
         assertNotNull(next)
         assertEquals("a", next?.lessonId)
+    }
+
+    @Test
+    fun requestCodeForReminder_isStableAndBounded() {
+        val key = "2026-04-13:lesson-a:480"
+        val otherKey = "2026-04-13:lesson-b:600"
+
+        val first = ReminderRuntime.requestCodeForReminder(key)
+        val second = ReminderRuntime.requestCodeForReminder(key)
+        val other = ReminderRuntime.requestCodeForReminder(otherKey)
+
+        assertEquals(first, second)
+        assertNotEquals(first, other)
+        assertTrue(first in 40_000 until 60_000)
+        assertTrue(other in 40_000 until 60_000)
     }
 }

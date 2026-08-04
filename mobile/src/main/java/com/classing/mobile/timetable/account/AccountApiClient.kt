@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.account
 
+import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.data.AccountSummary
 import com.xtawa.classingtime.data.DailyBriefingChannel
 import com.xtawa.classingtime.data.MembershipSummary
@@ -475,7 +476,8 @@ class AccountApiClient(
     }
 
     companion object {
-        const val BASE_URL: String = "https://api-classing.underflo.ink"
+        val BASE_URL: String
+            get() = BuildConfig.API_BASE_URL
     }
 }
 
