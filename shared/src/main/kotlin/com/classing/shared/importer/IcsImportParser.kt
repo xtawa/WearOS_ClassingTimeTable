@@ -209,7 +209,7 @@ class IcsImportParser : ImportParser {
             if ((line.startsWith(" ") || line.startsWith("\t")) && result.isNotEmpty()) {
                 result[result.lastIndex] = result.last() + line.drop(1)
             } else {
-                result += line.trimEnd()
+                result += line
             }
         }
         return result
