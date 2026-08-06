@@ -8,6 +8,7 @@ import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -83,15 +84,16 @@ class WearQrAuthApiClient(
     }
 
     suspend fun login(identifier: String, password: String): Result<WearDirectAccountSession> = runCatching {
+        val normalizedIdentifier = identifier.trim()
         val response = request(
             path = "/api/v1/auth/login",
             body = JSONObject()
-                .put("identifier", identifier.trim())
+                .put("identifier", normalizedIdentifier)
                 .put("password", password)
                 .put("consent", loginConsent()),
             acceptStatuses = setOf(HttpURLConnection.HTTP_OK),
         )
-        parseSession(response.json)
+        parseSession(response.json, fallbackUsername = normalizedIdentifier)
     }
 
     suspend fun logout(session: WearDirectAccountSession): Result<Unit> = runCatching {
@@ -124,20 +126,45 @@ class WearQrAuthApiClient(
         )
     }
 
-    private fun parseSession(json: JSONObject): WearDirectAccountSession {
-        val session = json.getJSONObject("session")
-        val account = json.getJSONObject("account")
+    private fun parseSession(
+        json: JSONObject,
+        fallbackUsername: String = "",
+    ): WearDirectAccountSession {
+        val session = json.optJSONObject("session") ?: json
+        val accessToken = session.optString("accessToken")
+        val refreshToken = session.optString("refreshToken")
+        require(accessToken.isNotBlank() && refreshToken.isNotBlank()) {
+            "Authentication response missing tokens"
+        }
+
+        // Password login currently returns only `session`, while QR login also returns
+        // `account` and `membership`. The JWT subject is the authoritative user id, so
+        // accepting both response shapes keeps direct Wear login compatible with the API.
+        val account = json.optJSONObject("account")
         val membership = json.optJSONObject("membership") ?: JSONObject()
+        val userId = account?.optString("userId").orEmpty()
+            .ifBlank { jwtSubject(accessToken) }
+        require(userId.isNotBlank()) { "Authentication response missing account identity" }
+
         return WearDirectAccountSession(
-            accessToken = session.getString("accessToken"),
-            refreshToken = session.getString("refreshToken"),
+            accessToken = accessToken,
+            refreshToken = refreshToken,
             accessExpiresAt = session.optLong("accessExpiresAt", 0L),
             refreshExpiresAt = session.optLong("refreshExpiresAt", 0L),
-            userId = account.getString("userId"),
-            username = account.optString("username"),
+            userId = userId,
+            username = account?.optString("username").orEmpty().ifBlank { fallbackUsername },
             isMember = membership.optBoolean("isMember", false),
             membershipTier = membership.optString("tier", "FREE").ifBlank { "FREE" },
         )
+    }
+
+    private fun jwtSubject(accessToken: String): String {
+        val parts = accessToken.split('.')
+        if (parts.size != 3) return ""
+        return runCatching {
+            val payload = Base64.getUrlDecoder().decode(parts[1])
+            JSONObject(payload.toString(Charsets.UTF_8)).optString("sub")
+        }.getOrDefault("").trim()
     }
 
     private fun loginConsent(): JSONObject = JSONObject()
@@ -261,7 +288,7 @@ object WearDirectAccountSessionManager {
 
     suspend fun ensureSession(
         context: Context,
-        apiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
+        apiClient: WearQrAuthApiClient = WearQrAuthApiClient(context = context),
         now: Long = System.currentTimeMillis(),
     ): WearDirectAccountSession? = refreshMutex.withLock {
         val current = WearDirectAccountStore.load(context, now) ?: return@withLock null
@@ -274,7 +301,7 @@ object WearDirectAccountSessionManager {
     suspend fun refreshAfterUnauthorized(
         context: Context,
         rejectedAccessToken: String,
-        apiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
+        apiClient: WearQrAuthApiClient = WearQrAuthApiClient(context = context),
         now: Long = System.currentTimeMillis(),
     ): WearDirectAccountSession? = refreshMutex.withLock {
         val current = WearDirectAccountStore.load(context, now) ?: return@withLock null
