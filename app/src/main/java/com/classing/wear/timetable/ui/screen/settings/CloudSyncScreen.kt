@@ -313,7 +313,8 @@ fun CloudSyncScreen(
                                             error.errorCode.contains("SIGNATURE", ignoreCase = true) ->
                                             context.getString(R.string.settings_account_login_signature_error)
                                         error is WearQrAuthException ->
-                                            error.message.ifBlank { context.getString(R.string.settings_account_login_network_error) }
+                                            error.message?.ifBlank { context.getString(R.string.settings_account_login_network_error) }
+                                                ?: context.getString(R.string.settings_account_login_network_error)
                                         error is ClientSignatureException ->
                                             context.getString(R.string.settings_account_login_signature_error)
                                         else -> context.getString(R.string.settings_account_login_network_error)
