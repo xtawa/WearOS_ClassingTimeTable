@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -42,7 +44,10 @@ import com.classing.wear.timetable.account.WearDirectAccountStore
 import com.classing.wear.timetable.account.WearQrAuthApiClient
 import com.classing.wear.timetable.account.WearQrAuthException
 import com.classing.wear.timetable.account.createWearLoginQrBitmap
+import com.classing.wear.timetable.account.isValidLoginIdentifier
+import com.classing.wear.timetable.account.isValidLoginPassword
 import com.classing.wear.timetable.domain.repository.SettingsRepository
+import com.classing.wear.timetable.security.ClientSignatureException
 import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
 import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
@@ -66,7 +71,7 @@ fun CloudSyncScreen(
     val scope = rememberCoroutineScope()
     val bridgeSender = remember { WearCloudBridgeSender(context, settingsRepository) }
     val directCloudSync = wearOfficialCloudSyncCoordinator
-    val qrAuthApi = remember { WearQrAuthApiClient() }
+    val qrAuthApi = remember { WearQrAuthApiClient(context = context) }
     val prefs = remember { context.getSharedPreferences(MobileSyncPrefs.PREF_NAME, android.content.Context.MODE_PRIVATE) }
     val directPrefs = remember {
         context.getSharedPreferences(WearOfficialCloudSyncCoordinator.PREF_NAME, android.content.Context.MODE_PRIVATE)
@@ -74,6 +79,10 @@ fun CloudSyncScreen(
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
     var qrBusy by remember { mutableStateOf(false) }
+    var manualLoginVisible by remember { mutableStateOf(false) }
+    var identifierInput by remember { mutableStateOf("") }
+    var passwordInput by remember { mutableStateOf("") }
+    var manualLoginBusy by remember { mutableStateOf(false) }
     var authorization by remember { mutableStateOf<WearDeviceAuthorization?>(null) }
     var directSession by remember { mutableStateOf<WearDirectAccountSession?>(WearDirectAccountStore.load(context)) }
     var independentMode by remember {
@@ -239,6 +248,95 @@ fun CloudSyncScreen(
                     shape = RoundedCornerShape(999.dp),
                 ) {
                     Text(stringResource(R.string.settings_qr_login_button))
+                }
+            }
+            item {
+                Button(
+                    onClick = { manualLoginVisible = !manualLoginVisible },
+                    enabled = !manualLoginBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(stringResource(R.string.settings_account_login_button))
+                }
+            }
+            if (manualLoginVisible) {
+                item {
+                    OutlinedTextField(
+                        value = identifierInput,
+                        onValueChange = { identifierInput = it },
+                        label = { Text(stringResource(R.string.settings_account_login_identifier)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = passwordInput,
+                        onValueChange = { passwordInput = it },
+                        label = { Text(stringResource(R.string.settings_account_login_password)) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                item {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                manualLoginBusy = true
+                                status = context.getString(R.string.settings_account_login_in_progress)
+                                val result = qrAuthApi.login(identifierInput, passwordInput)
+                                if (result.isSuccess) {
+                                    val session = result.getOrThrow()
+                                    WearDirectAccountStore.save(context, session)
+                                    directSession = session
+                                    manualLoginVisible = false
+                                    identifierInput = ""
+                                    passwordInput = ""
+                                    status = context.getString(R.string.settings_qr_login_syncing)
+                                    val syncResult = directCloudSync.sync(CloudSyncContracts.TRIGGER_APP_START)
+                                    directSession = WearDirectAccountStore.load(context)
+                                    status = if (syncResult.isSuccess) {
+                                        context.getString(R.string.settings_account_login_success)
+                                    } else {
+                                        context.getString(R.string.settings_qr_login_sync_failed)
+                                    }
+                                } else {
+                                    val error = result.exceptionOrNull()
+                                    status = when {
+                                        error is WearQrAuthException && error.statusCode == 401 ->
+                                            context.getString(R.string.settings_account_login_invalid_credentials)
+                                        error is WearQrAuthException &&
+                                            error.errorCode.contains("SIGNATURE", ignoreCase = true) ->
+                                            context.getString(R.string.settings_account_login_signature_error)
+                                        error is WearQrAuthException ->
+                                            error.message?.ifBlank { context.getString(R.string.settings_account_login_network_error) }
+                                                ?: context.getString(R.string.settings_account_login_network_error)
+                                        error is ClientSignatureException ->
+                                            context.getString(R.string.settings_account_login_signature_error)
+                                        else -> context.getString(R.string.settings_account_login_network_error)
+                                    }
+                                }
+                                manualLoginBusy = false
+                            }
+                        },
+                        enabled = !manualLoginBusy &&
+                            isValidLoginIdentifier(identifierInput) &&
+                            isValidLoginPassword(passwordInput),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(999.dp),
+                    ) {
+                        Text(
+                            if (manualLoginBusy) {
+                                stringResource(R.string.settings_account_login_in_progress)
+                            } else {
+                                stringResource(R.string.settings_account_login_submit)
+                            },
+                        )
+                    }
                 }
             }
         }

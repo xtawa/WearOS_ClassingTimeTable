@@ -1,6 +1,7 @@
 *.iml
 .gradle/
 .gradle-user-codex/
+.gradle-user-home-codex/
 local.properties
 .env
 .idea/

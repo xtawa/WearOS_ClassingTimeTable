@@ -3,6 +3,7 @@ package com.classing.wear.timetable.account
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.classing.wear.timetable.security.ClientIntegrity
 import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -45,7 +46,10 @@ class WearQrAuthException(
 
 class WearQrAuthApiClient(
     private val baseUrl: String = BASE_URL,
+    context: Context? = null,
 ) {
+    private val appContext = context?.applicationContext
+
     suspend fun start(deviceName: String): Result<WearDeviceAuthorization> = runCatching {
         val response = request(
             path = "/api/v1/auth/device/qr/start",
@@ -74,22 +78,20 @@ class WearQrAuthApiClient(
                 response.json.optInt("intervalSeconds", authorization.intervalSeconds).coerceIn(3, 30),
             )
         } else {
-            val session = response.json.getJSONObject("session")
-            val account = response.json.getJSONObject("account")
-            val membership = response.json.optJSONObject("membership") ?: JSONObject()
-            WearDeviceAuthorizationPoll.Approved(
-                WearDirectAccountSession(
-                    accessToken = session.getString("accessToken"),
-                    refreshToken = session.getString("refreshToken"),
-                    accessExpiresAt = session.optLong("accessExpiresAt", 0L),
-                    refreshExpiresAt = session.optLong("refreshExpiresAt", 0L),
-                    userId = account.getString("userId"),
-                    username = account.optString("username"),
-                    isMember = membership.optBoolean("isMember", false),
-                    membershipTier = membership.optString("tier", "FREE").ifBlank { "FREE" },
-                ),
-            )
+            WearDeviceAuthorizationPoll.Approved(parseSession(response.json))
         }
+    }
+
+    suspend fun login(identifier: String, password: String): Result<WearDirectAccountSession> = runCatching {
+        val response = request(
+            path = "/api/v1/auth/login",
+            body = JSONObject()
+                .put("identifier", identifier.trim())
+                .put("password", password)
+                .put("consent", loginConsent()),
+            acceptStatuses = setOf(HttpURLConnection.HTTP_OK),
+        )
+        parseSession(response.json)
     }
 
     suspend fun logout(session: WearDirectAccountSession): Result<Unit> = runCatching {
@@ -122,6 +124,29 @@ class WearQrAuthApiClient(
         )
     }
 
+    private fun parseSession(json: JSONObject): WearDirectAccountSession {
+        val session = json.getJSONObject("session")
+        val account = json.getJSONObject("account")
+        val membership = json.optJSONObject("membership") ?: JSONObject()
+        return WearDirectAccountSession(
+            accessToken = session.getString("accessToken"),
+            refreshToken = session.getString("refreshToken"),
+            accessExpiresAt = session.optLong("accessExpiresAt", 0L),
+            refreshExpiresAt = session.optLong("refreshExpiresAt", 0L),
+            userId = account.getString("userId"),
+            username = account.optString("username"),
+            isMember = membership.optBoolean("isMember", false),
+            membershipTier = membership.optString("tier", "FREE").ifBlank { "FREE" },
+        )
+    }
+
+    private fun loginConsent(): JSONObject = JSONObject()
+        .put("privacyPolicy", true)
+        .put("termsOfService", true)
+        .put("crossBorderTransfer", true)
+        .put("acceptedAt", System.currentTimeMillis())
+        .put("client", "android-wear")
+
     private data class HttpResponse(val statusCode: Int, val json: JSONObject)
 
     private suspend fun request(
@@ -130,6 +155,7 @@ class WearQrAuthApiClient(
         accessToken: String = "",
         acceptStatuses: Set<Int> = setOf(HttpURLConnection.HTTP_CREATED),
     ): HttpResponse = withContext(Dispatchers.IO) {
+        appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
         val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 10_000
@@ -138,6 +164,7 @@ class WearQrAuthApiClient(
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             setRequestProperty("User-Agent", "Classing-WearOS")
             if (accessToken.isNotBlank()) setRequestProperty("Authorization", "Bearer $accessToken")
+            appContext?.let { ClientIntegrity.applyHeaders(this, it) }
             doInput = true
             doOutput = true
         }

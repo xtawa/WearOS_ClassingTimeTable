@@ -156,4 +156,15 @@
     <string name="settings_qr_login_failed">QR Code 登入失敗，請檢查網路後重試</string>
     <string name="settings_qr_logout_button">登出手錶帳號</string>
     <string name="settings_qr_logout_success">已登出手錶帳號</string>
+    <string name="settings_account_login_button">帳號登入</string>
+    <string name="settings_account_login_identifier">使用者名稱或電子郵件</string>
+    <string name="settings_account_login_password">密碼</string>
+    <string name="settings_account_login_submit">登入</string>
+    <string name="settings_account_login_in_progress">正在登入…</string>
+    <string name="settings_account_login_success">手錶登入成功</string>
+    <string name="settings_account_login_invalid_credentials">帳號或密碼錯誤</string>
+    <string name="settings_account_login_signature_error">簽名校驗失敗，已禁止使用線上功能</string>
+    <string name="settings_account_login_network_error">登入失敗，請檢查網路後重試</string>
+    <string name="settings_account_login_identifier_invalid">請輸入有效的使用者名稱或電子郵件</string>
+    <string name="settings_account_login_password_invalid">密碼至少需要 8 位</string>
 </resources>

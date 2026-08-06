@@ -157,4 +157,15 @@
     <string name="settings_qr_login_failed">QR sign in failed. Check the network and try again.</string>
     <string name="settings_qr_logout_button">Sign out on watch</string>
     <string name="settings_qr_logout_success">Signed out on this watch</string>
+    <string name="settings_account_login_button">Account sign in</string>
+    <string name="settings_account_login_identifier">Username or email</string>
+    <string name="settings_account_login_password">Password</string>
+    <string name="settings_account_login_submit">Sign in</string>
+    <string name="settings_account_login_in_progress">Signing in…</string>
+    <string name="settings_account_login_success">Signed in on this watch</string>
+    <string name="settings_account_login_invalid_credentials">Incorrect account or password</string>
+    <string name="settings_account_login_signature_error">Signature check failed. Online features are blocked.</string>
+    <string name="settings_account_login_network_error">Sign in failed. Check the network and try again.</string>
+    <string name="settings_account_login_identifier_invalid">Enter a valid username or email</string>
+    <string name="settings_account_login_password_invalid">Password must be at least 8 characters</string>
 </resources>
