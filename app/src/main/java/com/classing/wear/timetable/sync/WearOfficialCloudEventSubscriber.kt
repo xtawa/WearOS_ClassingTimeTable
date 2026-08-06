@@ -2,6 +2,7 @@ package com.classing.wear.timetable.sync
 
 import android.content.Context
 import com.classing.wear.timetable.account.WearDirectAccountSessionManager
+import com.classing.wear.timetable.account.WearDirectAccountStore
 import com.classing.wear.timetable.account.WearQrAuthApiClient
 import com.classing.wear.timetable.security.ClientIntegrity
 import java.net.HttpURLConnection
@@ -90,7 +91,7 @@ class WearOfficialCloudEventSubscriber(
     context: Context,
     private val coordinator: WearOfficialCloudSyncCoordinator,
     private val eventClient: WearOfficialCloudEventClient = WearOfficialCloudEventClient(context = context),
-    private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(),
+    private val authApiClient: WearQrAuthApiClient = WearQrAuthApiClient(context = context),
 ) {
     private val appContext = context.applicationContext
 
@@ -100,8 +101,19 @@ class WearOfficialCloudEventSubscriber(
             currentCoroutineContext().ensureActive()
             val session = WearDirectAccountSessionManager.ensureSession(appContext, authApiClient)
             if (session == null) {
-                WearSyncModeStore.setIndependentMode(appContext, false)
-                return
+                // A temporary refresh/network failure must not silently switch the watch back
+                // to phone-managed mode. Disable independent sync only after the persisted
+                // refresh session is actually gone, expired, or revoked.
+                if (WearDirectAccountStore.load(appContext) == null) {
+                    WearSyncModeStore.setIndependentMode(appContext, false)
+                    return
+                }
+                currentCoroutineContext().ensureActive()
+                if (WearSyncModeStore.isIndependentModeEnabled(appContext)) {
+                    delay(retryDelay)
+                    retryDelay = (retryDelay * 2).coerceAtMost(30_000L)
+                }
+                continue
             }
             val result = runCatching {
                 eventClient.listen(
