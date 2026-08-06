@@ -7,6 +7,7 @@ import kotlin.concurrent.thread
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -94,6 +95,23 @@ class WearQrAuthApiClientTest {
     }
 
     @Test
+    fun login_session_only_response_uses_jwt_subject() = runTest {
+        responseStatus.set(200)
+        responseBody.set(SESSION_ONLY_JSON)
+
+        val session = WearQrAuthApiClient(baseUrl, context = null)
+            .login("alice@example.com", "pass1234")
+            .getOrThrow()
+
+        assertEquals(SESSION_ONLY_ACCESS_TOKEN, session.accessToken)
+        assertEquals("rt-session-only", session.refreshToken)
+        assertEquals("u-backend", session.userId)
+        assertEquals("alice@example.com", session.username)
+        assertFalse(session.isMember)
+        assertEquals("FREE", session.membershipTier)
+    }
+
+    @Test
     fun login_invalid_credentials_throws() = runTest {
         responseStatus.set(401)
         responseBody.set("{\"code\":\"AUTH_INVALID_CREDENTIALS\",\"message\":\"bad\"}")
@@ -115,5 +133,13 @@ class WearQrAuthApiClientTest {
                 "\"accessExpiresAt\":100,\"refreshExpiresAt\":200}," +
                 "\"account\":{\"userId\":\"u1\",\"username\":\"alice\"}," +
                 "\"membership\":{\"isMember\":true,\"tier\":\"PRO\"}}"
+
+        const val SESSION_ONLY_ACCESS_TOKEN =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LWJhY2tlbmQifQ.test-signature"
+
+        const val SESSION_ONLY_JSON =
+            "{\"session\":{\"accessToken\":\"$SESSION_ONLY_ACCESS_TOKEN\"," +
+                "\"refreshToken\":\"rt-session-only\",\"accessExpiresAt\":100," +
+                "\"refreshExpiresAt\":200}}"
     }
 }
