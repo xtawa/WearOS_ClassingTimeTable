@@ -31,22 +31,30 @@ jobs:
 
           for module in app mobile; do
             mapping="$module/build/outputs/mapping/release/mapping.txt"
-            apk="$module/build/outputs/apk/release/${module}-release.apk"
+            apk_dir="$module/build/outputs/apk/release"
 
             if [[ ! -s "$mapping" ]]; then
               echo "Missing or empty R8 mapping file: $mapping" >&2
               exit 1
             fi
 
-            if [[ ! -s "$apk" ]]; then
-              echo "Missing release APK: $apk" >&2
+            mapfile -t apks < <(find "$apk_dir" -maxdepth 1 -type f -name '*.apk' -print | sort)
+            if [[ "${#apks[@]}" -eq 0 ]]; then
+              echo "No release APK found in: $apk_dir" >&2
               exit 1
             fi
 
-            if unzip -l "$apk" | grep -qE '(^|/)(mapping|seeds|usage|configuration)\.txt$'; then
-              echo "R8 diagnostic files must not be packaged inside $apk" >&2
-              exit 1
-            fi
+            for apk in "${apks[@]}"; do
+              if [[ ! -s "$apk" ]]; then
+                echo "Release APK is empty: $apk" >&2
+                exit 1
+              fi
+
+              if unzip -Z1 "$apk" | grep -qE '(^|/)(mapping|seeds|usage|configuration)\.txt$'; then
+                echo "R8 diagnostic files must not be packaged inside $apk" >&2
+                exit 1
+              fi
+            done
           done
       - name: Collect R8 diagnostics
         if: always()
