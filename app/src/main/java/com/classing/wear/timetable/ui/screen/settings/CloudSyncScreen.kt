@@ -16,15 +16,15 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,8 +57,8 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 @Composable
@@ -72,9 +72,14 @@ fun CloudSyncScreen(
     val bridgeSender = remember { WearCloudBridgeSender(context, settingsRepository) }
     val directCloudSync = wearOfficialCloudSyncCoordinator
     val qrAuthApi = remember { WearQrAuthApiClient(context = context) }
-    val prefs = remember { context.getSharedPreferences(MobileSyncPrefs.PREF_NAME, android.content.Context.MODE_PRIVATE) }
+    val prefs = remember {
+        context.getSharedPreferences(MobileSyncPrefs.PREF_NAME, android.content.Context.MODE_PRIVATE)
+    }
     val directPrefs = remember {
-        context.getSharedPreferences(WearOfficialCloudSyncCoordinator.PREF_NAME, android.content.Context.MODE_PRIVATE)
+        context.getSharedPreferences(
+            WearOfficialCloudSyncCoordinator.PREF_NAME,
+            android.content.Context.MODE_PRIVATE,
+        )
     }
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
@@ -84,14 +89,19 @@ fun CloudSyncScreen(
     var passwordInput by remember { mutableStateOf("") }
     var manualLoginBusy by remember { mutableStateOf(false) }
     var authorization by remember { mutableStateOf<WearDeviceAuthorization?>(null) }
-    var directSession by remember { mutableStateOf<WearDirectAccountSession?>(WearDirectAccountStore.load(context)) }
+    var directSession by remember {
+        mutableStateOf<WearDirectAccountSession?>(WearDirectAccountStore.load(context))
+    }
     var independentMode by remember {
         mutableStateOf(directSession != null && WearSyncModeStore.isIndependentModeEnabled(context))
     }
     var snapshotVersion by remember { mutableStateOf(0L) }
+
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT || key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT) {
+            if (key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT ||
+                key == MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT
+            ) {
                 snapshotVersion = System.nanoTime()
             }
         }
@@ -109,6 +119,7 @@ fun CloudSyncScreen(
         directPrefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { directPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
+
     val lastSyncAt = remember(snapshotVersion) {
         maxOf(
             prefs.getLong(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT_AT, 0L),
@@ -116,7 +127,9 @@ fun CloudSyncScreen(
         )
     }
     val cloudSnapshot = remember(snapshotVersion) {
-        parseWearCloudSnapshot(prefs.getString(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT, "").orEmpty())
+        parseWearCloudSnapshot(
+            prefs.getString(MobileSyncPrefs.KEY_LAST_PHONE_CLOUD_SNAPSHOT, "").orEmpty(),
+        )
     }
     val effectiveLoggedIn = cloudSnapshot.loggedIn || directSession != null
     val effectiveMember = directSession?.isMember ?: cloudSnapshot.isMember
@@ -151,6 +164,7 @@ fun CloudSyncScreen(
                 is WearDeviceAuthorizationPoll.Approved -> {
                     WearDirectAccountStore.save(context, poll.session)
                     directSession = poll.session
+                    independentMode = WearSyncModeStore.setIndependentMode(context, true)
                     authorization = null
                     status = context.getString(R.string.settings_qr_login_syncing)
                     val syncResult = directCloudSync.sync(CloudSyncContracts.TRIGGER_APP_START)
@@ -169,6 +183,7 @@ fun CloudSyncScreen(
         qrBusy = false
         status = context.getString(R.string.settings_qr_login_expired)
     }
+
     val lastSyncText = if (lastSyncAt > 0L) {
         LocalDateTime.ofInstant(Instant.ofEpochMilli(lastSyncAt), ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
@@ -293,6 +308,7 @@ fun CloudSyncScreen(
                                     val session = result.getOrThrow()
                                     WearDirectAccountStore.save(context, session)
                                     directSession = session
+                                    independentMode = WearSyncModeStore.setIndependentMode(context, true)
                                     manualLoginVisible = false
                                     identifierInput = ""
                                     passwordInput = ""
@@ -313,8 +329,9 @@ fun CloudSyncScreen(
                                             error.errorCode.contains("SIGNATURE", ignoreCase = true) ->
                                             context.getString(R.string.settings_account_login_signature_error)
                                         error is WearQrAuthException ->
-                                            error.message?.ifBlank { context.getString(R.string.settings_account_login_network_error) }
-                                                ?: context.getString(R.string.settings_account_login_network_error)
+                                            error.message?.ifBlank {
+                                                context.getString(R.string.settings_account_login_network_error)
+                                            } ?: context.getString(R.string.settings_account_login_network_error)
                                         error is ClientSignatureException ->
                                             context.getString(R.string.settings_account_login_signature_error)
                                         else -> context.getString(R.string.settings_account_login_network_error)
@@ -344,7 +361,9 @@ fun CloudSyncScreen(
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Image(
-                        bitmap = remember(active.qrPayload) { createWearLoginQrBitmap(active.qrPayload) }.asImageBitmap(),
+                        bitmap = remember(active.qrPayload) {
+                            createWearLoginQrBitmap(active.qrPayload)
+                        }.asImageBitmap(),
                         contentDescription = stringResource(R.string.settings_qr_login_qr_description),
                         modifier = Modifier
                             .size(168.dp)
@@ -375,25 +394,30 @@ fun CloudSyncScreen(
         }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth(0.78f)) {
-                            Text(stringResource(R.string.settings_independent_mode_title), style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                stringResource(R.string.settings_independent_mode_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = independentMode,
-                            onCheckedChange = { independentMode = WearSyncModeStore.setIndependentMode(context, it) },
-                            enabled = directSession != null,
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth(0.78f)) {
+                        Text(
+                            stringResource(R.string.settings_independent_mode_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            stringResource(R.string.settings_independent_mode_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Switch(
+                        checked = independentMode,
+                        onCheckedChange = {
+                            independentMode = WearSyncModeStore.setIndependentMode(context, it)
+                        },
+                        enabled = directSession != null,
+                    )
+                }
             }
         }
         directSession?.let { session ->
@@ -428,18 +452,30 @@ fun CloudSyncScreen(
                 onClick = {
                     scope.launch {
                         syncing = true
-                        val directResult = if (independentMode && directSession != null) {
+                        val directModeActive = independentMode && directSession != null
+                        val directResult = if (directModeActive) {
                             directCloudSync.sync(CloudSyncContracts.TRIGGER_MANUAL)
                         } else {
                             null
                         }
-                        val settingsResult = bridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_MANUAL)
-                        val requestResult = bridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_MANUAL)
+                        val settingsResult = if (directModeActive) {
+                            Result.success(0)
+                        } else {
+                            bridgeSender.publishWearSettingsSnapshot(CloudSyncContracts.TRIGGER_MANUAL)
+                        }
+                        val requestResult = if (directModeActive) {
+                            Result.success(0)
+                        } else {
+                            bridgeSender.requestPhoneCloudSync(CloudSyncContracts.TRIGGER_MANUAL)
+                        }
                         directSession = WearDirectAccountStore.load(context)
                         status = when {
-                            directResult?.isSuccess == true -> context.getString(R.string.settings_cloud_sync_direct_success)
-                            directResult != null -> context.getString(R.string.settings_cloud_sync_direct_failed)
-                            settingsResult.isSuccess && requestResult.isSuccess -> context.getString(R.string.settings_cloud_sync_request_queued)
+                            directResult?.isSuccess == true ->
+                                context.getString(R.string.settings_cloud_sync_direct_success)
+                            directResult != null ->
+                                context.getString(R.string.settings_cloud_sync_direct_failed)
+                            settingsResult.isSuccess && requestResult.isSuccess ->
+                                context.getString(R.string.settings_cloud_sync_request_queued)
                             else -> context.getString(R.string.settings_cloud_sync_request_failed)
                         }
                         syncing = false
@@ -449,11 +485,21 @@ fun CloudSyncScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(999.dp),
             ) {
-                Text(if (syncing) stringResource(R.string.settings_cloud_sync_syncing) else stringResource(R.string.settings_cloud_sync_sync_now))
+                Text(
+                    if (syncing) {
+                        stringResource(R.string.settings_cloud_sync_syncing)
+                    } else {
+                        stringResource(R.string.settings_cloud_sync_sync_now)
+                    },
+                )
             }
         }
         item {
-            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
+            Button(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(999.dp),
+            ) {
                 Text(stringResource(R.string.detail_back))
             }
         }
