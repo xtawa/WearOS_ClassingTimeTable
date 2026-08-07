@@ -24,36 +24,20 @@
     <string name="message_notification_permission_missing">Notification permission denied. Class reminders are off.</string>
     <string name="loading_message">Loading timetable...</string>
 
-    <string name="screen_title">Classing 课程表</string>
-    <string name="screen_subtitle">Preview 预览版本</string>
+    <string name="screen_title">Classing Timetable</string>
+    <string name="screen_subtitle">Preview build</string>
 
     <string name="message_input_cleared">Input cleared.</string>
     <string name="message_reminder_disabled">Class reminders disabled.</string>
 
-    <string name="overview_title">Overview</string>
-    <string name="overview_total_count">Total classes: %1$d</string>
-    <string name="overview_selected_day_count">Selected: %1$s | Classes: %2$d</string>
-    <string name="dashboard_desc">A quick view of today, your busiest day, and weekly density.</string>
-    <string name="dashboard_summary_title">Dashboard summary</string>
-    <string name="dashboard_total_count_title">Visible classes</string>
-    <string name="dashboard_active_days_title">Active days</string>
-    <string name="dashboard_today_remaining_count_title">Today remaining</string>
-    <string name="dashboard_busiest_day_title">Busiest day</string>
-    <string name="dashboard_busiest_day_empty">None</string>
-    <string name="dashboard_status_title">Current status</string>
-    <string name="dashboard_status_free">Free right now</string>
-    <string name="dashboard_status_in_progress">In progress: %1$s</string>
-    <string name="dashboard_status_next">Next today: %1$s at %2$s</string>
-    <string name="dashboard_status_done">All classes for today are finished</string>
-    <string name="dashboard_today_remaining_title">Today remaining classes</string>
-    <string name="dashboard_today_remaining_empty">No remaining classes today.</string>
-    <string name="dashboard_day_schedule_title">%1$s schedule (%2$d)</string>
-    <string name="dashboard_day_schedule_empty">No classes scheduled for %1$s.</string>
+    <string name="overview_title">Timetable Overview</string>
+    <string name="overview_total_count">Total courses: %1$d</string>
+    <string name="overview_selected_day_count">Selected: %1$s | Courses: %2$d</string>
 
     <string name="day_filter_title">By Day</string>
     <string name="day_chip_label">%1$s (%2$d)</string>
     <string name="today_classes_title">Today Classes</string>
-    <string name="no_classes_today">No classes for this day.</string>
+    <string name="no_classes_today">No classes on this day.</string>
     <string name="calendar_prev_month">Prev</string>
     <string name="calendar_next_month">Next</string>
     <string name="calendar_selected_date_title">Schedule on %1$s</string>
@@ -64,8 +48,6 @@
     <string name="calendar_expand_day">Expand</string>
     <string name="calendar_collapse_day">Collapse</string>
     <string name="calendar_past_days_group_title">Earlier This Month (%1$d days)</string>
-    <string name="calendar_back_to_timetable">Timetable</string>
-    <string name="schedule_open_calendar">Calendar</string>
 
     <string name="day_header_title">%1$s (%2$d)</string>
     <string name="no_classes">No classes</string>
@@ -90,17 +72,17 @@
     <string name="import_button_confirm">Confirm Import</string>
     <string name="import_button_cancel_preview">Cancel Preview</string>
     <string name="import_button_clear">Clear</string>
-    <string name="import_button_select_file">Select File</string>
+    <string name="import_button_select_file">Choose file</string>
     <string name="import_button_select_ics_file">Select .ics File</string>
     <string name="import_button_select_json_file">Select .json File</string>
     <string name="import_file_read_failed">Failed to read file.</string>
-    <string name="import_file_loaded">File loaded. Tap "Parse Preview" to continue.</string>
-    <string name="import_share_received">File received via share. Tap "Parse Preview" to continue.</string>
+    <string name="import_file_loaded">File loaded. Tap \"Parse preview\" to continue.</string>
+    <string name="import_share_received">Shared file received. Tap \"Parse preview\" to continue.</string>
     <string name="import_preview_summary_title">Import Summary</string>
     <string name="import_preview_summary_valid">Valid: %1$d</string>
     <string name="import_preview_summary_skipped">Skipped: %1$d</string>
     <string name="import_preview_summary_conflict">Conflicts: %1$d</string>
-    <string name="import_preview_anomaly_title">Field Anomalies</string>
+    <string name="import_preview_anomaly_title">Field issues</string>
     <string name="import_preview_item_skip">Skip</string>
     <string name="import_preview_item_include">Include</string>
     <string name="import_preview_item_conflict_badge">Conflict</string>
@@ -112,64 +94,25 @@
     <string name="import_selective_conflict_detail">%1$s conflicts with %2$s</string>
     <string name="import_selective_applied">Import complete. %1$d classes applied, %2$d skipped.</string>
     <string name="json_import_title">Program JSON Import</string>
-    <string name="json_import_desc">Paste AI-translated schedule JSON for quick import.</string>
+    <string name="json_import_desc">Paste JSON without any Markdown formatting.</string>
     <string name="json_input_label">Paste schedule JSON</string>
     <string name="json_button_parse_preview">Parse JSON Preview</string>
     <string name="json_button_prompt_page">Open AI Prompt</string>
-    <string name="json_import_mode_title">Import Mode</string>
-    <string name="json_import_mode_replace">Replace</string>
-    <string name="json_import_mode_append">Append</string>
-    <string name="json_import_mode_replace_helper">Replace mode overwrites the current timetable with the previewed JSON classes.</string>
-    <string name="json_import_mode_append_helper">Append mode adds new classes to the current timetable and skips exact duplicates.</string>
-    <string name="json_import_confirm_replace_button">Replace Current Timetable</string>
-    <string name="json_import_confirm_append_button">Append to Current Timetable</string>
-    <string name="json_import_selective_replace_button">Replace with Selected (%1$d)</string>
-    <string name="json_import_selective_append_button">Append Selected (%1$d)</string>
     <string name="json_preview_title">JSON Preview (%1$d)</string>
     <string name="json_prompt_page_title">AI Prompt for JSON Conversion</string>
-    <string name="json_prompt_page_desc">Copy this prompt to AI, then paste the returned JSON into the import box.</string>
+    <string name="json_prompt_page_desc">No manual action required.</string>
     <string name="json_prompt_page_label">Conversion Prompt</string>
     <string name="json_prompt_back_button">Back to Import</string>
-    <string name="json_prompt_usage_steps">1. Copy prompt  2. Paste into AI with your schedule  3. Paste returned JSON back to import page</string>
-    <string name="json_prompt_content"><![CDATA[You are a timetable JSON converter.
-Convert the user timetable text into valid JSON for a mobile app.
-Only output JSON. Do not output markdown or explanations.
-
-Use exactly this schema:
-{
-  "version": 1,
-  "timezone": "Asia/Shanghai",
-  "courses": [
-    {
-      "title": "Course Name",
-      "teacher": "Optional",
-      "dayOfWeek": 1,
-      "startTime": "08:00",
-      "endTime": "09:40",
-      "startWeek": 1,
-      "endWeek": 16,
-      "weekParity": "ALL",
-      "location": "Optional",
-      "note": "Optional"
-    }
-  ]
-}
-
-Rules:
-1. dayOfWeek must be 1-7 (1=Monday, 7=Sunday).
-2. startTime/endTime must be 24h HH:mm.
-3. startWeek/endWeek must be integers in range 1-30, and endWeek >= startWeek.
-4. weekParity must be one of ALL, ODD, EVEN.
-5. Required fields: title, dayOfWeek, startTime, endTime. Optional fields may be empty strings.
-6. Keep all course entries, do not merge different time slots.]]></string>
+    <string name="json_prompt_usage_steps">1. Copy prompt 2. Paste into AI with your schedule 3. Paste returned JSON back to import page</string>
+    <string name="json_prompt_content">You are a timetable JSON converter. Convert the user timetable text into valid JSON for a mobile app. Only output JSON. Do not output markdown or explanations. Use exactly this schema: { version: 1, timezone: Asia/Shanghai, courses: [ { title: Course Name, teacher: Optional, dayOfWeek: 1, startTime: 08:00, endTime: 09:40, startWeek: 1, endWeek: 16, weekParity: ALL, location: Optional, note: Optional } ] } Rules: 1. dayOfWeek must be 1-7 (1=Monday, 7=Sunday). 2. startTime/endTime must be 24h HH:mm. 3. startWeek/endWeek must be integers in range 1-30, and endWeek &gt;= startWeek. 4. weekParity must be one of ALL, ODD, EVEN. 5. Required fields: title, dayOfWeek, startTime, endTime. Optional fields may be empty strings. 6. Keep all course entries, do not merge different time slots.</string>
 
     <string name="status_title">Status</string>
     <string name="status_warning_prefix">Notice: %1$s</string>
-    <string name="import_pending_hint">Preview ready. Tap "Confirm Import" to apply.</string>
+    <string name="import_pending_hint">Preview ready. Tap Confirm Import to apply.</string>
     <string name="import_preview_title">Import Preview (%1$d)</string>
     <string name="preview_expand_button">Expand preview (+%1$d)</string>
     <string name="preview_collapse_button">Collapse preview</string>
-    <string name="import_conflict_detected_message">Detected %1$d time conflicts. Review and choose whether to continue.</string>
+    <string name="import_conflict_detected_message">Detected %1$d time conflicts. Continue importing?</string>
     <string name="import_conflict_dialog_title">Time Conflicts Detected</string>
     <string name="import_conflict_dialog_message">The imported schedule has %1$d conflicts:</string>
     <string name="import_conflict_item">%1$s overlaps %2$s</string>
@@ -195,7 +138,7 @@ Rules:
     <string name="week_parity_odd">Odd Weeks</string>
     <string name="week_parity_even">Even Weeks</string>
     <string name="manual_import_button">Add and Import</string>
-    <string name="manual_import_conflict_detected_message">Detected %1$d conflicts with existing classes. Confirm whether to continue.</string>
+    <string name="manual_import_conflict_detected_message">Detected %1$d conflicts with existing courses. Continue adding?</string>
     <string name="manual_conflict_dialog_title">Manual Import Conflict</string>
     <string name="manual_conflict_dialog_message">This class conflicts with %1$d existing classes.</string>
     <string name="manual_conflict_new_lesson_label">New class: %1$s</string>
@@ -233,10 +176,10 @@ Rules:
     <string name="settings_reminder_keepalive_title">Reminder &amp; Keep Alive</string>
     <string name="settings_reminder_keepalive_desc">Configure class reminders and reminder keep-alive intensity.</string>
     <string name="settings_backup_title">Backup &amp; Restore</string>
-    <string name="settings_backup_desc">Export current timetable to JSON or restore from a JSON backup file.</string>
+    <string name="settings_backup_desc">Export the current timetable as JSON, or restore it from JSON.</string>
     <string name="settings_backup_button">Export Timetable JSON</string>
     <string name="settings_restore_button">Restore from JSON</string>
-    <string name="settings_restore_hint">Restoring will overwrite current timetable after confirmation.</string>
+    <string name="settings_restore_hint">Restoring will overwrite the current timetable.</string>
     <string name="settings_badge_backup">B</string>
     <string name="settings_import_entry_title">Import Timetable</string>
     <string name="settings_import_entry_desc">Open a dedicated import page for ICS, JSON, or manual entry.</string>
@@ -285,19 +228,19 @@ Rules:
     <string name="settings_about_check_update_parse_failed">Current version %1$s, latest version not found.</string>
     <string name="settings_about_update_available">Update available: current %1$s, latest %2$s.</string>
     <string name="settings_about_update_latest">Up to date: current %1$s, latest %2$s.</string>
-    <string name="settings_about_wechat_support">WeChat Support</string>
+    <string name="settings_about_wechat_support">WeChat support</string>
     <string name="settings_about_wechat_support_hint">Scan QR code to add WeChat for support and feedback.</string>
-    <string name="settings_about_official_site">官方网站</string>
-    <string name="settings_about_help_support">帮助与支持</string>
-    <string name="settings_about_contact_us">联系我们</string>
-    <string name="settings_about_team_title">制作成员组：</string>
-    <string name="settings_about_team_members">Xihao Zhang，荣誉开发者 Zichun Wei</string>
-    <string name="settings_about_ai_notice">此项目使用 AI 辅助制作，不提供 SLA 保障</string>
+    <string name="settings_about_official_site">Official Website</string>
+    <string name="settings_about_help_support">Help &amp; Support</string>
+    <string name="settings_about_contact_us">Contact Us</string>
+    <string name="settings_about_team_title">Team:</string>
+    <string name="settings_about_team_members">Xihao Zhang, Honorary Developer Zichun Wei</string>
+    <string name="settings_about_ai_notice">This project was created with AI assistance and does not provide SLA guarantees.</string>
     <string name="settings_danger_title">Danger Zone</string>
     <string name="settings_danger_desc">Delete all timetable data from this device.</string>
     <string name="settings_danger_clear_button">Delete All Timetables</string>
     <string name="settings_sync_comm_title">Sync &amp; Communication</string>
-    <string name="settings_sync_comm_desc">Manage cloud sync and Wear communication in one place.</string>
+    <string name="settings_sync_comm_desc">Manage cloud sync and Wear communication.</string>
     <string name="settings_wear_comm_title">Wear Sync</string>
     <string name="settings_wear_comm_desc">Sync timetable to Wear via Bluetooth.</string>
     <string name="settings_wear_sync_mode_label">Sync method</string>
@@ -310,9 +253,9 @@ Rules:
     <string name="settings_wear_auto_detected_label">Detected watch type: %1$s</string>
     <string name="settings_wear_auto_effective_label">Auto effective sync protocol: %1$s</string>
     <string name="settings_wear_auto_manual_selected_label">Manual selected sync protocol: %1$s</string>
-    <string name="settings_wear_auto_unknown_hint">Unable to determine watch variant. Auto defaults to Wearable API.</string>
-    <string name="settings_wear_auto_connection_summary">Auto (%1$s -> %2$s): %3$s</string>
-    <string name="settings_wear_auto_sync_summary">Auto (%1$s -> %2$s): %3$s</string>
+    <string name="settings_wear_auto_unknown_hint">Unable to identify the watch version. Wearable API will be used by default.</string>
+    <string name="settings_wear_auto_connection_summary">Auto (%1$s -&gt; %2$s): %3$s</string>
+    <string name="settings_wear_auto_sync_summary">Auto (%1$s -&gt; %2$s): %3$s</string>
     <string name="settings_wear_connection_label">Connection: %1$s</string>
     <string name="settings_wear_sync_label">Sync: %1$s</string>
     <string name="settings_wear_refresh_button">Refresh Status</string>
@@ -337,7 +280,7 @@ Rules:
     <string name="wear_sync_via_wearos_app_triggered">WearOS app opened (%1$s). Complete sync in app.</string>
     <string name="wear_sync_via_wearos_app_failed">WearOS app sync failed: %1$s</string>
     <string name="settings_cloud_sync_title">Cloud Sync</string>
-    <string name="settings_cloud_sync_desc">Choose WebDAV or Google Drive for cloud sync, then sync to Wear.</string>
+    <string name="settings_cloud_sync_desc">Use WebDAV or Google Drive for cloud sync.</string>
     <string name="settings_cloud_sync_enable_title">Enable cloud sync</string>
     <string name="settings_cloud_sync_enable_desc">Supports automatic sync.</string>
     <string name="settings_cloud_sync_server_url">WebDAV server URL</string>
@@ -355,7 +298,7 @@ Rules:
     <string name="settings_cloud_sync_drive_auth_canceled">Google Drive authorization canceled.</string>
     <string name="settings_cloud_sync_drive_auth_failed">Google Drive authorization failed: %1$s</string>
     <string name="settings_cloud_sync_drive_config_missing">Google Drive OAuth not configured. Please set DRIVE_OAUTH_CLIENT_ID in local.properties.</string>
-    <string name="settings_cloud_sync_drive_cn_warning">The currently connected Wear device may not natively support Google Drive sync.</string>
+    <string name="settings_cloud_sync_drive_cn_warning">This device may not support this sync method.</string>
     <string name="settings_cloud_sync_save">Save</string>
     <string name="settings_cloud_sync_test">Test</string>
     <string name="settings_cloud_sync_sync_now">Sync now</string>
@@ -368,38 +311,38 @@ Rules:
     <string name="onboarding_step_of">Step %1$d of %2$d</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
-    <string name="onboarding_import_action_open_import">Go to Import</string>
-    <string name="onboarding_import_action_open_cloud_sync">Configure Cloud Sync</string>
-    <string name="onboarding_welcome_title">Welcome to Classing</string>
-    <string name="onboarding_welcome_subtitle">A curated academic experience. Orchestrate your schedule with editorial clarity.</string>
+    <string name="onboarding_import_action_open_import">Open import</string>
+    <string name="onboarding_import_action_open_cloud_sync">Set up cloud sync</string>
+    <string name="onboarding_welcome_title">Welcome to Classing Timetable</string>
+    <string name="onboarding_welcome_subtitle">Make every minute matter.</string>
     <string name="onboarding_import_title">Import Your Schedule</string>
-    <string name="onboarding_import_subtitle">Choose your preferred way to get started. You can still change this later in Settings.</string>
+    <string name="onboarding_import_subtitle">Choose an import method, or import later.</string>
     <string name="onboarding_import_option_ics">Import from ICS</string>
-    <string name="onboarding_import_option_ics_desc">Upload a standard .ics file from your university system.</string>
+    <string name="onboarding_import_option_ics_desc">Upload a standard .ics file.</string>
     <string name="onboarding_import_option_json">Import from JSON</string>
-    <string name="onboarding_import_option_json_desc">Restore a previously exported Classing JSON schedule.</string>
+    <string name="onboarding_import_option_json_desc">Restore a previous Classing JSON backup.</string>
     <string name="onboarding_import_option_cloud">Cloud Sync</string>
-    <string name="onboarding_import_option_cloud_desc">Use cloud sync as your primary data source.</string>
+    <string name="onboarding_import_option_cloud_desc">Restore using cloud sync.</string>
     <string name="onboarding_import_option_backup">Backup &amp; Restore</string>
     <string name="onboarding_import_option_backup_desc">Recover schedules from local backup files.</string>
     <string name="onboarding_import_option_manual">Manual Entry</string>
-    <string name="onboarding_import_option_manual_desc">Build your schedule from scratch.</string>
+    <string name="onboarding_import_option_manual_desc">Add courses manually with customizable details.</string>
     <string name="onboarding_import_option_later">Do this later</string>
-    <string name="onboarding_import_option_later_desc">Skip import for now and configure after setup.</string>
+    <string name="onboarding_import_option_later_desc">Import the timetable later.</string>
     <string name="onboarding_device_title">Checking Connection</string>
-    <string name="onboarding_device_subtitle">Choose auto or manual sync mode based on the connected Wear device version.</string>
-    <string name="onboarding_device_detecting">Detecting watch type...</string>
+    <string name="onboarding_device_subtitle">Wearable API is used by default.</string>
+    <string name="onboarding_device_detecting">Only Wear OS devices are supported. Use cloud sync for other devices.</string>
     <string name="onboarding_cloud_title">Cloud Sync &amp; Backup</string>
-    <string name="onboarding_cloud_subtitle">Choose WebDAV or Google Drive in cloud sync settings after onboarding.</string>
+    <string name="onboarding_cloud_subtitle">After setup, choose a cloud sync method on the Cloud Sync page.</string>
     <string name="onboarding_cloud_open_webdav">Open cloud sync settings after setup</string>
-    <string name="onboarding_cloud_hint">If enabled, after setup completes it will automatically navigate to Cloud Sync settings.</string>
+    <string name="onboarding_cloud_hint">When enabled, Cloud Sync settings will open automatically after setup.</string>
     <string name="onboarding_personalize_title">Personalize Your Experience</string>
     <string name="onboarding_personalize_subtitle">Set preference options now; you can modify them later.</string>
     <string name="onboarding_personalize_reminder">Enable Notifications</string>
     <string name="onboarding_personalize_weekend">Show Weekends</string>
     <string name="onboarding_personalize_semester">Semester Start Date</string>
     <string name="onboarding_complete_title">You Are All Set!</string>
-    <string name="onboarding_complete_subtitle">Your setup is complete. You can start using Classing right away.</string>
+    <string name="onboarding_complete_subtitle">Setup is complete. You can now start using Classing Timetable.</string>
     <string name="onboarding_go_dashboard">Go to Dashboard</string>
     <string name="onboarding_view_settings">View Settings</string>
 
@@ -410,7 +353,7 @@ Rules:
     <string name="parse_failure_message">Parse failed: %1$s</string>
     <string name="json_empty_input_message">JSON input is empty.</string>
     <string name="json_parse_failure_message">JSON parsing failed. Please check schema and format.</string>
-    <string name="json_parse_success_preview_message">JSON parsed successfully. Preview contains %1$d classes. Confirm to import.</string>
+    <string name="json_parse_success_preview_message">JSON parsed successfully. Previewed %1$d courses. Import them?</string>
     <string name="json_parse_partial_preview_message">JSON partially parsed. Preview contains %1$d classes, skipped %2$d invalid entries.</string>
     <string name="json_no_valid_lesson_message">No valid class entries in JSON. Invalid entries: %1$d.</string>
     <string name="json_warning_item_not_object">Entry #%1$d is not a JSON object.</string>
@@ -421,8 +364,6 @@ Rules:
     <string name="json_warning_invalid_start_week">Entry #%1$d has invalid startWeek.</string>
     <string name="json_warning_invalid_end_week">Entry #%1$d has invalid endWeek.</string>
     <string name="json_warning_invalid_week_parity">Entry #%1$d has invalid weekParity.</string>
-    <string name="json_import_replace_applied_message">Replace complete. Imported %1$d classes.</string>
-    <string name="json_import_append_applied_message">Append complete. Added %1$d classes, skipped %2$d exact duplicates.</string>
     <string name="no_pending_import_message">No preview to import. Parse ICS or JSON first.</string>
     <string name="import_confirmed_message">Import complete. %1$d classes updated.</string>
     <string name="import_preview_canceled_message">Import preview canceled.</string>
@@ -467,17 +408,27 @@ Rules:
     <string name="reminder_notification_title">Class reminder: %1$s</string>
     <string name="reminder_notification_body_with_location">Starts in %1$d min · %2$s · %3$s</string>
     <string name="reminder_notification_body_no_location">Starts in %1$d min · %2$s</string>
-
-    <string name="daily_briefing_channel_name">Daily briefing</string>
-    <string name="daily_briefing_channel_desc">Daily dashboard summary notifications.</string>
-    <string name="daily_briefing_notification_title">Daily briefing</string>
-    <string name="daily_briefing_notification_empty">Today has %1$d classes. No more upcoming classes.</string>
-    <string name="daily_briefing_notification_body">Today has %1$d classes. Next: %2$s at %3$s.</string>
+    <string name="dashboard_desc">Courses at a glance</string>
+    <string name="dashboard_summary_title">Course Dashboard Overview</string>
+    <string name="dashboard_total_count_title">Visible courses</string>
+    <string name="dashboard_active_days_title">Active days</string>
+    <string name="dashboard_today_remaining_count_title">Today remaining</string>
+    <string name="dashboard_busiest_day_title">Busiest day</string>
+    <string name="dashboard_busiest_day_empty">None</string>
+    <string name="dashboard_status_title">Current status</string>
+    <string name="dashboard_status_free">Free right now</string>
+    <string name="dashboard_status_in_progress">In progress: %1$s</string>
+    <string name="dashboard_status_next">Next today: %1$s at %2$s</string>
+    <string name="dashboard_status_done">All classes for today are finished</string>
+    <string name="dashboard_today_remaining_title">Today remaining classes</string>
+    <string name="dashboard_today_remaining_empty">No remaining classes today.</string>
+    <string name="dashboard_day_schedule_title">%1$s schedule (%2$d)</string>
+    <string name="dashboard_day_schedule_empty">No classes scheduled for %1$s.</string>
     <string name="layer_heatmap">Dashboard</string>
     <string name="heatmap_title">Weekly Course Heatmap</string>
-    <string name="heatmap_desc">Course density by day and time slot. Darker = more classes.</string>
+    <string name="heatmap_desc">View course density by date and time.</string>
     <string name="heatmap_empty_title">No heatmap data yet</string>
-    <string name="heatmap_empty_desc">Import or add classes first, then the weekly heatmap will appear here.</string>
+    <string name="heatmap_empty_desc">Import courses first.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
     <string name="calendar_add_makeup_lesson">Add Make-up Lesson</string>
@@ -506,36 +457,45 @@ Rules:
     <string name="settings_sync_diag_sync_wear">Sync to Wear</string>
     <string name="settings_sync_diag_test_cloud">Test Cloud</string>
     <string name="settings_sync_diag_sync_cloud">Sync Cloud</string>
+    <string name="calendar_back_to_timetable">Timetable</string>
+    <string name="schedule_open_calendar">Calendar</string>
+    <string name="json_import_mode_title">Import Mode</string>
+    <string name="json_import_mode_replace">Replace</string>
+    <string name="json_import_mode_append">Append</string>
+    <string name="json_import_mode_replace_helper">Replace mode overwrites the current timetable with the previewed JSON classes.</string>
+    <string name="json_import_mode_append_helper">Append mode adds new classes to the current timetable and skips exact duplicates.</string>
+    <string name="json_import_confirm_replace_button">Replace Current Timetable</string>
+    <string name="json_import_confirm_append_button">Append to Current Timetable</string>
+    <string name="json_import_selective_replace_button">Import Selected and Replace</string>
+    <string name="json_import_selective_append_button">Import Selected and Append</string>
+    <string name="json_import_replace_applied_message">Replace complete. Imported %1$d classes.</string>
+    <string name="json_import_append_applied_message">Append complete. Added %1$d classes, skipped %2$d exact duplicates.</string>
+    <string name="daily_briefing_channel_name">Daily briefing</string>
+    <string name="daily_briefing_channel_desc">Daily dashboard summary notifications.</string>
+    <string name="daily_briefing_notification_title">Daily briefing</string>
+    <string name="daily_briefing_notification_empty">Today has %1$d classes. No more upcoming classes.</string>
+    <string name="daily_briefing_notification_body">Today has %1$d classes. Next: %2$s at %3$s.</string>
     <string name="settings_cloud_sync_recent_changes">Recent sync changes</string>
     <string name="settings_cloud_sync_restore">Restore</string>
     <string name="settings_cloud_sync_queued">Cloud sync queued</string>
     <string name="settings_cloud_sync_restored">Restored %1$s; cloud sync queued</string>
     <string name="common_refresh">Refresh</string>
     <string name="settings_account_title">Account</string>
-    <string name="settings_account_desc">Sign in, manage membership, or recover your account.</string>
+    <string name="settings_account_desc">Manage your Classing Timetable account.</string>
     <string name="account_status_title">Account status</string>
     <string name="account_not_logged_in">Not signed in</string>
     <string name="account_signed_in_as">Signed in as %1$s</string>
     <string name="account_membership_status">Membership: %1$s</string>
     <string name="account_membership_expires_at">Expires at: %1$s</string>
-    <string name="account_open_membership">Open membership page</string>
-    <string name="account_ai_quota_title">Ask AI monthly compute</string>
-    <string name="account_ai_quota_remaining">%1$d of %2$d points remaining</string>
-    <string name="account_ai_quota_unlimited">Unlimited compute points</string>
-    <string name="account_ai_quota_reset">Resets at %1$s</string>
-    <string name="account_ai_quota_loading">Loading compute balance…</string>
-    <string name="account_ai_credit_balance">Permanent balance: %1$d points</string>
-    <string name="account_ai_credit_frozen">Membership expired. Permanent balance is frozen and will be restored after renewal.</string>
-    <string name="account_ai_free_quota_hint">Free accounts receive 500 AI points each month. Permanent points require an active membership.</string>
     <string name="account_login">Sign in</string>
     <string name="account_logout">Sign out</string>
     <string name="account_delete_title">Delete account</string>
-    <string name="account_delete_desc">After deletion, this account will be signed out on all devices. Email and username are anonymized and the original account cannot be used to sign in again.</string>
+    <string name="account_delete_desc">Deleting the account signs it out on all devices. You must register again to continue using our services.</string>
     <string name="account_delete_confirm_label">Type DELETE to confirm</string>
     <string name="account_delete_confirm_placeholder">DELETE</string>
     <string name="account_delete_button">Delete account</string>
     <string name="account_delete_dialog_title">Confirm account deletion</string>
-    <string name="account_delete_dialog_message">This will immediately sign out all devices and make the original account unavailable. Continue?</string>
+    <string name="account_delete_dialog_message">This immediately signs out all devices, and the data will no longer be accessible. Continue?</string>
     <string name="account_delete_success">Account deleted. All devices have been signed out.</string>
     <string name="account_delete_failed">Could not delete this account.</string>
     <string name="account_identifier">Email or username</string>
@@ -565,10 +525,9 @@ Rules:
     <string name="account_error_password_weak">Password must contain 8–128 characters.</string>
     <string name="account_error_exists">This username or email is already in use.</string>
     <string name="account_error_rate_limited">Too many attempts. Try again later.</string>
-    <string name="account_error_login_locked">Too many failed sign-in attempts. Try again in %1$d:%2$02d.</string>
     <string name="account_error_session_expired">Your session expired. Please sign in again.</string>
     <string name="password_reset_title">Reset password</string>
-    <string name="password_reset_request_desc">Request a reset email, then paste the one-time token from the email below.</string>
+    <string name="password_reset_request_desc">For help, contact our WeChat support.</string>
     <string name="password_reset_send_email">Send reset email</string>
     <string name="password_reset_token">Reset token</string>
     <string name="password_reset_new_password">New password</string>
@@ -579,9 +538,9 @@ Rules:
     <string name="password_reset_confirm_failed">Could not update the password.</string>
     <string name="password_reset_error_token_invalid">The reset token is invalid, expired, or already used.</string>
     <string name="settings_daily_briefing_title">Daily briefing</string>
-    <string name="settings_daily_briefing_desc">Schedule an on-device notification and optional email summary.</string>
+    <string name="settings_daily_briefing_desc">Send scheduled course overviews.</string>
     <string name="daily_briefing_enable_title">Enable daily briefing</string>
-    <string name="daily_briefing_enable_desc">App notifications work offline; email delivery requires sign-in.</string>
+    <string name="daily_briefing_enable_desc">App notifications work offline; email briefings require a signed-in account.</string>
     <string name="daily_briefing_channel_title">Delivery</string>
     <string name="daily_briefing_channel_app">App</string>
     <string name="daily_briefing_channel_email">Email</string>
@@ -598,9 +557,9 @@ Rules:
     <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_official">Official cloud</string>
     <string name="official_cloud_membership_required">Official cloud requires an active membership.</string>
-    <string name="official_cloud_login_required">Sign in on this phone to use official cloud sync.</string>
+    <string name="official_cloud_login_required">Sign in to use official cloud sync.</string>
     <string name="official_cloud_membership_active">Membership active. Official cloud is available.</string>
-    <string name="official_cloud_membership_inactive">Membership inactive. Official cloud will only sync settings until membership is renewed.</string>
+    <string name="official_cloud_membership_inactive">Non-members can sync settings only.</string>
     <string name="official_cloud_open_account">Open account</string>
     <string name="cloud_sync_scopes_title">Sync scopes</string>
     <string name="cloud_sync_scope_timetable">Timetable</string>
@@ -620,12 +579,12 @@ Rules:
     <string name="keepalive_status_not_authorized">not authorized</string>
     <string name="keepalive_status_whitelisted">allowed</string>
     <string name="keepalive_status_not_whitelisted">not allowed</string>
-    <string name="settings_about_icp_pending">ICP filing: pending</string>
+    <string name="settings_about_icp_pending">ICP filing number:</string>
     <string name="cloud_connection_success">%1$s connection succeeded.</string>
     <string name="cloud_connection_failed">%1$s connection failed.</string>
     <string name="settings_about_notice_failed_short">Could not load announcements. Try again later.</string>
     <string name="settings_about_check_update_failed_short">Could not check for updates. Try again later.</string>
-    <string name="settings_about_update_no_release">No published version is available.</string>
+    <string name="settings_about_update_no_release">No available release yet.</string>
     <string name="settings_about_update_version_and_size">Version %1$s · %2$s</string>
     <string name="settings_about_update_mandatory">This update is required.</string>
     <string name="settings_about_update_download">Download update</string>
@@ -653,18 +612,6 @@ Rules:
     <string name="account_verification_sent">A verification code was sent to your email.</string>
     <string name="account_verification_send_failed">Could not send the verification email.</string>
     <string name="account_verification_invalid">The verification code is invalid or expired.</string>
-    <string name="account_verification_locked">This code is no longer valid after too many attempts. Request a new code.</string>
-    <string name="account_change_email">Change email</string>
-    <string name="account_new_email">New email</string>
-    <string name="account_current_password">Current password</string>
-    <string name="account_email_change_send">Send verification code</string>
-    <string name="account_email_change_confirm">Confirm email change</string>
-    <string name="account_email_change_sent">A verification code was sent to the new email.</string>
-    <string name="account_email_change_success">Email changed. Sign in again with the new email.</string>
-    <string name="account_email_change_pending">Pending verification: %1$s</string>
-    <string name="account_email_change_expired">The pending email change has expired.</string>
-    <string name="account_error_current_password">The current password is incorrect.</string>
-    <string name="account_error_email_conflict">This email is already in use.</string>
     <string name="settings_about_rate_limited">Too many requests. Try again in %1$d seconds.</string>
     <string name="import_section_expand">Expand</string>
     <string name="import_section_collapse">Collapse</string>
@@ -677,19 +624,41 @@ Rules:
     <string name="legal_cross_border_transfer">Personal Data Cross-border Transfer Agreement</string>
     <string name="legal_agreement_links_unavailable">Agreement links are not configured yet. Please try again later.</string>
     <string name="legal_agreement_required">Please agree to the Privacy Policy, User Agreement, and Personal Data Cross-border Transfer Agreement.</string>
+    <string name="account_error_login_locked">Too many failed sign-in attempts. Try again in %1$d:%2$02d.</string>
+    <string name="account_verification_locked">This code is no longer valid after too many attempts. Request a new code.</string>
+    <string name="account_change_email">Change email</string>
+    <string name="account_new_email">New email</string>
+    <string name="account_current_password">Current password</string>
+    <string name="account_email_change_send">Send verification code</string>
+    <string name="account_email_change_confirm">Confirm email change</string>
+    <string name="account_email_change_sent">A verification code was sent to the new email.</string>
+    <string name="account_email_change_success">Email changed. Sign in again with the new email.</string>
+    <string name="account_email_change_pending">Pending verification: %1$s</string>
+    <string name="account_email_change_expired">The pending email change has expired.</string>
+    <string name="account_error_current_password">The current password is incorrect.</string>
+    <string name="account_error_email_conflict">This email is already in use.</string>
     <string name="calendar_restore_original">Restore original arrangement</string>
     <string name="calendar_restore_cancelled_original">Restore cancelled class</string>
     <string name="onboarding_import_configure_title">Configure your selected setup</string>
     <string name="onboarding_import_configure_subtitle">Review the next action before continuing.</string>
     <string name="account_wear_qr_title">Device QR sign in</string>
-    <string name="account_wear_qr_desc">Scan a QR code shown on Classing Web or Wear to approve a separate, secure device session.</string>
+    <string name="account_wear_qr_desc">Scan a Classing sign-in QR code to approve a session for this device.</string>
     <string name="account_wear_qr_scan">Scan device QR</string>
     <string name="account_wear_qr_invalid">This is not a valid Classing device sign-in QR code.</string>
     <string name="account_wear_qr_scan_failed">Could not scan the QR code.</string>
     <string name="account_wear_qr_approved">Device sign in approved.</string>
     <string name="account_wear_qr_approve_failed">Could not approve device sign in.</string>
     <string name="account_wear_qr_confirm_title">Approve device sign in?</string>
-    <string name="account_wear_qr_confirm_message">Only continue if this QR code is currently displayed on your Classing Web or Wear device. A separate account session will be created for that device.</string>
+    <string name="account_wear_qr_confirm_message">Continue only if this QR code is displayed on your Classing device. An independent account session will be created for that device.</string>
     <string name="account_wear_qr_confirm">Approve</string>
     <string name="account_wear_qr_cancel">Cancel</string>
+    <string name="account_open_membership">Open membership page</string>
+    <string name="account_ai_quota_title">Ask AI monthly compute</string>
+    <string name="account_ai_quota_remaining">%1$d of %2$d points remaining</string>
+    <string name="account_ai_quota_unlimited">Unlimited compute points</string>
+    <string name="account_ai_quota_reset">Resets at %1$s</string>
+    <string name="account_ai_quota_loading">Loading compute balance…</string>
+    <string name="account_ai_credit_balance">Permanent balance: %1$d points</string>
+    <string name="account_ai_credit_frozen">Membership expired. Permanent balance is frozen and will be restored after renewal.</string>
+    <string name="account_ai_free_quota_hint">Free accounts receive a limited monthly AI allowance; permanent credits are available only with an active membership.</string>
 </resources>

@@ -12,7 +12,7 @@
 
     <string name="home_loading_today_courses">Loading today\'s classes</string>
     <string name="home_empty_today_title">No classes today</string>
-    <string name="home_empty_today_subtitle">Take a break and check next week\'s schedule.</string>
+    <string name="home_empty_today_subtitle">Take a break.</string>
     <string name="home_sync_idle">Pending sync</string>
     <string name="home_sync_syncing">Syncing</string>
     <string name="home_sync_success">Synced</string>
@@ -29,7 +29,7 @@
     <string name="home_next_lesson_empty">No more classes today</string>
     <string name="home_next_lesson_no_data">No timetable data yet</string>
     <string name="home_onboarding_title">Import courses from phone first</string>
-    <string name="home_onboarding_subtitle">Wear no longer uses built-in demo courses on first launch.</string>
+    <string name="home_onboarding_subtitle">Wear OS devices are supported first.</string>
     <string name="home_quick_actions_title">Quick actions</string>
     <string name="home_today_section_title">Today</string>
     <string name="home_brand_wordmark">CLASSING</string>
@@ -45,7 +45,7 @@
 
     <string name="search_title">Search courses</string>
     <string name="search_input_label">Course or teacher</string>
-    <string name="search_hint_watch_input">Short keywords work best on watch input.</string>
+    <string name="search_hint_watch_input">Use short keywords.</string>
     <string name="search_empty_input_title">Enter keywords</string>
     <string name="search_empty_input_subtitle">Chinese / Ms. Li</string>
     <string name="search_empty_result_title">No courses found</string>
@@ -99,7 +99,7 @@
     <string name="settings_cloud_sync_wear_status_label">Status: %1$s\nLast sync: %2$s</string>
     <string name="settings_cloud_sync_wear_config_update_label">%1$s\nUpdated at: %2$s</string>
     <string name="settings_cloud_sync_provider_wear">Provider: %1$s</string>
-    <string name="settings_cloud_sync_wear_drive_hint">Google Drive auth is managed on phone. Wear uses pushed short-lived token.</string>
+    <string name="settings_cloud_sync_wear_drive_hint">Set up Google Drive sync on your phone.</string>
     <string name="settings_cloud_sync_wear_drive_status_label">Drive file: %1$s\nToken expires: %2$s</string>
     <string name="settings_cloud_sync_edit_button">Edit WebDAV</string>
     <string name="settings_cloud_sync_edit_title">Edit WebDAV</string>
@@ -107,14 +107,13 @@
     <string name="settings_cloud_sync_wear_webdav_updated_from_mobile">Wear WebDAV info updated from phone.</string>
     <string name="tile_next_class_label">Classing Next Class Tile</string>
     <string name="complication_next_class_label">Classing Next Class Complication</string>
-
     <string name="heatmap_title">Course Heatmap</string>
     <string name="heatmap_desc">Weekly course density</string>
     <string name="heatmap_empty_title">No heatmap data yet</string>
     <string name="heatmap_empty_desc">Import on phone and sync to Wear first.</string>
     <string name="heatmap_legend_less">Less</string>
     <string name="heatmap_legend_more">More</string>
-    <string name="settings_cloud_sync_phone_managed">After QR sign in, this watch syncs Wear settings directly with official cloud. Timetable sync remains phone-managed.</string>
+    <string name="settings_cloud_sync_phone_managed">After QR sign-in, this watch connects directly to official cloud sync.</string>
     <string name="settings_cloud_sync_last_phone_snapshot">Last cloud sync: %1$s</string>
     <string name="settings_cloud_sync_request_queued">Request queued for phone</string>
     <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
