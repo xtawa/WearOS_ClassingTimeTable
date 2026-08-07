@@ -12,7 +12,7 @@
 
     <string name="home_loading_today_courses">正在加载今日课程</string>
     <string name="home_empty_today_title">今日无课</string>
-    <string name="home_empty_today_subtitle">休息一下，记得看看下周安排。</string>
+    <string name="home_empty_today_subtitle">休息一下吧</string>
     <string name="home_sync_idle">待同步</string>
     <string name="home_sync_syncing">同步中</string>
     <string name="home_sync_success">已同步</string>
@@ -29,7 +29,7 @@
     <string name="home_next_lesson_empty">今天没有后续课程</string>
     <string name="home_next_lesson_no_data">暂无课表数据</string>
     <string name="home_onboarding_title">请先在手机端导入课程</string>
-    <string name="home_onboarding_subtitle">首次使用不再提供预置示例课程。</string>
+    <string name="home_onboarding_subtitle">优先支持WearOS设备</string>
     <string name="home_quick_actions_title">快捷操作</string>
     <string name="home_today_section_title">今天</string>
     <string name="home_brand_wordmark">CLASSING</string>
@@ -45,7 +45,7 @@
 
     <string name="search_title">搜索课程</string>
     <string name="search_input_label">课程或教师</string>
-    <string name="search_hint_watch_input">手表输入建议使用短关键词。</string>
+    <string name="search_hint_watch_input">建议使用短关键词。</string>
     <string name="search_empty_input_title">请输入关键词</string>
     <string name="search_empty_input_subtitle">语文 / 李老师</string>
     <string name="search_empty_result_title">未找到课程</string>
@@ -99,7 +99,7 @@
     <string name="settings_cloud_sync_wear_status_label">状态：%1$s\n最近同步：%2$s</string>
     <string name="settings_cloud_sync_wear_config_update_label">%1$s\n更新时间：%2$s</string>
     <string name="settings_cloud_sync_provider_wear">同步提供方：%1$s</string>
-    <string name="settings_cloud_sync_wear_drive_hint">Google Drive 授权由手机管理，Wear 使用手机下发的短期令牌。</string>
+    <string name="settings_cloud_sync_wear_drive_hint">请在手机上设置 Google Drive 同步方式</string>
     <string name="settings_cloud_sync_wear_drive_status_label">Drive 文件：%1$s\n令牌过期：%2$s</string>
     <string name="settings_cloud_sync_edit_button">编辑 WebDAV</string>
     <string name="settings_cloud_sync_edit_title">编辑 WebDAV</string>
@@ -113,7 +113,7 @@
     <string name="heatmap_empty_desc">请先在手机端导入课程并同步到 Wear。</string>
     <string name="heatmap_legend_less">少</string>
     <string name="heatmap_legend_more">多</string>
-    <string name="settings_cloud_sync_phone_managed">二维码登录后，手表设置会直连官方云同步；课表同步仍由手机统一管理。</string>
+    <string name="settings_cloud_sync_phone_managed">二维码登录后，手表设置会直连官方云同步。</string>
     <string name="settings_cloud_sync_last_phone_snapshot">最近云同步：%1$s</string>
     <string name="settings_cloud_sync_request_queued">请求已排队等待手机处理</string>
     <string name="settings_cloud_sync_request_failed">无法将请求加入队列</string>
