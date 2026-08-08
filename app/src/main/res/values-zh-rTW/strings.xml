@@ -1,4 +1,7 @@
 <resources>
+    <string name="lesson_status_not_started">未開始</string>
+    <string name="lesson_status_in_progress">進行中</string>
+    <string name="lesson_status_finished">已結束</string>
     <string name="app_name">Classing 課程表</string>
     <string name="sync_channel_name">課表同步</string>
     <string name="reminder_channel_name">上課提醒</string>

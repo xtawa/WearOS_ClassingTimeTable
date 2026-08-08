@@ -2786,7 +2786,11 @@ private fun AboutResourceRow(
 
 @Composable
 internal fun LessonCard(lesson: LessonUi) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    val courseColor = courseColorFor(lesson.title)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = courseColor.copy(alpha = 0.10f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, courseColor.copy(alpha = 0.24f)),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2794,6 +2798,11 @@ internal fun LessonCard(lesson: LessonUi) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Top,
         ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 48.dp)
+                    .background(courseColor, RoundedCornerShape(999.dp)),
+            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.size(width = 72.dp, height = 48.dp),
@@ -2801,7 +2810,7 @@ internal fun LessonCard(lesson: LessonUi) {
                 Text(
                     lesson.startTime.format(clockFormatter),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = courseColor,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,9 +63,8 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { BrandHeader() }
         item {
             HeaderInfoCard(
                 dateLabel = state.dateLabel,
@@ -130,44 +131,6 @@ fun HomeScreen(
             }
         }
 
-        item {
-            SectionCaption(
-                title = stringResource(R.string.heatmap_title),
-                suffix = "",
-            )
-        }
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (state.heatmapCells.isEmpty()) {
-                        EmptyState(
-                            title = stringResource(R.string.heatmap_empty_title),
-                            subtitle = stringResource(R.string.heatmap_empty_desc),
-                        )
-                    } else {
-                        CourseHeatmapGrid(
-                            cells = state.heatmapCells,
-                            cellSize = 10.dp,
-                            cellSpacing = 2.dp,
-                            cellCornerRadius = 2.dp,
-                        )
-                        Text(
-                            text = stringResource(R.string.heatmap_desc),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-
     }
 }
 
@@ -197,13 +160,10 @@ private fun HeaderInfoCard(
         is SyncState.Success -> stringResource(R.string.home_sync_success)
         is SyncState.Failed -> stringResource(R.string.home_sync_failed)
     }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
-        Column(
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -215,7 +175,7 @@ private fun HeaderInfoCard(
             Row(
                 modifier = Modifier
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                         shape = RoundedCornerShape(999.dp),
                     )
                     .padding(horizontal = 8.dp, vertical = 3.dp),
@@ -229,7 +189,7 @@ private fun HeaderInfoCard(
                             color = when (syncState) {
                                 SyncState.Idle -> MaterialTheme.colorScheme.outline
                                 SyncState.Syncing -> MaterialTheme.colorScheme.tertiary
-                                is SyncState.Success -> MaterialTheme.colorScheme.primary
+                                is SyncState.Success -> MaterialTheme.colorScheme.secondary
                                 is SyncState.Failed -> MaterialTheme.colorScheme.error
                             },
                             shape = CircleShape,
@@ -240,7 +200,6 @@ private fun HeaderInfoCard(
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
-        }
     }
 }
 
@@ -248,19 +207,32 @@ private fun HeaderInfoCard(
 private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
     val lesson = hint.lesson
     val countdown = TimeFormatters.formatCountdown(hint.countdown, lesson?.status)
+    val heroShape = RoundedCornerShape(22.dp)
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)),
+        shape = heroShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .heightIn(min = 128.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f),
+                        ),
+                    ),
+                    shape = heroShape,
+                )
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.home_next_lesson_title),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
             )
             if (lesson == null) {
                 Text(
@@ -270,34 +242,34 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
                         stringResource(R.string.home_next_lesson_no_data)
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
                 Text(
                     text = lesson.course.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 2,
                 )
+                if (lesson.course.classroom.isNotBlank()) {
+                    Text(
+                        text = lesson.course.classroom,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                        maxLines = 1,
+                    )
+                }
                 Text(
                     text = TimeFormatters.formatTimeRange(lesson.startAt, lesson.endAt),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
                 )
                 if (countdown.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(999.dp),
-                            )
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            text = countdown,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                    Text(
+                        text = countdown,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
                 }
             }
         }

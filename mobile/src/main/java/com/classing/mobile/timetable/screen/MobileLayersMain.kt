@@ -59,6 +59,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -140,16 +142,17 @@ internal fun WeekBoardLayer(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = stringResource(R.string.ghost_title_schedule),
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                        fontWeight = FontWeight.ExtraBold,
+                        text = LocalDate.now().format(
+                            DateTimeFormatter.ofPattern("MMM d · EEE", java.util.Locale.getDefault()),
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = stringResource(R.string.layer_dashboard),
+                        text = stringResource(R.string.schedule_today_title),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                     Text(
                         text = stringResource(R.string.week_long_press_hint),
@@ -164,9 +167,37 @@ internal fun WeekBoardLayer(
                 )
             }
         }
+        item {
+            val now = LocalDateTime.now()
+            MobileNextLessonHeroCard(
+                nextLesson = resolveNextLessonForBoard(lessonsForDate, now),
+                hasSchedule = hasSchedule,
+                now = now,
+            )
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = true,
+                    onClick = {},
+                    label = { Text(stringResource(R.string.schedule_week_overview)) },
+                    modifier = Modifier.weight(1f),
+                )
+                FilterChip(
+                    selected = false,
+                    onClick = onOpenCalendar,
+                    label = { Text(stringResource(R.string.schedule_open_calendar)) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
         items(prioritizedDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
             val isEmpty = lessons.isEmpty()
+            val isToday = day == todayDay
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = if (isEmpty) {
@@ -177,8 +208,10 @@ internal fun WeekBoardLayer(
                 ),
                 border = if (isEmpty) {
                     BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                } else if (isToday) {
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                 } else {
-                    null
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
                 },
             ) {
                 Column(
@@ -191,11 +224,13 @@ internal fun WeekBoardLayer(
                         text = stringResource(R.string.day_header_title, dayLabel(day, context), lessons.size),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
+                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
                     if (isEmpty) {
                         Text(stringResource(R.string.no_classes), style = MaterialTheme.typography.bodySmall)
                     } else {
                         lessons.forEach { lesson ->
+                            val courseColor = courseColorFor(lesson.title)
                             val lessonSummary = stringResource(
                                 R.string.lesson_summary_format,
                                 dayLabel(lesson.dayOfWeek, context),
@@ -219,7 +254,8 @@ internal fun WeekBoardLayer(
                                             onLongPress = { onLongPressLesson(lesson) },
                                         )
                                 },
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                colors = CardDefaults.cardColors(containerColor = courseColor.copy(alpha = 0.10f)),
+                                border = BorderStroke(1.dp, courseColor.copy(alpha = 0.24f)),
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -228,6 +264,11 @@ internal fun WeekBoardLayer(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 4.dp, height = 40.dp)
+                                            .background(courseColor, RoundedCornerShape(999.dp)),
+                                    )
                                     Column(
                                         modifier = Modifier.size(width = 70.dp, height = 40.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -236,7 +277,7 @@ internal fun WeekBoardLayer(
                                         Text(
                                             text = lesson.startTime.format(clockFormatter),
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            color = courseColor,
                                             fontWeight = FontWeight.Bold,
                                         )
                                         Text(
@@ -312,19 +353,32 @@ private fun MobileNextLessonHeroCard(
         }
     }
 
+    val heroShape = RoundedCornerShape(24.dp)
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)),
+        shape = heroShape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .heightIn(min = 148.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f),
+                        ),
+                    ),
+                    shape = heroShape,
+                )
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(R.string.schedule_next_lesson_title),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
             )
             if (nextLesson == null) {
                 Text(
@@ -334,7 +388,7 @@ private fun MobileNextLessonHeroCard(
                         stringResource(R.string.schedule_next_lesson_no_data)
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
                 val dayText = dayLabel(nextLesson.startAt.dayOfWeek, context)
@@ -345,19 +399,28 @@ private fun MobileNextLessonHeroCard(
                 )
                 Text(
                     text = nextLesson.lesson.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 2,
                 )
                 Text(
                     text = "$dayText · $timeRange",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.86f),
                 )
+                if (!nextLesson.lesson.location.isNullOrBlank()) {
+                    Text(
+                        text = nextLesson.lesson.location,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.76f),
+                    )
+                }
                 if (countdown.isNotBlank()) {
                     Row(
                         modifier = Modifier
                             .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
                                 shape = RoundedCornerShape(999.dp),
                             )
                             .padding(horizontal = 8.dp, vertical = 3.dp),
@@ -365,12 +428,26 @@ private fun MobileNextLessonHeroCard(
                         Text(
                             text = countdown,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
             }
         }
+    }
+}
+
+internal fun courseColorFor(title: String): Color {
+    val normalized = title.lowercase()
+    return when {
+        normalized.contains("数学") || normalized.contains("math") || normalized.contains("代数") -> Color(0xFF7C79F7)
+        normalized.contains("英语") || normalized.contains("english") -> Color(0xFF22C55E)
+        normalized.contains("物理") || normalized.contains("physics") -> Color(0xFF38BDF8)
+        normalized.contains("程序") || normalized.contains("编程") || normalized.contains("program") -> Color(0xFFF59E0B)
+        normalized.contains("政治") || normalized.contains("politic") -> Color(0xFFF472B6)
+        normalized.contains("体育") || normalized.contains("sport") -> Color(0xFF60A5FA)
+        else -> Color(0xFF64748B)
     }
 }
 

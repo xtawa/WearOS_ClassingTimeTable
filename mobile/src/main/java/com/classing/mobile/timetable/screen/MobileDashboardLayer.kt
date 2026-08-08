@@ -151,16 +151,15 @@ internal fun DashboardLayer(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = stringResource(R.string.ghost_title_schedule),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
+                text = LocalDate.now().toString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = stringResource(R.string.layer_heatmap),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
                 text = stringResource(R.string.dashboard_desc),

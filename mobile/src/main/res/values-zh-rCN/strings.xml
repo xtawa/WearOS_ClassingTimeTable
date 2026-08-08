@@ -54,6 +54,8 @@
     <string name="time_range_text">%1$s-%2$s</string>
     <string name="week_long_press_hint">长按课程可编辑或删除。</string>
     <string name="schedule_next_lesson_title">下一节课</string>
+    <string name="schedule_today_title">今日课表</string>
+    <string name="schedule_week_overview">本周概览</string>
     <string name="schedule_next_lesson_empty">今天没有后续课程</string>
     <string name="schedule_next_lesson_no_data">暂无课表数据</string>
     <string name="schedule_next_lesson_countdown_in_progress">进行中</string>

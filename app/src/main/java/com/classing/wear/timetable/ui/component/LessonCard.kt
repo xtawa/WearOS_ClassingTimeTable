@@ -17,10 +17,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.R
 import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.model.LessonStatus
+import com.classing.wear.timetable.ui.theme.CourseEnglish
+import com.classing.wear.timetable.ui.theme.CourseMath
+import com.classing.wear.timetable.ui.theme.CourseOther
+import com.classing.wear.timetable.ui.theme.CoursePhysics
+import com.classing.wear.timetable.ui.theme.CoursePolitics
+import com.classing.wear.timetable.ui.theme.CourseProgramming
 
 @Composable
 fun LessonCard(
@@ -30,14 +38,21 @@ fun LessonCard(
 ) {
     val statusColor = when (lesson.status) {
         LessonStatus.NOT_STARTED -> MaterialTheme.colorScheme.tertiary
-        LessonStatus.IN_PROGRESS -> MaterialTheme.colorScheme.primary
+        LessonStatus.IN_PROGRESS -> MaterialTheme.colorScheme.secondary
         LessonStatus.FINISHED -> MaterialTheme.colorScheme.outline
     }
+    val statusLabel = when (lesson.status) {
+        LessonStatus.NOT_STARTED -> stringResource(R.string.lesson_status_not_started)
+        LessonStatus.IN_PROGRESS -> stringResource(R.string.lesson_status_in_progress)
+        LessonStatus.FINISHED -> stringResource(R.string.lesson_status_finished)
+    }
+    val courseColor = colorLabelToColor(lesson.course.colorLabel, lesson.course.name)
 
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = { onClick?.invoke() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = courseColor.copy(alpha = 0.14f)),
     ) {
         Row(
             modifier = Modifier
@@ -49,7 +64,7 @@ fun LessonCard(
             Box(
                 modifier = Modifier
                     .size(width = 4.dp, height = 42.dp)
-                    .background(statusColor, CircleShape),
+                    .background(courseColor, CircleShape),
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -65,10 +80,10 @@ fun LessonCard(
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(statusColor, CircleShape),
+                    Text(
+                        text = statusLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
                     )
                 }
                 Text(
@@ -91,13 +106,14 @@ fun LessonCard(
     }
 }
 
-fun colorLabelToColor(label: String): Color {
-    return when (label.lowercase()) {
-        "red" -> Color(0xFFE53935)
-        "blue" -> Color(0xFF1E88E5)
-        "orange" -> Color(0xFFFB8C00)
-        "green" -> Color(0xFF43A047)
-        "teal" -> Color(0xFF00897B)
-        else -> Color(0xFF757575)
+fun colorLabelToColor(label: String, courseName: String = ""): Color {
+    val semantic = "$label $courseName".lowercase()
+    return when {
+        semantic.contains("math") || semantic.contains("数学") || semantic.contains("代数") || semantic.contains("purple") -> CourseMath
+        semantic.contains("english") || semantic.contains("英语") || semantic.contains("green") -> CourseEnglish
+        semantic.contains("physics") || semantic.contains("物理") || semantic.contains("blue") || semantic.contains("teal") -> CoursePhysics
+        semantic.contains("program") || semantic.contains("程序") || semantic.contains("编程") || semantic.contains("orange") -> CourseProgramming
+        semantic.contains("politic") || semantic.contains("政治") || semantic.contains("pink") || semantic.contains("red") -> CoursePolitics
+        else -> CourseOther
     }
 }

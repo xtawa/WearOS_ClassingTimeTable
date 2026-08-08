@@ -1514,10 +1514,11 @@ fun MobileTimetableScreen() {
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
+                color = MaterialTheme.colorScheme.background,
+                tonalElevation = 0.dp,
             ) {
                 Row(
                     modifier = Modifier
@@ -1532,15 +1533,15 @@ fun MobileTimetableScreen() {
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Surface(
-                            modifier = Modifier.size(34.dp),
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Image(
                                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
                                     contentDescription = stringResource(R.string.app_name),
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(24.dp),
                                 )
                             }
                         }
@@ -1564,16 +1565,16 @@ fun MobileTimetableScreen() {
         },
         bottomBar = {
             Surface(
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
             ) {
                 NavigationBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .height(82.dp),
+                        .height(76.dp),
                     containerColor = Color.Transparent,
                     tonalElevation = 0.dp,
                 ) {
@@ -1606,7 +1607,7 @@ fun MobileTimetableScreen() {
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
