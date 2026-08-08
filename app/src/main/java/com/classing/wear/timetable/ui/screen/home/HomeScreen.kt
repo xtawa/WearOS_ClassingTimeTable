@@ -39,7 +39,6 @@ import com.classing.wear.timetable.core.time.TimeFormatters
 import com.classing.wear.timetable.domain.model.NextLessonHint
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.ui.PreviewSamples
-import com.classing.wear.timetable.ui.component.CourseHeatmapGrid
 import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.ErrorState
 import com.classing.wear.timetable.ui.component.LessonCard
@@ -47,6 +46,7 @@ import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.HomeUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+import com.classing.wear.timetable.ui.theme.IndigoSuccess
 import java.time.Instant
 
 @Composable
@@ -135,20 +135,6 @@ fun HomeScreen(
 }
 
 @Composable
-private fun BrandHeader() {
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(R.string.home_brand_wordmark),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
-    }
-}
-
-@Composable
 private fun HeaderInfoCard(
     dateLabel: String,
     weekLabel: String,
@@ -161,45 +147,45 @@ private fun HeaderInfoCard(
         is SyncState.Failed -> stringResource(R.string.home_sync_failed)
     }
     Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.common_date_week_label, dateLabel, weekLabel),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.common_date_week_label, dateLabel, weekLabel),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(
-                modifier = Modifier
-                    .background(
+                .background(
                     color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(999.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .background(
-                            color = when (syncState) {
-                                SyncState.Idle -> MaterialTheme.colorScheme.outline
-                                SyncState.Syncing -> MaterialTheme.colorScheme.tertiary
-                                is SyncState.Success -> MaterialTheme.colorScheme.secondary
-                                is SyncState.Failed -> MaterialTheme.colorScheme.error
-                            },
-                            shape = CircleShape,
-                        ),
+                    shape = CircleShape,
                 )
-                Text(
-                    text = syncLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        color = when (syncState) {
+                            SyncState.Idle -> MaterialTheme.colorScheme.outline
+                            SyncState.Syncing -> MaterialTheme.colorScheme.tertiary
+                            is SyncState.Success -> IndigoSuccess
+                            is SyncState.Failed -> MaterialTheme.colorScheme.error
+                        },
+                        shape = CircleShape,
+                    ),
+            )
+            Text(
+                text = syncLabel,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
     }
 }
 
@@ -207,7 +193,7 @@ private fun HeaderInfoCard(
 private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
     val lesson = hint.lesson
     val countdown = TimeFormatters.formatCountdown(hint.countdown, lesson?.status)
-    val heroShape = RoundedCornerShape(22.dp)
+    val heroShape = MaterialTheme.shapes.large
     Card(
         shape = heroShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -225,14 +211,14 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
                     ),
                     shape = heroShape,
                 )
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.home_next_lesson_title),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
             )
             if (lesson == null) {
                 Text(
@@ -255,7 +241,7 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
                     Text(
                         text = lesson.course.classroom,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
                         maxLines = 1,
                     )
                 }
@@ -344,7 +330,7 @@ private fun FirstRunGuideCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(

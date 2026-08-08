@@ -2,7 +2,8 @@ package com.classing.wear.timetable.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val IndigoPrimary = Color(0xFF9895FF)
+// Brand / Wear palette (design spec §40)
+val IndigoPrimary = Color(0xFF7C79F7)
 val IndigoOnPrimary = Color(0xFF19175F)
 val IndigoPrimaryContainer = Color(0xFF36346F)
 val IndigoOnPrimaryContainer = Color(0xFFE4E2FF)
@@ -25,9 +26,23 @@ val IndigoSurfaceContainer = Color(0xFF161821)
 val IndigoSurfaceContainerHigh = Color(0xFF1E2230)
 val IndigoError = Color(0xFFFF8A86)
 
+// Semantic status colors (design spec §2.2).
+// Secondary (cyan) is reserved for sync / connectivity states only.
+val IndigoSuccess = Color(0xFF22C55E)
+val IndigoWarning = Color(0xFFF59E0B)
+val IndigoInfo = Color(0xFF38BDF8)
+
+// Course palette (design spec §5). Must stay identical to the mobile palette
+// declared in mobile/.../screen/CourseColors.kt (design spec §43).
 val CourseMath = Color(0xFF7C79F7)
 val CourseEnglish = Color(0xFF22C55E)
 val CoursePhysics = Color(0xFF38BDF8)
 val CourseProgramming = Color(0xFFF59E0B)
 val CoursePolitics = Color(0xFFF472B6)
+val CourseLinearAlgebra = Color(0xFFFACC15)
+val CourseSports = Color(0xFF60A5FA)
 val CourseOther = Color(0xFF64748B)
+
+// Course block emphasis (design spec §14): fill 18%, border 32%.
+const val COURSE_BLOCK_ALPHA = 0.18f
+const val COURSE_BLOCK_BORDER_ALPHA = 0.32f
