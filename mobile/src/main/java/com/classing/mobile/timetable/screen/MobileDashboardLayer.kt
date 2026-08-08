@@ -147,11 +147,11 @@ internal fun DashboardLayer(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = LocalDate.now().toString(),
+                text = formatDateHeader(today),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -174,8 +174,8 @@ internal fun DashboardLayer(
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
             Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     text = stringResource(R.string.dashboard_summary_title),
@@ -215,8 +215,8 @@ internal fun DashboardLayer(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
                             text = stringResource(R.string.dashboard_status_title),
@@ -275,8 +275,8 @@ internal fun DashboardLayer(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     text = stringResource(R.string.heatmap_title),
@@ -316,7 +316,7 @@ internal fun DashboardLayer(
                             Box(
                                 modifier = Modifier
                                     .size(12.dp)
-                                    .background(color, RoundedCornerShape(2.dp)),
+                                    .background(color, RoundedCornerShape(4.dp)),
                             )
                         }
                         Text(
@@ -357,7 +357,7 @@ private fun DashboardNextLessonCard(
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f))) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(stringResource(R.string.schedule_next_lesson_title), color = MaterialTheme.colorScheme.primary)
             if (nextLesson == null) {
@@ -369,7 +369,7 @@ private fun DashboardNextLessonCard(
             } else {
                 Text(nextLesson.lesson.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${nextLesson.startAt.toLocalDate()}  ${nextLesson.lesson.startTime.format(clockFormatter)}-${nextLesson.lesson.endTime.format(clockFormatter)}",
+                    "${formatDateHeader(nextLesson.startAt.toLocalDate())} · ${nextLesson.lesson.startTime.format(clockFormatter)}-${nextLesson.lesson.endTime.format(clockFormatter)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -401,8 +401,8 @@ private fun DashboardMetricCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = title,
@@ -425,7 +425,7 @@ private fun DashboardEmptyCard(message: String) {
             text = message,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
