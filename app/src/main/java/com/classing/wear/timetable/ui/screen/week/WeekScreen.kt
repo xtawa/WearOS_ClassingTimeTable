@@ -112,7 +112,7 @@ private fun WeekHeader(
             ) {
                 CircleActionButton(
                     icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = stringResource(R.string.week_action_previous),
+                    contentDescription = stringResource(R.string.week_action_prev),
                     onClick = onPreviousWeek,
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
