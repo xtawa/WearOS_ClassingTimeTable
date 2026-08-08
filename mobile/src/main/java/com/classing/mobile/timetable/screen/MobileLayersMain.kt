@@ -59,6 +59,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -95,7 +97,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -115,7 +116,9 @@ internal fun WeekBoardLayer(
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
-    val todayDay = LocalDate.now().dayOfWeek
+    val now = LocalDateTime.now()
+    val today = now.toLocalDate()
+    val todayDay = today.dayOfWeek
     val prioritizedDays = remember(visibleDays, todayDay) {
         if (visibleDays.contains(todayDay)) {
             listOf(todayDay) + visibleDays.filterNot { it == todayDay }
@@ -131,42 +134,60 @@ internal fun WeekBoardLayer(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(top = 8.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = stringResource(R.string.ghost_title_schedule),
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                        fontWeight = FontWeight.ExtraBold,
-                    )
-                    Text(
-                        text = stringResource(R.string.layer_dashboard),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = stringResource(R.string.week_long_press_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = formatDateHeader(today),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.schedule_today_title),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = stringResource(R.string.week_long_press_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        item {
+            MobileNextLessonHeroCard(
+                nextLesson = resolveNextLessonForBoard(lessonsForDate, now),
+                hasSchedule = hasSchedule,
+                now = now,
+            )
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = true,
+                    onClick = {},
+                    label = { Text(stringResource(R.string.schedule_week_overview)) },
+                    modifier = Modifier.weight(1f),
+                )
                 FilterChip(
                     selected = false,
                     onClick = onOpenCalendar,
-                    label = { Text(text = stringResource(R.string.schedule_open_calendar)) },
+                    label = { Text(stringResource(R.string.schedule_open_calendar)) },
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
         items(prioritizedDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
             val isEmpty = lessons.isEmpty()
+            val isToday = day == todayDay
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = if (isEmpty) {
@@ -177,8 +198,10 @@ internal fun WeekBoardLayer(
                 ),
                 border = if (isEmpty) {
                     BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                } else if (isToday) {
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                 } else {
-                    null
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
                 },
             ) {
                 Column(
@@ -191,11 +214,16 @@ internal fun WeekBoardLayer(
                         text = stringResource(R.string.day_header_title, dayLabel(day, context), lessons.size),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
+                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
                     if (isEmpty) {
                         Text(stringResource(R.string.no_classes), style = MaterialTheme.typography.bodySmall)
                     } else {
                         lessons.forEach { lesson ->
+                            val courseColor = courseColorFor(lesson.title)
+                            val isCurrentLesson = isToday &&
+                                !now.isBefore(LocalDateTime.of(today, lesson.startTime)) &&
+                                now.isBefore(LocalDateTime.of(today, lesson.endTime))
                             val lessonSummary = stringResource(
                                 R.string.lesson_summary_format,
                                 dayLabel(lesson.dayOfWeek, context),
@@ -219,24 +247,34 @@ internal fun WeekBoardLayer(
                                             onLongPress = { onLongPressLesson(lesson) },
                                         )
                                 },
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                colors = CardDefaults.cardColors(containerColor = courseColor.copy(alpha = COURSE_BLOCK_ALPHA)),
+                                border = if (isCurrentLesson) {
+                                    BorderStroke(2.dp, courseColor)
+                                } else {
+                                    BorderStroke(1.dp, courseColor.copy(alpha = COURSE_BLOCK_BORDER_ALPHA))
+                                },
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 10.dp, vertical = 9.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 4.dp, height = 40.dp)
+                                            .background(courseColor, RoundedCornerShape(999.dp)),
+                                    )
                                     Column(
-                                        modifier = Modifier.size(width = 70.dp, height = 40.dp),
+                                        modifier = Modifier.size(width = 72.dp, height = 40.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center,
                                     ) {
                                         Text(
                                             text = lesson.startTime.format(clockFormatter),
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            color = courseColor,
                                             fontWeight = FontWeight.Bold,
                                         )
                                         Text(
@@ -247,7 +285,7 @@ internal fun WeekBoardLayer(
                                     }
                                     Box(
                                         modifier = Modifier
-                                            .size(width = 1.dp, height = 30.dp),
+                                            .size(width = 1.dp, height = 32.dp),
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -257,7 +295,7 @@ internal fun WeekBoardLayer(
                                     }
                                     Column(
                                         modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
                                     )
                                     {
                                         Text(
@@ -267,9 +305,10 @@ internal fun WeekBoardLayer(
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.SemiBold,
                                         )
-                                        if (!lesson.location.isNullOrBlank()) {
+                                        val location = lesson.location
+                                        if (!location.isNullOrBlank()) {
                                             Text(
-                                                text = lesson.location,
+                                                text = location,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                                 style = MaterialTheme.typography.labelSmall,
@@ -312,19 +351,32 @@ private fun MobileNextLessonHeroCard(
         }
     }
 
+    val heroShape = RoundedCornerShape(24.dp)
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)),
+        shape = heroShape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .heightIn(min = 148.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f),
+                        ),
+                    ),
+                    shape = heroShape,
+                )
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(R.string.schedule_next_lesson_title),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
             )
             if (nextLesson == null) {
                 Text(
@@ -334,7 +386,7 @@ private fun MobileNextLessonHeroCard(
                         stringResource(R.string.schedule_next_lesson_no_data)
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
                 val dayText = dayLabel(nextLesson.startAt.dayOfWeek, context)
@@ -345,27 +397,38 @@ private fun MobileNextLessonHeroCard(
                 )
                 Text(
                     text = nextLesson.lesson.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 2,
                 )
                 Text(
                     text = "$dayText · $timeRange",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
                 )
+                val heroLocation = nextLesson.lesson.location
+                if (!heroLocation.isNullOrBlank()) {
+                    Text(
+                        text = heroLocation,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
+                    )
+                }
                 if (countdown.isNotBlank()) {
                     Row(
                         modifier = Modifier
                             .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
                                 shape = RoundedCornerShape(999.dp),
                             )
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text(
                             text = countdown,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
@@ -515,7 +578,7 @@ internal fun ImportLayer(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = stringResource(R.string.ghost_title_import),
                 style = MaterialTheme.typography.displayLarge,
@@ -585,7 +648,7 @@ internal fun ImportLayer(
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column(
                     modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(stringResource(R.string.status_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Text(parseMessage, style = MaterialTheme.typography.bodySmall)
@@ -982,7 +1045,7 @@ private fun ImportPreviewSummaryCard(
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(R.string.import_preview_summary_title),
@@ -1087,7 +1150,7 @@ private fun ImportPreviewDraftCard(
                                         MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
                                         RoundedCornerShape(4.dp),
                                     )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
                             )
                         }
                         if (hasAnomaly) {
@@ -1100,7 +1163,7 @@ private fun ImportPreviewDraftCard(
                                         MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
                                         RoundedCornerShape(4.dp),
                                     )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
                             )
                         }
                         TextButton(
@@ -1204,7 +1267,7 @@ private fun ImportPreviewLessonCard(
                                         MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
                                         RoundedCornerShape(4.dp),
                                     )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
                             )
                         }
                         if (hasAnomaly) {
@@ -1217,7 +1280,7 @@ private fun ImportPreviewLessonCard(
                                         MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
                                         RoundedCornerShape(4.dp),
                                     )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
                             )
                         }
                         TextButton(
@@ -1238,9 +1301,10 @@ private fun ImportPreviewLessonCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (!lesson.location.isNullOrBlank()) {
+            val previewLocation = lesson.location
+            if (!previewLocation.isNullOrBlank()) {
                 Text(
-                    text = lesson.location,
+                    text = previewLocation,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -46,22 +48,31 @@ fun CourseDetailScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Card(
+                    onClick = onBack,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 ) {
-                    Text(
-                        text = stringResource(R.string.detail_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.detail_back))
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.padding(12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.detail_back),
+                        )
                     }
                 }
+                Text(
+                    text = stringResource(R.string.detail_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
@@ -113,10 +124,10 @@ fun CourseDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
-                                Text(
-                                    text = ">",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -131,7 +142,8 @@ fun CourseDetailScreen(
 private fun CourseSummaryCard(state: CourseDetailUiState) {
     val course = state.course ?: return
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(
             modifier = Modifier
@@ -141,7 +153,8 @@ private fun CourseSummaryCard(state: CourseDetailUiState) {
         ) {
             Text(
                 text = course.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             DetailMetaRow(
                 icon = { Icon(Icons.Filled.Person, contentDescription = null) },
@@ -152,7 +165,7 @@ private fun CourseSummaryCard(state: CourseDetailUiState) {
                 text = stringResource(R.string.detail_location, course.classroom),
             )
             DetailMetaRow(
-                iconLabel = "*",
+                icon = { Icon(Icons.Filled.Info, contentDescription = null) },
                 text = stringResource(
                     R.string.detail_note,
                     course.note.ifBlank { stringResource(R.string.detail_note_empty) },
@@ -164,7 +177,6 @@ private fun CourseSummaryCard(state: CourseDetailUiState) {
 
 @Composable
 private fun DetailMetaRow(
-    iconLabel: String? = null,
     icon: (@Composable () -> Unit)? = null,
     text: String,
 ) {
@@ -173,20 +185,11 @@ private fun DetailMetaRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        when {
-            icon != null -> icon()
-            !iconLabel.isNullOrBlank() -> {
-                Text(
-                    text = iconLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
+        icon?.invoke()
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.86f),
             maxLines = 1,
         )
     }

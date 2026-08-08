@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -106,7 +111,8 @@ private fun WeekHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 CircleActionButton(
-                    label = "‹",
+                    icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = stringResource(R.string.week_action_prev),
                     onClick = onPreviousWeek,
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -116,7 +122,8 @@ private fun WeekHeader(
                     )
                 }
                 CircleActionButton(
-                    label = "›",
+                    icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.week_action_next),
                     onClick = onNextWeek,
                 )
             }
@@ -146,7 +153,8 @@ private fun WeekHeader(
 
 @Composable
 private fun CircleActionButton(
-    label: String,
+    icon: ImageVector,
+    contentDescription: String,
     onClick: () -> Unit,
 ) {
     Card(
@@ -158,10 +166,7 @@ private fun CircleActionButton(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-            )
+            Icon(imageVector = icon, contentDescription = contentDescription)
         }
     }
 }
