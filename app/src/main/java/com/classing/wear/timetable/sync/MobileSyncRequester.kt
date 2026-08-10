@@ -2,6 +2,7 @@ package com.classing.wear.timetable.sync
 
 import android.content.Context
 import com.classing.shared.sync.WearDataLayerContracts
+import com.classing.wear.timetable.core.DevicePlatformCapabilities
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import java.nio.charset.StandardCharsets
@@ -17,6 +18,9 @@ class MobileSyncRequester(
 ) {
     suspend fun requestSyncFromPhone(): Result<Int> {
         if (WearSyncModeStore.isIndependentModeEnabled(context)) return Result.success(0)
+        // Watches without Google Play services have no Data Layer at all; bail out quietly
+        // instead of blocking on GMS tasks that can never complete.
+        if (!DevicePlatformCapabilities.isDataLayerAvailable(context)) return Result.success(0)
         return runCatching {
             val requestedAt = System.currentTimeMillis()
             val requestId = UUID.randomUUID().toString()
