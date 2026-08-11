@@ -11,12 +11,17 @@ import android.os.PowerManager
 import android.Manifest
 import android.content.pm.PackageManager
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +46,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,6 +66,10 @@ import org.json.JSONObject
 import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.account.WearDirectAccountStore
 
+/**
+ * Wear settings. Everything is a full width row so nothing gets clipped by the round bezel, and
+ * every tappable row is at least 48dp tall. All preference callbacks are unchanged.
+ */
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -114,19 +125,17 @@ fun SettingsScreen(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         item {
-            Row(
+            Text(
+                text = stringResource(R.string.settings_title),
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
         }
 
         if (state.isLoading) {
@@ -289,62 +298,75 @@ fun SettingsScreen(
             )
         }
 
+        item { SettingsSectionTag(title = stringResource(R.string.settings_cloud_sync_title)) }
         item {
-            Button(
+            SettingsActionRow(
+                label = stringResource(R.string.settings_force_full_sync),
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onForceFullSync()
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.settings_force_full_sync))
-            }
+                primary = true,
+            )
         }
         item {
-            Button(
+            SettingsActionRow(
+                label = stringResource(R.string.settings_cloud_sync_title),
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onOpenCloudSync()
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.settings_cloud_sync_title))
-            }
+            )
         }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(stringResource(R.string.settings_phone_account), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        stringResource(
-                            R.string.settings_phone_account_summary,
-                            if (cloudSnapshot.loggedIn) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
-                            if (cloudSnapshot.isMember) cloudSnapshot.membershipTier else "FREE",
-                            cloudSnapshot.provider.ifBlank { "-" },
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 5.dp)
+                            .size(6.dp)
+                            .background(
+                                if (cloudSnapshot.loggedIn) {
+                                    MaterialTheme.colorScheme.tertiary
+                                } else {
+                                    MaterialTheme.colorScheme.outline
+                                },
+                                CircleShape,
+                            ),
                     )
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_phone_account),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.settings_phone_account_summary,
+                                if (cloudSnapshot.loggedIn) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
+                                if (cloudSnapshot.isMember) cloudSnapshot.membershipTier else "FREE",
+                                cloudSnapshot.provider.ifBlank { "-" },
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
         item {
-            Button(
+            SettingsActionRow(
+                label = stringResource(R.string.settings_about),
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onOpenAbout()
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.settings_about))
-            }
+            )
         }
     }
 }
@@ -379,12 +401,55 @@ private fun loadWearCloudSummary(context: Context): WearCloudSummary {
 
 @Composable
 private fun SettingsSectionTag(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f),
-        modifier = Modifier.padding(horizontal = 4.dp),
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 6.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 3.dp, height = 10.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
+        )
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    label: String,
+    onClick: () -> Unit,
+    primary: Boolean = false,
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp),
+        shape = RoundedCornerShape(999.dp),
+        colors = if (primary) {
+            ButtonDefaults.buttonColors()
+        } else {
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable
@@ -399,7 +464,8 @@ private fun PreferenceSwitchCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -426,33 +492,44 @@ private fun KeepAliveLevelCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(text = stringResource(R.string.settings_keepalive_level), style = MaterialTheme.typography.bodyMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                listOf(
-                    KeepAliveLevel.ECO to stringResource(R.string.settings_keepalive_eco),
-                    KeepAliveLevel.BALANCED to stringResource(R.string.settings_keepalive_balanced),
-                    KeepAliveLevel.AGGRESSIVE to stringResource(R.string.settings_keepalive_aggressive),
-                ).forEach { (itemLevel, label) ->
-                    Button(
-                        onClick = { onSetKeepAliveLevel(itemLevel) },
-                        shape = RoundedCornerShape(999.dp),
-                        colors = if (itemLevel == level) {
-                            ButtonDefaults.buttonColors()
-                        } else {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            )
-                        },
-                    ) {
-                        Text(label)
-                    }
+            Text(
+                text = stringResource(R.string.settings_keepalive_level),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            // Three side by side buttons get clipped by the round bezel, so each level is its
+            // own full width row instead.
+            listOf(
+                KeepAliveLevel.ECO to stringResource(R.string.settings_keepalive_eco),
+                KeepAliveLevel.BALANCED to stringResource(R.string.settings_keepalive_balanced),
+                KeepAliveLevel.AGGRESSIVE to stringResource(R.string.settings_keepalive_aggressive),
+            ).forEach { (itemLevel, label) ->
+                val selected = itemLevel == level
+                Button(
+                    onClick = { onSetKeepAliveLevel(itemLevel) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(999.dp),
+                    colors = if (selected) {
+                        ButtonDefaults.buttonColors()
+                    } else {
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -471,55 +548,43 @@ private fun KeepAliveStatusCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Button(
+            SettingsActionRow(
+                label = stringResource(R.string.settings_reminder_protection_menu),
                 onClick = { protectionMenuExpanded = !protectionMenuExpanded },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.settings_reminder_protection_menu))
-            }
+                primary = true,
+            )
             if (protectionMenuExpanded) {
-                Button(
+                SettingsActionRow(
+                    label = stringResource(
+                        R.string.settings_exact_alarm_status,
+                        if (status.canScheduleExactAlarm) {
+                            stringResource(R.string.settings_authorized)
+                        } else {
+                            stringResource(R.string.settings_not_authorized)
+                        },
+                    ),
                     onClick = {
                         protectionMenuExpanded = false
                         onOpenExactAlarmSettings()
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
+                )
+                SettingsActionRow(
+                    label = stringResource(
+                        R.string.settings_battery_optimization_status,
+                        if (status.ignoringBatteryOptimizations) {
+                            stringResource(R.string.settings_enabled)
+                        } else {
+                            stringResource(R.string.settings_disabled)
+                        },
                     ),
-                ) {
-                    Text(
-                        stringResource(
-                            R.string.settings_exact_alarm_status,
-                            if (status.canScheduleExactAlarm) stringResource(R.string.settings_authorized) else stringResource(R.string.settings_not_authorized),
-                        ),
-                    )
-                }
-                Button(
                     onClick = {
                         protectionMenuExpanded = false
                         onOpenBatteryOptimizationSettings()
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) {
-                    Text(
-                        stringResource(
-                            R.string.settings_battery_optimization_status,
-                            if (status.ignoringBatteryOptimizations) stringResource(R.string.settings_enabled) else stringResource(R.string.settings_disabled),
-                        ),
-                    )
-                }
+                )
             }
         }
     }
