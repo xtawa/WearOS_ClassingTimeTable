@@ -4,6 +4,8 @@ import sys
 
 P = pathlib.Path("mobile/src/main/java/com/classing/mobile/timetable/screen/AskAiSettingsPage.kt")
 
+NL = chr(10)
+
 REQUIRED_IMPORTS = [
     "androidx.compose.foundation.layout.Arrangement",
     "androidx.compose.foundation.layout.Column",
@@ -14,6 +16,9 @@ REQUIRED_IMPORTS = [
     "androidx.compose.foundation.layout.padding",
     "androidx.compose.foundation.rememberScrollState",
     "androidx.compose.foundation.verticalScroll",
+    "androidx.compose.material3.Card",
+    "androidx.compose.material3.CardDefaults",
+    "androidx.compose.material3.MaterialTheme",
 ]
 
 IMPORT_OLD = '''import androidx.compose.foundation.rememberScrollState
@@ -25,14 +30,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 '''
 
-HEADER_OLD = '''        TextButton(onClick = onBack) { Text("\\u2190 \\u8fd4\\u56de") }
+HEADER_OLD = '''        TextButton(onClick = onBack) { Text("← 返回") }
         Text("Ask AI", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 '''
 
 HEADER_NEW = '''        SecondaryPageHeader(
             title = "Ask AI",
             onBack = onBack,
-            backLabel = "\\u8fd4\\u56de",
+            backLabel = "返回",
             modifier = Modifier.fillMaxWidth(),
         )
 '''
@@ -91,7 +96,12 @@ EDITS = [
 def main() -> int:
     text = P.read_text(encoding="utf-8")
 
-    missing = [i for i in REQUIRED_IMPORTS if ("import " + i + "\\n") not in text]
+    imported = set()
+    for line in text.split(NL):
+        if line.startswith("import "):
+            imported.add(line[7:].strip())
+
+    missing = [i for i in REQUIRED_IMPORTS if i not in imported]
     if missing:
         for i in missing:
             print("MISSING IMPORT: " + i)
