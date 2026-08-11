@@ -8,9 +8,11 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -94,6 +97,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 
+/**
+ * The lesson edit sheet. The scope selector is lifted into its own highlighted block at the top
+ * because choosing between "this occurrence" and "the whole lesson" changes what every field
+ * below will affect, and getting that wrong is destructive.
+ */
 @Composable
 internal fun LessonEditDialog(
     editContext: LessonEditContext,
@@ -122,11 +130,12 @@ internal fun LessonEditDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                if (editContext.isNewLesson) {
+                text = if (editContext.isNewLesson) {
                     stringResource(R.string.lesson_makeup_dialog_title)
                 } else {
                     stringResource(R.string.lesson_edit_dialog_title)
                 },
+                fontWeight = FontWeight.Bold,
             )
         },
         text = {
@@ -135,41 +144,74 @@ internal fun LessonEditDialog(
                     .fillMaxWidth()
                     .heightIn(max = 520.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.lesson_edit_scope_title),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                if (editContext.anchorDate != null) {
-                    Text(
-                        text = stringResource(R.string.lesson_edit_anchor_date, editContext.anchorDate.toString()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (LessonEditScope.WholeLesson in editContext.allowedScopes) {
-                        FilterChip(
-                            selected = scope == LessonEditScope.WholeLesson,
-                            onClick = { scope = LessonEditScope.WholeLesson },
-                            label = { Text(stringResource(R.string.lesson_edit_scope_whole_lesson)) },
-                        )
-                    }
-                    if (LessonEditScope.FromThisWeek in editContext.allowedScopes) {
-                        FilterChip(
-                            selected = scope == LessonEditScope.FromThisWeek,
-                            onClick = { scope = LessonEditScope.FromThisWeek },
-                            label = { Text(stringResource(R.string.lesson_edit_scope_from_this_week)) },
-                        )
-                    }
-                    if (LessonEditScope.SingleOccurrence in editContext.allowedScopes) {
-                        FilterChip(
-                            selected = scope == LessonEditScope.SingleOccurrence,
-                            onClick = { scope = LessonEditScope.SingleOccurrence },
-                            label = { Text(stringResource(R.string.lesson_edit_scope_single_occurrence)) },
-                        )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 3.dp, height = 14.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        RoundedCornerShape(999.dp),
+                                    ),
+                            )
+                            Text(
+                                text = stringResource(R.string.lesson_edit_scope_title),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        if (editContext.anchorDate != null) {
+                            Text(
+                                text = stringResource(
+                                    R.string.lesson_edit_anchor_date,
+                                    editContext.anchorDate.toString(),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (LessonEditScope.WholeLesson in editContext.allowedScopes) {
+                                FilterChip(
+                                    selected = scope == LessonEditScope.WholeLesson,
+                                    onClick = { scope = LessonEditScope.WholeLesson },
+                                    label = { Text(stringResource(R.string.lesson_edit_scope_whole_lesson)) },
+                                )
+                            }
+                            if (LessonEditScope.FromThisWeek in editContext.allowedScopes) {
+                                FilterChip(
+                                    selected = scope == LessonEditScope.FromThisWeek,
+                                    onClick = { scope = LessonEditScope.FromThisWeek },
+                                    label = { Text(stringResource(R.string.lesson_edit_scope_from_this_week)) },
+                                )
+                            }
+                            if (LessonEditScope.SingleOccurrence in editContext.allowedScopes) {
+                                FilterChip(
+                                    selected = scope == LessonEditScope.SingleOccurrence,
+                                    onClick = { scope = LessonEditScope.SingleOccurrence },
+                                    label = { Text(stringResource(R.string.lesson_edit_scope_single_occurrence)) },
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -196,20 +238,22 @@ internal fun LessonEditDialog(
                         )
                     }
                 }
-                OutlinedTextField(
-                    value = startRaw,
-                    onValueChange = { startRaw = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.manual_input_start_time_label)) },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = endRaw,
-                    onValueChange = { endRaw = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.manual_input_end_time_label)) },
-                    singleLine = true,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startRaw,
+                        onValueChange = { startRaw = it },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.manual_input_start_time_label)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = endRaw,
+                        onValueChange = { endRaw = it },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.manual_input_end_time_label)) },
+                        singleLine = true,
+                    )
+                }
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
@@ -256,11 +300,33 @@ internal fun LessonEditDialog(
                 )
                 val message = validationMessage
                 if (!message.isNullOrBlank()) {
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                        ),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 3.dp, height = 14.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.error,
+                                        RoundedCornerShape(999.dp),
+                                    ),
+                            )
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -313,7 +379,10 @@ internal fun LessonEditDialog(
                     }
                 },
             ) {
-                Text(stringResource(R.string.lesson_edit_save_button))
+                Text(
+                    text = stringResource(R.string.lesson_edit_save_button),
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         },
         dismissButton = {

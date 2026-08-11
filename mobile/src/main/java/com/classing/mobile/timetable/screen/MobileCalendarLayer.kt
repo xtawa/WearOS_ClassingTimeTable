@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.screen
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -31,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -48,6 +51,11 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
 
+/**
+ * The calendar sub view. The month grid comes first and the day timeline follows it, so the
+ * month is scannable before any day is expanded. Every callback the timetable relies on is
+ * unchanged.
+ */
 @Composable
 internal fun CalendarMonthLayer(
     contentPadding: PaddingValues,
@@ -105,68 +113,47 @@ internal fun CalendarMonthLayer(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    Text(
-                        text = String.format(locale, "%02d", displayedMonth.monthValue),
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.90f),
-                        fontWeight = FontWeight.ExtraBold,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
                         text = displayedMonth.atDay(1).format(monthFormatter),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                     )
+                    Text(
+                        text = String.format(locale, "%02d", displayedMonth.monthValue),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    CalendarNavButton(
+                        label = stringResource(R.string.calendar_prev_month),
+                        onClick = { displayedMonth = displayedMonth.minusMonths(1) },
+                    )
+                    CalendarNavButton(
+                        label = stringResource(R.string.calendar_next_month),
+                        onClick = { displayedMonth = displayedMonth.plusMonths(1) },
+                    )
                     Button(
                         onClick = onBackToTimetable,
-                        shape = MaterialTheme.shapes.large,
+                        modifier = Modifier.heightIn(min = 44.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
                             contentColor = MaterialTheme.colorScheme.primary,
                         ),
                     ) {
-                        Text(text = stringResource(R.string.calendar_back_to_timetable))
-                    }
-                    Button(
-                        onClick = { displayedMonth = displayedMonth.minusMonths(1) },
-                        shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Text(text = stringResource(R.string.calendar_prev_month))
-                    }
-                    Button(
-                        onClick = { displayedMonth = displayedMonth.plusMonths(1) },
-                        shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Text(text = stringResource(R.string.calendar_next_month))
+                        Text(
+                            text = stringResource(R.string.calendar_back_to_timetable),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
-            }
-        }
-
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-            ) {
-                Text(
-                    text = stringResource(R.string.calendar_timeline_hint),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
 
@@ -182,6 +169,15 @@ internal fun CalendarMonthLayer(
                     expandedState = expandedState + (date to true)
                     if (date.isBefore(today)) pastDaysExpanded = true
                 },
+            )
+        }
+
+        item {
+            Text(
+                text = stringResource(R.string.calendar_timeline_hint),
+                modifier = Modifier.padding(horizontal = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -281,6 +277,28 @@ internal fun CalendarMonthLayer(
 }
 
 @Composable
+private fun CalendarNavButton(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.heightIn(min = 44.dp),
+        shape = RoundedCornerShape(999.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+}
+
+@Composable
 private fun MonthDateGrid(
     displayedMonth: YearMonth,
     firstDayOfWeek: DayOfWeek,
@@ -292,7 +310,10 @@ private fun MonthDateGrid(
     val cells = buildMonthGridDates(displayedMonth, firstDayOfWeek)
     val dateSemanticsFormatter = remember { DateTimeFormatter.ISO_LOCAL_DATE }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             cells.chunked(7).forEach { week ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (week + List(7 - week.size) { null }).forEach { date ->
@@ -316,19 +337,43 @@ private fun MonthDateGrid(
                                 ),
                             shape = CircleShape,
                             color = when {
-                                isSelected -> MaterialTheme.colorScheme.primaryContainer
-                                isToday -> MaterialTheme.colorScheme.secondaryContainer
-                                else -> MaterialTheme.colorScheme.surface
+                                isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                isToday -> MaterialTheme.colorScheme.surfaceContainerHighest
+                                else -> Color.Transparent
                             },
                         ) {
                             Box(Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
                                 if (date != null) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.bodySmall)
+                                    val hasLessons = occurrenceProvider(date).isNotEmpty()
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                                    ) {
                                         Text(
-                                            text = if (occurrenceProvider(date).isEmpty()) " " else "•",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            text = date.dayOfMonth.toString(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = if (isToday || isSelected) {
+                                                FontWeight.Bold
+                                            } else {
+                                                FontWeight.Normal
+                                            },
+                                            color = when {
+                                                isSelected -> MaterialTheme.colorScheme.primary
+                                                isToday -> MaterialTheme.colorScheme.onSurface
+                                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(4.dp)
+                                                .background(
+                                                    color = if (hasLessons) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else {
+                                                        Color.Transparent
+                                                    },
+                                                    shape = CircleShape,
+                                                ),
                                         )
                                     }
                                 }
@@ -440,11 +485,25 @@ private fun TimelineDayCard(
                     Text(text = stringResource(R.string.calendar_add_makeup_lesson))
                 }
                 if (dayLessons.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.calendar_no_classes_on_date),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 16.dp, height = 3.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.outlineVariant,
+                                    RoundedCornerShape(999.dp),
+                                ),
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_no_classes_on_date),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         dayLessons.forEach { occurrence ->
@@ -484,6 +543,7 @@ private fun TimelineLessonRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -501,6 +561,14 @@ private fun TimelineLessonRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Box(
+                modifier = Modifier
+                    .size(width = 3.dp, height = 30.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                        RoundedCornerShape(999.dp),
+                    ),
+            )
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -508,6 +576,7 @@ private fun TimelineLessonRow(
                 Text(
                     text = lesson.title,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -529,7 +598,8 @@ private fun TimelineLessonRow(
                     Text(
                         text = badge,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
