@@ -5,16 +5,30 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.core.view.WindowCompat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -22,8 +36,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.xtawa.classingtime.screen.MobileTimetableScreen
 import com.xtawa.classingtime.sync.CloudSyncEngine
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.WeekFields
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     internal val sharedImportUri = mutableStateOf<Uri?>(null)
@@ -31,7 +50,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The app ships a single dark theme, so the status bar icons are always light.
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
         CloudSyncEngine.schedulePeriodic(this)
         handleIncomingIntent(intent)
@@ -94,19 +112,91 @@ private fun MobileApp() {
         typography = classingTypography(),
         shapes = classingShapes(),
     ) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            MobileTimetableScreen()
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                MobileConceptHeader()
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                ) {
+                    MobileTimetableScreen()
+                }
+            }
         }
     }
 }
 
-/**
- * The single color scheme of the app.
- *
- * The redesign keeps one dark scheme only: the canvas stays near black so the timetable grid
- * and the course color blocks carry the contrast, while the primary periwinkle marks anything
- * interactive and the amber tertiary marks the lesson that is running or coming up next.
- */
+@Composable
+private fun MobileConceptHeader() {
+    val locale = Locale.getDefault()
+    val today = remember(locale) { LocalDate.now() }
+    val weekNumber = remember(today, locale) {
+        today.get(WeekFields.of(locale).weekOfWeekBasedYear())
+    }
+    val dateLabel = remember(today, locale) {
+        today.format(DateTimeFormatter.ofPattern("MM.dd EEE", locale))
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 76.dp)
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 44.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(999.dp),
+                    ),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Text(
+                    text = "CLASSING",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "WEEK $weekNumber",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(
+                    text = dateLabel,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
 private fun classingDarkColorScheme(): ColorScheme {
     return darkColorScheme(
         primary = Color(0xFF8C9BFF),
@@ -146,13 +236,6 @@ private fun classingDarkColorScheme(): ColorScheme {
     )
 }
 
-/**
- * Typography for the redesign.
- *
- * Headings and body text stay on the system sans-serif family so Chinese and Latin text keep
- * matching metrics. Small labels switch to the monospace family because they carry clock times,
- * week numbers and counters, which have to line up column by column inside the timetable grid.
- */
 private fun classingTypography(): Typography {
     val headline = FontFamily.SansSerif
     val body = FontFamily.SansSerif
@@ -241,10 +324,10 @@ private fun classingTypography(): Typography {
 
 private fun classingShapes(): Shapes {
     return Shapes(
-        extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        small = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        medium = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-        large = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
-        extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(40.dp),
+        extraSmall = RoundedCornerShape(12.dp),
+        small = RoundedCornerShape(16.dp),
+        medium = RoundedCornerShape(24.dp),
+        large = RoundedCornerShape(32.dp),
+        extraLarge = RoundedCornerShape(40.dp),
     )
 }
