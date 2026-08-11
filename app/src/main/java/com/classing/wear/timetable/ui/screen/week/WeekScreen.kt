@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -34,6 +37,7 @@ import com.classing.wear.timetable.ui.component.screenPadding
 import com.classing.wear.timetable.ui.state.WeekUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -55,6 +59,7 @@ fun WeekScreen(
         item {
             WeekHeader(
                 label = state.weekLabel,
+                schedule = state.schedule,
                 onPreviousWeek = onPreviousWeek,
                 onNextWeek = onNextWeek,
                 onCurrentWeek = onCurrentWeek,
@@ -73,14 +78,14 @@ fun WeekScreen(
                 )
             }
 
-            else -> {
-                items(state.schedule.days.entries.toList()) { entry ->
-                    DayScheduleSection(
-                        day = entry.key,
-                        lessons = entry.value,
-                        onLessonClick = onLessonClick,
-                    )
-                }
+            else -> items(
+                state.schedule.days.entries.sortedBy { it.key.value },
+            ) { entry ->
+                DayScheduleSection(
+                    day = entry.key,
+                    lessons = entry.value,
+                    onLessonClick = onLessonClick,
+                )
             }
         }
     }
@@ -89,54 +94,56 @@ fun WeekScreen(
 @Composable
 private fun WeekHeader(
     label: String,
+    schedule: WeekSchedule,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     onCurrentWeek: () -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        shape = RoundedCornerShape(24.dp),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                CircleActionButton(
-                    label = "‹",
-                    onClick = onPreviousWeek,
+                CircleActionButton(label = "<", onClick = onPreviousWeek)
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                 )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-                CircleActionButton(
-                    label = "›",
-                    onClick = onNextWeek,
-                )
+                CircleActionButton(label = ">", onClick = onNextWeek)
             }
+            WeekDayStrip(schedule)
             Card(
                 onClick = onCurrentWeek,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                ),
                 shape = RoundedCornerShape(999.dp),
             ) {
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
+                        .heightIn(min = 48.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = stringResource(R.string.week_action_current),
-                        modifier = Modifier.padding(start = 2.dp),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
@@ -145,14 +152,65 @@ private fun WeekHeader(
 }
 
 @Composable
-private fun CircleActionButton(
-    label: String,
-    onClick: () -> Unit,
-) {
+private fun WeekDayStrip(schedule: WeekSchedule) {
+    val today = LocalDate.now().dayOfWeek
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DayOfWeek.entries.forEach { day ->
+            val isToday = day == today
+            val count = schedule.days[day].orEmpty().size
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = dayLabel(day).take(1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isToday) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (count > 0) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CircleActionButton(label: String, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        shape = CircleShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
     ) {
         Box(
             modifier = Modifier.size(48.dp),
@@ -161,6 +219,7 @@ private fun CircleActionButton(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -188,23 +247,27 @@ private fun DayScheduleSection(
                 } else {
                     MaterialTheme.colorScheme.primary
                 },
+                fontWeight = FontWeight.SemiBold,
             )
-            if (!lessons.isEmpty()) {
+            if (lessons.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .size(5.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
+                        .size(6.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
                 )
             }
         }
         if (lessons.isEmpty()) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                shape = RoundedCornerShape(18.dp),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 10.dp),
+                        .heightIn(min = 48.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

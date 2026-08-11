@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -15,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -61,11 +63,10 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { BrandHeader() }
         item {
-            HeaderInfoCard(
+            HomeHeader(
                 dateLabel = state.dateLabel,
                 weekLabel = state.weekLabel,
                 syncState = state.syncState,
@@ -75,11 +76,11 @@ fun HomeScreen(
             NextLessonHeroCard(
                 hint = state.nextLesson,
                 hasSchedule = state.hasSchedule,
+                onOpenToday = onOpenWeek,
             )
         }
         item {
             QuickActionsRow(
-                onOpenWeek = onOpenWeek,
                 onOpenSearch = onOpenSearch,
                 onOpenSettings = onOpenSettings,
             )
@@ -97,7 +98,7 @@ fun HomeScreen(
         item {
             SectionCaption(
                 title = stringResource(R.string.home_today_section_title),
-                suffix = "${state.todayLessons.size}",
+                suffix = state.todayLessons.size.toString(),
             )
         }
 
@@ -120,13 +121,11 @@ fun HomeScreen(
                 )
             }
 
-            else -> {
-                items(state.todayLessons) { lesson ->
-                    LessonCard(
-                        lesson = lesson,
-                        onClick = { onLessonClick(lesson.course.localId) },
-                    )
-                }
+            else -> items(state.todayLessons) { lesson ->
+                LessonCard(
+                    lesson = lesson,
+                    onClick = { onLessonClick(lesson.course.localId) },
+                )
             }
         }
 
@@ -138,12 +137,15 @@ fun HomeScreen(
         }
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                shape = RoundedCornerShape(20.dp),
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(10.dp),
+                        .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (state.heatmapCells.isEmpty()) {
@@ -156,7 +158,7 @@ fun HomeScreen(
                             cells = state.heatmapCells,
                             cellSize = 10.dp,
                             cellSpacing = 2.dp,
-                            cellCornerRadius = 2.dp,
+                            cellCornerRadius = 3.dp,
                         )
                         Text(
                             text = stringResource(R.string.heatmap_desc),
@@ -167,100 +169,98 @@ fun HomeScreen(
                 }
             }
         }
-
     }
 }
 
 @Composable
-private fun BrandHeader() {
-    Box(
+private fun HomeHeader(
+    dateLabel: String,
+    weekLabel: String,
+    syncState: SyncState,
+) {
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Text(
             text = stringResource(R.string.home_brand_wordmark),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
         )
+        Text(
+            text = stringResource(R.string.common_date_week_label, dateLabel, weekLabel),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SyncStatusPill(syncState)
     }
 }
 
 @Composable
-private fun HeaderInfoCard(
-    dateLabel: String,
-    weekLabel: String,
-    syncState: SyncState,
-) {
-    val syncLabel = when (syncState) {
+private fun SyncStatusPill(syncState: SyncState) {
+    val label = when (syncState) {
         SyncState.Idle -> stringResource(R.string.home_sync_idle)
         SyncState.Syncing -> stringResource(R.string.home_sync_syncing)
         is SyncState.Success -> stringResource(R.string.home_sync_success)
         is SyncState.Failed -> stringResource(R.string.home_sync_failed)
     }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.common_date_week_label, dateLabel, weekLabel),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val color = when (syncState) {
+        SyncState.Idle -> MaterialTheme.colorScheme.outline
+        SyncState.Syncing -> MaterialTheme.colorScheme.tertiary
+        is SyncState.Success -> MaterialTheme.colorScheme.secondary
+        is SyncState.Failed -> MaterialTheme.colorScheme.error
+    }
+    Row(
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(999.dp),
             )
-            Row(
-                modifier = Modifier
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(999.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .background(
-                            color = when (syncState) {
-                                SyncState.Idle -> MaterialTheme.colorScheme.outline
-                                SyncState.Syncing -> MaterialTheme.colorScheme.tertiary
-                                is SyncState.Success -> MaterialTheme.colorScheme.primary
-                                is SyncState.Failed -> MaterialTheme.colorScheme.error
-                            },
-                            shape = CircleShape,
-                        ),
-                )
-                Text(
-                    text = syncLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        }
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(color, CircleShape),
+        )
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
     }
 }
 
 @Composable
-private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
+private fun NextLessonHeroCard(
+    hint: NextLessonHint,
+    hasSchedule: Boolean,
+    onOpenToday: () -> Unit,
+) {
     val lesson = hint.lesson
     val countdown = TimeFormatters.formatCountdown(hint.countdown, lesson?.status)
+    val nextLessonLabel = stringResource(R.string.home_next_lesson_title)
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        shape = RoundedCornerShape(24.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Text(
-                text = stringResource(R.string.home_next_lesson_title),
+                text = buildString {
+                    append(nextLessonLabel)
+                    if (countdown.isNotBlank()) append(" · ").append(countdown)
+                },
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontWeight = FontWeight.Bold,
             )
             if (lesson == null) {
                 Text(
@@ -269,36 +269,40 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
                     } else {
                         stringResource(R.string.home_next_lesson_no_data)
                     },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(
                     text = lesson.course.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = listOf(lesson.course.classroom, lesson.course.teacher)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = TimeFormatters.formatTimeRange(lesson.startAt, lesson.endAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
                 )
-                if (countdown.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(999.dp),
-                            )
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            text = countdown,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
+            }
+            Button(
+                onClick = onOpenToday,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(stringResource(R.string.home_today_section_title))
             }
         }
     }
@@ -306,31 +310,21 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
 
 @Composable
 private fun QuickActionsRow(
-    onOpenWeek: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        QuickActionIcon(
-            label = stringResource(R.string.home_action_this_week),
-            icon = {
-                Text(
-                    text = stringResource(R.string.home_action_week_short),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            },
-            onClick = onOpenWeek,
-        )
-        QuickActionIcon(
+        QuickActionChip(
+            modifier = Modifier.weight(1f),
             label = stringResource(R.string.home_action_search),
             icon = { Icon(Icons.Filled.Search, contentDescription = null) },
             onClick = onOpenSearch,
         )
-        QuickActionIcon(
+        QuickActionChip(
+            modifier = Modifier.weight(1f),
             label = stringResource(R.string.home_action_settings),
             icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
             onClick = onOpenSettings,
@@ -339,24 +333,34 @@ private fun QuickActionsRow(
 }
 
 @Composable
-private fun QuickActionIcon(
+private fun QuickActionChip(
+    modifier: Modifier,
     label: String,
     icon: @Composable () -> Unit,
     onClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.semantics {
-            contentDescription = label
-        },
-        shape = CircleShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = modifier.semantics { contentDescription = label },
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
     ) {
-        Box(
-            modifier = Modifier.size(48.dp),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
         ) {
-            icon()
+            Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) { icon() }
+            Text(
+                text = label,
+                modifier = Modifier.padding(start = 5.dp),
+                style = MaterialTheme.typography.labelMedium,
+            )
         }
     }
 }
@@ -367,17 +371,22 @@ private fun FirstRunGuideCard(
     onOpenSettings: () -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f),
+        ),
+        shape = RoundedCornerShape(20.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.home_onboarding_title),
                 style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = stringResource(R.string.home_onboarding_subtitle),
@@ -386,21 +395,28 @@ private fun FirstRunGuideCard(
             )
             Button(
                 onClick = onRetrySync,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(999.dp),
             ) {
                 Text(text = stringResource(R.string.home_action_sync_now))
             }
-            Button(
+            Card(
                 onClick = onOpenSettings,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-                colors = ButtonDefaults.buttonColors(
+                colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ),
+                shape = RoundedCornerShape(999.dp),
             ) {
-                Text(text = stringResource(R.string.home_action_settings))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text = stringResource(R.string.home_action_settings))
+                }
             }
         }
     }
@@ -413,17 +429,20 @@ private fun SectionCaption(title: String, suffix: String) {
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            text = suffix,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        if (suffix.isNotBlank()) {
+            Text(
+                text = suffix,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
