@@ -1,0 +1,45 @@
+name: Align Ask AI
+
+on:
+  push:
+    branches: [redesign/dark-only-ui]
+    paths:
+      - tools/patch_askai.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: align-askai
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: redesign/dark-only-ui
+
+      - name: Apply patch
+        run: python3 tools/patch_askai.py
+
+      - name: Verify target hash
+        run: |
+          set -euo pipefail
+          target=mobile/src/main/java/com/classing/mobile/timetable/screen/AskAiSettingsPage.kt
+          actual=$(git hash-object $target)
+          echo "actual=$actual"
+          test "$actual" = "d01ddda3f1205d0a916e4ee20923282b2415e7c2"
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "no changes to commit"
+            exit 0
+          fi
+          git config user.name "Xihao Zhang"
+          git config user.email "zeromostia@gmail.com"
+          git commit -am "redesign: align the Ask AI page with the shared header and card language"
+          git push origin HEAD:redesign/dark-only-ui
