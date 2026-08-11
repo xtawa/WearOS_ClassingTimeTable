@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -33,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.classing.shared.time.nextMinuteDelay
 import com.classing.shared.ui.heatmap.HeatmapLessonInput
@@ -44,6 +47,10 @@ import java.time.LocalDateTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+/**
+ * The overview tab. The oversized ghost wordmark was dropped so the four stat tiles, the
+ * current status line and the heatmap are what the tab actually opens on.
+ */
 @Composable
 internal fun DashboardLayer(
     contentPadding: PaddingValues,
@@ -136,6 +143,11 @@ internal fun DashboardLayer(
         todayLessons.isNotEmpty() -> stringResource(R.string.dashboard_status_done)
         else -> stringResource(R.string.dashboard_status_free)
     }
+    val statusAccent = when {
+        currentLesson != null -> MaterialTheme.colorScheme.tertiary
+        nextTodayLesson != null -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
+    }
 
     Column(
         modifier = Modifier
@@ -147,20 +159,14 @@ internal fun DashboardLayer(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             Text(
-                text = stringResource(R.string.ghost_title_schedule),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
                 text = stringResource(R.string.layer_heatmap),
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.dashboard_desc),
@@ -169,72 +175,87 @@ internal fun DashboardLayer(
             )
         }
 
-        Button(onClick = onOpenAskAi, modifier = Modifier.fillMaxWidth()) {
-            Text("Ask AI · 课表助手")
-        }
-
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
+            ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.dashboard_summary_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(statusAccent, CircleShape),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DashboardMetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.today_classes_title),
-                        value = todayLessons.size.toString(),
-                    )
-                    DashboardMetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.dashboard_today_remaining_count_title),
-                        value = remainingTodayLessons.size.toString(),
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DashboardMetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.dashboard_active_days_title),
-                        value = activeDayCount.toString(),
-                    )
-                    DashboardMetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.dashboard_busiest_day_title),
-                        value = busiestDay?.let { "${dayLabel(it.key, context)} · ${it.value}" }
-                            ?: stringResource(R.string.dashboard_busiest_day_empty),
-                    )
-                }
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
-                    ),
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.dashboard_status_title),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.dashboard_status_title),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
         }
 
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DashboardMetricCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.today_classes_title),
+                value = todayLessons.size.toString(),
+                accent = MaterialTheme.colorScheme.primary,
+            )
+            DashboardMetricCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.dashboard_today_remaining_count_title),
+                value = remainingTodayLessons.size.toString(),
+                accent = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DashboardMetricCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.dashboard_active_days_title),
+                value = activeDayCount.toString(),
+                accent = MaterialTheme.colorScheme.secondary,
+            )
+            DashboardMetricCard(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.dashboard_busiest_day_title),
+                value = busiestDay?.let { dayLabel(it.key, context) + "  " + it.value.toString() }
+                    ?: stringResource(R.string.dashboard_busiest_day_empty),
+                accent = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+
         DashboardNextLessonCard(nextLesson = nextLesson, hasSchedule = lessons.isNotEmpty(), now = now)
+
+        Button(
+            onClick = onOpenAskAi,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+            shape = RoundedCornerShape(14.dp),
+        ) {
+            Text(
+                text = "Ask AI",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
 
         DashboardSectionTitle(title = stringResource(R.string.dashboard_today_remaining_title))
         if (remainingTodayLessons.isEmpty()) {
@@ -338,10 +359,12 @@ private fun DashboardNextLessonCard(
     hasSchedule: Boolean,
     now: LocalDateTime,
 ) {
+    val inProgress = nextLesson != null &&
+        !now.isBefore(nextLesson.startAt) &&
+        now.isBefore(nextLesson.endAt)
     val countdown = when {
         nextLesson == null -> ""
-        !now.isBefore(nextLesson.startAt) && now.isBefore(nextLesson.endAt) ->
-            stringResource(R.string.schedule_next_lesson_countdown_in_progress)
+        inProgress -> stringResource(R.string.schedule_next_lesson_countdown_in_progress)
         else -> {
             val minutes = java.time.Duration.between(now, nextLesson.startAt).toMinutes().coerceAtLeast(0L)
             when {
@@ -355,26 +378,86 @@ private fun DashboardNextLessonCard(
             }
         }
     }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f))) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+    val accent = if (inProgress) {
+        MaterialTheme.colorScheme.tertiary
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.schedule_next_lesson_title), color = MaterialTheme.colorScheme.primary)
-            if (nextLesson == null) {
-                Text(
-                    if (hasSchedule) stringResource(R.string.schedule_next_lesson_empty)
-                    else stringResource(R.string.schedule_next_lesson_no_data),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Text(nextLesson.lesson.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "${nextLesson.startAt.toLocalDate()}  ${nextLesson.lesson.startTime.format(clockFormatter)}-${nextLesson.lesson.endTime.format(clockFormatter)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (countdown.isNotBlank()) Text(countdown, color = MaterialTheme.colorScheme.primary)
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 56.dp)
+                    .background(
+                        if (nextLesson == null) MaterialTheme.colorScheme.outline else accent,
+                        RoundedCornerShape(999.dp),
+                    ),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.schedule_next_lesson_title),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (countdown.isNotBlank()) {
+                        Text(
+                            text = countdown,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accent,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(
+                                    accent.copy(alpha = 0.16f),
+                                    RoundedCornerShape(999.dp),
+                                )
+                                .padding(horizontal = 10.dp, vertical = 3.dp),
+                        )
+                    }
+                }
+                if (nextLesson == null) {
+                    Text(
+                        text = if (hasSchedule) {
+                            stringResource(R.string.schedule_next_lesson_empty)
+                        } else {
+                            stringResource(R.string.schedule_next_lesson_no_data)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        text = nextLesson.lesson.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = nextLesson.startAt.toLocalDate().toString() + "  " +
+                            nextLesson.lesson.startTime.format(clockFormatter) + " - " +
+                            nextLesson.lesson.endTime.format(clockFormatter),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -386,6 +469,8 @@ private fun DashboardSectionTitle(title: String) {
         text = title,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 4.dp),
     )
 }
 
@@ -393,27 +478,33 @@ private fun DashboardSectionTitle(title: String) {
 private fun DashboardMetricCard(
     title: String,
     value: String,
+    accent: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -421,14 +512,29 @@ private fun DashboardMetricCard(
 
 @Composable
 private fun DashboardEmptyCard(message: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Text(
-            text = message,
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 16.dp, height = 3.dp)
+                    .background(
+                        MaterialTheme.colorScheme.outlineVariant,
+                        RoundedCornerShape(999.dp),
+                    ),
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
