@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -80,14 +81,21 @@ internal fun AskAiSettingsPage(
         modifier = Modifier.fillMaxSize().padding(contentPadding).padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onBack) { Text("← 返回") }
-        Text("Ask AI", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        SecondaryPageHeader(
+            title = "Ask AI",
+            onBack = onBack,
+            backLabel = "返回",
+            modifier = Modifier.fillMaxWidth(),
+        )
         Text("基于当前课表提问。新对话会将此课表快照随首个问题发送。", color = MaterialTheme.colorScheme.onSurfaceVariant)
         when {
             !loggedIn -> AccessCard("请先登录后使用 Ask AI", "去登录", onOpenAccount)
             else -> {
                 if (!member) {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    ) {
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("免费账户每月可使用 500 点 AI 额度。", fontWeight = FontWeight.SemiBold)
                             Text("永久额度仅限有效会员使用；会员过期后将冻结，续费即可恢复。", color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -95,7 +103,10 @@ internal fun AskAiSettingsPage(
                     }
                 }
                 if (lessons.isEmpty() && conversationId.isBlank()) Text("导入课表后可新建对话；已有对话仍可继续读取。", color = MaterialTheme.colorScheme.error)
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("选择模型", fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -142,7 +153,10 @@ internal fun AskAiSettingsPage(
                         sending = false
                     }
                 }) { Text(if (sending) "发送中…" else "发送") }
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("过往对话", fontWeight = FontWeight.SemiBold)
@@ -167,7 +181,10 @@ internal fun AskAiSettingsPage(
                     }
                 }
                 messages.forEach { item ->
-                    Card(colors = CardDefaults.cardColors(containerColor = if (item.role == "USER") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (item.role == "USER") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow),
+                    ) {
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(if (item.role == "USER") "你" else "Ask AI", fontWeight = FontWeight.SemiBold)
                             if (item.role == "USER") Text(item.content) else MarkdownText(item.content)
@@ -182,7 +199,7 @@ internal fun AskAiSettingsPage(
 
 @Composable
 private fun AccessCard(message: String, action: String, onClick: () -> Unit) {
-    Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text(message); Button(onClick = onClick) { Text(action) } } }
+    Card(shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text(message); Button(onClick = onClick) { Text(action) } } }
 }
 
 internal data class AskAiScheduleContext(
