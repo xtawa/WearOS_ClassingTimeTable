@@ -1515,48 +1515,68 @@ fun MobileTimetableScreen() {
 
     Scaffold(
         topBar = {
+            val headerLocale = Locale.getDefault()
+            val headerToday = remember(headerLocale) { LocalDate.now() }
+            val headerWeekNumber = resolveAnchorWeek(
+                anchorDate = headerToday,
+                weekNumberMode = weekNumberMode,
+                semesterWeekStartDate = semesterWeekStartDate,
+            )
+            val headerDateLabel = remember(headerToday, headerLocale) {
+                headerToday.format(DateTimeFormatter.ofPattern("MM.dd EEE", headerLocale))
+            }
             Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .heightIn(min = 76.dp)
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    Box(
+                        modifier = Modifier
+                            .size(width = 4.dp, height = 44.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(999.dp),
+                            ),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
-                        Surface(
-                            modifier = Modifier.size(34.dp),
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                                    contentDescription = stringResource(R.string.app_name),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
                         Text(
-                            text = stringResource(R.string.screen_title),
+                            text = "CLASSING",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "WEEK $headerWeekNumber",
                             style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
                         )
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    SyncStatusGroup(
+                        bluetoothState = bluetoothSyncState,
+                        cloudState = cloudSyncState,
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(999.dp),
                     ) {
-                        SyncStatusGroup(
-                            bluetoothState = bluetoothSyncState,
-                            cloudState = cloudSyncState,
+                        Text(
+                            text = headerDateLabel,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
