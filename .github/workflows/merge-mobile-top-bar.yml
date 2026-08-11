@@ -1,0 +1,49 @@
+name: Merge mobile top bar
+
+on:
+  push:
+    branches:
+      - redesign/dark-only-ui
+    paths:
+      - tools/merge_header.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: merge-mobile-top-bar
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the redesign branch
+        uses: actions/checkout@v4
+        with:
+          ref: redesign/dark-only-ui
+
+      - name: Merge the duplicate headers
+        run: python3 tools/merge_header.py
+
+      - name: Verify the patched sources
+        run: |
+          set -euo pipefail
+          screens=$(git hash-object mobile/src/main/java/com/classing/mobile/timetable/screen/Screens.kt)
+          main=$(git hash-object mobile/src/main/java/com/classing/mobile/timetable/MainActivity.kt)
+          echo "Screens.kt      $screens"
+          echo "MainActivity.kt $main"
+          test "$screens" = "f19b51614230c5d2bac0fd8152a7146271f08ee9"
+          test "$main" = "4ffd22169b5da6e41aa5a6bab62ffce75a41dbf6"
+
+      - name: Commit the merged top bar
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git config user.name "Xihao Zhang"
+          git config user.email "zeromostia@gmail.com"
+          git commit -am "redesign: merge the mobile week header and sync status into one top bar"
+          git push origin HEAD:redesign/dark-only-ui
