@@ -4,14 +4,18 @@ import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -26,11 +30,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -61,6 +69,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
+/**
+ * Wear cloud sync. Account state, last sync and the live status message are separated into
+ * labelled rows with their own state dot, so "signed out", "waiting", "syncing" and "failed" no
+ * longer look like the same grey paragraph. All auth and sync logic is unchanged.
+ */
 @Composable
 fun CloudSyncScreen(
     settingsRepository: SettingsRepository,
@@ -190,60 +203,112 @@ fun CloudSyncScreen(
     } else {
         stringResource(R.string.settings_cloud_sync_never)
     }
+    val busy = syncing || qrBusy || manualLoginBusy
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = rememberScalingLazyListState(),
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         item {
             Text(
                 text = stringResource(R.string.settings_cloud_sync_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
             )
         }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Text(
-                    text = stringResource(R.string.settings_cloud_sync_phone_managed),
-                    modifier = Modifier.padding(10.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Text(
-                    text = stringResource(R.string.settings_cloud_sync_last_phone_snapshot, lastSyncText) +
-                        if (status.isBlank()) "" else "\n$status",
-                    modifier = Modifier.padding(10.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Text(
-                    text = buildString {
-                        append("Login: ")
-                        append(if (effectiveLoggedIn) "Yes" else "No")
-                        append("\nMember: ")
-                        append(if (effectiveMember) effectiveTier else "FREE")
-                        append("\nProvider: ")
-                        append(effectiveProvider.ifBlank { "-" })
-                        append("\nOfficial cloud: ")
-                        append(if (effectiveLoggedIn) "Available" else "Locked")
+
+        // The live status message is the most volatile thing on this screen, so it leads and
+        // carries a state colour instead of being buried in a grey paragraph.
+        if (status.isNotBlank()) {
+            item {
+                CloudStateCard(
+                    text = status,
+                    accent = if (busy) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.primary
                     },
-                    modifier = Modifier.padding(10.dp),
-                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
+
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    CloudStatusRow(
+                        label = "Login",
+                        value = if (effectiveLoggedIn) "Yes" else "No",
+                        accent = if (effectiveLoggedIn) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
+                    )
+                    CloudStatusRow(
+                        label = "Member",
+                        value = if (effectiveMember) effectiveTier else "FREE",
+                        accent = if (effectiveMember) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
+                    )
+                    CloudStatusRow(
+                        label = "Provider",
+                        value = effectiveProvider.ifBlank { "-" },
+                        accent = MaterialTheme.colorScheme.outline,
+                    )
+                    CloudStatusRow(
+                        label = "Official cloud",
+                        value = if (effectiveLoggedIn) "Available" else "Locked",
+                        accent = if (effectiveLoggedIn) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_cloud_sync_last_phone_snapshot, lastSyncText),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_cloud_sync_phone_managed),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         if (!effectiveLoggedIn && authorization == null) {
             item {
-                Button(
+                CloudActionButton(
+                    label = stringResource(R.string.settings_qr_login_button),
+                    enabled = !qrBusy,
+                    primary = true,
                     onClick = {
                         scope.launch {
                             qrBusy = true
@@ -258,22 +323,14 @@ fun CloudSyncScreen(
                             }
                         }
                     },
-                    enabled = !qrBusy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
-                ) {
-                    Text(stringResource(R.string.settings_qr_login_button))
-                }
+                )
             }
             item {
-                Button(
-                    onClick = { manualLoginVisible = !manualLoginVisible },
+                CloudActionButton(
+                    label = stringResource(R.string.settings_account_login_button),
                     enabled = !manualLoginBusy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
-                ) {
-                    Text(stringResource(R.string.settings_account_login_button))
-                }
+                    onClick = { manualLoginVisible = !manualLoginVisible },
+                )
             }
             if (manualLoginVisible) {
                 item {
@@ -282,7 +339,9 @@ fun CloudSyncScreen(
                         onValueChange = { identifierInput = it },
                         label = { Text(stringResource(R.string.settings_account_login_identifier)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
                         textStyle = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -293,12 +352,23 @@ fun CloudSyncScreen(
                         label = { Text(stringResource(R.string.settings_account_login_password)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
                         textStyle = MaterialTheme.typography.bodySmall,
                     )
                 }
                 item {
-                    Button(
+                    CloudActionButton(
+                        label = if (manualLoginBusy) {
+                            stringResource(R.string.settings_account_login_in_progress)
+                        } else {
+                            stringResource(R.string.settings_account_login_submit)
+                        },
+                        enabled = !manualLoginBusy &&
+                            isValidLoginIdentifier(identifierInput) &&
+                            isValidLoginPassword(passwordInput),
+                        primary = true,
                         onClick = {
                             scope.launch {
                                 manualLoginBusy = true
@@ -340,25 +410,15 @@ fun CloudSyncScreen(
                                 manualLoginBusy = false
                             }
                         },
-                        enabled = !manualLoginBusy &&
-                            isValidLoginIdentifier(identifierInput) &&
-                            isValidLoginPassword(passwordInput),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(999.dp),
-                    ) {
-                        Text(
-                            if (manualLoginBusy) {
-                                stringResource(R.string.settings_account_login_in_progress)
-                            } else {
-                                stringResource(R.string.settings_account_login_submit)
-                            },
-                        )
-                    }
+                    )
                 }
             }
         }
+
         authorization?.let { active ->
             item {
+                // The QR code keeps a pure white plate on purpose. Scanners need the contrast,
+                // so this is the one surface that does not follow the dark theme.
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Image(
                         bitmap = remember(active.qrPayload) {
@@ -375,38 +435,46 @@ fun CloudSyncScreen(
             item {
                 Text(
                     text = stringResource(R.string.settings_qr_login_instruction),
+                    modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
             }
             item {
-                Button(
+                CloudActionButton(
+                    label = stringResource(R.string.settings_qr_login_cancel),
                     onClick = {
                         authorization = null
                         qrBusy = false
                         status = ""
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
-                ) {
-                    Text(stringResource(R.string.settings_qr_login_cancel))
-                }
+                )
             }
         }
+
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth(0.78f)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(0.78f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
                         Text(
-                            stringResource(R.string.settings_independent_mode_title),
+                            text = stringResource(R.string.settings_independent_mode_title),
                             style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
                         )
                         Text(
-                            stringResource(R.string.settings_independent_mode_description),
-                            style = MaterialTheme.typography.bodySmall,
+                            text = stringResource(R.string.settings_independent_mode_description),
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -420,9 +488,12 @@ fun CloudSyncScreen(
                 }
             }
         }
+
         directSession?.let { session ->
             item {
-                Button(
+                CloudActionButton(
+                    label = stringResource(R.string.settings_qr_logout_button),
+                    enabled = !qrBusy,
                     onClick = {
                         scope.launch {
                             qrBusy = true
@@ -439,16 +510,19 @@ fun CloudSyncScreen(
                             status = context.getString(R.string.settings_qr_logout_success)
                         }
                     },
-                    enabled = !qrBusy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
-                ) {
-                    Text(stringResource(R.string.settings_qr_logout_button))
-                }
+                )
             }
         }
+
         item {
-            Button(
+            CloudActionButton(
+                label = if (syncing) {
+                    stringResource(R.string.settings_cloud_sync_syncing)
+                } else {
+                    stringResource(R.string.settings_cloud_sync_sync_now)
+                },
+                enabled = !syncing,
+                primary = true,
                 onClick = {
                     scope.launch {
                         syncing = true
@@ -481,28 +555,112 @@ fun CloudSyncScreen(
                         syncing = false
                     }
                 },
-                enabled = !syncing,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(
-                    if (syncing) {
-                        stringResource(R.string.settings_cloud_sync_syncing)
-                    } else {
-                        stringResource(R.string.settings_cloud_sync_sync_now)
-                    },
-                )
-            }
+            )
         }
         item {
-            Button(
+            CloudActionButton(
+                label = stringResource(R.string.detail_back),
                 onClick = onBack,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
-            ) {
-                Text(stringResource(R.string.detail_back))
-            }
+            )
         }
+    }
+}
+
+@Composable
+private fun CloudStateCard(
+    text: String,
+    accent: Color,
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(6.dp)
+                    .background(accent, CircleShape),
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CloudStatusRow(
+    label: String,
+    value: String,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(5.dp)
+                .background(accent, CircleShape),
+        )
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun CloudActionButton(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    primary: Boolean = false,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp),
+        shape = RoundedCornerShape(999.dp),
+        colors = if (primary) {
+            ButtonDefaults.buttonColors()
+        } else {
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
