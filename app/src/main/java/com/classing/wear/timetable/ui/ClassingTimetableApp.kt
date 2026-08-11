@@ -107,7 +107,7 @@ private fun WearFixedTimeText(modifier: Modifier = Modifier) {
     val formatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
     val timeText by produceState(
         initialValue = LocalTime.now().format(formatter),
-        formatter,
+        key1 = formatter,
     ) {
         while (true) {
             value = LocalTime.now().format(formatter)
