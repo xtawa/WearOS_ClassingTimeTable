@@ -1,5 +1,6 @@
 package com.classing.wear.timetable.tile
 
+import androidx.wear.tiles.ColorBuilders
 import androidx.wear.tiles.DimensionBuilders
 import androidx.wear.tiles.LayoutElementBuilders
 import androidx.wear.tiles.RequestBuilders
@@ -18,6 +19,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 
+/**
+ * The next class tile. A tile is glanced at, not read, so the order is countdown first, then the
+ * course, then the supporting detail. Every field the snapshot carries is still rendered, just
+ * ranked by how useful it is at a glance.
+ */
 class NextClassTileService : TileService() {
     private val tileScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -87,42 +93,44 @@ class NextClassTileService : TileService() {
     private fun buildRoot(snapshot: NextClassSnapshot): LayoutElementBuilders.LayoutElement {
         val content = LayoutElementBuilders.Column.Builder()
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-            .addContent(textElement(snapshot.dateText, 12f))
 
-        if (snapshot.weekText.isNotBlank()) {
+        // The countdown is the reason to look at the tile, so it leads and carries the accent.
+        if (snapshot.countdownText.isNotBlank()) {
             content
-                .addContent(spacer(2f))
-                .addContent(textElement(snapshot.weekText, 12f))
+                .addContent(textElement(snapshot.countdownText, 13f, COLOR_ACCENT, bold = true))
+                .addContent(spacer(3f))
         }
 
         if (snapshot.courseTitle.isNotBlank()) {
-            content
-                .addContent(spacer(4f))
-                .addContent(textElement(snapshot.courseTitle, 16f))
+            content.addContent(textElement(snapshot.courseTitle, 17f, COLOR_TEXT, bold = true))
         }
 
         if (snapshot.timeText.isNotBlank()) {
             content
-                .addContent(spacer(2f))
-                .addContent(textElement(snapshot.timeText, 14f))
-        }
-
-        if (snapshot.teacherText.isNotBlank()) {
-            content
-                .addContent(spacer(2f))
-                .addContent(textElement(snapshot.teacherText, 12f))
+                .addContent(spacer(3f))
+                .addContent(textElement(snapshot.timeText, 13f, COLOR_TEXT))
         }
 
         if (snapshot.locationText.isNotBlank()) {
             content
                 .addContent(spacer(2f))
-                .addContent(textElement(snapshot.locationText, 12f))
+                .addContent(textElement(snapshot.locationText, 12f, COLOR_DIM))
         }
 
-        if (snapshot.countdownText.isNotBlank()) {
+        if (snapshot.teacherText.isNotBlank()) {
             content
                 .addContent(spacer(2f))
-                .addContent(textElement(snapshot.countdownText, 12f))
+                .addContent(textElement(snapshot.teacherText, 12f, COLOR_DIM))
+        }
+
+        // Week and date are context, not the headline, so they sit last in the muted role.
+        val footer = listOf(snapshot.weekText, snapshot.dateText)
+            .filter { it.isNotBlank() }
+            .joinToString("  ")
+        if (footer.isNotBlank()) {
+            content
+                .addContent(spacer(5f))
+                .addContent(textElement(footer, 11f, COLOR_FAINT))
         }
 
         return LayoutElementBuilders.Box.Builder()
@@ -134,14 +142,21 @@ class NextClassTileService : TileService() {
             .build()
     }
 
-    private fun textElement(text: String, sizeSp: Float): LayoutElementBuilders.LayoutElement {
+    private fun textElement(
+        text: String,
+        sizeSp: Float,
+        color: Int,
+        bold: Boolean = false,
+    ): LayoutElementBuilders.LayoutElement {
+        val fontStyle = LayoutElementBuilders.FontStyle.Builder()
+            .setSize(DimensionBuilders.sp(sizeSp))
+            .setColor(ColorBuilders.argb(color))
+        if (bold) {
+            fontStyle.setWeight(LayoutElementBuilders.FONT_WEIGHT_BOLD)
+        }
         return LayoutElementBuilders.Text.Builder()
             .setText(text)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(DimensionBuilders.sp(sizeSp))
-                    .build(),
-            )
+            .setFontStyle(fontStyle.build())
             .setMaxLines(1)
             .build()
     }
@@ -155,5 +170,11 @@ class NextClassTileService : TileService() {
     companion object {
         private const val RESOURCES_VERSION = "next_class_tile_v1"
         private const val TILE_FRESHNESS_INTERVAL_MILLIS = 60_000L
+
+        // Matches the dark palette used by the app so the tile does not look like a different product.
+        private const val COLOR_TEXT = 0xFFF1F2F6.toInt()
+        private const val COLOR_DIM = 0xFF9A9CA8.toInt()
+        private const val COLOR_FAINT = 0xFF6B6D78.toInt()
+        private const val COLOR_ACCENT = 0xFFFFB454.toInt()
     }
 }
