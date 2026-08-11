@@ -3,7 +3,6 @@ package com.xtawa.classingtime
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
@@ -12,10 +11,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.ui.Modifier
@@ -34,8 +31,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val darkTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = !darkTheme
+        // The app ships a single dark theme, so the status bar icons are always light.
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
         CloudSyncEngine.schedulePeriodic(this)
         handleIncomingIntent(intent)
         setContent { MobileApp() }
@@ -92,13 +89,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MobileApp() {
-    val darkTheme = isSystemInDarkTheme()
-    val colorScheme = if (darkTheme) stitchDarkColorScheme() else stitchLightColorScheme()
-
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = stitchTypography(),
-        shapes = stitchShapes(),
+        colorScheme = classingDarkColorScheme(),
+        typography = classingTypography(),
+        shapes = classingShapes(),
     ) {
         Surface(modifier = Modifier.fillMaxSize()) {
             MobileTimetableScreen()
@@ -106,75 +100,63 @@ private fun MobileApp() {
     }
 }
 
-private fun stitchLightColorScheme(): ColorScheme {
-    return lightColorScheme(
-        primary = Color(0xFF24389C),
-        onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFF3F51B5),
-        onPrimaryContainer = Color(0xFFCACFFF),
-        secondary = Color(0xFF565C84),
-        onSecondary = Color(0xFFFFFFFF),
-        secondaryContainer = Color(0xFFC9CFFD),
-        onSecondaryContainer = Color(0xFF51577F),
-        tertiary = Color(0xFF6C3400),
-        onTertiary = Color(0xFFFFFFFF),
-        tertiaryContainer = Color(0xFF8F4700),
-        onTertiaryContainer = Color(0xFFFFC7A2),
-        error = Color(0xFFBA1A1A),
-        onError = Color(0xFFFFFFFF),
-        errorContainer = Color(0xFFFFDAD6),
-        onErrorContainer = Color(0xFF93000A),
-        background = Color(0xFFFBF8FF),
-        onBackground = Color(0xFF1A1B22),
-        surface = Color(0xFFFBF8FF),
-        onSurface = Color(0xFF1A1B22),
-        surfaceVariant = Color(0xFFE3E1EA),
-        onSurfaceVariant = Color(0xFF454652),
-        outline = Color(0xFF757684),
-        outlineVariant = Color(0xFFC5C5D4),
-        inverseSurface = Color(0xFF2F3037),
-        inverseOnSurface = Color(0xFFF2EFF9),
-        inversePrimary = Color(0xFFBAC3FF),
-        surfaceTint = Color(0xFF4355B9),
-    )
-}
-
-private fun stitchDarkColorScheme(): ColorScheme {
+/**
+ * The single color scheme of the app.
+ *
+ * The redesign keeps one dark scheme only: the canvas stays near black so the timetable grid
+ * and the course color blocks carry the contrast, while the primary periwinkle marks anything
+ * interactive and the amber tertiary marks the lesson that is running or coming up next.
+ */
+private fun classingDarkColorScheme(): ColorScheme {
     return darkColorScheme(
-        primary = Color(0xFFBAC3FF),
-        onPrimary = Color(0xFF00105C),
-        primaryContainer = Color(0xFF293CA0),
-        onPrimaryContainer = Color(0xFFDEE0FF),
-        secondary = Color(0xFFBEC4F2),
-        onSecondary = Color(0xFF272D53),
-        secondaryContainer = Color(0xFF3E446B),
-        onSecondaryContainer = Color(0xFFDEE0FF),
-        tertiary = Color(0xFFFFB784),
-        onTertiary = Color(0xFF4D2500),
-        tertiaryContainer = Color(0xFF713700),
-        onTertiaryContainer = Color(0xFFFFDCC6),
-        error = Color(0xFFFFB4AB),
-        onError = Color(0xFF690005),
-        errorContainer = Color(0xFF93000A),
+        primary = Color(0xFF8C9BFF),
+        onPrimary = Color(0xFF101638),
+        primaryContainer = Color(0xFF3A3F73),
+        onPrimaryContainer = Color(0xFFDDE1FF),
+        secondary = Color(0xFF4FD8C4),
+        onSecondary = Color(0xFF00332C),
+        secondaryContainer = Color(0xFF12473F),
+        onSecondaryContainer = Color(0xFFB4F1E6),
+        tertiary = Color(0xFFFFB454),
+        onTertiary = Color(0xFF3D2600),
+        tertiaryContainer = Color(0xFF5C3A00),
+        onTertiaryContainer = Color(0xFFFFDDB0),
+        error = Color(0xFFFF6B6B),
+        onError = Color(0xFF450A0A),
+        errorContainer = Color(0xFF7A1D1D),
         onErrorContainer = Color(0xFFFFDAD6),
-        background = Color(0xFF121319),
-        onBackground = Color(0xFFE3E1EA),
-        surface = Color(0xFF121319),
-        onSurface = Color(0xFFE3E1EA),
-        surfaceVariant = Color(0xFF454652),
-        onSurfaceVariant = Color(0xFFC5C5D4),
-        outline = Color(0xFF8F909E),
-        outlineVariant = Color(0xFF454652),
-        inverseSurface = Color(0xFFE3E1EA),
-        inverseOnSurface = Color(0xFF2F3037),
-        inversePrimary = Color(0xFF4355B9),
-        surfaceTint = Color(0xFFBAC3FF),
+        background = Color(0xFF0E0F13),
+        onBackground = Color(0xFFF1F2F6),
+        surface = Color(0xFF0E0F13),
+        onSurface = Color(0xFFF1F2F6),
+        surfaceVariant = Color(0xFF22242C),
+        onSurfaceVariant = Color(0xFFC6C8D2),
+        surfaceContainerLowest = Color(0xFF0A0B0E),
+        surfaceContainerLow = Color(0xFF14161C),
+        surfaceContainer = Color(0xFF191B21),
+        surfaceContainerHigh = Color(0xFF22242C),
+        surfaceContainerHighest = Color(0xFF2B2E38),
+        outline = Color(0xFF8A8C99),
+        outlineVariant = Color(0xFF3A3D47),
+        inverseSurface = Color(0xFFF1F2F6),
+        inverseOnSurface = Color(0xFF22242C),
+        inversePrimary = Color(0xFF3A3F73),
+        surfaceTint = Color(0xFF8C9BFF),
+        scrim = Color(0xFF000000),
     )
 }
 
-private fun stitchTypography(): Typography {
+/**
+ * Typography for the redesign.
+ *
+ * Headings and body text stay on the system sans-serif family so Chinese and Latin text keep
+ * matching metrics. Small labels switch to the monospace family because they carry clock times,
+ * week numbers and counters, which have to line up column by column inside the timetable grid.
+ */
+private fun classingTypography(): Typography {
     val headline = FontFamily.SansSerif
     val body = FontFamily.SansSerif
+    val numeric = FontFamily.Monospace
     return Typography(
         displayLarge = TextStyle(
             fontFamily = headline,
@@ -182,11 +164,23 @@ private fun stitchTypography(): Typography {
             fontSize = 56.sp,
             lineHeight = 60.sp,
         ),
+        displayMedium = TextStyle(
+            fontFamily = headline,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 44.sp,
+            lineHeight = 50.sp,
+        ),
         headlineLarge = TextStyle(
             fontFamily = headline,
             fontWeight = FontWeight.Bold,
             fontSize = 32.sp,
             lineHeight = 38.sp,
+        ),
+        headlineMedium = TextStyle(
+            fontFamily = headline,
+            fontWeight = FontWeight.Bold,
+            fontSize = 26.sp,
+            lineHeight = 32.sp,
         ),
         titleLarge = TextStyle(
             fontFamily = headline,
@@ -194,16 +188,58 @@ private fun stitchTypography(): Typography {
             fontSize = 22.sp,
             lineHeight = 28.sp,
         ),
+        titleMedium = TextStyle(
+            fontFamily = headline,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 17.sp,
+            lineHeight = 24.sp,
+        ),
+        titleSmall = TextStyle(
+            fontFamily = headline,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+        ),
         bodyLarge = TextStyle(
             fontFamily = body,
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
             lineHeight = 24.sp,
         ),
+        bodyMedium = TextStyle(
+            fontFamily = body,
+            fontWeight = FontWeight.Normal,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+        ),
+        bodySmall = TextStyle(
+            fontFamily = body,
+            fontWeight = FontWeight.Normal,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+        ),
+        labelLarge = TextStyle(
+            fontFamily = body,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+        ),
+        labelMedium = TextStyle(
+            fontFamily = body,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+        ),
+        labelSmall = TextStyle(
+            fontFamily = numeric,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
+        ),
     )
 }
 
-private fun stitchShapes(): Shapes {
+private fun classingShapes(): Shapes {
     return Shapes(
         extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         small = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
