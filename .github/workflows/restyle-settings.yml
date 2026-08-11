@@ -1,0 +1,46 @@
+name: Restyle settings
+
+on:
+  push:
+    branches:
+      - redesign/dark-only-ui
+    paths:
+      - tools/restyle_settings.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: restyle-settings
+  cancel-in-progress: false
+
+jobs:
+  restyle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the redesign branch
+        uses: actions/checkout@v4
+        with:
+          ref: redesign/dark-only-ui
+
+      - name: Restyle the shared settings primitives
+        run: python3 tools/restyle_settings.py
+
+      - name: Verify the patched source
+        run: |
+          set -euo pipefail
+          f=$(git hash-object mobile/src/main/java/com/classing/mobile/timetable/screen/MobileSettingsAbout.kt)
+          echo "MobileSettingsAbout.kt $f"
+          test "$f" = "852a801af238c2da7ef484e9d69c531ef0b34b86"
+
+      - name: Commit the restyle
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git config user.name "Xihao Zhang"
+          git config user.email "zeromostia@gmail.com"
+          git commit -am "redesign: unify the settings pages with the new header language"
+          git push origin HEAD:redesign/dark-only-ui
