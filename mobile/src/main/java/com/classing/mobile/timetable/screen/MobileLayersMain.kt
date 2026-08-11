@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -62,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -104,6 +106,31 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 
+// Grid metrics for the weekly board. The row height fits a two-line course name plus a
+// classroom line, and the column width keeps five to six weekdays reachable with one swipe.
+private val WeekGridGutterWidth = 54.dp
+private val WeekGridColumnWidth = 96.dp
+private val WeekGridHeaderHeight = 34.dp
+private val WeekGridRowHeight = 74.dp
+
+// Course blocks are tinted from this fixed accent set so the same course keeps the same color
+// across weeks without storing a color on the lesson.
+private val WeekGridAccents = listOf(
+    Color(0xFF8C9BFF),
+    Color(0xFF4FD8C4),
+    Color(0xFFFFB454),
+    Color(0xFFFF8FAE),
+    Color(0xFF66D19E),
+    Color(0xFFB79BFF),
+)
+
+private fun courseAccentColor(key: String): Color {
+    if (key.isBlank()) return WeekGridAccents.first()
+    val hash = key.hashCode()
+    val normalized = if (hash == Int.MIN_VALUE) 0 else if (hash < 0) -hash else hash
+    return WeekGridAccents[normalized % WeekGridAccents.size]
+}
+
 @Composable
 internal fun WeekBoardLayer(
     contentPadding: PaddingValues,
@@ -122,6 +149,15 @@ internal fun WeekBoardLayer(
         } else {
             visibleDays
         }
+    }
+    // Every distinct start time across the visible days becomes one grid row, so the grid keeps
+    // its shape no matter how irregular the periods are.
+    val slotStarts = remember(visibleDays, lessonsByDay) {
+        visibleDays
+            .flatMap { day -> lessonsByDay[day].orEmpty() }
+            .map { lesson -> lesson.startTime }
+            .distinct()
+            .sorted()
     }
     LazyColumn(
         modifier = Modifier
@@ -164,6 +200,15 @@ internal fun WeekBoardLayer(
                 )
             }
         }
+        item {
+            WeekGridBoard(
+                visibleDays = visibleDays,
+                lessonsByDay = lessonsByDay,
+                slotStarts = slotStarts,
+                todayDay = todayDay,
+                onLongPressLesson = onLongPressLesson,
+            )
+        }
         items(prioritizedDays) { day ->
             val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
             val isEmpty = lessons.isEmpty()
@@ -204,6 +249,7 @@ internal fun WeekBoardLayer(
                                 lesson.title,
                             )
                             val editLessonLabel = stringResource(R.string.lesson_edit_dialog_title)
+                            val accent = courseAccentColor(lesson.title)
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -247,12 +293,12 @@ internal fun WeekBoardLayer(
                                     }
                                     Box(
                                         modifier = Modifier
-                                            .size(width = 1.dp, height = 30.dp),
+                                            .size(width = 3.dp, height = 30.dp),
                                     ) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                                                .background(accent, RoundedCornerShape(999.dp)),
                                         )
                                     }
                                     Column(
@@ -280,6 +326,230 @@ internal fun WeekBoardLayer(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The weekly grid board: weekdays run along the x axis, periods along the y axis, and each
+ * course is a tinted block. The board scrolls horizontally so a six or seven day week still
+ * keeps a readable column width on a phone.
+ */
+@Composable
+private fun WeekGridBoard(
+    visibleDays: List<DayOfWeek>,
+    lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
+    slotStarts: List<LocalTime>,
+    todayDay: DayOfWeek,
+    onLongPressLesson: (LessonUi) -> Unit,
+) {
+    val context = LocalContext.current
+    val horizontalScrollState = rememberScrollState()
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        if (slotStarts.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.no_classes),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.schedule_next_lesson_no_data),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            return@Card
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(horizontalScrollState)
+                .padding(vertical = 8.dp),
+        ) {
+            // Time gutter. Period index on top, start and end time below, all in the monospace
+            // label role so the numbers line up row to row.
+            Column {
+                Box(modifier = Modifier.size(width = WeekGridGutterWidth, height = WeekGridHeaderHeight))
+                slotStarts.forEachIndexed { index, start ->
+                    val slotEnd = visibleDays
+                        .flatMap { day -> lessonsByDay[day].orEmpty() }
+                        .filter { lesson -> lesson.startTime == start }
+                        .maxByOrNull { lesson -> lesson.endTime }
+                        ?.endTime
+                    Column(
+                        modifier = Modifier
+                            .size(width = WeekGridGutterWidth, height = WeekGridRowHeight)
+                            .padding(end = 6.dp),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = (index + 1).toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = start.format(clockFormatter),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (slotEnd != null) {
+                            Text(
+                                text = slotEnd.format(clockFormatter),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    }
+                }
+            }
+            visibleDays.forEach { day ->
+                val isToday = day == todayDay
+                val dayLessons = lessonsByDay[day].orEmpty()
+                Column(
+                    modifier = Modifier
+                        .width(WeekGridColumnWidth)
+                        .background(
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                        ),
+                ) {
+                    Box(
+                        modifier = Modifier.size(width = WeekGridColumnWidth, height = WeekGridHeaderHeight),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = dayLabel(day, context),
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                        )
+                    }
+                    slotStarts.forEach { start ->
+                        val matches = dayLessons.filter { lesson -> lesson.startTime == start }
+                        WeekGridCell(
+                            lessons = matches,
+                            onLongPressLesson = onLongPressLesson,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One cell of the weekly grid. An empty slot stays a faint placeholder so the grid keeps its
+ * rhythm; a filled slot shows the course name, the classroom and its start time. Long press
+ * still opens the same edit flow as the list rows, and overlapping courses are surfaced with a
+ * counter instead of being hidden.
+ */
+@Composable
+private fun WeekGridCell(
+    lessons: List<LessonUi>,
+    onLongPressLesson: (LessonUi) -> Unit,
+) {
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
+            .size(width = WeekGridColumnWidth, height = WeekGridRowHeight)
+            .padding(horizontal = 3.dp, vertical = 3.dp),
+    ) {
+        val lesson = lessons.firstOrNull()
+        if (lesson == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.35f),
+                        shape = RoundedCornerShape(12.dp),
+                    ),
+            )
+        } else {
+            val accent = courseAccentColor(lesson.title)
+            val lessonSummary = stringResource(
+                R.string.lesson_summary_format,
+                dayLabel(lesson.dayOfWeek, context),
+                lesson.startTime.format(clockFormatter),
+                lesson.endTime.format(clockFormatter),
+                lesson.title,
+            )
+            val editLessonLabel = stringResource(R.string.lesson_edit_dialog_title)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = accent.copy(alpha = 0.18f), shape = RoundedCornerShape(12.dp))
+                    .semantics {
+                        contentDescription = lessonSummary
+                        onLongClick(label = editLessonLabel) {
+                            onLongPressLesson(lesson)
+                            true
+                        }
+                    }
+                    .pointerInput(lesson.id) {
+                        detectTapGestures(
+                            onLongPress = { onLongPressLesson(lesson) },
+                        )
+                    }
+                    .padding(horizontal = 7.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = lesson.title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (!lesson.location.isNullOrBlank()) {
+                    Text(
+                        text = lesson.location,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = lesson.startTime.format(clockFormatter),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                    )
+                    if (lessons.size > 1) {
+                        Text(
+                            text = "+" + (lessons.size - 1).toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
             }
