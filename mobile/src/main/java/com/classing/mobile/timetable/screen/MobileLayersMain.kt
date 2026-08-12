@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -74,6 +75,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.xtawa.classingtime.R
@@ -107,9 +109,10 @@ import org.json.JSONObject
 
 
 // Grid metrics for the weekly board. The row height fits a two-line course name plus a
-// classroom line, and the column width keeps five to six weekdays reachable with one swipe.
+// classroom line. Day columns are measured at layout time, so the value below is only the
+// point where a column stops being readable and the board falls back to scrolling.
 private val WeekGridGutterWidth = 54.dp
-private val WeekGridColumnWidth = 96.dp
+private val WeekGridMinColumnWidth = 64.dp
 private val WeekGridHeaderHeight = 34.dp
 private val WeekGridRowHeight = 74.dp
 
@@ -433,88 +436,112 @@ private fun WeekGridBoard(
             }
             return@Card
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(horizontalScrollState)
-                .padding(vertical = 8.dp),
-        ) {
-            // Time gutter. Period index on top, start and end time below, all in the monospace
-            // label role so the numbers line up row to row.
-            Column {
-                Box(modifier = Modifier.size(width = WeekGridGutterWidth, height = WeekGridHeaderHeight))
-                slotStarts.forEachIndexed { index, start ->
-                    val slotEnd = visibleDays
-                        .flatMap { day -> lessonsByDay[day].orEmpty() }
-                        .filter { lesson -> lesson.startTime == start }
-                        .maxByOrNull { lesson -> lesson.endTime }
-                        ?.endTime
-                    Column(
-                        modifier = Modifier
-                            .size(width = WeekGridGutterWidth, height = WeekGridRowHeight)
-                            .padding(end = 6.dp),
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = (index + 1).toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = start.format(clockFormatter),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (slotEnd != null) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            // Day columns stretch to fill the width that is actually available, so a wide
+            // screen no longer leaves dead space beside a grid frozen at 96 dp per day.
+            // Horizontal scrolling only engages when the visible days genuinely cannot fit
+            // at the minimum readable column width.
+            val fittedColumnWidth = if (visibleDays.isEmpty()) {
+                WeekGridMinColumnWidth
+            } else {
+                (maxWidth - WeekGridGutterWidth) / visibleDays.size
+            }
+            val needsHorizontalScroll = fittedColumnWidth < WeekGridMinColumnWidth
+            val columnWidth = if (needsHorizontalScroll) {
+                WeekGridMinColumnWidth
+            } else {
+                fittedColumnWidth
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (needsHorizontalScroll) {
+                            Modifier.horizontalScroll(horizontalScrollState)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(vertical = 8.dp),
+            ) {
+                // Time gutter. Period index on top, start and end time below, all in the monospace
+                // label role so the numbers line up row to row.
+                Column {
+                    Box(modifier = Modifier.size(width = WeekGridGutterWidth, height = WeekGridHeaderHeight))
+                    slotStarts.forEachIndexed { index, start ->
+                        val slotEnd = visibleDays
+                            .flatMap { day -> lessonsByDay[day].orEmpty() }
+                            .filter { lesson -> lesson.startTime == start }
+                            .maxByOrNull { lesson -> lesson.endTime }
+                            ?.endTime
+                        Column(
+                            modifier = Modifier
+                                .size(width = WeekGridGutterWidth, height = WeekGridRowHeight)
+                                .padding(end = 6.dp),
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
                             Text(
-                                text = slotEnd.format(clockFormatter),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline,
+                                text = (index + 1).toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold,
                             )
+                            Text(
+                                text = start.format(clockFormatter),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (slotEnd != null) {
+                                Text(
+                                    text = slotEnd.format(clockFormatter),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            }
                         }
                     }
                 }
-            }
-            visibleDays.forEach { day ->
-                val isToday = day == todayDay
-                val dayLessons = lessonsByDay[day].orEmpty()
-                Column(
-                    modifier = Modifier
-                        .width(WeekGridColumnWidth)
-                        .background(
-                            color = if (isToday) {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
-                            } else {
-                                Color.Transparent
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                        ),
-                ) {
-                    Box(
-                        modifier = Modifier.size(width = WeekGridColumnWidth, height = WeekGridHeaderHeight),
-                        contentAlignment = Alignment.Center,
+                visibleDays.forEach { day ->
+                    val isToday = day == todayDay
+                    val dayLessons = lessonsByDay[day].orEmpty()
+                    Column(
+                        modifier = Modifier
+                            .width(columnWidth)
+                            .background(
+                                color = if (isToday) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+                                } else {
+                                    Color.Transparent
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                            ),
                     ) {
-                        Text(
-                            text = dayLabel(day, context),
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (isToday) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                        )
-                    }
-                    slotStarts.forEach { start ->
-                        val matches = dayLessons.filter { lesson -> lesson.startTime == start }
-                        WeekGridCell(
-                            lessons = matches,
-                            onLongPressLesson = onLongPressLesson,
-                        )
+                        Box(
+                            modifier = Modifier.size(width = columnWidth, height = WeekGridHeaderHeight),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = dayLabel(day, context),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (isToday) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        }
+                        slotStarts.forEach { start ->
+                            val matches = dayLessons.filter { lesson -> lesson.startTime == start }
+                            WeekGridCell(
+                                lessons = matches,
+                                columnWidth = columnWidth,
+                                onLongPressLesson = onLongPressLesson,
+                            )
+                        }
                     }
                 }
             }
@@ -531,13 +558,14 @@ private fun WeekGridBoard(
 @Composable
 private fun WeekGridCell(
     lessons: List<LessonUi>,
+    columnWidth: Dp,
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
     Box(
         modifier = Modifier
-            .size(width = WeekGridColumnWidth, height = WeekGridRowHeight)
-            .padding(horizontal = 3.dp, vertical = 3.dp),
+            .size(width = columnWidth, height = WeekGridRowHeight)
+            .padding(4.dp),
     ) {
         val lesson = lessons.firstOrNull()
         if (lesson == null) {
