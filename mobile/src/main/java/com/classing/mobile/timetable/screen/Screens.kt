@@ -1594,7 +1594,7 @@ fun MobileTimetableScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .height(82.dp),
+                        .heightIn(min = 82.dp),
                     containerColor = Color.Transparent,
                     tonalElevation = 0.dp,
                 ) {

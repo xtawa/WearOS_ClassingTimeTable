@@ -603,7 +603,7 @@ private fun WeekGridCell(
                             onLongPress = { onLongPressLesson(lesson) },
                         )
                     }
-                    .padding(horizontal = 7.dp, vertical = 6.dp),
+                    .padding(6.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
