@@ -1,0 +1,49 @@
+name: Harden layout
+
+on:
+  push:
+    branches: [redesign/dark-only-ui]
+    paths:
+      - tools/patch_layout2.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harden-layout
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: redesign/dark-only-ui
+      - name: Apply patch
+        run: |
+          set -euo pipefail
+          python3 tools/patch_layout2.py
+      - name: Verify hashes
+        run: |
+          set -euo pipefail
+          base=mobile/src/main/java/com/classing/mobile/timetable/screen
+          screens_target=bd8a49cadbc4be82e7e7f19cfcd570d0cbebfbcd
+          layers_target=ea2abb7d9061a83f573789a0306b6cdcf9d12732
+          screens_actual=$(git hash-object $base/Screens.kt)
+          layers_actual=$(git hash-object $base/MobileLayersMain.kt)
+          echo "screens target=$screens_target actual=$screens_actual"
+          echo "layers  target=$layers_target actual=$layers_actual"
+          test "$screens_actual" = "$screens_target"
+          test "$layers_actual" = "$layers_target"
+      - name: Commit
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "no changes to commit"
+            exit 0
+          fi
+          git config user.name "Xihao Zhang"
+          git config user.email "zeromostia@gmail.com"
+          git commit -am "redesign: let the bottom bar grow with font scale and snap grid cell padding"
+          git push origin HEAD:redesign/dark-only-ui
