@@ -14,14 +14,14 @@
 | Phase | Status | Notes |
 |---|---|---|
 | Design tokens and Theme | Implemented | Classing light/dark palette, type, shape, spacing, motion, edge-to-edge entry and persisted System/Light/Dark appearance preference |
-| Home components | Implemented, build verification pending | Primary course island, timeline, ambient field and AI prompt |
-| Home static states | Implemented, build verification pending | Upcoming, In class, Break, Finished and No classes |
+| Home components | Implemented, CI verified | Primary course island, timeline, ambient field and AI prompt |
+| Home static states | Implemented, CI verified | Upcoming, In class, Break, Finished and No classes |
 | Home motion | Implemented with current Compose APIs | Ambient state transition, stable course island reflow, progress animation, AI focus compression and prompt expansion |
-| Timetable | Implemented, build verification pending | Selected-day context strip, summary island, effective occurrence timeline, directional date transitions, empty/setup states and calendar/edit handoffs |
-| Course Detail | Implemented, build verification pending | Occurrence-specific immersive destination, live status/progress, source-aware back navigation and existing scoped editor handoff |
-| Schedule Changes | Implemented, build verification pending | Exception history, moved/cancelled/added comparison cards, bounded filters and empty state |
-| AI Assistant UI | Implemented, build verification pending | Home query handoff, contextual anchor, in-place processing, result islands, quick prompts, model/history controls and existing API/account integration |
-| Settings and secondary navigation | Implemented, ongoing QA | Contextual headers, grouped information islands, source-aware back behavior, Appearance, account, import, reminder, sync and About routes without a persistent app bar or bottom navigation |
+| Timetable | Implemented, CI verified | Selected-day context strip, summary island, effective occurrence timeline, directional date transitions, empty/setup states and calendar/edit handoffs |
+| Course Detail | Implemented, CI verified | Occurrence-specific immersive destination, live status/progress, source-aware back navigation and existing scoped editor handoff |
+| Schedule Changes | Implemented, CI verified | Exception history, moved/cancelled/added comparison cards, bounded filters and empty state |
+| AI Assistant UI | Implemented, CI verified | Home query handoff, contextual anchor, in-place processing, result islands, quick prompts, model/history controls and existing API/account integration |
+| Settings and secondary navigation | Implemented, CI verified | Contextual headers, grouped information islands, source-aware back behavior, Appearance, account, import, reminder, sync and About routes without a persistent app bar or bottom navigation |
 | Responsive and accessibility review | Implemented statically, screenshot review pending | 360/390 dp, light/dark and large-font previews across core screens and Settings; large-font layout adaptations, edge-to-edge insets, semantic headings/progress/live regions and 48 dp actions |
 
 ## Implementation conflicts
@@ -31,6 +31,7 @@
 - **Design requirement:** build and render each major screen before progressing.
 - **Environment limitation:** Google Maven is unreachable and the environment has no cached `com.android.tools.build:gradle:8.5.0` artifact.
 - **Current handling:** local code receives static syntax and diff checks. GitHub Actions provides clean Android compilation, unit-test, lint and release-build verification after each pushed batch. No local Preview screenshot result is claimed.
+- **Latest verification:** Android CI run 120 and Release hardening run 62 completed successfully for PR #26 head `c7e3b6d`.
 - **Required follow-up:** render and compare Compose Preview screenshots in an Android Studio or screenshot-test environment with the required Android/Compose artifacts available.
 
 ### Dynamic color blend

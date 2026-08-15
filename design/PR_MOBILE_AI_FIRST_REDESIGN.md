@@ -71,7 +71,6 @@ Not attached from this environment. The local runner cannot resolve the Android 
 
 ## Pending work
 
-- Complete the current GitHub Actions verification pass after the Appearance preview wiring fix.
 - Render every major Preview and perform screenshot comparison/correction in an Android Studio or screenshot-test environment.
 - Finish locale extraction for remaining executable-design copy.
 - Validate a controlled Compose upgrade before cross-screen shared bounds.
