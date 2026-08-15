@@ -485,6 +485,17 @@
     <string name="settings_account_desc">管理 Classing 课程表账户。</string>
     <string name="settings_ask_classing_title">问问 Classing</string>
     <string name="settings_ask_classing_desc">询问课程、空闲时间和临时调课等日程问题。</string>
+    <string name="settings_appearance_title">外观</string>
+    <string name="settings_appearance_desc">选择 Classing 如何跟随设备主题与配色。</string>
+    <string name="settings_theme_mode_title">主题</string>
+    <string name="settings_theme_mode_desc">跟随系统设置，或让 Classing 始终使用亮色或深色。</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">亮色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_dynamic_color_title">系统配色</string>
+    <string name="settings_dynamic_color_desc">在支持的 Android 设备上使用系统配色呈现 Classing 界面。</string>
+    <string name="settings_appearance_preview_title">预览</string>
+    <string name="settings_appearance_preview_body">更改会立即应用到主页、课程表、设置和弹层。</string>
     <string name="account_status_title">账户状态</string>
     <string name="account_not_logged_in">未登录</string>
     <string name="account_signed_in_as">已登录：%1$s</string>

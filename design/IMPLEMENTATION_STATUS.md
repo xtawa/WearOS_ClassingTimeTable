@@ -6,14 +6,14 @@
 - Design source: `design/`
 - Executable UI source: `mobile/src/main/java/com/xtawa/classingtime/ui/`
 - Production adapters: `screen/MobileDashboardLayer.kt`, `screen/MobileLayersMain.kt`
-- Local commits: complete on `ai/ui/mobile-ai-first-redesign`
-- GitHub publish: branch uploaded through the connected GitHub app; draft PR prepared for review
+- Local commits: active on `ai/ui/mobile-ai-first-redesign`
+- GitHub publish: branch is tracked by pull request #26; each coherent UI batch is pushed to the same review branch
 
 ## Phase status
 
 | Phase | Status | Notes |
 |---|---|---|
-| Design tokens and Theme | Implemented, build verification pending | Classing light/dark palette, type, shape, spacing, motion and edge-to-edge entry |
+| Design tokens and Theme | Implemented | Classing light/dark palette, type, shape, spacing, motion, edge-to-edge entry and persisted System/Light/Dark appearance preference |
 | Home components | Implemented, build verification pending | Primary course island, timeline, ambient field and AI prompt |
 | Home static states | Implemented, build verification pending | Upcoming, In class, Break, Finished and No classes |
 | Home motion | Implemented with current Compose APIs | Ambient state transition, stable course island reflow, progress animation, AI focus compression and prompt expansion |
@@ -21,16 +21,24 @@
 | Course Detail | Implemented, build verification pending | Occurrence-specific immersive destination, live status/progress, source-aware back navigation and existing scoped editor handoff |
 | Schedule Changes | Implemented, build verification pending | Exception history, moved/cancelled/added comparison cards, bounded filters and empty state |
 | AI Assistant UI | Implemented, build verification pending | Home query handoff, contextual anchor, in-place processing, result islands, quick prompts, model/history controls and existing API/account integration |
-| Responsive and accessibility review | Implemented statically, screenshot review pending | 360/390 dp, dark and 200% font previews across core screens; large-font layout adaptations, edge-to-edge insets, semantic headings/progress/live regions and 48 dp actions |
+| Settings and secondary navigation | Implemented, ongoing QA | Contextual headers, grouped information islands, source-aware back behavior, Appearance, account, import, reminder, sync and About routes without a persistent app bar or bottom navigation |
+| Responsive and accessibility review | Implemented statically, screenshot review pending | 360/390 dp, light/dark and large-font previews across core screens and Settings; large-font layout adaptations, edge-to-edge insets, semantic headings/progress/live regions and 48 dp actions |
 
 ## Implementation conflicts
 
-### Build and screenshot verification unavailable
+### Local build and screenshot verification unavailable
 
 - **Design requirement:** build and render each major screen before progressing.
 - **Environment limitation:** Google Maven is unreachable and the environment has no cached `com.android.tools.build:gradle:8.5.0` artifact.
-- **Current handling:** code receives static syntax and diff checks only. No build, Preview render or screenshot result is claimed.
-- **Required follow-up:** rerun `:mobile:assembleDebug`, unit tests and Preview screenshot validation in a network-enabled Android build environment.
+- **Current handling:** local code receives static syntax and diff checks. GitHub Actions provides clean Android compilation, unit-test, lint and release-build verification after each pushed batch. No local Preview screenshot result is claimed.
+- **Required follow-up:** render and compare Compose Preview screenshots in an Android Studio or screenshot-test environment with the required Android/Compose artifacts available.
+
+### Dynamic color blend
+
+- **Design requirement:** dynamic color uses a controlled Blend and preserves Classing warning, success and course identity roles.
+- **Current Compose limitation:** Material 3 dynamic schemes replace the full color scheme rather than exposing a semantic partial-blend primitive.
+- **Current handling:** Appearance exposes an explicit opt-in **System color** setting and keeps it off by default. Course identity colors remain explicit; the baseline Classing light/dark palettes remain the default.
+- **Recommended follow-up:** add a tested role-by-role blend function before changing the default or describing the setting as Classing Blend.
 
 ### Shared transition API version
 

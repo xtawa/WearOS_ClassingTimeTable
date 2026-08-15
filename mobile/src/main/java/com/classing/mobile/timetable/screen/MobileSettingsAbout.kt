@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
@@ -124,7 +125,6 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.xtawa.classingtime.ui.components.ClassingActionRow
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
-import com.xtawa.classingtime.ui.components.ClassingPageBackground
 import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import com.xtawa.classingtime.ui.components.ClassingSectionLabel
 import com.xtawa.classingtime.ui.theme.ClassingRadii
@@ -136,6 +136,7 @@ internal fun SettingsLayer(
     onBack: () -> Unit,
     onOpenAccountPage: () -> Unit,
     onOpenAskAiPage: () -> Unit,
+    onOpenAppearancePage: () -> Unit,
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
@@ -145,16 +146,15 @@ internal fun SettingsLayer(
     onClearAllSchedules: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
-    ClassingPageBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .padding(horizontal = ClassingSpacing.referenceScreenInset)
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.lg),
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.lg),
+    ) {
             ClassingPageHeader(
                 title = stringResource(R.string.settings_title),
                 eyebrow = "Classing",
@@ -191,6 +191,15 @@ internal fun SettingsLayer(
                     title = stringResource(R.string.settings_ask_classing_title),
                     desc = stringResource(R.string.settings_ask_classing_desc),
                     onClick = onOpenAskAiPage,
+                )
+            }
+
+            SettingsCategoryIsland(label = stringResource(R.string.settings_appearance_title)) {
+                SettingsCategoryAction(
+                    icon = Icons.Filled.Palette,
+                    title = stringResource(R.string.settings_appearance_title),
+                    desc = stringResource(R.string.settings_appearance_desc),
+                    onClick = onOpenAppearancePage,
                 )
             }
 
@@ -257,8 +266,7 @@ internal fun SettingsLayer(
                     Text(stringResource(R.string.settings_danger_clear_button))
                 }
             }
-            Spacer(Modifier.height(ClassingSpacing.xl))
-        }
+        Spacer(Modifier.height(ClassingSpacing.xl))
     }
 }
 
@@ -335,10 +343,10 @@ internal fun BackupRestoreSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_backup_title),
@@ -353,19 +361,19 @@ internal fun BackupRestoreSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Button(
                         onClick = onExportBackup,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(stringResource(R.string.settings_backup_button))
                     }
                     Button(
                         onClick = onRestoreBackup,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -386,8 +394,8 @@ internal fun BackupRestoreSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(
                     text = stringResource(R.string.settings_snapshot_title),
@@ -406,7 +414,7 @@ internal fun BackupRestoreSettingsPage(
                 Button(
                     onClick = onUndoLatest,
                     enabled = latestSnapshot != null,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) {
                     Text(stringResource(R.string.settings_snapshot_undo_button))
                 }
@@ -478,10 +486,10 @@ internal fun WeekModeSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_week_mode_title),
@@ -492,7 +500,7 @@ internal fun WeekModeSettingsPage(
 
         SettingsPageIntro(stringResource(R.string.settings_week_mode_desc))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
             FilterChip(
                 selected = weekNumberMode == WeekNumberMode.NATURAL,
                 onClick = { onWeekNumberModeChange(WeekNumberMode.NATURAL) },
@@ -517,15 +525,15 @@ internal fun WeekModeSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(
                     text = stringResource(R.string.settings_week_start_day_title),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY).forEach { day ->
                         FilterChip(
                             selected = weekStartDay == day,
@@ -542,9 +550,9 @@ internal fun WeekModeSettingsPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(ClassingSpacing.lg),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Text(
                         text = stringResource(R.string.settings_current_week_badge),
@@ -566,7 +574,7 @@ internal fun WeekModeSettingsPage(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 Card(
                     modifier = Modifier.weight(1f),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -574,7 +582,7 @@ internal fun WeekModeSettingsPage(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(ClassingSpacing.md),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(
@@ -603,7 +611,7 @@ internal fun WeekModeSettingsPage(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(ClassingSpacing.md),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -619,7 +627,7 @@ internal fun WeekModeSettingsPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(ClassingSpacing.md),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
@@ -657,10 +665,10 @@ internal fun ReminderKeepAliveSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_reminder_keepalive_title),
@@ -683,7 +691,7 @@ internal fun ReminderKeepAliveSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
@@ -702,14 +710,14 @@ internal fun ReminderKeepAliveSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                 text = stringResource(R.string.keepalive_level_title),
                     fontWeight = FontWeight.SemiBold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     FilterChip(
                         selected = keepAliveLevel == KeepAliveLevel.ECO,
                         onClick = { onKeepAliveLevelChange(KeepAliveLevel.ECO) },
@@ -733,12 +741,12 @@ internal fun ReminderKeepAliveSettingsPage(
                 )
                 Button(
                     onClick = onRefreshKeepAliveStatus,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) { Text(stringResource(R.string.keepalive_refresh_status)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Button(
                         onClick = onOpenBatteryOptimizationSettings,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -746,7 +754,7 @@ internal fun ReminderKeepAliveSettingsPage(
                 ) { Text(stringResource(R.string.keepalive_battery_whitelist)) }
                     Button(
                         onClick = onOpenExactAlarmSettings,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -801,10 +809,10 @@ internal fun SyncCommunicationSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_sync_comm_title),
@@ -833,7 +841,7 @@ internal fun SyncCommunicationSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (devModeEnabled) {
@@ -875,20 +883,20 @@ internal fun SyncCommunicationSettingsPage(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onSyncWearNow, shape = RoundedCornerShape(999.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
+                    Button(onClick = onSyncWearNow, shape = RoundedCornerShape(ClassingRadii.pill)) {
                         Text(stringResource(R.string.settings_sync_diag_sync_wear))
                     }
-                    Button(onClick = onSyncCloudNow, shape = RoundedCornerShape(999.dp)) {
+                    Button(onClick = onSyncCloudNow, shape = RoundedCornerShape(ClassingRadii.pill)) {
                         Text(stringResource(R.string.settings_sync_diag_sync_cloud))
                     }
                 }
                 if (devModeEnabled) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onRefreshWearStatus, shape = RoundedCornerShape(999.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
+                        Button(onClick = onRefreshWearStatus, shape = RoundedCornerShape(ClassingRadii.pill)) {
                             Text(stringResource(R.string.settings_sync_diag_refresh_wear))
                         }
-                        Button(onClick = onTestCloudConnection, shape = RoundedCornerShape(999.dp)) {
+                        Button(onClick = onTestCloudConnection, shape = RoundedCornerShape(ClassingRadii.pill)) {
                             Text(stringResource(R.string.settings_sync_diag_test_cloud))
                         }
                     }
@@ -917,10 +925,10 @@ internal fun WearCommunicationSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_wear_comm_title),
@@ -935,15 +943,15 @@ internal fun WearCommunicationSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(
                     text = stringResource(R.string.settings_wear_sync_mode_label),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     FilterChip(
                         selected = wearSyncMode == WearSyncMode.AUTO,
                         onClick = { onWearSyncModeChange(WearSyncMode.AUTO) },
@@ -981,8 +989,8 @@ internal fun WearCommunicationSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
@@ -1008,17 +1016,17 @@ internal fun WearCommunicationSettingsPage(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Button(
                         onClick = onRefreshWearStatus,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(stringResource(R.string.settings_wear_refresh_button))
                     }
                     Button(
                         onClick = onManualWearSync,
                         enabled = !wearSyncInProgress,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(
                             if (wearSyncInProgress) {
@@ -1088,10 +1096,10 @@ internal fun CloudSyncSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_cloud_sync_title),
@@ -1118,7 +1126,7 @@ internal fun CloudSyncSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
@@ -1126,7 +1134,7 @@ internal fun CloudSyncSettingsPage(
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     FilterChip(
                         selected = provider == CloudProviderUi.WEBDAV,
                         onClick = { onProviderChange(CloudProviderUi.WEBDAV) },
@@ -1193,18 +1201,18 @@ internal fun CloudSyncSettingsPage(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                         Button(
                             onClick = onConnectDrive,
                             enabled = !syncInProgress,
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                         ) {
                             Text(stringResource(R.string.settings_cloud_sync_drive_connect))
                         }
                         Button(
                             onClick = onDisconnectDrive,
                             enabled = !syncInProgress && driveConnected,
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
                                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -1235,7 +1243,7 @@ internal fun CloudSyncSettingsPage(
                     if (officialLocked) {
                         Button(
                             onClick = onOpenAccountPage,
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                         ) {
                             Text(stringResource(R.string.official_cloud_open_account))
                         }
@@ -1272,7 +1280,7 @@ internal fun CloudSyncSettingsPage(
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                         OfficialSyncFrequency.entries.forEach { frequency ->
                             FilterChip(
                                 selected = officialSyncFrequency == frequency,
@@ -1293,18 +1301,18 @@ internal fun CloudSyncSettingsPage(
                         }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Button(
                         onClick = onSave,
                         enabled = !syncInProgress && !officialLocked,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(stringResource(R.string.settings_cloud_sync_save))
                     }
                     Button(
                         onClick = onTestConnection,
                         enabled = !syncInProgress && !officialLocked,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -1320,8 +1328,8 @@ internal fun CloudSyncSettingsPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(
                     text = stringResource(R.string.settings_cloud_sync_last_sync, lastSyncedText),
@@ -1341,7 +1349,7 @@ internal fun CloudSyncSettingsPage(
                 Button(
                     onClick = onSyncNow,
                     enabled = !syncInProgress && !officialLocked,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) {
                     Text(
                         if (syncInProgress) {
@@ -1356,8 +1364,8 @@ internal fun CloudSyncSettingsPage(
         if (devModeEnabled && recentChanges.isNotEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Text(stringResource(R.string.settings_cloud_sync_recent_changes), style = MaterialTheme.typography.titleSmall)
                     recentChanges.take(20).forEach { change ->
@@ -1440,10 +1448,10 @@ internal fun AccountSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_account_title),
@@ -1454,8 +1462,8 @@ internal fun AccountSettingsPage(
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_status_title), fontWeight = FontWeight.SemiBold)
                 Text(
@@ -1503,11 +1511,11 @@ internal fun AccountSettingsPage(
                         color = MaterialTheme.colorScheme.tertiary,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onRefresh, enabled = !busy, shape = RoundedCornerShape(999.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
+                    Button(onClick = onRefresh, enabled = !busy, shape = RoundedCornerShape(ClassingRadii.pill)) {
                         Text(stringResource(R.string.common_refresh))
                     }
-                    Button(onClick = onLogout, enabled = !busy && accountSummary.userId.isNotBlank(), shape = RoundedCornerShape(999.dp)) {
+                    Button(onClick = onLogout, enabled = !busy && accountSummary.userId.isNotBlank(), shape = RoundedCornerShape(ClassingRadii.pill)) {
                         Text(stringResource(R.string.account_logout))
                     }
                 }
@@ -1520,7 +1528,7 @@ internal fun AccountSettingsPage(
                     Button(
                         onClick = { uriHandler.openUri(AccountApiClient.BASE_URL + "/?view=membership") },
                         enabled = !busy,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) { Text(stringResource(R.string.account_open_membership)) }
                 }
             }
@@ -1528,8 +1536,8 @@ internal fun AccountSettingsPage(
 
         if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_ai_quota_title), fontWeight = FontWeight.SemiBold)
                 aiUsage?.let { usage ->
@@ -1553,8 +1561,8 @@ internal fun AccountSettingsPage(
 
         if (accountSummary.userId.isBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_login), fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
@@ -1589,7 +1597,7 @@ internal fun AccountSettingsPage(
                 Button(
                     onClick = { onLogin(identifier, password) },
                     enabled = !busy && loginLockSeconds <= 0 && identifier.isNotBlank() && password.isNotBlank() && loginConsentAccepted && legalLinksReady,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) {
                     Text(
                         if (loginLockSeconds > 0) stringResource(
@@ -1599,7 +1607,7 @@ internal fun AccountSettingsPage(
                         ) else stringResource(R.string.account_login),
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     TextButton(onClick = onOpenRegister, enabled = !busy) {
                         Text(stringResource(R.string.account_register))
                     }
@@ -1612,8 +1620,8 @@ internal fun AccountSettingsPage(
 
         if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_wear_qr_title), fontWeight = FontWeight.SemiBold)
                 Text(
@@ -1638,7 +1646,7 @@ internal fun AccountSettingsPage(
                             }
                     },
                     enabled = !busy,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) {
                     Text(stringResource(R.string.account_wear_qr_scan))
                 }
@@ -1650,8 +1658,8 @@ internal fun AccountSettingsPage(
 
         if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_delete_title), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                 Text(stringResource(R.string.account_delete_desc), style = MaterialTheme.typography.bodySmall)
@@ -1675,7 +1683,7 @@ internal fun AccountSettingsPage(
                 Button(
                     onClick = { showDeleteConfirmDialog = true },
                     enabled = !busy && deletePassword.isNotBlank() && (deleteConfirmText == "DELETE" || deleteConfirmText == "注销账号"),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError,
@@ -1688,15 +1696,15 @@ internal fun AccountSettingsPage(
 
         if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_membership_code), fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_redeem_code)) }, singleLine = true)
                 Button(
                     onClick = { onRedeem(redeemCode) },
                     enabled = !busy && accountSummary.userId.isNotBlank() && isValidRedeemCode(redeemCode),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) {
                     Text(stringResource(R.string.account_redeem))
                 }
@@ -1706,6 +1714,8 @@ internal fun AccountSettingsPage(
 
     if (showDeleteConfirmDialog) {
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = { showDeleteConfirmDialog = false },
             title = { Text(stringResource(R.string.account_delete_dialog_title)) },
             text = { Text(stringResource(R.string.account_delete_dialog_message)) },
@@ -1729,6 +1739,8 @@ internal fun AccountSettingsPage(
 
     pendingWearAuthorizationId?.let { authorizationId ->
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = { pendingWearAuthorizationId = null },
             title = { Text(stringResource(R.string.account_wear_qr_confirm_title)) },
             text = { Text(stringResource(R.string.account_wear_qr_confirm_message)) },
@@ -1767,9 +1779,9 @@ internal fun AccountEmailChangePage(
     var password by remember { mutableStateOf("") }
     var code by remember(requestId) { mutableStateOf("") }
     Column(
-        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.account_change_email),
@@ -1778,7 +1790,7 @@ internal fun AccountEmailChangePage(
             modifier = Modifier.fillMaxWidth(),
         )
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md), verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -1798,7 +1810,7 @@ internal fun AccountEmailChangePage(
                 Button(
                     onClick = { onRequest(email, password) },
                     enabled = !busy && email.isNotBlank() && password.isNotBlank(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 ) { Text(stringResource(R.string.account_email_change_send)) }
                 if (requestId.isNotBlank()) {
                     OutlinedTextField(
@@ -1812,7 +1824,7 @@ internal fun AccountEmailChangePage(
                     Button(
                         onClick = { onConfirm(code) },
                         enabled = !busy && !verificationLocked && code.length == 6,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) { Text(stringResource(R.string.account_email_change_confirm)) }
                 }
                 if (statusMessage.isNotBlank()) {
@@ -1848,9 +1860,9 @@ internal fun AccountRegisterPage(
         }
     }
     Column(
-        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.account_register),
@@ -1860,8 +1872,8 @@ internal fun AccountRegisterPage(
         )
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(stringResource(R.string.account_register_desc), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(value = username, onValueChange = { username = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_username)) }, singleLine = true)
@@ -1889,7 +1901,7 @@ internal fun AccountRegisterPage(
                             onRequestVerification(username.trim(), email.trim(), password)
                         },
                         enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password) && consentAccepted && legalLinksReady,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(stringResource(R.string.account_send_verification))
                     }
@@ -1905,7 +1917,7 @@ internal fun AccountRegisterPage(
                     Button(
                         onClick = { onConfirmVerification(verificationCode) },
                         enabled = !busy && isValidVerificationCode(verificationCode) && consentAccepted && legalLinksReady,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(stringResource(R.string.account_confirm_registration))
                     }
@@ -1941,7 +1953,7 @@ private fun LegalAgreementConsentRow(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
         ) {
             Checkbox(checked = checked, onCheckedChange = onCheckedChange)
             Text(
@@ -1999,6 +2011,8 @@ internal fun TurnstileVerificationDialog(
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.account_turnstile_title)) },
         text = {
@@ -2056,9 +2070,9 @@ internal fun AccountPasswordResetPage(
         }
     }
     Column(
-        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.password_reset_title),
@@ -2067,13 +2081,13 @@ internal fun AccountPasswordResetPage(
             modifier = Modifier.fillMaxWidth(),
         )
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md), verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 Text(stringResource(R.string.password_reset_request_desc), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_email)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true)
                 Button(onClick = {
                     requestCooldownSeconds = 60
                     onRequestPasswordReset(email.trim())
-                }, enabled = !busy && requestCooldownSeconds == 0 && isValidEmail(email), shape = RoundedCornerShape(999.dp)) {
+                }, enabled = !busy && requestCooldownSeconds == 0 && isValidEmail(email), shape = RoundedCornerShape(ClassingRadii.pill)) {
                     Text(
                         if (requestCooldownSeconds > 0) stringResource(R.string.password_reset_send_countdown, requestCooldownSeconds)
                         else stringResource(R.string.password_reset_send_email)
@@ -2084,7 +2098,7 @@ internal fun AccountPasswordResetPage(
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
-                Button(onClick = { onConfirmPasswordReset(token.trim(), newPassword) }, enabled = !busy && token.isNotBlank() && isValidPassword(newPassword), shape = RoundedCornerShape(999.dp)) {
+                Button(onClick = { onConfirmPasswordReset(token.trim(), newPassword) }, enabled = !busy && token.isNotBlank() && isValidPassword(newPassword), shape = RoundedCornerShape(ClassingRadii.pill)) {
                     Text(stringResource(R.string.password_reset_confirm))
                 }
             }
@@ -2110,10 +2124,10 @@ internal fun DailyBriefingSettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_daily_briefing_title),
@@ -2132,11 +2146,11 @@ internal fun DailyBriefingSettingsPage(
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(stringResource(R.string.daily_briefing_channel_title), fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     DailyBriefingChannel.entries.forEach { item ->
                         val disabled = !loggedIn && item == DailyBriefingChannel.EMAIL
                         FilterChip(
@@ -2164,7 +2178,7 @@ internal fun DailyBriefingSettingsPage(
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
-                Button(onClick = onSave, shape = RoundedCornerShape(999.dp)) {
+                Button(onClick = onSave, shape = RoundedCornerShape(ClassingRadii.pill)) {
                     Text(stringResource(R.string.daily_briefing_save))
                 }
             }
@@ -2308,7 +2322,7 @@ internal fun AboutLayer(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Box(
                         modifier = Modifier
@@ -2340,7 +2354,7 @@ internal fun AboutLayer(
                     )
                     Surface(
                         color = MaterialTheme.colorScheme.inverseSurface,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingRadii.pill),
                     ) {
                         Text(
                             text = stringResource(R.string.settings_about_version_value, versionName),
@@ -2367,7 +2381,7 @@ internal fun AboutLayer(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(stringResource(R.string.settings_dev_mode_details_title), fontWeight = FontWeight.SemiBold)
@@ -2391,7 +2405,7 @@ internal fun AboutLayer(
                 Column {
 					Column(
 						modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-						verticalArrangement = Arrangement.spacedBy(8.dp),
+						verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
 					) {
 						Text(
 							text = stringResource(R.string.settings_about_update_channel),
@@ -2399,7 +2413,7 @@ internal fun AboutLayer(
 							fontWeight = FontWeight.Bold,
 							color = MaterialTheme.colorScheme.onSurfaceVariant,
 						)
-						Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+						Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
 							ReleaseChannel.entries.forEach { channel ->
 								FilterChip(
 									selected = releaseChannel == channel,
@@ -2479,7 +2493,7 @@ internal fun AboutLayer(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Text(
                     text = stringResource(R.string.settings_about_footer_copyright, Year.now().value),
@@ -2493,6 +2507,8 @@ internal fun AboutLayer(
 
     infoDialogTitle?.let { title ->
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = { infoDialogTitle = null },
             title = { Text(title) },
             text = {
@@ -2517,6 +2533,8 @@ internal fun AboutLayer(
             0f
         }
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = { if (!updateDownloading) showUpdateDialog = false },
             title = { Text(stringResource(R.string.settings_about_check_update_title)) },
             text = {
@@ -2624,6 +2642,8 @@ internal fun AboutLayer(
 
     if (showWechatDialog) {
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = { showWechatDialog = false },
             title = { Text(stringResource(R.string.settings_about_wechat_support)) },
             text = {

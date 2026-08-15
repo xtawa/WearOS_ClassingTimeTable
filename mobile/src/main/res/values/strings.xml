@@ -485,6 +485,17 @@
     <string name="settings_account_desc">Manage your Classing Timetable account.</string>
     <string name="settings_ask_classing_title">Ask Classing</string>
     <string name="settings_ask_classing_desc">Ask contextual questions about classes, free time, and schedule changes.</string>
+    <string name="settings_appearance_title">Appearance</string>
+    <string name="settings_appearance_desc">Choose how Classing follows your device theme and color.</string>
+    <string name="settings_theme_mode_title">Theme</string>
+    <string name="settings_theme_mode_desc">Use your system setting or keep Classing consistently light or dark.</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color_title">System color</string>
+    <string name="settings_dynamic_color_desc">Use supported Android system colors across Classing surfaces.</string>
+    <string name="settings_appearance_preview_title">Preview</string>
+    <string name="settings_appearance_preview_body">Changes apply immediately across Home, timetable, settings, and dialogs.</string>
     <string name="account_status_title">Account status</string>
     <string name="account_not_logged_in">Not signed in</string>
     <string name="account_signed_in_as">Signed in as %1$s</string>

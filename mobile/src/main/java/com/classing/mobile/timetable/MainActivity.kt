@@ -9,11 +9,19 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.platform.LocalContext
 import com.xtawa.classingtime.screen.MobileTimetableScreen
 import com.xtawa.classingtime.sync.CloudSyncEngine
 import com.xtawa.classingtime.ui.theme.ClassingTheme
+import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
+import com.xtawa.classingtime.ui.theme.ClassingAppearanceStore
+import com.xtawa.classingtime.ui.theme.ClassingThemeMode
 
 class MainActivity : ComponentActivity() {
     internal val sharedImportUri = mutableStateOf<Uri?>(null)
@@ -78,9 +86,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MobileApp() {
-    ClassingTheme {
+    val context = LocalContext.current
+    var appearance by remember { mutableStateOf(ClassingAppearanceStore.load(context)) }
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (appearance.themeMode) {
+        ClassingThemeMode.System -> systemDark
+        ClassingThemeMode.Light -> false
+        ClassingThemeMode.Dark -> true
+    }
+    fun updateAppearance(state: ClassingAppearanceState) {
+        appearance = state
+        ClassingAppearanceStore.save(context, state)
+    }
+    ClassingTheme(
+        darkTheme = darkTheme,
+        dynamicColor = appearance.dynamicColor,
+    ) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            MobileTimetableScreen()
+            MobileTimetableScreen(
+                appearanceState = appearance,
+                onAppearanceStateChange = ::updateAppearance,
+            )
         }
     }
 }

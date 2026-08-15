@@ -119,6 +119,8 @@ internal fun LessonEditDialog(
     var validationMessage by remember(lesson.id) { mutableStateOf<String?>(null) }
 
     AlertDialog(
+        shape = MaterialTheme.shapes.large,
+        containerColor = MaterialTheme.colorScheme.surface,
         onDismissRequest = onDismiss,
         title = {
             Text(

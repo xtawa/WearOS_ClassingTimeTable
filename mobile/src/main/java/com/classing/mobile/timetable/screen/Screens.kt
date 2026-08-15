@@ -160,9 +160,14 @@ import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
 import com.xtawa.classingtime.ui.theme.ClassingMotion
+import com.xtawa.classingtime.ui.components.ClassingPageBackground
+import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
 
 @Composable
-fun MobileTimetableScreen() {
+internal fun MobileTimetableScreen(
+    appearanceState: ClassingAppearanceState,
+    onAppearanceStateChange: (ClassingAppearanceState) -> Unit,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val zoneId = remember { ZoneId.systemDefault() }
@@ -1586,7 +1591,8 @@ fun MobileTimetableScreen() {
             label = "mobile_content_transition",
         ) { destination ->
             when (destination.layer) {
-                MobileLayer.Schedule -> when (destination.scheduleSubview) {
+                MobileLayer.Schedule -> ClassingPageBackground {
+                    when (destination.scheduleSubview) {
                     ScheduleSubview.Timetable -> WeekBoardLayer(
                         contentPadding = innerPadding,
                         visibleDays = visibleDays,
@@ -1700,6 +1706,7 @@ fun MobileTimetableScreen() {
                             scheduleSubviewName = ScheduleSubview.CourseDetail.name
                         },
                     )
+                    }
                 }
 
                 MobileLayer.Dashboard -> DashboardLayer(
@@ -1725,7 +1732,8 @@ fun MobileTimetableScreen() {
                     onOpenSettings = { openSettingsPage(SettingsPage.Main) },
                 )
 
-                MobileLayer.Settings -> when (destination.settingsPage) {
+                MobileLayer.Settings -> ClassingPageBackground {
+                    when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
                     onBack = { handleBackNavigation() },
@@ -1734,6 +1742,9 @@ fun MobileTimetableScreen() {
                     },
                     onOpenAskAiPage = {
                         openSettingsPage(SettingsPage.AskAi)
+                    },
+                    onOpenAppearancePage = {
+                        openSettingsPage(SettingsPage.Appearance)
                     },
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
@@ -1772,6 +1783,13 @@ fun MobileTimetableScreen() {
                     initialQuestion = pendingAssistantQuestion,
                     onBack = { handleBackNavigation() },
                     onOpenAccount = { openSettingsPage(SettingsPage.Account) },
+                )
+
+                SettingsPage.Appearance -> AppearanceSettingsPage(
+                    contentPadding = innerPadding,
+                    state = appearanceState,
+                    onStateChange = onAppearanceStateChange,
+                    onBack = { handleBackNavigation() },
                 )
 
                 SettingsPage.Import -> importContent(innerPadding, destination.showImportJsonPromptPage)
@@ -2689,6 +2707,7 @@ fun MobileTimetableScreen() {
                         persistSettings()
                     },
                 )
+                    }
             }
         }
         }
