@@ -7,7 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.classing.shared.time.nextMinuteDelay
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.screen.LessonUi
 import com.xtawa.classingtime.ui.theme.classingCourseAccent
 import java.time.Duration
@@ -26,6 +28,7 @@ internal fun CourseDetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
 ) {
+    val context = LocalContext.current
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -35,7 +38,7 @@ internal fun CourseDetailScreen(
         }
     }
 
-    val state = remember(lesson, date, now) {
+    val state = remember(lesson, date, now, context) {
         val startAt = LocalDateTime.of(date, lesson.startTime)
         val endAt = LocalDateTime.of(date, lesson.endTime)
         val status = when {
@@ -46,15 +49,23 @@ internal fun CourseDetailScreen(
         val temporalLabel = when (status) {
             CourseDetailStatus.Upcoming -> {
                 val minutes = Duration.between(now, startAt).toMinutes().coerceAtLeast(0L)
-                if (minutes >= 60L) "Starts in ${minutes / 60} h ${minutes % 60} min" else "Starts in $minutes min"
+                if (minutes >= 60L) {
+                    context.getString(
+                        R.string.course_detail_starts_in_hours_minutes,
+                        minutes / 60,
+                        minutes % 60,
+                    )
+                } else {
+                    context.getString(R.string.course_detail_starts_in_minutes, minutes)
+                }
             }
 
             CourseDetailStatus.InClass -> {
                 val minutes = Duration.between(now, endAt).toMinutes().coerceAtLeast(0L)
-                "$minutes minutes remaining"
+                context.getString(R.string.course_detail_minutes_remaining, minutes)
             }
 
-            CourseDetailStatus.Finished -> "Class finished"
+            CourseDetailStatus.Finished -> context.getString(R.string.course_detail_class_finished)
         }
         val progress = if (status == CourseDetailStatus.InClass) {
             val duration = Duration.between(startAt, endAt).seconds.coerceAtLeast(1L)
@@ -72,17 +83,26 @@ internal fun CourseDetailScreen(
             location = lesson.location,
             teacher = lesson.teacher,
             note = lesson.note,
-            recurrenceLabel = buildString {
-                append(lesson.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercaseChar() })
-                append(" · Weeks ")
-                append(lesson.startWeek)
-                append('–')
-                append(lesson.endWeek)
-                if (lesson.weekParity.name != "ALL") {
-                    append(" · ")
-                    append(lesson.weekParity.name.lowercase().replaceFirstChar { it.uppercaseChar() })
-                }
-            },
+            recurrenceLabel = context.getString(
+                R.string.course_detail_recurrence,
+                lesson.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault()),
+                lesson.startWeek,
+                lesson.endWeek,
+                if (lesson.weekParity.name == "ALL") {
+                    ""
+                } else {
+                    context.getString(
+                        R.string.course_detail_recurrence_suffix,
+                        context.getString(
+                            when (lesson.weekParity.name) {
+                                "ODD" -> R.string.week_parity_odd
+                                "EVEN" -> R.string.week_parity_even
+                                else -> R.string.week_parity_all
+                            },
+                        ),
+                    )
+                },
+            ),
             accent = classingCourseAccent(lesson.title),
             status = status,
             temporalLabel = temporalLabel,

@@ -9,19 +9,19 @@ private val assistantPreviewState = AssistantUiState(
     loggedIn = true,
     member = true,
     hasSchedule = true,
-    contextLabel = "Monday · 4 classes · Physics is next",
+    contextLabel = "星期一 · 4 节课 · 下一节是物理",
     question = "",
     sending = false,
     status = "",
     selectedModelId = "fast",
-    models = listOf(AssistantModelUiModel("fast", "Fast", "Short schedule answers")),
+    models = listOf(AssistantModelUiModel("fast", "快速", "课程表简洁回答")),
     conversations = emptyList(),
     messages = listOf(
-        AssistantMessageUiModel("q1", AssistantMessageRole.User, "What's my afternoon like?"),
+        AssistantMessageUiModel("q1", AssistantMessageRole.User, "下午安排怎么样？"),
         AssistantMessageUiModel(
             "a1",
             AssistantMessageRole.Assistant,
-            "You have Physics at 14:10 in A302, followed by English at 15:05 in A205. Your longest free window is 12:05–14:10.",
+            "你 14:10 在 A302 上物理，15:05 在 A205 上英语。最长空闲时间是 12:05–14:10。",
         ),
     ),
 )

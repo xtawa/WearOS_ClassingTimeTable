@@ -2,6 +2,8 @@ package com.xtawa.classingtime.sync
 
 import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
+import com.classing.shared.model.MAX_SCHEDULE_WEEK
+import com.classing.shared.model.MIN_SCHEDULE_WEEK
 import com.classing.shared.sync.SyncSource
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.account.AccountApiClient
@@ -121,8 +123,14 @@ data class CloudDocument(
                         .put("dayOfWeek", lesson.dayOfWeek)
                         .put("startMinute", lesson.startMinute)
                         .put("endMinute", lesson.endMinute)
-                        .put("startWeek", lesson.startWeek.coerceIn(1, 30))
-                        .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                        .put("startWeek", lesson.startWeek.coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK))
+                        .put(
+                            "endWeek",
+                            lesson.endWeek.coerceIn(
+                                lesson.startWeek.coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK),
+                                MAX_SCHEDULE_WEEK,
+                            ),
+                        )
                         .put("weekParity", lesson.weekParity),
                 )
             }
@@ -149,8 +157,14 @@ data class CloudDocument(
                             .put("dayOfWeek", lesson.dayOfWeek)
                             .put("startMinute", lesson.startMinute)
                             .put("endMinute", lesson.endMinute)
-                            .put("startWeek", lesson.startWeek.coerceIn(1, 30))
-                            .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                            .put("startWeek", lesson.startWeek.coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK))
+                            .put(
+                                "endWeek",
+                                lesson.endWeek.coerceIn(
+                                    lesson.startWeek.coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK),
+                                    MAX_SCHEDULE_WEEK,
+                                ),
+                            )
                             .put("weekParity", lesson.weekParity),
                     )
                 }
@@ -286,7 +300,8 @@ private fun parsePersistedLesson(item: JSONObject?): PersistedLesson? {
     val id = item.optString("id")
     val title = item.optString("title")
     if (id.isBlank() || title.isBlank()) return null
-    val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
+    val startWeek = item.optInt("startWeek", MIN_SCHEDULE_WEEK)
+        .coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK)
     return PersistedLesson(
         id = id,
         title = title,
@@ -297,7 +312,7 @@ private fun parsePersistedLesson(item: JSONObject?): PersistedLesson? {
         startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
         endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
         startWeek = startWeek,
-        endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30),
+        endWeek = item.optInt("endWeek", MAX_SCHEDULE_WEEK).coerceIn(startWeek, MAX_SCHEDULE_WEEK),
         weekParity = item.optString("weekParity", "ALL").uppercase().let {
             if (it == "ODD" || it == "EVEN") it else "ALL"
         },

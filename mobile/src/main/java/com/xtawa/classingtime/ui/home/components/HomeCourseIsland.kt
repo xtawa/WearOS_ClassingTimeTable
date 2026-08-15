@@ -36,10 +36,12 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.home.HomeCourseUiModel
 import com.xtawa.classingtime.ui.home.HomePhase
 import com.xtawa.classingtime.ui.home.HomeUiState
@@ -74,6 +76,7 @@ internal fun HomeCourseIsland(
         animationSpec = tween(ClassingMotion.SharedMorph),
         label = "home_course_accent",
     )
+    val a11yStateDescription = localizedCourseStateDescription(state)
 
     Surface(
         modifier = modifier
@@ -83,7 +86,7 @@ internal fun HomeCourseIsland(
             .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 heading()
-                stateDescription = courseStateDescription(state)
+                stateDescription = a11yStateDescription
             },
         shape = RoundedCornerShape(ClassingRadii.large),
         color = surfaceColor,
@@ -102,7 +105,8 @@ internal fun HomeCourseIsland(
                 CourseIdentity(course = course, phase = state.phase, accent = animatedAccent)
                 if (compact) {
                     Text(
-                        text = course.location?.takeIf(String::isNotBlank) ?: "Room not provided",
+                        text = course.location?.takeIf(String::isNotBlank)
+                            ?: stringResource(R.string.home_room_not_provided),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -153,10 +157,10 @@ private fun CourseIdentity(course: HomeCourseUiModel, phase: HomePhase, accent: 
             ) { targetPhase ->
                 Text(
                     text = when (targetPhase) {
-                        HomePhase.Upcoming -> "NEXT CLASS"
-                        HomePhase.InClass -> "IN CLASS"
-                        HomePhase.Break -> "NEXT"
-                        else -> "CLASS"
+                        HomePhase.Upcoming -> stringResource(R.string.home_next_class)
+                        HomePhase.InClass -> stringResource(R.string.home_in_class)
+                        HomePhase.Break -> stringResource(R.string.home_next)
+                        else -> stringResource(R.string.home_class)
                     },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -190,12 +194,12 @@ private fun CourseIdentity(course: HomeCourseUiModel, phase: HomePhase, accent: 
 @Composable
 private fun UpcomingCourseContent(state: HomeUiState) {
     Text(
-        text = "${state.countdownMinutes ?: 1} min",
+        text = stringResource(R.string.home_time_minutes, state.countdownMinutes ?: 1),
         style = ClassingTimeHeroStyle,
         color = MaterialTheme.colorScheme.onSurface,
     )
     Text(
-        text = "until class starts",
+        text = stringResource(R.string.home_until_class_starts),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -206,12 +210,12 @@ private fun UpcomingCourseContent(state: HomeUiState) {
 private fun InClassCourseContent(state: HomeUiState) {
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
-            text = "${state.remainingMinutes ?: 1} min",
+            text = stringResource(R.string.home_time_minutes, state.remainingMinutes ?: 1),
             style = ClassingTimeHeroStyle,
         )
         Spacer(Modifier.width(ClassingSpacing.xs))
         Text(
-            text = "remaining",
+            text = stringResource(R.string.home_minutes_remaining),
             modifier = Modifier.padding(bottom = ClassingSpacing.xs),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -224,16 +228,16 @@ private fun InClassCourseContent(state: HomeUiState) {
 private fun BreakCourseContent(state: HomeUiState) {
     val minutes = state.breakMinutes ?: 1
     Text(
-        text = if (minutes > 30) "Free until" else "Break",
+        text = stringResource(if (minutes > 30) R.string.home_free_until else R.string.home_break),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(text = "$minutes min", style = ClassingTimeHeroStyle)
+        Text(text = stringResource(R.string.home_time_minutes, minutes), style = ClassingTimeHeroStyle)
         Spacer(Modifier.width(ClassingSpacing.xs))
         if (minutes <= 2) {
             Text(
-                text = "Head to class",
+                text = stringResource(R.string.home_head_to_class),
                 modifier = Modifier.padding(bottom = ClassingSpacing.xs),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
@@ -250,7 +254,8 @@ private fun CourseMetadata(course: HomeCourseUiModel) {
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
-            text = course.location?.takeIf(String::isNotBlank) ?: "Room not provided",
+            text = course.location?.takeIf(String::isNotBlank)
+                ?: stringResource(R.string.home_room_not_provided),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -315,14 +320,16 @@ private fun countdownProgress(minutes: Long?): Float {
     return 1f - (remaining / 30f)
 }
 
-private fun courseStateDescription(state: HomeUiState): String {
+@Composable
+private fun localizedCourseStateDescription(state: HomeUiState): String {
     val course = state.primaryCourse ?: return ""
     val relation = when (state.phase) {
-        HomePhase.Upcoming -> "starts in ${state.countdownMinutes} minutes"
-        HomePhase.InClass -> "in class, ${state.remainingMinutes} minutes remaining"
-        HomePhase.Break -> "next class, starts in ${state.breakMinutes} minutes"
+        HomePhase.Upcoming -> stringResource(R.string.home_state_upcoming, state.countdownMinutes ?: 0)
+        HomePhase.InClass -> stringResource(R.string.home_state_in_class, state.remainingMinutes ?: 0)
+        HomePhase.Break -> stringResource(R.string.home_state_break, state.breakMinutes ?: 0)
         else -> ""
     }
-    val room = course.location?.takeIf(String::isNotBlank) ?: "room not provided"
-    return "${course.title}, $relation, $room"
+    val room = course.location?.takeIf(String::isNotBlank)
+        ?: stringResource(R.string.home_room_not_provided)
+    return stringResource(R.string.home_state_description, course.title, relation, room)
 }

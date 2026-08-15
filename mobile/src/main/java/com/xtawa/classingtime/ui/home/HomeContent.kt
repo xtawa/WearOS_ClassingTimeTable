@@ -42,8 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.home.components.AmbientBackground
 import com.xtawa.classingtime.ui.home.components.HomeAiPrompt
 import com.xtawa.classingtime.ui.home.components.HomeCourseIsland
@@ -155,9 +157,9 @@ private fun GreetingHeader(
     onOpenSettings: () -> Unit,
 ) {
     val greeting = when (state.now.hour) {
-        in 5..11 -> "Good morning"
-        in 12..17 -> "Good afternoon"
-        else -> "Good evening"
+        in 5..11 -> stringResource(R.string.home_greeting_morning)
+        in 12..17 -> stringResource(R.string.home_greeting_afternoon)
+        else -> stringResource(R.string.home_greeting_evening)
     }
     val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(Locale.getDefault())
     Row(
@@ -184,13 +186,13 @@ private fun GreetingHeader(
                 onClick = onOpenTimetable,
                 modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
             ) {
-                Icon(Icons.Filled.CalendarMonth, contentDescription = "Open timetable")
+                Icon(Icons.Filled.CalendarMonth, contentDescription = stringResource(R.string.home_open_timetable))
             }
             IconButton(
                 onClick = onOpenSettings,
                 modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
             ) {
-                Icon(Icons.Filled.Settings, contentDescription = "Open settings")
+                Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.home_open_settings))
             }
         }
     }
@@ -235,12 +237,12 @@ private fun PrimaryHomeIsland(
 private fun FinishedDayIsland(state: HomeUiState, onCourseClick: (HomeCourseUiModel) -> Unit) {
     StateIsland {
         Text(
-            text = "Classes finished",
+            text = stringResource(R.string.home_finished_title),
             style = MaterialTheme.typography.displayLarge,
             modifier = Modifier.semantics { heading() },
         )
         Text(
-            text = "${state.todayCourseCount} classes today",
+            text = stringResource(R.string.home_classes_today, state.todayCourseCount),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -254,15 +256,17 @@ private fun FinishedDayIsland(state: HomeUiState, onCourseClick: (HomeCourseUiMo
 private fun NoClassIsland(state: HomeUiState, onCourseClick: (HomeCourseUiModel) -> Unit) {
     StateIsland {
         Text(
-            text = if (state.hasImportedSchedule) "Your day is open" else "Add your timetable",
+            text = stringResource(
+                if (state.hasImportedSchedule) R.string.home_day_open else R.string.home_add_timetable,
+            ),
             style = MaterialTheme.typography.displayLarge,
             modifier = Modifier.semantics { heading() },
         )
         Text(
             text = if (state.hasImportedSchedule) {
-                "No classes scheduled for today."
+                stringResource(R.string.home_no_classes_today)
             } else {
-                "Import a schedule or add your first class to build today's context."
+                stringResource(R.string.home_import_first_schedule)
             },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -301,9 +305,9 @@ private fun NextAcademicAnchor(course: HomeCourseUiModel, onCourseClick: (HomeCo
         ) {
             Text(
                 text = if (course.date == java.time.LocalDate.now().plusDays(1)) {
-                    "Tomorrow"
+                    stringResource(R.string.home_tomorrow)
                 } else {
-                    course.date.dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }
+                    course.date.format(DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()))
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -320,10 +324,31 @@ private fun NextAcademicAnchor(course: HomeCourseUiModel, onCourseClick: (HomeCo
     }
 }
 
+@Composable
 private fun quickPrompts(phase: HomePhase): List<String> = when (phase) {
-    HomePhase.Upcoming -> listOf("What's next?", "Where is my next class?", "What's my afternoon like?")
-    HomePhase.InClass -> listOf("What's after this?", "Do I have time for lunch?", "Today’s homework")
-    HomePhase.Break -> listOf("How much time do I have?", "Where is my next class?", "Show today")
-    HomePhase.Finished -> listOf("Tomorrow morning", "What homework is due?", "Which day is lightest?")
-    HomePhase.NoClasses -> listOf("Show my week", "When is biology?", "What should I prepare?")
+    HomePhase.Upcoming -> listOf(
+        stringResource(R.string.prompt_whats_next),
+        stringResource(R.string.prompt_next_class_location),
+        stringResource(R.string.prompt_afternoon),
+    )
+    HomePhase.InClass -> listOf(
+        stringResource(R.string.prompt_after_this),
+        stringResource(R.string.prompt_lunch),
+        stringResource(R.string.prompt_today_homework),
+    )
+    HomePhase.Break -> listOf(
+        stringResource(R.string.prompt_free_time),
+        stringResource(R.string.prompt_next_class_location),
+        stringResource(R.string.prompt_show_today),
+    )
+    HomePhase.Finished -> listOf(
+        stringResource(R.string.prompt_tomorrow_morning),
+        stringResource(R.string.prompt_homework_due),
+        stringResource(R.string.prompt_lightest_day),
+    )
+    HomePhase.NoClasses -> listOf(
+        stringResource(R.string.prompt_show_week),
+        stringResource(R.string.prompt_biology),
+        stringResource(R.string.prompt_prepare),
+    )
 }
