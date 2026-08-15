@@ -365,8 +365,15 @@ internal fun MobileTimetableScreen(
     }
 
     fun rebuildScheduleProjection() {
-        val projection = buildScheduleProjection(
+        val projectedBaseLessons = migrateLegacyDefaultWeekRange(
             baseLessons = baseLessons,
+            weekNumberMode = weekNumberMode,
+        )
+        if (projectedBaseLessons != baseLessons) {
+            baseLessons = projectedBaseLessons
+        }
+        val projection = buildScheduleProjection(
+            baseLessons = projectedBaseLessons,
             exceptions = scheduleExceptions,
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
@@ -375,7 +382,7 @@ internal fun MobileTimetableScreen(
         lessons = projection.effectiveLessonsForSync
         currentWeekLessons = projection.currentWeekLessons
         currentWeekLessonsByDay = projection.currentWeekLessonsByDay
-        val displayProjection = buildScheduleDisplayProjection(baseLessons, currentWeekLessons)
+        val displayProjection = buildScheduleDisplayProjection(projectedBaseLessons, currentWeekLessons)
         displayLessons = displayProjection.lessons
         displayLessonsByDay = displayProjection.lessonsByDay
         lastProjectionDate = LocalDate.now()
@@ -494,7 +501,12 @@ internal fun MobileTimetableScreen(
     }
 
     fun appendManualLesson(newLesson: LessonUi) {
-        baseLessons = (baseLessons + newLesson).sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+        val normalizedLesson = migrateLegacyDefaultWeekRange(
+            baseLessons = listOf(newLesson),
+            weekNumberMode = weekNumberMode,
+        ).single()
+        baseLessons = (baseLessons + normalizedLesson)
+            .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
         rebuildScheduleProjection()
         persistScheduleState()
     }
@@ -991,10 +1003,17 @@ internal fun MobileTimetableScreen(
         cloudSyncStatus = settings.cloudLastResult
         cloudLastSyncedAt = settings.cloudLastSyncedAt
 
-        baseLessons = loadedState.baseLessons
+        val migratedBaseLessons = migrateLegacyDefaultWeekRange(
+            baseLessons = loadedState.baseLessons,
+            weekNumberMode = weekNumberMode,
+        )
+        baseLessons = migratedBaseLessons
         scheduleExceptions = loadedState.exceptions
         scheduleSnapshots = loadedState.snapshots
         rebuildScheduleProjection()
+        if (migratedBaseLessons != loadedState.baseLessons) {
+            persistScheduleState()
+        }
         MobilePrefsStore.ensureOnboardingCompletedForLegacyUser(context)
         showOnboarding = !MobilePrefsStore.isOnboardingCompleted(context)
 
@@ -1842,7 +1861,16 @@ internal fun MobileTimetableScreen(
                     onWeekNumberModeChange = { mode ->
                         if (weekNumberMode != mode) {
                             weekNumberMode = mode
+                            val migratedBaseLessons = migrateLegacyDefaultWeekRange(
+                                baseLessons = baseLessons,
+                                weekNumberMode = mode,
+                            )
+                            val migratedWeekRange = migratedBaseLessons != baseLessons
+                            baseLessons = migratedBaseLessons
                             rebuildScheduleProjection()
+                            if (migratedWeekRange) {
+                                persistScheduleState()
+                            }
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
                             requestCloudSync(

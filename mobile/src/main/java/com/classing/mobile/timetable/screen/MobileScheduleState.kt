@@ -76,6 +76,29 @@ internal data class ScheduleDisplayProjection(
 )
 
 /**
+ * Older builds created unrestricted courses as week 1..30. In natural-week
+ * mode that makes newly saved courses disappear after calendar week 30, even
+ * though the user never chose an end week. Expand only that exact legacy
+ * default range; explicit custom ranges and semester ranges remain unchanged.
+ */
+internal fun migrateLegacyDefaultWeekRange(
+    baseLessons: List<LessonUi>,
+    weekNumberMode: WeekNumberMode,
+): List<LessonUi> {
+    if (weekNumberMode != WeekNumberMode.NATURAL) return baseLessons
+    return baseLessons.map { lesson ->
+        if (
+            lesson.startWeek == DEFAULT_START_WEEK &&
+            lesson.endWeek == LEGACY_DEFAULT_END_WEEK
+        ) {
+            lesson.copy(endWeek = DEFAULT_END_WEEK)
+        } else {
+            lesson
+        }
+    }
+}
+
+/**
  * Keep imported courses visible even when none of their week rules match the
  * current calendar week. The current-week projection remains authoritative for
  * reminders and "today" status; this projection is only for browsing the

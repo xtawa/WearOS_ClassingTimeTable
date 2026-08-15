@@ -163,7 +163,8 @@ internal fun reduceBackState(state: MobileBackState): MobileBackState? {
 }
 
 internal const val DEFAULT_START_WEEK = 1
-internal const val DEFAULT_END_WEEK = 30
+internal const val LEGACY_DEFAULT_END_WEEK = 30
+internal const val DEFAULT_END_WEEK = 53
 
 internal enum class LessonWeekParity {
     ALL,
