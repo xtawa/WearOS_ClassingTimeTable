@@ -78,6 +78,7 @@ private fun TimetablePreviewFrame(
     ClassingTheme(darkTheme = darkTheme) {
         TimetableContent(
             state = state,
+            onBack = {},
             onSelectDate = {},
             onOpenCalendar = {},
             onOpenChanges = {},

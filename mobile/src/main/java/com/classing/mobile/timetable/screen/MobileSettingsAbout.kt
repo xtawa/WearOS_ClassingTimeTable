@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
@@ -120,11 +122,20 @@ import kotlinx.coroutines.launch
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.xtawa.classingtime.ui.components.ClassingActionRow
+import com.xtawa.classingtime.ui.components.ClassingInformationIsland
+import com.xtawa.classingtime.ui.components.ClassingPageBackground
+import com.xtawa.classingtime.ui.components.ClassingPageHeader
+import com.xtawa.classingtime.ui.components.ClassingSectionLabel
+import com.xtawa.classingtime.ui.theme.ClassingRadii
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
 @Composable
 internal fun SettingsLayer(
     contentPadding: PaddingValues,
+    onBack: () -> Unit,
     onOpenAccountPage: () -> Unit,
+    onOpenAskAiPage: () -> Unit,
     onOpenImportPage: () -> Unit,
     onOpenBackupRestorePage: () -> Unit,
     onOpenWeekModePage: () -> Unit,
@@ -134,102 +145,110 @@ internal fun SettingsLayer(
     onClearAllSchedules: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding)
-            .padding(horizontal = 16.dp)
-            .padding(vertical = 8.dp)
-            .navigationBarsPadding()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    ClassingPageBackground {
         Column(
-            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding)
+                .padding(horizontal = ClassingSpacing.referenceScreenInset)
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.lg),
         ) {
-            Text(
-                text = stringResource(R.string.ghost_title_settings),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
+            ClassingPageHeader(
+                title = stringResource(R.string.settings_title),
+                eyebrow = "Classing",
+                supportingText = stringResource(R.string.settings_account_desc),
+                onBack = onBack,
+                backLabel = stringResource(R.string.settings_about_back_button),
+                modifier = Modifier.padding(top = ClassingSpacing.sm),
             )
-            Text(
-                text = stringResource(R.string.settings_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-        }
 
-        SettingsEntryCard(
-            icon = Icons.Filled.CalendarMonth,
-            title = stringResource(R.string.settings_week_mode_title),
-            desc = stringResource(R.string.settings_week_mode_desc),
-            onClick = onOpenWeekModePage,
-        )
+            SettingsCategoryIsland(label = stringResource(R.string.settings_week_mode_title)) {
+                SettingsCategoryAction(
+                    icon = Icons.Filled.CalendarMonth,
+                    title = stringResource(R.string.settings_week_mode_title),
+                    desc = stringResource(R.string.settings_week_mode_desc),
+                    onClick = onOpenWeekModePage,
+                )
+                SettingsCategoryAction(
+                    icon = Icons.Filled.CheckCircle,
+                    title = stringResource(R.string.settings_reminder_keepalive_title),
+                    desc = stringResource(R.string.settings_reminder_keepalive_desc),
+                    onClick = onOpenReminderKeepAlivePage,
+                )
+            }
 
-        SettingsEntryCard(
-            icon = Icons.Filled.CheckCircle,
-            title = stringResource(R.string.settings_reminder_keepalive_title),
-            desc = stringResource(R.string.settings_reminder_keepalive_desc),
-            onClick = onOpenReminderKeepAlivePage,
-        )
+            SettingsCategoryIsland(label = stringResource(R.string.settings_account_title)) {
+                SettingsCategoryAction(
+                    icon = Icons.Filled.Person,
+                    title = stringResource(R.string.settings_account_title),
+                    desc = stringResource(R.string.settings_account_desc),
+                    onClick = onOpenAccountPage,
+                )
+                SettingsCategoryAction(
+                    icon = Icons.Filled.AutoAwesome,
+                    title = stringResource(R.string.settings_ask_classing_title),
+                    desc = stringResource(R.string.settings_ask_classing_desc),
+                    onClick = onOpenAskAiPage,
+                )
+            }
 
-        SettingsEntryCard(
-            icon = Icons.Filled.Person,
-            title = stringResource(R.string.settings_account_title),
-            desc = stringResource(R.string.settings_account_desc),
-            onClick = onOpenAccountPage,
-        )
+            SettingsCategoryIsland(label = stringResource(R.string.settings_import_entry_title)) {
+                SettingsCategoryAction(
+                    icon = Icons.Filled.DataObject,
+                    title = stringResource(R.string.settings_import_entry_title),
+                    desc = stringResource(R.string.settings_import_entry_desc),
+                    onClick = onOpenImportPage,
+                )
+                SettingsCategoryAction(
+                    icon = Icons.Filled.SettingsBackupRestore,
+                    title = stringResource(R.string.settings_backup_title),
+                    desc = stringResource(R.string.settings_backup_desc),
+                    onClick = onOpenBackupRestorePage,
+                )
+            }
 
-        SettingsEntryCard(
-            icon = Icons.Filled.DataObject,
-            title = stringResource(R.string.settings_import_entry_title),
-            desc = stringResource(R.string.settings_import_entry_desc),
-            onClick = onOpenImportPage,
-        )
+            SettingsCategoryIsland(label = stringResource(R.string.settings_sync_comm_title)) {
+                SettingsCategoryAction(
+                    icon = Icons.Filled.Sync,
+                    title = stringResource(R.string.settings_sync_comm_title),
+                    desc = stringResource(R.string.settings_sync_comm_desc),
+                    onClick = onOpenSyncCommunicationPage,
+                )
+            }
 
-        SettingsEntryCard(
-            icon = Icons.Filled.SettingsBackupRestore,
-            title = stringResource(R.string.settings_backup_title),
-            desc = stringResource(R.string.settings_backup_desc),
-            onClick = onOpenBackupRestorePage,
-        )
+            SettingsCategoryIsland(label = stringResource(R.string.settings_about_entry_title)) {
+                SettingsCategoryAction(
+                    icon = Icons.Filled.OpenInNew,
+                    title = stringResource(R.string.settings_open_web_title),
+                    desc = stringResource(R.string.settings_open_web_desc),
+                    onClick = { uriHandler.openUri("https://api-classing.underflo.ink") },
+                )
+                SettingsCategoryAction(
+                    icon = Icons.Filled.HelpOutline,
+                    title = stringResource(R.string.settings_about_entry_title),
+                    desc = stringResource(R.string.settings_about_entry_desc),
+                    onClick = onOpenAboutPage,
+                )
+            }
 
-        SettingsEntryCard(
-            icon = Icons.Filled.Sync,
-            title = stringResource(R.string.settings_sync_comm_title),
-            desc = stringResource(R.string.settings_sync_comm_desc),
-            onClick = onOpenSyncCommunicationPage,
-        )
-
-        SettingsEntryCard(
-            icon = Icons.Filled.OpenInNew,
-            title = stringResource(R.string.settings_open_web_title),
-            desc = stringResource(R.string.settings_open_web_desc),
-            onClick = { uriHandler.openUri("https://api-classing.underflo.ink") },
-        )
-
-        SettingsEntryCard(
-            icon = Icons.Filled.HelpOutline,
-            title = stringResource(R.string.settings_about_entry_title),
-            desc = stringResource(R.string.settings_about_entry_desc),
-            onClick = onOpenAboutPage,
-        )
-
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ClassingInformationIsland(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.42f),
             ) {
-                Text(stringResource(R.string.settings_danger_title), fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.settings_danger_desc), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = stringResource(R.string.settings_danger_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+                Text(
+                    text = stringResource(R.string.settings_danger_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
                 Button(
                     onClick = onClearAllSchedules,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError,
@@ -238,8 +257,42 @@ internal fun SettingsLayer(
                     Text(stringResource(R.string.settings_danger_clear_button))
                 }
             }
+            Spacer(Modifier.height(ClassingSpacing.xl))
         }
     }
+}
+
+@Composable
+private fun SettingsCategoryIsland(
+    label: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
+        ClassingSectionLabel(label)
+        ClassingInformationIsland(content = content)
+    }
+}
+
+@Composable
+private fun SettingsCategoryAction(
+    icon: ImageVector,
+    title: String,
+    desc: String,
+    onClick: () -> Unit,
+) {
+    ClassingActionRow(
+        icon = icon,
+        title = title,
+        supportingText = desc,
+        onClick = onClick,
+        trailing = {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+    )
 }
 
 @Composable
@@ -249,42 +302,22 @@ internal fun SecondaryPageHeader(
     backLabel: String,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(
-                onClick = onBack,
-                shape = CircleShape,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = backLabel,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(end = 12.dp),
-            )
-        }
-    }
+    ClassingPageHeader(
+        title = title,
+        onBack = onBack,
+        backLabel = backLabel,
+        modifier = modifier.padding(top = ClassingSpacing.sm),
+    )
+}
+
+@Composable
+private fun SettingsPageIntro(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = ClassingSpacing.xxs),
+    )
 }
 
 @Composable
@@ -314,25 +347,7 @@ internal fun BackupRestoreSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_backup),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.settings_backup_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.settings_backup_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsPageIntro(stringResource(R.string.settings_backup_desc))
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
@@ -475,25 +490,7 @@ internal fun WeekModeSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_week),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.settings_week_mode_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.settings_week_mode_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsPageIntro(stringResource(R.string.settings_week_mode_desc))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
@@ -672,25 +669,7 @@ internal fun ReminderKeepAliveSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_reminder),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.settings_reminder_keepalive_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.settings_reminder_keepalive_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsPageIntro(stringResource(R.string.settings_reminder_keepalive_desc))
 
         SettingsSwitchCard(
             icon = Icons.Filled.CheckCircle,
@@ -834,25 +813,7 @@ internal fun SyncCommunicationSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_sync),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.settings_sync_comm_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.settings_sync_comm_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsPageIntro(stringResource(R.string.settings_sync_comm_desc))
 
         SettingsEntryCard(
             icon = Icons.Filled.Watch,
@@ -968,25 +929,7 @@ internal fun WearCommunicationSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_wear),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.settings_wear_comm_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.settings_wear_comm_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsPageIntro(stringResource(R.string.settings_wear_comm_desc))
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Column(
@@ -1157,25 +1100,7 @@ internal fun CloudSyncSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_cloud),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.settings_cloud_sync_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.settings_cloud_sync_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsPageIntro(stringResource(R.string.settings_cloud_sync_desc))
 
         SettingsSwitchCard(
             icon = Icons.Filled.CloudSync,
@@ -2838,11 +2763,13 @@ private fun SettingsSwitchCard(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+    ClassingInformationIsland(
+        contentPadding = PaddingValues(ClassingSpacing.md),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(vertical = ClassingSpacing.xs),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -2855,10 +2782,10 @@ private fun SettingsSwitchCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(ClassingSpacing.minimumTouchTarget)
                         .background(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            shape = RoundedCornerShape(999.dp),
+                            shape = CircleShape,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -2874,13 +2801,14 @@ private fun SettingsSwitchCard(
                 ) {
                     Text(
                         text = title,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = desc,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -2898,36 +2826,21 @@ private fun SettingsEntryCard(
     desc: String,
     onClick: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+    ClassingInformationIsland(
+        contentPadding = PaddingValues(ClassingSpacing.md),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                        shape = RoundedCornerShape(16.dp),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
+        ClassingActionRow(
+            icon = icon,
+            title = title,
+            supportingText = desc,
+            onClick = onClick,
+            trailing = {
                 Icon(
-                    imageVector = icon,
+                    imageVector = Icons.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(desc, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-        }
+            },
+        )
     }
 }

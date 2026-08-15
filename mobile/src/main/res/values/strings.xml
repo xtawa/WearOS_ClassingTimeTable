@@ -483,6 +483,8 @@
     <string name="common_refresh">Refresh</string>
     <string name="settings_account_title">Account</string>
     <string name="settings_account_desc">Manage your Classing Timetable account.</string>
+    <string name="settings_ask_classing_title">Ask Classing</string>
+    <string name="settings_ask_classing_desc">Ask contextual questions about classes, free time, and schedule changes.</string>
     <string name="account_status_title">Account status</string>
     <string name="account_not_logged_in">Not signed in</string>
     <string name="account_signed_in_as">Signed in as %1$s</string>

@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -68,6 +69,7 @@ private val timetableClockFormatter = DateTimeFormatter.ofPattern("HH:mm")
 internal fun TimetableContent(
     state: TimetableUiState,
     contentPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit,
     onSelectDate: (TimetableDayUiModel) -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenChanges: () -> Unit,
@@ -84,6 +86,7 @@ internal fun TimetableContent(
         TimetableHeader(
             weekLabel = state.weekLabel,
             scheduleChangeCount = state.scheduleChangeCount,
+            onBack = onBack,
             onOpenCalendar = onOpenCalendar,
             onOpenChanges = onOpenChanges,
         )
@@ -124,6 +127,7 @@ internal fun TimetableContent(
 private fun TimetableHeader(
     weekLabel: String,
     scheduleChangeCount: Int,
+    onBack: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenChanges: () -> Unit,
 ) {
@@ -139,18 +143,32 @@ private fun TimetableHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
-            Text(
-                text = "Timetable",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = weekLabel,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back to Home",
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
+                Text(
+                    text = "Timetable",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    text = weekLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Row {
             IconButton(onClick = onOpenChanges) {

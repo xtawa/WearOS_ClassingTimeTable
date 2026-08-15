@@ -103,6 +103,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -119,6 +120,7 @@ internal fun WeekBoardLayer(
     lessonsForDate: (LocalDate) -> List<LessonUi>,
     hasSchedule: Boolean,
     scheduleChangeCount: Int,
+    onBackToHome: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenChanges: () -> Unit,
     onOpenLesson: (LessonUi, LocalDate) -> Unit,
@@ -185,6 +187,7 @@ internal fun WeekBoardLayer(
     TimetableContent(
         state = state,
         contentPadding = contentPadding,
+        onBack = onBackToHome,
         onSelectDate = { selectedDate = it.date },
         onOpenCalendar = onOpenCalendar,
         onOpenChanges = onOpenChanges,
@@ -408,10 +411,10 @@ internal fun ImportLayer(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.lg),
     ) {
         if (onBackToSettings != null) {
             SecondaryPageHeader(
@@ -421,25 +424,12 @@ internal fun ImportLayer(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_import),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.import_page_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.import_page_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(R.string.import_page_desc),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = ClassingSpacing.xxs),
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()

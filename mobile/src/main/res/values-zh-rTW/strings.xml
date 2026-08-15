@@ -483,6 +483,8 @@
     <string name="common_refresh">重新整理</string>
     <string name="settings_account_title">帳戶</string>
     <string name="settings_account_desc">管理 Classing 課程表帳戶。</string>
+    <string name="settings_ask_classing_title">詢問 Classing</string>
+    <string name="settings_ask_classing_desc">詢問課程、空閒時間和臨時調課等行程問題。</string>
     <string name="account_status_title">帳戶狀態</string>
     <string name="account_not_logged_in">未登入</string>
     <string name="account_signed_in_as">已登入：%1$s</string>

@@ -57,6 +57,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.ClassingInformationIsland
+import com.xtawa.classingtime.ui.theme.ClassingRadii
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -266,9 +269,9 @@ internal fun MobileOnboardingFlow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = ClassingSpacing.referenceScreenInset)
+                .padding(top = ClassingSpacing.xs, bottom = ClassingSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
             when (stepIndex) {
                 0 -> {
@@ -708,36 +711,33 @@ private fun OnboardingOptionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLowest
-            },
-        ),
+    ClassingInformationIsland(
+        onClick = onClick,
+        containerColor = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        } else {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
+        },
+        contentPadding = PaddingValues(ClassingSpacing.md),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(vertical = ClassingSpacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingRadii.pill),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(ClassingSpacing.lg),
                     )
                 }
             }

@@ -159,6 +159,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
+import com.xtawa.classingtime.ui.theme.ClassingMotion
 
 @Composable
 fun MobileTimetableScreen() {
@@ -1533,113 +1534,8 @@ fun MobileTimetableScreen() {
         )
     }
 
-    val immersiveDestination = layer == MobileLayer.Dashboard ||
-        (layer == MobileLayer.Schedule && scheduleSubview in setOf(ScheduleSubview.CourseDetail, ScheduleSubview.Changes)) ||
-        (layer == MobileLayer.Settings && settingsPage == SettingsPage.AskAi)
     Scaffold(
-        topBar = {
-            if (!immersiveDestination) Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(34.dp),
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                                    contentDescription = stringResource(R.string.app_name),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                        Text(
-                            text = stringResource(R.string.screen_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SyncStatusGroup(
-                            bluetoothState = bluetoothSyncState,
-                            cloudState = cloudSyncState,
-                        )
-                    }
-                }
-            }
-        },
-        bottomBar = {
-            if (!immersiveDestination) Surface(
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp,
-            ) {
-                NavigationBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .height(82.dp),
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                ) {
-                    MobileLayer.entries.forEach { item ->
-                        val icon = when (item) {
-                            MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
-                            MobileLayer.Dashboard -> Icons.Filled.GridView
-                            MobileLayer.Settings -> Icons.Filled.Settings
-                        }
-                        NavigationBarItem(
-                            selected = item == layer,
-                            onClick = {
-                                if (item == MobileLayer.Settings && layer != MobileLayer.Settings) {
-                                    previousMainLayerName = layer.name
-                                }
-                                layerName = item.name
-                                if (item != MobileLayer.Settings) {
-                                    goToSettingsRoot()
-                                }
-                                if (item == MobileLayer.Schedule) {
-                                    scheduleSubviewName = ScheduleSubview.Timetable.name
-                                }
-                            },
-                            icon = { Icon(imageVector = icon, contentDescription = null) },
-                            alwaysShowLabel = true,
-                            label = {
-                                Text(
-                                    stringResource(item.labelRes()),
-                                    fontWeight = if (item == layer) FontWeight.SemiBold else FontWeight.Medium,
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        )
-                    }
-                }
-            }
-        },
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         AnimatedContent(
             targetState = contentDestination,
@@ -1656,32 +1552,32 @@ fun MobileTimetableScreen() {
                 when (resolveContentTransitionDirection(initialState, targetState)) {
                     ContentTransitionDirection.Forward -> (
                         slideInHorizontally(
-                            animationSpec = tween(260),
+                            animationSpec = tween(ClassingMotion.ContentReveal),
                             initialOffsetX = { fullWidth -> fullWidth / 4 },
-                        ) + fadeIn(animationSpec = tween(220))
+                        ) + fadeIn(animationSpec = tween(ClassingMotion.ContentReveal))
                         ).togetherWith(
                         slideOutHorizontally(
-                            animationSpec = tween(220),
+                            animationSpec = tween(ClassingMotion.Exit),
                             targetOffsetX = { fullWidth -> -(fullWidth / 6) },
-                        ) + fadeOut(animationSpec = tween(180)),
+                        ) + fadeOut(animationSpec = tween(ClassingMotion.Exit)),
                     )
 
                     ContentTransitionDirection.Backward -> (
                         slideInHorizontally(
-                            animationSpec = tween(260),
+                            animationSpec = tween(ClassingMotion.ContentReveal),
                             initialOffsetX = { fullWidth -> -(fullWidth / 4) },
-                        ) + fadeIn(animationSpec = tween(220))
+                        ) + fadeIn(animationSpec = tween(ClassingMotion.ContentReveal))
                         ).togetherWith(
                         slideOutHorizontally(
-                            animationSpec = tween(220),
+                            animationSpec = tween(ClassingMotion.Exit),
                             targetOffsetX = { fullWidth -> fullWidth / 6 },
-                        ) + fadeOut(animationSpec = tween(180)),
+                        ) + fadeOut(animationSpec = tween(ClassingMotion.Exit)),
                     )
 
                     ContentTransitionDirection.None -> (
-                        fadeIn(animationSpec = tween(120))
+                        fadeIn(animationSpec = tween(ClassingMotion.Micro))
                         ).togetherWith(
-                        fadeOut(animationSpec = tween(90)),
+                        fadeOut(animationSpec = tween(ClassingMotion.Micro)),
                     )
                 }.using(
                     SizeTransform(clip = false),
@@ -1697,6 +1593,7 @@ fun MobileTimetableScreen() {
                         lessonsForDate = ::lessonsForDate,
                         hasSchedule = baseLessons.isNotEmpty(),
                         scheduleChangeCount = scheduleExceptions.size,
+                        onBackToHome = { layerName = MobileLayer.Dashboard.name },
                         onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
                         onOpenChanges = { scheduleSubviewName = ScheduleSubview.Changes.name },
                         onOpenLesson = { lesson, date ->
@@ -1831,8 +1728,12 @@ fun MobileTimetableScreen() {
                 MobileLayer.Settings -> when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
+                    onBack = { handleBackNavigation() },
                     onOpenAccountPage = {
                         openSettingsPage(SettingsPage.Account)
+                    },
+                    onOpenAskAiPage = {
+                        openSettingsPage(SettingsPage.AskAi)
                     },
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
