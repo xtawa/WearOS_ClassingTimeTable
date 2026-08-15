@@ -74,6 +74,7 @@ import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
 import com.xtawa.classingtime.sync.WearSyncDispatchResult
+import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
 import com.google.android.gms.wearable.Wearable
 import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
@@ -492,6 +493,8 @@ internal val clockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH
 @Preview(showBackground = true, widthDp = 390, heightDp = 800)
 @Composable
 internal fun MobileTimetablePreview() {
-    MobileTimetableScreen()
+    MobileTimetableScreen(
+        appearanceState = ClassingAppearanceState(),
+        onAppearanceStateChange = {},
+    )
 }
-

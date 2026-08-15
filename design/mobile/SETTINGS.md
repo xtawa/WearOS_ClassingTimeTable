@@ -84,6 +84,13 @@ System-permission gaps use actionable status cards. Do not imply authorization f
 - Reduce motion follows system with optional app override only if required.
 - Preview island shows Home surface, type, and course accent together.
 
+Current executable scope:
+
+- System / Light / Dark applies immediately and persists locally.
+- `System color` is an explicit opt-in and is disabled by default.
+- The baseline Classing light/dark palettes remain the default executable design.
+- Course colors, high contrast, and a role-by-role dynamic Blend remain pending; Material 3's full dynamic scheme is not presented as the approved Blend behavior.
+
 ### Sync & devices
 
 - Wear OS connection and last acknowledgement.
@@ -173,4 +180,3 @@ Disabling AI removes prompt suggestions but preserves direct timetable navigatio
 - Import/restore conflicts with unsynced local changes.
 - Account session expires inside a settings subpage.
 - Developer mode exposes diagnostics without leaking credentials or tokens.
-
