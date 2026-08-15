@@ -482,7 +482,7 @@ internal fun hasNotificationPermission(context: Context): Boolean {
 internal fun MobileLayer.labelRes(): Int {
     return when (this) {
         MobileLayer.Schedule -> R.string.layer_dashboard
-        MobileLayer.Dashboard -> R.string.layer_heatmap
+        MobileLayer.Dashboard -> R.string.layer_home
         MobileLayer.Settings -> R.string.layer_settings
     }
 }
@@ -494,5 +494,4 @@ internal val clockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH
 internal fun MobileTimetablePreview() {
     MobileTimetableScreen()
 }
-
 

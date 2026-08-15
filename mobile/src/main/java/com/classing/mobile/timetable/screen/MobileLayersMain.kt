@@ -84,6 +84,12 @@ import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
 import com.xtawa.classingtime.sync.WearSyncDispatchResult
+import com.xtawa.classingtime.ui.theme.classingCourseAccent
+import com.xtawa.classingtime.ui.timetable.TimetableContent
+import com.xtawa.classingtime.ui.timetable.TimetableCourseStatus
+import com.xtawa.classingtime.ui.timetable.TimetableCourseUiModel
+import com.xtawa.classingtime.ui.timetable.TimetableDayUiModel
+import com.xtawa.classingtime.ui.timetable.TimetableUiState
 import com.google.android.gms.wearable.Wearable
 import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
@@ -96,6 +102,8 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -108,183 +116,81 @@ import org.json.JSONObject
 internal fun WeekBoardLayer(
     contentPadding: PaddingValues,
     visibleDays: List<DayOfWeek>,
-    lessonsByDay: Map<DayOfWeek, List<LessonUi>>,
     lessonsForDate: (LocalDate) -> List<LessonUi>,
     hasSchedule: Boolean,
+    scheduleChangeCount: Int,
     onOpenCalendar: () -> Unit,
+    onOpenChanges: () -> Unit,
+    onOpenLesson: (LessonUi, LocalDate) -> Unit,
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
     val context = LocalContext.current
-    val todayDay = LocalDate.now().dayOfWeek
-    val prioritizedDays = remember(visibleDays, todayDay) {
-        if (visibleDays.contains(todayDay)) {
-            listOf(todayDay) + visibleDays.filterNot { it == todayDay }
+    val today = LocalDate.now()
+    val weekDates = remember(visibleDays, today) {
+        if (visibleDays.isEmpty()) {
+            listOf(today)
         } else {
-            visibleDays
-        }
-    }
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = stringResource(R.string.ghost_title_schedule),
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                        fontWeight = FontWeight.ExtraBold,
-                    )
-                    Text(
-                        text = stringResource(R.string.layer_dashboard),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = stringResource(R.string.week_long_press_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                FilterChip(
-                    selected = false,
-                    onClick = onOpenCalendar,
-                    label = { Text(text = stringResource(R.string.schedule_open_calendar)) },
-                )
-            }
-        }
-        items(prioritizedDays) { day ->
-            val lessons = lessonsByDay[day].orEmpty().sortedBy { it.startTime }
-            val isEmpty = lessons.isEmpty()
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isEmpty) {
-                        MaterialTheme.colorScheme.surfaceContainerLow
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerLowest
-                    },
-                ),
-                border = if (isEmpty) {
-                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                } else {
-                    null
-                },
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.day_header_title, dayLabel(day, context), lessons.size),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (isEmpty) {
-                        Text(stringResource(R.string.no_classes), style = MaterialTheme.typography.bodySmall)
-                    } else {
-                        lessons.forEach { lesson ->
-                            val lessonSummary = stringResource(
-                                R.string.lesson_summary_format,
-                                dayLabel(lesson.dayOfWeek, context),
-                                lesson.startTime.format(clockFormatter),
-                                lesson.endTime.format(clockFormatter),
-                                lesson.title,
-                            )
-                            val editLessonLabel = stringResource(R.string.lesson_edit_dialog_title)
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .semantics {
-                                        contentDescription = lessonSummary
-                                        onLongClick(label = editLessonLabel) {
-                                            onLongPressLesson(lesson)
-                                            true
-                                        }
-                                    }
-                                    .pointerInput(lesson.id) {
-                                        detectTapGestures(
-                                            onLongPress = { onLongPressLesson(lesson) },
-                                        )
-                                },
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 10.dp, vertical = 9.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(
-                                        modifier = Modifier.size(width = 70.dp, height = 40.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                    ) {
-                                        Text(
-                                            text = lesson.startTime.format(clockFormatter),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        Text(
-                                            text = lesson.endTime.format(clockFormatter),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(width = 1.dp, height = 30.dp),
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                                        )
-                                    }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                                    )
-                                    {
-                                        Text(
-                                            text = lesson.title,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                        if (!lesson.location.isNullOrBlank()) {
-                                            Text(
-                                                text = lesson.location,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            val firstDay = visibleDays.first()
+            val anchor = today.with(TemporalAdjusters.previousOrSame(firstDay))
+            visibleDays.map { day ->
+                val offset = (day.value - firstDay.value + 7) % 7
+                anchor.plusDays(offset.toLong())
             }
         }
     }
+    var selectedDate by remember(weekDates) {
+        mutableStateOf(if (today in weekDates) today else weekDates.first())
+    }
+    val selectedLessons = lessonsForDate(selectedDate).sortedBy { it.startTime }
+    val lessonByUiId = selectedLessons.associateBy { lesson -> "${lesson.id}@$selectedDate@${lesson.startTime}" }
+    val now = LocalDateTime.now()
+    val locale = Locale.getDefault()
+    val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMM d", locale) }
+    val dateFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE, MMMM d", locale) }
+    val state = TimetableUiState(
+        weekLabel = "${weekDates.first().format(monthFormatter)}–${weekDates.last().format(monthFormatter)}",
+        selectedDate = selectedDate,
+        selectedDateLabel = selectedDate.format(dateFormatter),
+        days = weekDates.map { date ->
+            TimetableDayUiModel(
+                date = date,
+                dayLabel = dayLabel(date.dayOfWeek, context).take(3),
+                dateLabel = date.dayOfMonth.toString(),
+                courseCount = lessonsForDate(date).size,
+                isToday = date == today,
+            )
+        },
+        courses = selectedLessons.map { lesson ->
+            val status = when {
+                selectedDate.isBefore(today) -> TimetableCourseStatus.Past
+                selectedDate.isAfter(today) -> TimetableCourseStatus.Future
+                now.toLocalTime().isBefore(lesson.startTime) -> TimetableCourseStatus.Future
+                now.toLocalTime().isBefore(lesson.endTime) -> TimetableCourseStatus.Current
+                else -> TimetableCourseStatus.Past
+            }
+            TimetableCourseUiModel(
+                id = "${lesson.id}@$selectedDate@${lesson.startTime}",
+                title = lesson.title,
+                teacher = lesson.teacher,
+                location = lesson.location,
+                startTime = lesson.startTime,
+                endTime = lesson.endTime,
+                accent = classingCourseAccent(lesson.title),
+                status = status,
+            )
+        },
+        hasImportedSchedule = hasSchedule,
+        scheduleChangeCount = scheduleChangeCount,
+    )
+    TimetableContent(
+        state = state,
+        contentPadding = contentPadding,
+        onSelectDate = { selectedDate = it.date },
+        onOpenCalendar = onOpenCalendar,
+        onOpenChanges = onOpenChanges,
+        onOpenCourse = { uiId -> lessonByUiId[uiId]?.let { onOpenLesson(it, selectedDate) } },
+        onLongPressCourse = { uiId -> lessonByUiId[uiId]?.let(onLongPressLesson) },
+    )
 }
 
 @Composable

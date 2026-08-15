@@ -2,6 +2,7 @@
     <string name="app_name">Classing Time</string>
 
     <string name="layer_dashboard">Timetable</string>
+    <string name="layer_home">Home</string>
     <string name="layer_calendar">Calendar</string>
     <string name="layer_week_view">Week</string>
     <string name="layer_import">Import</string>

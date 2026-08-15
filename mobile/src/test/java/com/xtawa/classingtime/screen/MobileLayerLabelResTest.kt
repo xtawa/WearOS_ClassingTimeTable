@@ -6,9 +6,9 @@ import org.junit.Test
 
 class MobileLayerLabelResTest {
     @Test
-    fun labelRes_mapsMainTabsToTimetableHeatmapAndSettings() {
+    fun labelRes_mapsMainTabsToTimetableHomeAndSettings() {
         assertEquals(R.string.layer_dashboard, MobileLayer.Schedule.labelRes())
-        assertEquals(R.string.layer_heatmap, MobileLayer.Dashboard.labelRes())
+        assertEquals(R.string.layer_home, MobileLayer.Dashboard.labelRes())
         assertEquals(R.string.layer_settings, MobileLayer.Settings.labelRes())
     }
 }

@@ -5,14 +5,16 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 internal enum class MobileLayer {
-    Schedule,
     Dashboard,
+    Schedule,
     Settings,
 }
 
 internal enum class ScheduleSubview {
     Timetable,
     Calendar,
+    CourseDetail,
+    Changes,
 }
 
 internal enum class SettingsPage {
@@ -77,6 +79,8 @@ internal data class MobileBackState(
     val settingsPage: SettingsPage,
     val previousMainLayer: MobileLayer,
     val showImportJsonPromptPage: Boolean,
+    val detailReturnLayer: MobileLayer = MobileLayer.Schedule,
+    val detailReturnScheduleSubview: ScheduleSubview = ScheduleSubview.Timetable,
 )
 
 internal fun shouldCompleteOnImportSelection(importTarget: OnboardingImportTarget): Boolean {
@@ -117,10 +121,22 @@ internal fun consumeImportFocus(
 }
 
 internal fun reduceBackState(state: MobileBackState): MobileBackState? {
-    if (state.layer == MobileLayer.Schedule && state.scheduleSubview == ScheduleSubview.Calendar) {
+    if (state.layer == MobileLayer.Schedule && state.scheduleSubview == ScheduleSubview.CourseDetail) {
+        return state.copy(
+            layer = state.detailReturnLayer,
+            scheduleSubview = state.detailReturnScheduleSubview,
+        )
+    }
+    if (state.layer == MobileLayer.Schedule && state.scheduleSubview != ScheduleSubview.Timetable) {
         return state.copy(scheduleSubview = ScheduleSubview.Timetable)
     }
     if (state.layer != MobileLayer.Settings) return null
+    if (state.settingsPage == SettingsPage.AskAi) {
+        return state.copy(
+            layer = state.previousMainLayer,
+            settingsPage = SettingsPage.Main,
+        )
+    }
     if (state.settingsPage == SettingsPage.Import && state.showImportJsonPromptPage) {
         return state.copy(showImportJsonPromptPage = false)
     }
@@ -134,7 +150,7 @@ internal fun reduceBackState(state: MobileBackState): MobileBackState? {
         )
     }
     val targetMain = if (state.previousMainLayer == MobileLayer.Settings) {
-        MobileLayer.Schedule
+        MobileLayer.Dashboard
     } else {
         state.previousMainLayer
     }
