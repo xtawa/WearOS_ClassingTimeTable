@@ -7,7 +7,7 @@
 - Executable UI source: `mobile/src/main/java/com/xtawa/classingtime/ui/`
 - Production adapters: `screen/MobileDashboardLayer.kt`, `screen/MobileLayersMain.kt`
 - Local commits: complete on `ai/ui/mobile-ai-first-redesign`
-- GitHub publish: blocked because the current environment has no HTTPS credentials; no remote branch or PR has been claimed
+- GitHub publish: branch uploaded through the connected GitHub app; draft PR prepared for review
 
 ## Phase status
 
