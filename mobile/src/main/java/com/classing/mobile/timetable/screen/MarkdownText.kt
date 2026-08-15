@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.ui.theme.ClassingRadii
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
 internal enum class MarkdownBlockKind { PARAGRAPH, HEADING, LIST_ITEM, QUOTE, CODE }
 
@@ -162,12 +164,20 @@ internal fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
                     Text(annotated, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 }
                 MarkdownBlockKind.QUOTE -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(Modifier.width(3.dp).background(colors.primary, RoundedCornerShape(999.dp)).padding(vertical = 12.dp))
+                    Box(
+                        Modifier
+                            .width(3.dp)
+                            .background(colors.primary, RoundedCornerShape(ClassingRadii.pill))
+                            .padding(vertical = ClassingSpacing.sm),
+                    )
                     Text(annotated, modifier = Modifier.weight(1f), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 }
                 MarkdownBlockKind.CODE -> Text(
                     block.text,
-                    modifier = Modifier.fillMaxWidth().background(colors.inverseSurface, RoundedCornerShape(12.dp)).padding(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.inverseSurface, RoundedCornerShape(ClassingRadii.small))
+                        .padding(ClassingSpacing.sm),
                     color = colors.inverseOnSurface,
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodySmall,

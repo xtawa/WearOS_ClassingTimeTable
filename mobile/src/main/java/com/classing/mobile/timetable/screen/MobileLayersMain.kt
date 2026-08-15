@@ -84,6 +84,8 @@ import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
 import com.xtawa.classingtime.sync.WearSyncDispatchResult
+import com.xtawa.classingtime.ui.components.ClassingInformationIsland
+import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.classingCourseAccent
 import com.xtawa.classingtime.ui.timetable.TimetableContent
 import com.xtawa.classingtime.ui.timetable.TimetableCourseStatus
@@ -227,8 +229,8 @@ private fun MobileNextLessonHeroCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(ClassingSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
         ) {
             Text(
                 text = stringResource(R.string.schedule_next_lesson_title),
@@ -267,9 +269,9 @@ private fun MobileNextLessonHeroCard(
                         modifier = Modifier
                             .background(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(999.dp),
+                                shape = RoundedCornerShape(ClassingRadii.pill),
                             )
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                            .padding(horizontal = ClassingSpacing.xs, vertical = 3.dp),
                     ) {
                         Text(
                             text = countdown,
@@ -434,16 +436,16 @@ internal fun ImportLayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .bringIntoViewRequester(icsSectionRequester),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable {
+            ClassingInformationIsland(
+                onClick = {
                     expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.ICS) null else ImportFocusMethod.ICS
                 },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                contentPadding = PaddingValues(ClassingSpacing.sm),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -468,7 +470,7 @@ internal fun ImportLayer(
             )
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Button(onClick = onParsePreview) { Text(stringResource(R.string.import_button_parse_preview)) }
                 Button(onClick = {
@@ -480,8 +482,8 @@ internal fun ImportLayer(
             }
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(ClassingSpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Text(stringResource(R.string.status_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Text(parseMessage, style = MaterialTheme.typography.bodySmall)
@@ -533,7 +535,7 @@ internal fun ImportLayer(
                 val includedCount = importItemStates.count { it.included }
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Button(
                         onClick = {
@@ -557,16 +559,16 @@ internal fun ImportLayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .bringIntoViewRequester(jsonSectionRequester),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable {
+            ClassingInformationIsland(
+                onClick = {
                     expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.JSON) null else ImportFocusMethod.JSON
                 },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                contentPadding = PaddingValues(ClassingSpacing.sm),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -597,7 +599,7 @@ internal fun ImportLayer(
             )
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Button(onClick = onParseJsonPreview) { Text(stringResource(R.string.json_button_parse_preview)) }
                 Button(onClick = {
@@ -607,8 +609,8 @@ internal fun ImportLayer(
             }
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(ClassingSpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Text(
                         text = stringResource(R.string.json_import_mode_title),
@@ -617,7 +619,7 @@ internal fun ImportLayer(
                     )
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                     ) {
                         FilterChip(
                             selected = jsonImportMode == JsonImportMode.REPLACE,
@@ -645,7 +647,7 @@ internal fun ImportLayer(
             }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Button(onClick = onConfirmJsonImport, enabled = hasPendingJsonImport) {
                     Text(
@@ -694,7 +696,7 @@ internal fun ImportLayer(
                 val includedCount = importItemStates.count { it.included }
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Button(
                         onClick = {
@@ -727,16 +729,16 @@ internal fun ImportLayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .bringIntoViewRequester(manualSectionRequester),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable {
+            ClassingInformationIsland(
+                onClick = {
                     expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.MANUAL) null else ImportFocusMethod.MANUAL
                 },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                contentPadding = PaddingValues(ClassingSpacing.sm),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -770,7 +772,7 @@ internal fun ImportLayer(
                 label = { Text(stringResource(R.string.manual_input_teacher_label)) },
                 singleLine = true,
             )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 items(DayOfWeek.values()) { day ->
                     FilterChip(
                         selected = manualDay == day.value,
@@ -802,7 +804,7 @@ internal fun ImportLayer(
                 label = { Text(stringResource(R.string.manual_input_location_label)) },
                 singleLine = true,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 OutlinedTextField(
                     value = manualStartWeek,
                     onValueChange = { manualStartWeek = it },
@@ -818,7 +820,7 @@ internal fun ImportLayer(
                     singleLine = true,
                 )
             }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 items(LessonWeekParity.entries) { parity ->
                     val labelRes = when (parity) {
                         LessonWeekParity.ALL -> R.string.week_parity_all
@@ -877,8 +879,8 @@ private fun ImportPreviewSummaryCard(
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(ClassingSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
         ) {
             Text(
                 text = stringResource(R.string.import_preview_summary_title),
@@ -887,7 +889,7 @@ private fun ImportPreviewSummaryCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 Text(
                     text = stringResource(R.string.import_preview_summary_valid, summary.validCount),
@@ -958,8 +960,8 @@ private fun ImportPreviewDraftCard(
         border = borderColor?.let { BorderStroke(1.dp, it) },
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(ClassingSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -972,7 +974,7 @@ private fun ImportPreviewDraftCard(
                     modifier = Modifier.weight(1f),
                 )
                 if (itemState != null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
                         if (hasConflict) {
                             Text(
                                 text = stringResource(R.string.import_preview_item_conflict_badge),
@@ -1075,8 +1077,8 @@ private fun ImportPreviewLessonCard(
         border = borderColor?.let { BorderStroke(1.dp, it) },
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(ClassingSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1089,7 +1091,7 @@ private fun ImportPreviewLessonCard(
                     modifier = Modifier.weight(1f),
                 )
                 if (itemState != null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
                         if (hasConflict) {
                             Text(
                                 text = stringResource(R.string.import_preview_item_conflict_badge),

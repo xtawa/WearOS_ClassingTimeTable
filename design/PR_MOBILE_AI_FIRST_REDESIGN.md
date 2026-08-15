@@ -13,8 +13,10 @@ Turns the approved Classing mobile design specification into the production Jetp
 - Rebuilds Ask Classing as a contextual assistant surface while retaining existing API/account integration.
 - Removes the persistent root app bar and bottom navigation in favor of contextual, source-aware page headers.
 - Unifies Settings, import, account, reminder, sync, Wear, cloud and confirmation surfaces with shared information-island geometry.
+- Extends the same information-island, spacing and pill-radius tokens through onboarding and import method surfaces so secondary flows no longer fall back to isolated Material card geometry.
 - Adds persisted Appearance controls for System / Light / Dark and explicit opt-in Android system color.
 - Enables edge-to-edge rendering.
+- Corrects legacy week-range defaults so newly created courses remain visible in Home, Timetable and Calendar throughout the natural calendar year.
 
 ## Screens
 

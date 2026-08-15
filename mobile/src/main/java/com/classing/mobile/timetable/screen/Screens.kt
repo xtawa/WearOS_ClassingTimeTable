@@ -162,6 +162,7 @@ import org.json.JSONObject
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.components.ClassingPageBackground
 import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
+import com.xtawa.classingtime.ui.theme.ClassingRadii
 
 @Composable
 internal fun MobileTimetableScreen(
@@ -3126,7 +3127,7 @@ private fun SyncStatusBadge(
 
     Surface(
         modifier = modifier.size(32.dp),
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(ClassingRadii.pill),
         color = containerColor,
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -3140,7 +3141,7 @@ private fun SyncStatusBadge(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(16.dp),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                     color = badgeColor,
                     border = badgeBorder,
                 ) {

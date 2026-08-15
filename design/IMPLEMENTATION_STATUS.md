@@ -22,7 +22,15 @@
 | Schedule Changes | Implemented, CI verified | Exception history, moved/cancelled/added comparison cards, bounded filters and empty state |
 | AI Assistant UI | Implemented, CI verified | Home query handoff, contextual anchor, in-place processing, result islands, quick prompts, model/history controls and existing API/account integration |
 | Settings and secondary navigation | Implemented, CI verified | Contextual headers, grouped information islands, source-aware back behavior, Appearance, account, import, reminder, sync and About routes without a persistent app bar or bottom navigation |
+| Legacy-surface visual unification | Implemented, CI verification pending | Onboarding, import, settings/account/sync surfaces and shared pills now use Classing information-island, radius and spacing tokens instead of local one-off geometry |
 | Responsive and accessibility review | Implemented statically, screenshot review pending | 360/390 dp, light/dark and large-font previews across core screens and Settings; large-font layout adaptations, edge-to-edge insets, semantic headings/progress/live regions and 48 dp actions |
+
+## Schedule visibility correction
+
+- New courses now default to the full valid week range rather than ending at week 30.
+- Exact legacy natural-calendar defaults of weeks 1–30 are migrated to the full range when loaded or projected.
+- User-defined ranges and semester week mode remain unchanged.
+- Regression coverage verifies that a newly created course remains visible during natural calendar week 33.
 
 ## Implementation conflicts
 
@@ -31,7 +39,8 @@
 - **Design requirement:** build and render each major screen before progressing.
 - **Environment limitation:** Google Maven is unreachable and the environment has no cached `com.android.tools.build:gradle:8.5.0` artifact.
 - **Current handling:** local code receives static syntax and diff checks. GitHub Actions provides clean Android compilation, unit-test, lint and release-build verification after each pushed batch. No local Preview screenshot result is claimed.
-- **Latest verification:** Android CI run 120 and Release hardening run 62 completed successfully for PR #26 head `c7e3b6d`.
+- **Latest verified functional head:** Android CI run 122 and Release hardening run 64 completed successfully for PR #26 head `f6f84bd`.
+- **Current visual-unification batch:** local static diff checks pass; clean Android compilation and release verification must complete in GitHub Actions after publication.
 - **Required follow-up:** render and compare Compose Preview screenshots in an Android Studio or screenshot-test environment with the required Android/Compose artifacts available.
 
 ### Dynamic color blend

@@ -357,7 +357,7 @@ internal fun BackupRestoreSettingsPage(
 
         SettingsPageIntro(stringResource(R.string.settings_backup_desc))
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -390,7 +390,7 @@ internal fun BackupRestoreSettingsPage(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -428,7 +428,7 @@ internal fun BackupRestoreSettingsPage(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .padding(horizontal = ClassingSpacing.sm, vertical = ClassingSpacing.xs),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -521,7 +521,7 @@ internal fun WeekModeSettingsPage(
             onCheckedChange = onShowWeekendChange,
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -546,7 +546,7 @@ internal fun WeekModeSettingsPage(
         }
 
         if (weekNumberMode == WeekNumberMode.SEMESTER) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -583,7 +583,7 @@ internal fun WeekModeSettingsPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(ClassingSpacing.md),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                     ) {
                         Text(
                             text = stringResource(R.string.settings_semester_start_date_value, semesterWeekStartDate.format(DateTimeFormatter.ISO_LOCAL_DATE)),
@@ -623,12 +623,12 @@ internal fun WeekModeSettingsPage(
                 }
             }
         } else {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(ClassingSpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Text(
                         text = stringResource(R.string.settings_week_mode_natural),
@@ -687,12 +687,12 @@ internal fun ReminderKeepAliveSettingsPage(
             onCheckedChange = onToggleReminder,
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 Text(
                     text = stringResource(R.string.settings_reminder_lead_title, reminderMinutes),
@@ -706,12 +706,12 @@ internal fun ReminderKeepAliveSettingsPage(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 Text(
                 text = stringResource(R.string.keepalive_level_title),
@@ -837,12 +837,12 @@ internal fun SyncCommunicationSettingsPage(
             onClick = onOpenCloudSyncPage,
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 if (devModeEnabled) {
                     Text(
@@ -939,7 +939,7 @@ internal fun WearCommunicationSettingsPage(
 
         SettingsPageIntro(stringResource(R.string.settings_wear_comm_desc))
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -985,7 +985,7 @@ internal fun WearCommunicationSettingsPage(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1000,7 +1000,7 @@ internal fun WearCommunicationSettingsPage(
                         text = stringResource(R.string.settings_wear_connection_label, wearConnectionMessage),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = ClassingSpacing.xs, vertical = ClassingSpacing.xs),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -1012,7 +1012,7 @@ internal fun WearCommunicationSettingsPage(
                         text = stringResource(R.string.settings_wear_sync_label, wearSyncMessage),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = ClassingSpacing.xs, vertical = ClassingSpacing.xs),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -1122,12 +1122,12 @@ internal fun CloudSyncSettingsPage(
             onCheckedChange = { if (!officialLocked) onEnabledChange(it) },
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 Text(
                     text = stringResource(R.string.settings_cloud_sync_provider),
@@ -1324,7 +1324,7 @@ internal fun CloudSyncSettingsPage(
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1362,7 +1362,7 @@ internal fun CloudSyncSettingsPage(
             }
         }
         if (devModeEnabled && recentChanges.isNotEmpty()) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1559,7 +1559,7 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        if (accountSummary.userId.isBlank()) ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1618,7 +1618,7 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        if (accountSummary.userId.isNotBlank()) ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1694,7 +1694,7 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1789,7 +1789,7 @@ internal fun AccountEmailChangePage(
             backLabel = stringResource(R.string.settings_account_title),
             modifier = Modifier.fillMaxWidth(),
         )
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md), verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 OutlinedTextField(
                     value = email,
@@ -1870,7 +1870,7 @@ internal fun AccountRegisterPage(
             backLabel = stringResource(R.string.settings_account_title),
             modifier = Modifier.fillMaxWidth(),
         )
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1949,7 +1949,7 @@ private fun LegalAgreementConsentRow(
     urls: LegalAgreementUrls,
 ) {
     val uriHandler = LocalUriHandler.current
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
@@ -1963,7 +1963,7 @@ private fun LegalAgreementConsentRow(
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             modifier = Modifier.fillMaxWidth(),
         ) {
             LegalAgreementLink(
@@ -2016,7 +2016,7 @@ internal fun TurnstileVerificationDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.account_turnstile_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
                 Text(stringResource(R.string.account_turnstile_desc), style = MaterialTheme.typography.bodySmall)
                 AndroidView(
                     modifier = Modifier.fillMaxWidth().height(110.dp),
@@ -2080,7 +2080,7 @@ internal fun AccountPasswordResetPage(
             backLabel = stringResource(R.string.settings_account_title),
             modifier = Modifier.fillMaxWidth(),
         )
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md), verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 Text(stringResource(R.string.password_reset_request_desc), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_email)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true)
@@ -2147,7 +2147,7 @@ internal fun DailyBriefingSettingsPage(
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 Text(stringResource(R.string.daily_briefing_channel_title), fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
@@ -2309,9 +2309,9 @@ internal fun AboutLayer(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.md),
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -2320,7 +2320,7 @@ internal fun AboutLayer(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 22.dp),
+                        .padding(horizontal = ClassingSpacing.lg, vertical = ClassingSpacing.xl),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
@@ -2382,7 +2382,7 @@ internal fun AboutLayer(
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                     ) {
                         Text(stringResource(R.string.settings_dev_mode_details_title), fontWeight = FontWeight.SemiBold)
                         Text(
@@ -2404,7 +2404,7 @@ internal fun AboutLayer(
             ) {
                 Column {
 					Column(
-						modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+						modifier = Modifier.fillMaxWidth().padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.sm),
 						verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
 					) {
 						Text(
@@ -2437,7 +2437,7 @@ internal fun AboutLayer(
 					androidx.compose.material3.HorizontalDivider()
                     Text(
                         text = stringResource(R.string.settings_about_resources_title),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.sm),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2474,7 +2474,7 @@ internal fun AboutLayer(
                 ) {
                     Text(
                         text = aboutQuote,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        modifier = Modifier.padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.md),
                         style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -2491,7 +2491,7 @@ internal fun AboutLayer(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
@@ -2538,7 +2538,7 @@ internal fun AboutLayer(
             onDismissRequest = { if (!updateDownloading) showUpdateDialog = false },
             title = { Text(stringResource(R.string.settings_about_check_update_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
                     Text(updateStatus, style = MaterialTheme.typography.bodyMedium)
                     if (release != null) {
                         Text(
@@ -2647,7 +2647,7 @@ internal fun AboutLayer(
             onDismissRequest = { showWechatDialog = false },
             title = { Text(stringResource(R.string.settings_about_wechat_support)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
                     Image(
                         painter = painterResource(id = R.drawable.wechat_support_qr),
                         contentDescription = stringResource(R.string.settings_about_wechat_support),
@@ -2694,7 +2694,7 @@ private fun AboutResourceRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -2722,7 +2722,7 @@ private fun AboutResourceRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = ClassingSpacing.sm),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
             ) {}
         }
@@ -2735,8 +2735,8 @@ internal fun LessonCard(lesson: LessonUi) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(ClassingSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             verticalAlignment = Alignment.Top,
         ) {
             Column(
@@ -2796,9 +2796,9 @@ private fun SettingsSwitchCard(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 12.dp),
+                    .padding(end = ClassingSpacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             ) {
                 Box(
                     modifier = Modifier
