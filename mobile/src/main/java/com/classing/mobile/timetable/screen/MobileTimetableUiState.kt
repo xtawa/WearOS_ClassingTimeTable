@@ -11,7 +11,7 @@ internal data class MobileTimetableUiState(
 internal data class MobileScheduleUiState(
     val hasLessons: Boolean = false,
     val visibleLessonCount: Int = 0,
-    val selectedLayerName: String = MobileLayer.Schedule.name,
+    val selectedLayerName: String = MobileLayer.Dashboard.name,
     val selectedScheduleSubviewName: String = ScheduleSubview.Timetable.name,
 )
 

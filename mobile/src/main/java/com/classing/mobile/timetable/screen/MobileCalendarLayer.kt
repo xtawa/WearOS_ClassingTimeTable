@@ -24,6 +24,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.ClassingPageHeader
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -96,64 +103,40 @@ internal fun CalendarMonthLayer(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding(),
-        contentPadding = PaddingValues(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(vertical = ClassingSpacing.sm),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.md),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    Text(
-                        text = String.format(locale, "%02d", displayedMonth.monthValue),
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.90f),
-                        fontWeight = FontWeight.ExtraBold,
-                    )
-                    Text(
-                        text = displayedMonth.atDay(1).format(monthFormatter),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onBackToTimetable,
-                        shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            contentColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    ) {
-                        Text(text = stringResource(R.string.calendar_back_to_timetable))
+            ClassingPageHeader(
+                title = displayedMonth.atDay(1).format(monthFormatter),
+                eyebrow = String.format(locale, "%02d", displayedMonth.monthValue),
+                onBack = onBackToTimetable,
+                backLabel = stringResource(R.string.calendar_back_to_timetable),
+                action = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
+                        IconButton(
+                            onClick = { displayedMonth = displayedMonth.minusMonths(1) },
+                            modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronLeft,
+                                contentDescription = stringResource(R.string.calendar_prev_month),
+                            )
+                        }
+                        IconButton(
+                            onClick = { displayedMonth = displayedMonth.plusMonths(1) },
+                            modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronRight,
+                                contentDescription = stringResource(R.string.calendar_next_month),
+                            )
+                        }
                     }
-                    Button(
-                        onClick = { displayedMonth = displayedMonth.minusMonths(1) },
-                        shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Text(text = stringResource(R.string.calendar_prev_month))
-                    }
-                    Button(
-                        onClick = { displayedMonth = displayedMonth.plusMonths(1) },
-                        shape = MaterialTheme.shapes.large,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Text(text = stringResource(R.string.calendar_next_month))
-                    }
-                }
-            }
+                },
+            )
         }
 
         item {

@@ -57,6 +57,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.ClassingInformationIsland
+import com.xtawa.classingtime.ui.theme.ClassingRadii
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -163,18 +166,24 @@ internal fun MobileOnboardingFlow(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(
+                            horizontal = ClassingSpacing.sm,
+                            vertical = ClassingSpacing.xs,
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (stepIndex > 0) {
                         Button(
                             onClick = { stepIndex = previousOnboardingStep(stepIndex) },
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(
+                                horizontal = ClassingSpacing.sm,
+                                vertical = ClassingSpacing.xs,
+                            ),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -201,12 +210,15 @@ internal fun MobileOnboardingFlow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            .padding(
+                                horizontal = ClassingSpacing.md,
+                                vertical = ClassingSpacing.sm,
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
                     ) {
                         Button(
                             onClick = { stepIndex = (stepIndex + 1).coerceAtMost(stepCount - 1) },
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -219,7 +231,7 @@ internal fun MobileOnboardingFlow(
                             onClick = {
                                 if (nextEnabled) stepIndex += 1
                             },
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                             modifier = Modifier.weight(1f),
                         ) {
                             Text(stringResource(R.string.onboarding_next))
@@ -236,19 +248,22 @@ internal fun MobileOnboardingFlow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                            .padding(
+                                horizontal = ClassingSpacing.md,
+                                vertical = ClassingSpacing.sm,
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
                     ) {
                         Button(
                             onClick = { complete(openSettingsHomeAfterFinish = false) },
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(stringResource(R.string.onboarding_go_dashboard))
                         }
                         Button(
                             onClick = { complete(openSettingsHomeAfterFinish = true) },
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(ClassingRadii.pill),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -266,9 +281,9 @@ internal fun MobileOnboardingFlow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = ClassingSpacing.referenceScreenInset)
+                .padding(top = ClassingSpacing.xs, bottom = ClassingSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
             when (stepIndex) {
                 0 -> {
@@ -374,13 +389,9 @@ internal fun MobileOnboardingFlow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
+                    ClassingInformationIsland(
+                        contentPadding = PaddingValues(ClassingSpacing.md),
+                    ) {
                             when (importTarget) {
                                 OnboardingImportTarget.CLOUD_SYNC -> {
                                     Text(
@@ -403,7 +414,7 @@ internal fun MobileOnboardingFlow(
                                             onCheckedChange = { cloudSyncEnabled = it },
                                         )
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                                         FilterChip(
                                             selected = cloudProvider == CloudProviderUi.WEBDAV,
                                             onClick = { cloudProvider = CloudProviderUi.WEBDAV },
@@ -486,7 +497,6 @@ internal fun MobileOnboardingFlow(
                                     )
                                 }
                             }
-                        }
                     }
                 }
 
@@ -501,19 +511,15 @@ internal fun MobileOnboardingFlow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                    ClassingInformationIsland(
+                        contentPadding = PaddingValues(ClassingSpacing.md),
+                    ) {
                             Text(
                                 text = stringResource(R.string.onboarding_device_detecting),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                                 FilterChip(
                                     selected = wearSyncMode == WearSyncMode.AUTO,
                                     onClick = { wearSyncMode = WearSyncMode.AUTO },
@@ -525,15 +531,10 @@ internal fun MobileOnboardingFlow(
                                     label = { Text(stringResource(R.string.settings_wear_sync_mode_wearable_api)) },
                                 )
                             }
-                        }
                     }
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                    ClassingInformationIsland(
+                        contentPadding = PaddingValues(ClassingSpacing.md),
+                    ) {
                             val variant = wearAutoVariantLabel(context, autoDetection.variant)
                             val effectiveMode = wearSyncModeLabel(context, autoDetection.effectiveMode)
                             Text(
@@ -561,7 +562,7 @@ internal fun MobileOnboardingFlow(
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Watch,
@@ -575,7 +576,6 @@ internal fun MobileOnboardingFlow(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                        }
                     }
                 }
 
@@ -590,13 +590,9 @@ internal fun MobileOnboardingFlow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
+                    ClassingInformationIsland(
+                        contentPadding = PaddingValues(ClassingSpacing.md),
+                    ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -645,7 +641,7 @@ internal fun MobileOnboardingFlow(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                 ),
                             ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
+                                Column(modifier = Modifier.padding(ClassingSpacing.sm)) {
                                     Text(
                                         text = stringResource(R.string.onboarding_personalize_semester),
                                         style = MaterialTheme.typography.bodySmall,
@@ -658,7 +654,6 @@ internal fun MobileOnboardingFlow(
                                     )
                                 }
                             }
-                        }
                     }
                 }
 
@@ -669,7 +664,7 @@ internal fun MobileOnboardingFlow(
                             .size(96.dp)
                             .background(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(999.dp),
+                                shape = RoundedCornerShape(ClassingRadii.pill),
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -708,36 +703,33 @@ private fun OnboardingOptionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLowest
-            },
-        ),
+    ClassingInformationIsland(
+        onClick = onClick,
+        containerColor = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        } else {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
+        },
+        contentPadding = PaddingValues(ClassingSpacing.md),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(vertical = ClassingSpacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingRadii.pill),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(ClassingSpacing.lg),
                     )
                 }
             }

@@ -99,4 +99,51 @@ class MobileBackStateTest {
         assertEquals(MobileLayer.Schedule, reduced?.layer)
         assertEquals(ScheduleSubview.Timetable, reduced?.scheduleSubview)
     }
+
+    @Test
+    fun reduceBackState_returnsToTimetableFromCourseDetail() {
+        val state = MobileBackState(
+            layer = MobileLayer.Schedule,
+            scheduleSubview = ScheduleSubview.CourseDetail,
+            settingsPage = SettingsPage.Main,
+            previousMainLayer = MobileLayer.Dashboard,
+            showImportJsonPromptPage = false,
+        )
+
+        val reduced = reduceBackState(state)
+
+        assertEquals(ScheduleSubview.Timetable, reduced?.scheduleSubview)
+    }
+
+    @Test
+    fun reduceBackState_returnsFromCourseDetailToItsHomeSource() {
+        val state = MobileBackState(
+            layer = MobileLayer.Schedule,
+            scheduleSubview = ScheduleSubview.CourseDetail,
+            settingsPage = SettingsPage.Main,
+            previousMainLayer = MobileLayer.Dashboard,
+            showImportJsonPromptPage = false,
+            detailReturnLayer = MobileLayer.Dashboard,
+        )
+
+        val reduced = reduceBackState(state)
+
+        assertEquals(MobileLayer.Dashboard, reduced?.layer)
+    }
+
+    @Test
+    fun reduceBackState_returnsFromAssistantToItsPreviousMainLayer() {
+        val state = MobileBackState(
+            layer = MobileLayer.Settings,
+            scheduleSubview = ScheduleSubview.Timetable,
+            settingsPage = SettingsPage.AskAi,
+            previousMainLayer = MobileLayer.Dashboard,
+            showImportJsonPromptPage = false,
+        )
+
+        val reduced = reduceBackState(state)
+
+        assertEquals(MobileLayer.Dashboard, reduced?.layer)
+        assertEquals(SettingsPage.Main, reduced?.settingsPage)
+    }
 }

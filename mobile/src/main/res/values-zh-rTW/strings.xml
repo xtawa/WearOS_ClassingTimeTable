@@ -2,6 +2,7 @@
     <string name="app_name">Classing Time</string>
 
     <string name="layer_dashboard">課表</string>
+    <string name="layer_home">主頁</string>
     <string name="layer_calendar">日曆</string>
     <string name="layer_week_view">週檢視</string>
     <string name="layer_import">匯入</string>
@@ -482,6 +483,19 @@
     <string name="common_refresh">重新整理</string>
     <string name="settings_account_title">帳戶</string>
     <string name="settings_account_desc">管理 Classing 課程表帳戶。</string>
+    <string name="settings_ask_classing_title">詢問 Classing</string>
+    <string name="settings_ask_classing_desc">詢問課程、空閒時間和臨時調課等行程問題。</string>
+    <string name="settings_appearance_title">外觀</string>
+    <string name="settings_appearance_desc">選擇 Classing 如何跟隨裝置主題與配色。</string>
+    <string name="settings_theme_mode_title">主題</string>
+    <string name="settings_theme_mode_desc">跟隨系統設定，或讓 Classing 始終使用亮色或深色。</string>
+    <string name="settings_theme_system">跟隨系統</string>
+    <string name="settings_theme_light">亮色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_dynamic_color_title">系統配色</string>
+    <string name="settings_dynamic_color_desc">在支援的 Android 裝置上使用系統配色呈現 Classing 介面。</string>
+    <string name="settings_appearance_preview_title">預覽</string>
+    <string name="settings_appearance_preview_body">變更會立即套用到首頁、課表、設定和彈出層。</string>
     <string name="account_status_title">帳戶狀態</string>
     <string name="account_not_logged_in">未登入</string>
     <string name="account_signed_in_as">已登入：%1$s</string>

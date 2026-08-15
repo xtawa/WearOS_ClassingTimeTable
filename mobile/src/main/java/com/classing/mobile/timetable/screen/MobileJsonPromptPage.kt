@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import kotlinx.coroutines.delay
 
 @Composable
@@ -54,10 +55,10 @@ internal fun JsonPromptPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.lg),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.json_prompt_page_title),
@@ -66,25 +67,12 @@ internal fun JsonPromptPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = stringResource(R.string.ghost_title_ai),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = stringResource(R.string.json_prompt_page_title),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = stringResource(R.string.json_prompt_page_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(R.string.json_prompt_page_desc),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = ClassingSpacing.xxs),
+        )
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),

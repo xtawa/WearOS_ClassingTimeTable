@@ -120,6 +120,8 @@ import com.xtawa.classingtime.data.SyncScope
 import com.xtawa.classingtime.reminder.KeepAliveLevel
 import com.xtawa.classingtime.reminder.ReminderRuntime
 import com.xtawa.classingtime.reminder.ReminderScheduler
+import com.xtawa.classingtime.ui.course.CourseDetailScreen
+import com.xtawa.classingtime.ui.changes.ScheduleChangesScreen
 import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.sync.WearDataLayerContracts
 import com.xtawa.classingtime.sync.CloudCredentialStore
@@ -157,9 +159,16 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
+import com.xtawa.classingtime.ui.theme.ClassingMotion
+import com.xtawa.classingtime.ui.components.ClassingPageBackground
+import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
+import com.xtawa.classingtime.ui.theme.ClassingRadii
 
 @Composable
-fun MobileTimetableScreen() {
+internal fun MobileTimetableScreen(
+    appearanceState: ClassingAppearanceState,
+    onAppearanceStateChange: (ClassingAppearanceState) -> Unit,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val zoneId = remember { ZoneId.systemDefault() }
@@ -167,11 +176,12 @@ fun MobileTimetableScreen() {
     val adapter = remember { ScheduleImportAdapter() }
 
     var initialized by remember { mutableStateOf(false) }
-    var layerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
+    var layerName by remember { mutableStateOf(MobileLayer.Dashboard.name) }
     var scheduleSubviewName by remember { mutableStateOf(ScheduleSubview.Timetable.name) }
-    var previousMainLayerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
+    var previousMainLayerName by remember { mutableStateOf(MobileLayer.Dashboard.name) }
     var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
     var showImportJsonPromptPage by remember { mutableStateOf(false) }
+    var pendingAssistantQuestion by remember { mutableStateOf("") }
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
@@ -197,6 +207,10 @@ fun MobileTimetableScreen() {
     var pendingManualConflicts by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
     var showManualConflictDialog by remember { mutableStateOf(false) }
     var editingContext by remember { mutableStateOf<LessonEditContext?>(null) }
+    var selectedDetailLesson by remember { mutableStateOf<LessonUi?>(null) }
+    var selectedDetailDate by remember { mutableStateOf<LocalDate?>(null) }
+    var detailReturnLayerName by remember { mutableStateOf(MobileLayer.Schedule.name) }
+    var detailReturnScheduleSubviewName by remember { mutableStateOf(ScheduleSubview.Timetable.name) }
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
     var pendingRestoreBaseLessons by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
     var pendingRestoreExceptions by remember { mutableStateOf<List<ScheduleExceptionUi>>(emptyList()) }
@@ -299,11 +313,15 @@ fun MobileTimetableScreen() {
 
     fun handleBackNavigation(): Boolean {
         val current = MobileBackState(
-            layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule,
+            layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Dashboard,
             scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable,
             settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main,
-            previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Schedule,
+            previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Dashboard,
             showImportJsonPromptPage = showImportJsonPromptPage,
+            detailReturnLayer = MobileLayer.entries.firstOrNull { it.name == detailReturnLayerName } ?: MobileLayer.Schedule,
+            detailReturnScheduleSubview = ScheduleSubview.entries.firstOrNull {
+                it.name == detailReturnScheduleSubviewName
+            } ?: ScheduleSubview.Timetable,
         )
         val reduced = reduceBackState(current) ?: return false
         layerName = reduced.layer.name
@@ -348,8 +366,15 @@ fun MobileTimetableScreen() {
     }
 
     fun rebuildScheduleProjection() {
-        val projection = buildScheduleProjection(
+        val projectedBaseLessons = migrateLegacyDefaultWeekRange(
             baseLessons = baseLessons,
+            weekNumberMode = weekNumberMode,
+        )
+        if (projectedBaseLessons != baseLessons) {
+            baseLessons = projectedBaseLessons
+        }
+        val projection = buildScheduleProjection(
+            baseLessons = projectedBaseLessons,
             exceptions = scheduleExceptions,
             weekNumberMode = weekNumberMode,
             semesterWeekStartDate = semesterWeekStartDate,
@@ -358,7 +383,7 @@ fun MobileTimetableScreen() {
         lessons = projection.effectiveLessonsForSync
         currentWeekLessons = projection.currentWeekLessons
         currentWeekLessonsByDay = projection.currentWeekLessonsByDay
-        val displayProjection = buildScheduleDisplayProjection(baseLessons, currentWeekLessons)
+        val displayProjection = buildScheduleDisplayProjection(projectedBaseLessons, currentWeekLessons)
         displayLessons = displayProjection.lessons
         displayLessonsByDay = displayProjection.lessonsByDay
         lastProjectionDate = LocalDate.now()
@@ -477,7 +502,12 @@ fun MobileTimetableScreen() {
     }
 
     fun appendManualLesson(newLesson: LessonUi) {
-        baseLessons = (baseLessons + newLesson).sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+        val normalizedLesson = migrateLegacyDefaultWeekRange(
+            baseLessons = listOf(newLesson),
+            weekNumberMode = weekNumberMode,
+        ).single()
+        baseLessons = (baseLessons + normalizedLesson)
+            .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
         rebuildScheduleProjection()
         persistScheduleState()
     }
@@ -974,10 +1004,17 @@ fun MobileTimetableScreen() {
         cloudSyncStatus = settings.cloudLastResult
         cloudLastSyncedAt = settings.cloudLastSyncedAt
 
-        baseLessons = loadedState.baseLessons
+        val migratedBaseLessons = migrateLegacyDefaultWeekRange(
+            baseLessons = loadedState.baseLessons,
+            weekNumberMode = weekNumberMode,
+        )
+        baseLessons = migratedBaseLessons
         scheduleExceptions = loadedState.exceptions
         scheduleSnapshots = loadedState.snapshots
         rebuildScheduleProjection()
+        if (migratedBaseLessons != loadedState.baseLessons) {
+            persistScheduleState()
+        }
         MobilePrefsStore.ensureOnboardingCompletedForLegacyUser(context)
         showOnboarding = !MobilePrefsStore.isOnboardingCompleted(context)
 
@@ -1148,7 +1185,7 @@ fun MobileTimetableScreen() {
         return
     }
 
-    val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Schedule
+    val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Dashboard
     val scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
     val contentDestination = remember(layer, scheduleSubview, settingsPage, showImportJsonPromptPage) {
@@ -1159,14 +1196,23 @@ fun MobileTimetableScreen() {
             showImportJsonPromptPage = showImportJsonPromptPage,
         )
     }
-    val previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Schedule
-    val currentBackState = remember(contentDestination, previousMainLayer) {
+    val previousMainLayer = MobileLayer.entries.firstOrNull { it.name == previousMainLayerName } ?: MobileLayer.Dashboard
+    val currentBackState = remember(
+        contentDestination,
+        previousMainLayer,
+        detailReturnLayerName,
+        detailReturnScheduleSubviewName,
+    ) {
         MobileBackState(
             layer = contentDestination.layer,
             scheduleSubview = contentDestination.scheduleSubview,
             settingsPage = contentDestination.settingsPage,
             previousMainLayer = previousMainLayer,
             showImportJsonPromptPage = contentDestination.showImportJsonPromptPage,
+            detailReturnLayer = MobileLayer.entries.firstOrNull { it.name == detailReturnLayerName } ?: MobileLayer.Schedule,
+            detailReturnScheduleSubview = ScheduleSubview.entries.firstOrNull {
+                it.name == detailReturnScheduleSubviewName
+            } ?: ScheduleSubview.Timetable,
         )
     }
     val canHandleBack = remember(currentBackState) { reduceBackState(currentBackState) != null }
@@ -1514,109 +1560,7 @@ fun MobileTimetableScreen() {
     }
 
     Scaffold(
-        topBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(34.dp),
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                                    contentDescription = stringResource(R.string.app_name),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                        Text(
-                            text = stringResource(R.string.screen_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SyncStatusGroup(
-                            bluetoothState = bluetoothSyncState,
-                            cloudState = cloudSyncState,
-                        )
-                    }
-                }
-            }
-        },
-        bottomBar = {
-            Surface(
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp,
-            ) {
-                NavigationBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .height(82.dp),
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                ) {
-                    MobileLayer.entries.forEach { item ->
-                        val icon = when (item) {
-                            MobileLayer.Schedule -> Icons.AutoMirrored.Filled.MenuBook
-                            MobileLayer.Dashboard -> Icons.Filled.GridView
-                            MobileLayer.Settings -> Icons.Filled.Settings
-                        }
-                        NavigationBarItem(
-                            selected = item == layer,
-                            onClick = {
-                                if (item == MobileLayer.Settings && layer != MobileLayer.Settings) {
-                                    previousMainLayerName = layer.name
-                                }
-                                layerName = item.name
-                                if (item != MobileLayer.Settings) {
-                                    goToSettingsRoot()
-                                }
-                                if (item == MobileLayer.Schedule) {
-                                    scheduleSubviewName = ScheduleSubview.Timetable.name
-                                }
-                            },
-                            icon = { Icon(imageVector = icon, contentDescription = null) },
-                            alwaysShowLabel = true,
-                            label = {
-                                Text(
-                                    stringResource(item.labelRes()),
-                                    fontWeight = if (item == layer) FontWeight.SemiBold else FontWeight.Medium,
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        )
-                    }
-                }
-            }
-        },
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         AnimatedContent(
             targetState = contentDestination,
@@ -1633,32 +1577,32 @@ fun MobileTimetableScreen() {
                 when (resolveContentTransitionDirection(initialState, targetState)) {
                     ContentTransitionDirection.Forward -> (
                         slideInHorizontally(
-                            animationSpec = tween(260),
+                            animationSpec = tween(ClassingMotion.ContentReveal),
                             initialOffsetX = { fullWidth -> fullWidth / 4 },
-                        ) + fadeIn(animationSpec = tween(220))
+                        ) + fadeIn(animationSpec = tween(ClassingMotion.ContentReveal))
                         ).togetherWith(
                         slideOutHorizontally(
-                            animationSpec = tween(220),
+                            animationSpec = tween(ClassingMotion.Exit),
                             targetOffsetX = { fullWidth -> -(fullWidth / 6) },
-                        ) + fadeOut(animationSpec = tween(180)),
+                        ) + fadeOut(animationSpec = tween(ClassingMotion.Exit)),
                     )
 
                     ContentTransitionDirection.Backward -> (
                         slideInHorizontally(
-                            animationSpec = tween(260),
+                            animationSpec = tween(ClassingMotion.ContentReveal),
                             initialOffsetX = { fullWidth -> -(fullWidth / 4) },
-                        ) + fadeIn(animationSpec = tween(220))
+                        ) + fadeIn(animationSpec = tween(ClassingMotion.ContentReveal))
                         ).togetherWith(
                         slideOutHorizontally(
-                            animationSpec = tween(220),
+                            animationSpec = tween(ClassingMotion.Exit),
                             targetOffsetX = { fullWidth -> fullWidth / 6 },
-                        ) + fadeOut(animationSpec = tween(180)),
+                        ) + fadeOut(animationSpec = tween(ClassingMotion.Exit)),
                     )
 
                     ContentTransitionDirection.None -> (
-                        fadeIn(animationSpec = tween(120))
+                        fadeIn(animationSpec = tween(ClassingMotion.Micro))
                         ).togetherWith(
-                        fadeOut(animationSpec = tween(90)),
+                        fadeOut(animationSpec = tween(ClassingMotion.Micro)),
                     )
                 }.using(
                     SizeTransform(clip = false),
@@ -1667,14 +1611,24 @@ fun MobileTimetableScreen() {
             label = "mobile_content_transition",
         ) { destination ->
             when (destination.layer) {
-                MobileLayer.Schedule -> when (destination.scheduleSubview) {
+                MobileLayer.Schedule -> ClassingPageBackground {
+                    when (destination.scheduleSubview) {
                     ScheduleSubview.Timetable -> WeekBoardLayer(
                         contentPadding = innerPadding,
                         visibleDays = visibleDays,
-                        lessonsByDay = displayLessonsByDay,
                         lessonsForDate = ::lessonsForDate,
                         hasSchedule = baseLessons.isNotEmpty(),
+                        scheduleChangeCount = scheduleExceptions.size,
+                        onBackToHome = { layerName = MobileLayer.Dashboard.name },
                         onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
+                        onOpenChanges = { scheduleSubviewName = ScheduleSubview.Changes.name },
+                        onOpenLesson = { lesson, date ->
+                            selectedDetailLesson = lesson
+                            selectedDetailDate = date
+                            detailReturnLayerName = MobileLayer.Schedule.name
+                            detailReturnScheduleSubviewName = ScheduleSubview.Timetable.name
+                            scheduleSubviewName = ScheduleSubview.CourseDetail.name
+                        },
                         onLongPressLesson = {
                             editingContext = LessonEditContext(
                                 lesson = it,
@@ -1734,22 +1688,83 @@ fun MobileTimetableScreen() {
                             syncReminderWork()
                         },
                     )
+
+                    ScheduleSubview.CourseDetail -> {
+                        val detailLesson = selectedDetailLesson
+                        val detailDate = selectedDetailDate
+                        if (detailLesson != null && detailDate != null) {
+                            CourseDetailScreen(
+                                lesson = detailLesson,
+                                date = detailDate,
+                                contentPadding = innerPadding,
+                                onBack = { handleBackNavigation() },
+                                onEdit = {
+                                    editingContext = LessonEditContext(
+                                        lesson = detailLesson,
+                                        anchorDate = detailDate,
+                                        allowedScopes = setOf(
+                                            LessonEditScope.SingleOccurrence,
+                                            LessonEditScope.FromThisWeek,
+                                            LessonEditScope.WholeLesson,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
+                    }
+
+                    ScheduleSubview.Changes -> ScheduleChangesScreen(
+                        exceptions = scheduleExceptions,
+                        baseLessons = baseLessons,
+                        contentPadding = innerPadding,
+                        onBack = { handleBackNavigation() },
+                        onOpenLesson = { lesson, date ->
+                            selectedDetailLesson = lesson
+                            selectedDetailDate = date
+                            detailReturnLayerName = MobileLayer.Schedule.name
+                            detailReturnScheduleSubviewName = ScheduleSubview.Changes.name
+                            scheduleSubviewName = ScheduleSubview.CourseDetail.name
+                        },
+                    )
+                    }
                 }
 
                 MobileLayer.Dashboard -> DashboardLayer(
                     contentPadding = innerPadding,
                     lessons = displayLessons,
-                    visibleDays = visibleDays,
-                    lessonsByDay = displayLessonsByDay,
-                    currentWeekLessonsByDay = currentWeekLessonsByDay,
-                    onOpenAskAi = { openSettingsPage(SettingsPage.AskAi) },
+                    lessonsForDate = ::lessonsForDate,
+                    onOpenAskAi = { query ->
+                        pendingAssistantQuestion = query
+                        openSettingsPage(SettingsPage.AskAi)
+                    },
+                    onOpenCourse = { lesson, date ->
+                        selectedDetailLesson = lesson
+                        selectedDetailDate = date
+                        detailReturnLayerName = MobileLayer.Dashboard.name
+                        detailReturnScheduleSubviewName = ScheduleSubview.Timetable.name
+                        layerName = MobileLayer.Schedule.name
+                        scheduleSubviewName = ScheduleSubview.CourseDetail.name
+                    },
+                    onOpenTimetable = {
+                        layerName = MobileLayer.Schedule.name
+                        scheduleSubviewName = ScheduleSubview.Timetable.name
+                    },
+                    onOpenSettings = { openSettingsPage(SettingsPage.Main) },
                 )
 
-                MobileLayer.Settings -> when (destination.settingsPage) {
+                MobileLayer.Settings -> ClassingPageBackground {
+                    when (destination.settingsPage) {
                 SettingsPage.Main -> SettingsLayer(
                     contentPadding = innerPadding,
+                    onBack = { handleBackNavigation() },
                     onOpenAccountPage = {
                         openSettingsPage(SettingsPage.Account)
+                    },
+                    onOpenAskAiPage = {
+                        openSettingsPage(SettingsPage.AskAi)
+                    },
+                    onOpenAppearancePage = {
+                        openSettingsPage(SettingsPage.Appearance)
                     },
                     onOpenImportPage = {
                         openSettingsPage(SettingsPage.Import)
@@ -1785,8 +1800,16 @@ fun MobileTimetableScreen() {
                     weekNumberMode = weekNumberMode,
                     semesterWeekStartDate = semesterWeekStartDate,
                     weekStartDay = weekStartDay,
+                    initialQuestion = pendingAssistantQuestion,
                     onBack = { handleBackNavigation() },
                     onOpenAccount = { openSettingsPage(SettingsPage.Account) },
+                )
+
+                SettingsPage.Appearance -> AppearanceSettingsPage(
+                    contentPadding = innerPadding,
+                    state = appearanceState,
+                    onStateChange = onAppearanceStateChange,
+                    onBack = { handleBackNavigation() },
                 )
 
                 SettingsPage.Import -> importContent(innerPadding, destination.showImportJsonPromptPage)
@@ -1839,7 +1862,16 @@ fun MobileTimetableScreen() {
                     onWeekNumberModeChange = { mode ->
                         if (weekNumberMode != mode) {
                             weekNumberMode = mode
+                            val migratedBaseLessons = migrateLegacyDefaultWeekRange(
+                                baseLessons = baseLessons,
+                                weekNumberMode = mode,
+                            )
+                            val migratedWeekRange = migratedBaseLessons != baseLessons
+                            baseLessons = migratedBaseLessons
                             rebuildScheduleProjection()
+                            if (migratedWeekRange) {
+                                persistScheduleState()
+                            }
                             persistSettings()
                             scheduleWeekSettingsAutoSync()
                             requestCloudSync(
@@ -2704,6 +2736,7 @@ fun MobileTimetableScreen() {
                         persistSettings()
                     },
                 )
+                    }
             }
         }
         }
@@ -2952,11 +2985,13 @@ private fun resolveContentTransitionDirection(
 
 private fun MobileContentDestination.transitionDepth(): Int {
     return when (layer) {
+        MobileLayer.Dashboard -> 0
         MobileLayer.Schedule -> when (scheduleSubview) {
-            ScheduleSubview.Timetable -> 0
-            ScheduleSubview.Calendar -> 50
+            ScheduleSubview.Timetable -> 100
+            ScheduleSubview.Calendar -> 150
+            ScheduleSubview.CourseDetail -> 180
+            ScheduleSubview.Changes -> 170
         }
-        MobileLayer.Dashboard -> 100
         MobileLayer.Settings -> when (settingsPage) {
             SettingsPage.Main -> 200
             SettingsPage.Import -> if (showImportJsonPromptPage) 400 else 300
@@ -3092,7 +3127,7 @@ private fun SyncStatusBadge(
 
     Surface(
         modifier = modifier.size(32.dp),
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(ClassingRadii.pill),
         color = containerColor,
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -3106,7 +3141,7 @@ private fun SyncStatusBadge(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(16.dp),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                     color = badgeColor,
                     border = badgeBorder,
                 ) {

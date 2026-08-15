@@ -181,6 +181,48 @@ class MobileScheduleStateTest {
     }
 
     @Test
+    fun migrateLegacyDefaultWeekRange_keepsNaturalWeekCoursesVisibleAfterWeekThirty() {
+        val legacyCourse = baseLesson.copy(
+            startWeek = DEFAULT_START_WEEK,
+            endWeek = LEGACY_DEFAULT_END_WEEK,
+        )
+
+        val migrated = migrateLegacyDefaultWeekRange(
+            baseLessons = listOf(legacyCourse),
+            weekNumberMode = WeekNumberMode.NATURAL,
+        )
+
+        assertEquals(DEFAULT_END_WEEK, migrated.single().endWeek)
+        val occurrences = buildEffectiveOccurrencesForDateRange(
+            baseLessons = migrated,
+            exceptions = emptyList(),
+            startDate = LocalDate.of(2026, 8, 10),
+            endDate = LocalDate.of(2026, 8, 10),
+            weekNumberMode = WeekNumberMode.NATURAL,
+            semesterWeekStartDate = semesterStart,
+        )
+        assertEquals(listOf("Math"), occurrences.map { it.lesson.title })
+    }
+
+    @Test
+    fun migrateLegacyDefaultWeekRange_doesNotChangeSemesterOrCustomRanges() {
+        val legacyCourse = baseLesson.copy(
+            startWeek = DEFAULT_START_WEEK,
+            endWeek = LEGACY_DEFAULT_END_WEEK,
+        )
+        val customCourse = baseLesson.copy(startWeek = 2, endWeek = 12)
+
+        assertEquals(
+            legacyCourse,
+            migrateLegacyDefaultWeekRange(listOf(legacyCourse), WeekNumberMode.SEMESTER).single(),
+        )
+        assertEquals(
+            customCourse,
+            migrateLegacyDefaultWeekRange(listOf(customCourse), WeekNumberMode.NATURAL).single(),
+        )
+    }
+
+    @Test
     fun restoreOriginalOccurrence_removesOnlyMatchingDateAndLesson() {
         val targetDate = LocalDate.of(2026, 3, 9)
         val exceptions = listOf(

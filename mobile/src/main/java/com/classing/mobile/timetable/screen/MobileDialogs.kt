@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
 @Composable
 internal fun MobileDialogs(
@@ -45,10 +46,12 @@ internal fun MobileDialogs(
 ) {
     if (showImportConflictDialog && pendingImportConflicts.isNotEmpty()) {
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = onDismissImportConflict,
             title = { Text(stringResource(R.string.import_conflict_dialog_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Text(
                         text = stringResource(R.string.import_conflict_dialog_message, pendingImportConflicts.size),
                         style = MaterialTheme.typography.bodySmall,
@@ -82,10 +85,12 @@ internal fun MobileDialogs(
 
     if (showManualConflictDialog && pendingManualLesson != null && pendingManualConflicts.isNotEmpty()) {
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = onDismissManualConflict,
             title = { Text(stringResource(R.string.manual_conflict_dialog_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Text(
                         text = stringResource(R.string.manual_conflict_dialog_message, pendingManualConflicts.size),
                         style = MaterialTheme.typography.bodySmall,
@@ -139,10 +144,12 @@ internal fun MobileDialogs(
 
     if (showRestoreConfirmDialog && pendingRestoreLessons.isNotEmpty()) {
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = onDismissRestore,
             title = { Text(stringResource(R.string.backup_restore_dialog_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     Text(
                         text = stringResource(
                             R.string.backup_restore_dialog_message,
@@ -193,6 +200,8 @@ internal fun MobileDialogs(
 
     if (showClearAllConfirmDialog) {
         AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             onDismissRequest = onDismissClearAll,
             title = { Text(stringResource(R.string.danger_clear_dialog_title)) },
             text = {

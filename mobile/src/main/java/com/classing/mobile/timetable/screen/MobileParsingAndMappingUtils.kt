@@ -74,6 +74,7 @@ import com.xtawa.classingtime.sync.WearSyncAckInfo
 import com.xtawa.classingtime.sync.WearSyncAckStore
 import com.xtawa.classingtime.sync.WearDataLayerSyncPublisher
 import com.xtawa.classingtime.sync.WearSyncDispatchResult
+import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
 import com.google.android.gms.wearable.Wearable
 import com.classing.shared.importer.CourseDraft
 import com.classing.shared.importer.IcsImportParser
@@ -482,7 +483,7 @@ internal fun hasNotificationPermission(context: Context): Boolean {
 internal fun MobileLayer.labelRes(): Int {
     return when (this) {
         MobileLayer.Schedule -> R.string.layer_dashboard
-        MobileLayer.Dashboard -> R.string.layer_heatmap
+        MobileLayer.Dashboard -> R.string.layer_home
         MobileLayer.Settings -> R.string.layer_settings
     }
 }
@@ -492,7 +493,8 @@ internal val clockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH
 @Preview(showBackground = true, widthDp = 390, heightDp = 800)
 @Composable
 internal fun MobileTimetablePreview() {
-    MobileTimetableScreen()
+    MobileTimetableScreen(
+        appearanceState = ClassingAppearanceState(),
+        onAppearanceStateChange = {},
+    )
 }
-
-
