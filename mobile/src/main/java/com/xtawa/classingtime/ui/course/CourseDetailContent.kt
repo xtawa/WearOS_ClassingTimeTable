@@ -49,9 +49,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -111,7 +113,10 @@ internal fun CourseDetailContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.course_detail_back),
+                        )
                     }
                     Text(
                         text = state.dateLabel,
@@ -147,7 +152,7 @@ internal fun CourseDetailContent(
                     ) {
                         DetailIsland(
                             icon = Icons.Rounded.Notes,
-                            label = "Notes",
+                            label = stringResource(R.string.course_detail_notes),
                             value = state.note,
                         )
                     }
@@ -166,7 +171,7 @@ internal fun CourseDetailContent(
                 ) {
                     Icon(Icons.Rounded.Edit, contentDescription = null)
                     Text(
-                        text = "Edit course",
+                        text = stringResource(R.string.course_detail_edit),
                         modifier = Modifier.padding(start = ClassingSpacing.xs),
                     )
                 }
@@ -198,9 +203,9 @@ private fun CourseHero(state: CourseDetailUiState) {
                 )
                 Text(
                     text = when (state.status) {
-                        CourseDetailStatus.Upcoming -> "UPCOMING"
-                        CourseDetailStatus.InClass -> "IN CLASS"
-                        CourseDetailStatus.Finished -> "FINISHED"
+                        CourseDetailStatus.Upcoming -> stringResource(R.string.course_detail_upcoming)
+                        CourseDetailStatus.InClass -> stringResource(R.string.course_detail_in_class)
+                        CourseDetailStatus.Finished -> stringResource(R.string.course_detail_finished)
                     },
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
@@ -265,18 +270,21 @@ private fun CourseFacts(state: CourseDetailUiState) {
     Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
         DetailIsland(
             icon = Icons.Rounded.Person,
-            label = "Teacher",
-            value = state.teacher ?: "Not provided",
+            label = stringResource(R.string.course_detail_teacher),
+            value = state.teacher ?: stringResource(R.string.course_detail_not_provided),
         )
         DetailIsland(
             icon = Icons.Rounded.Repeat,
-            label = "Schedule",
+            label = stringResource(R.string.course_detail_schedule),
             value = state.recurrenceLabel,
         )
         DetailIsland(
             icon = Icons.Rounded.Notes,
-            label = "Duration",
-            value = "${Duration.between(state.startTime, state.endTime).toMinutes()} minutes",
+            label = stringResource(R.string.course_detail_duration),
+            value = stringResource(
+                R.string.course_detail_duration_minutes,
+                Duration.between(state.startTime, state.endTime).toMinutes(),
+            ),
         )
     }
 }

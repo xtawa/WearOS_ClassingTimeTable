@@ -3,6 +3,8 @@ package com.xtawa.classingtime.ui.changes
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.screen.LessonUi
 import com.xtawa.classingtime.screen.ScheduleExceptionKind
 import com.xtawa.classingtime.screen.ScheduleExceptionUi
@@ -21,7 +23,8 @@ internal fun ScheduleChangesScreen(
     onBack: () -> Unit,
     onOpenLesson: (LessonUi, LocalDate) -> Unit,
 ) {
-    val state = remember(exceptions, baseLessons) {
+    val context = LocalContext.current
+    val state = remember(exceptions, baseLessons, context) {
         val locale = Locale.getDefault()
         val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
         ScheduleChangesUiState(
@@ -37,30 +40,47 @@ internal fun ScheduleChangesScreen(
                     ScheduleChangeUiModel(
                         id = exception.id,
                         lessonId = exception.lessonId,
-                        title = exception.title?.takeIf(String::isNotBlank) ?: base?.title ?: "Untitled course",
+                        title = exception.title?.takeIf(String::isNotBlank)
+                            ?: base?.title
+                            ?: context.getString(R.string.schedule_change_untitled),
                         date = exception.date,
                         dateLabel = exception.date.format(dateFormatter),
                         type = type,
                         beforeLabel = when (type) {
                             ScheduleChangeType.Cancelled,
                             ScheduleChangeType.Moved,
-                            -> base?.let { "${it.startTime.format(changeClockFormatter)}–${it.endTime.format(changeClockFormatter)} · ${it.location ?: "Room not provided"}" }
+                            -> base?.let {
+                                context.getString(
+                                    R.string.schedule_change_time_room,
+                                    it.startTime.format(changeClockFormatter),
+                                    it.endTime.format(changeClockFormatter),
+                                    it.location ?: context.getString(R.string.home_room_not_provided),
+                                )
+                            }
 
                             ScheduleChangeType.Added -> null
                         },
                         nowLabel = when (type) {
-                            ScheduleChangeType.Cancelled -> "Cancelled"
+                            ScheduleChangeType.Cancelled -> context.getString(R.string.schedule_change_cancelled_value)
                             ScheduleChangeType.Moved,
                             ScheduleChangeType.Added,
                             -> exception.startTime?.let { start ->
-                                val end = exception.endTime?.format(changeClockFormatter) ?: "?"
-                                "${start.format(changeClockFormatter)}–$end · ${exception.location ?: base?.location ?: "Room not provided"}"
+                                val end = exception.endTime?.format(changeClockFormatter)
+                                    ?: context.getString(R.string.value_unknown)
+                                context.getString(
+                                    R.string.schedule_change_time_room,
+                                    start.format(changeClockFormatter),
+                                    end,
+                                    exception.location
+                                        ?: base?.location
+                                        ?: context.getString(R.string.home_room_not_provided),
+                                )
                             }
                         },
                         contextLabel = when (type) {
-                            ScheduleChangeType.Added -> "One-off make-up class"
-                            ScheduleChangeType.Cancelled -> "The original occurrence remains in change history."
-                            ScheduleChangeType.Moved -> "Effective for this occurrence"
+                            ScheduleChangeType.Added -> context.getString(R.string.schedule_change_one_off)
+                            ScheduleChangeType.Cancelled -> context.getString(R.string.schedule_change_history_hint)
+                            ScheduleChangeType.Moved -> context.getString(R.string.schedule_change_effective)
                         },
                     )
                 },

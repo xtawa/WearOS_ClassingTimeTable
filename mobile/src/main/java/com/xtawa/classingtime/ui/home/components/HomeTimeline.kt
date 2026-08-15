@@ -27,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.home.HomeCourseUiModel
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -50,7 +52,7 @@ internal fun HomeTimeline(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
             Text(
-                text = "Later today",
+                text = stringResource(R.string.home_later_today),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -100,7 +102,8 @@ private fun TimelineCourseItem(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (emphasized) 1f else 0.72f),
             )
             Text(
-                text = course.location?.takeIf(String::isNotBlank) ?: "Room not provided",
+                text = course.location?.takeIf(String::isNotBlank)
+                    ?: stringResource(R.string.home_room_not_provided),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

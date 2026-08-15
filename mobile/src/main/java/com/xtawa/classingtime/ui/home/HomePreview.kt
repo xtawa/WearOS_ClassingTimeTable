@@ -23,7 +23,7 @@ private fun previewCourse(
     id = id,
     sourceLessonId = id,
     title = title,
-    teacher = "Ms. Lin",
+    teacher = "林老师",
     location = location,
     date = date,
     startTime = start,
@@ -33,15 +33,15 @@ private fun previewCourse(
 
 private val Physics = previewCourse(
     id = "physics",
-    title = "Physics",
+    title = "物理",
     start = LocalTime.of(14, 10),
     end = LocalTime.of(14, 55),
-    location = "Building A · 302",
+    location = "教学楼 A · 302",
     accent = ClassingColors.Physics,
 )
 private val English = previewCourse(
     id = "english",
-    title = "English",
+    title = "英语",
     start = LocalTime.of(15, 5),
     end = LocalTime.of(15, 50),
     location = "A205",
@@ -49,7 +49,7 @@ private val English = previewCourse(
 )
 private val Biology = previewCourse(
     id = "biology",
-    title = "Biology",
+    title = "生物",
     start = LocalTime.of(16, 0),
     end = LocalTime.of(16, 45),
     location = "Lab 2",
@@ -57,7 +57,7 @@ private val Biology = previewCourse(
 )
 private val TomorrowMath = previewCourse(
     id = "math-tomorrow",
-    title = "Mathematics",
+    title = "数学",
     start = LocalTime.of(8, 0),
     end = LocalTime.of(8, 45),
     location = "B101",

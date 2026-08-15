@@ -13,7 +13,7 @@ private val previewDays = (0L..6L).map { offset ->
     val date = previewMonday.plusDays(offset)
     TimetableDayUiModel(
         date = date,
-        dayLabel = date.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.uppercaseChar() },
+        dayLabel = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.SIMPLIFIED_CHINESE),
         dateLabel = date.dayOfMonth.toString(),
         courseCount = when (offset) {
             0L -> 4
@@ -30,9 +30,9 @@ private val previewDays = (0L..6L).map { offset ->
 private val previewCourses = listOf(
     TimetableCourseUiModel(
         id = "math",
-        title = "Mathematics",
-        teacher = "Dr. Lin",
-        location = "Teaching Building A · 201",
+        title = "数学",
+        teacher = "林老师",
+        location = "教学楼 A · 201",
         startTime = LocalTime.of(8, 0),
         endTime = LocalTime.of(8, 45),
         accent = ClassingColors.Mathematics,
@@ -40,9 +40,9 @@ private val previewCourses = listOf(
     ),
     TimetableCourseUiModel(
         id = "physics",
-        title = "Physics",
-        teacher = "Ms. Chen",
-        location = "Teaching Building A · 302",
+        title = "物理",
+        teacher = "陈老师",
+        location = "教学楼 A · 302",
         startTime = LocalTime.of(10, 20),
         endTime = LocalTime.of(11, 5),
         accent = ClassingColors.Physics,
@@ -50,8 +50,8 @@ private val previewCourses = listOf(
     ),
     TimetableCourseUiModel(
         id = "english",
-        title = "English Language",
-        teacher = "Mr. Lee",
+        title = "英语",
+        teacher = "李老师",
         location = "A205",
         startTime = LocalTime.of(15, 5),
         endTime = LocalTime.of(15, 50),
@@ -61,9 +61,9 @@ private val previewCourses = listOf(
 )
 
 private val timetablePreviewState = TimetableUiState(
-    weekLabel = "Aug 17–23",
+    weekLabel = "8 月 17–23 日",
     selectedDate = previewMonday,
-    selectedDateLabel = "Monday, August 17",
+    selectedDateLabel = "8 月 17 日，星期一",
     days = previewDays,
     courses = previewCourses,
     hasImportedSchedule = true,
@@ -97,7 +97,7 @@ private fun TimetableTodayPreview() = TimetablePreviewFrame()
 private fun TimetableEmptyPreview() = TimetablePreviewFrame(
     state = timetablePreviewState.copy(
         selectedDate = previewMonday.plusDays(5),
-        selectedDateLabel = "Saturday, August 22",
+        selectedDateLabel = "8 月 22 日，星期六",
         courses = emptyList(),
     ),
 )

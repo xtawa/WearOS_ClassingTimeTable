@@ -23,11 +23,13 @@
 | AI Assistant UI | Implemented, CI verified | Home query handoff, contextual anchor, in-place processing, result islands, quick prompts, model/history controls and existing API/account integration |
 | Settings and secondary navigation | Implemented, CI verified | Contextual headers, grouped information islands, source-aware back behavior, Appearance, account, import, reminder, sync and About routes without a persistent app bar or bottom navigation |
 | Legacy-surface visual unification | Implemented, CI verification pending | Onboarding, import, settings/account/sync surfaces and shared pills now use Classing information-island, radius and spacing tokens instead of local one-off geometry |
+| UI localization | Implemented, CI verification pending | AI-first Mobile UI copy is resource-backed with base, Simplified Chinese and Traditional Chinese variants; protocol keys and developer diagnostics remain unchanged |
 | Responsive and accessibility review | Implemented statically, screenshot review pending | 360/390 dp, light/dark and large-font previews across core screens and Settings; large-font layout adaptations, edge-to-edge insets, semantic headings/progress/live regions and 48 dp actions |
 
 ## Schedule visibility correction
 
 - New courses now default to the full valid week range rather than ending at week 30.
+- Device persistence, cloud serialization and phone-to-Wear transfer preserve the complete 1–53 week range instead of truncating it to 30 weeks.
 - Exact legacy natural-calendar defaults of weeks 1–30 are migrated to the full range when loaded or projected.
 - User-defined ranges and semester week mode remain unchanged.
 - Regression coverage verifies that a newly created course remains visible during natural calendar week 33.
@@ -63,10 +65,10 @@
 - Home does not invent empty or completed task states.
 - UI models and Preview states will remain optional until an authoritative data source is introduced in a later non-UI phase.
 
-### Localization cleanup
+### Localization
 
-- The new executable design copy currently follows the approved English design specification while existing legacy areas retain their resource-backed locale coverage.
-- Before release, the new Home, Timetable, Course Detail, Schedule Changes and Assistant copy must move into base, Simplified Chinese and Traditional Chinese resources; this was not hidden behind fabricated translations during the unbuilt phase.
+- Home, Timetable, Course Detail, Schedule Changes and Assistant copy is now Android-resource-backed in base, Simplified Chinese and Traditional Chinese variants.
+- JSON schema keys, service protocol values, animation labels and developer diagnostics intentionally remain stable machine-facing values.
 
 ### AI result composition
 

@@ -59,15 +59,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
-private val assistantQuickPrompts = listOf(
-    "What's next?",
-    "What's my afternoon like?",
-    "When is biology?",
-    "Do I have time for lunch?",
+@Composable
+private fun assistantQuickPrompts() = listOf(
+    stringResource(R.string.prompt_whats_next),
+    stringResource(R.string.prompt_afternoon),
+    stringResource(R.string.prompt_biology),
+    stringResource(R.string.prompt_lunch),
 )
 
 @Composable
@@ -117,13 +120,13 @@ internal fun AssistantContent(
                                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
                             ) {
                                 Text(
-                                    text = "What would you like to know?",
+                                    text = stringResource(R.string.assistant_welcome_title),
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.semantics { heading() },
                                 )
                                 Text(
-                                    text = "Ask about classes, free time, rooms, or your week.",
+                                    text = stringResource(R.string.assistant_welcome_hint),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -183,16 +186,19 @@ private fun AssistantHeader(onBack: () -> Unit, onNewConversation: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+            Icon(
+                Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = stringResource(R.string.assistant_back),
+            )
         }
         Text(
-            text = "Ask Classing",
+            text = stringResource(R.string.assistant_title),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.semantics { heading() },
         )
         IconButton(onClick = onNewConversation) {
-            Icon(Icons.Rounded.Add, contentDescription = "New conversation")
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.assistant_new_conversation))
         }
     }
 }
@@ -262,7 +268,7 @@ private fun ResultIsland(content: @Composable () -> Unit) {
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "Classing answer",
+                    text = stringResource(R.string.assistant_answer),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.semantics { heading() },
@@ -311,7 +317,7 @@ private fun ProcessingIsland() {
                 )
             }
             Text(
-                text = "Reading your schedule…",
+                text = stringResource(R.string.assistant_reading_schedule),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -328,6 +334,7 @@ private fun AssistantComposer(
     onSubmit: () -> Unit,
 ) {
     val largeText = LocalDensity.current.fontScale >= 1.5f
+    val composerContentDescription = stringResource(R.string.home_ask_schedule)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
@@ -347,7 +354,7 @@ private fun AssistantComposer(
                     horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
-                    assistantQuickPrompts.take(if (largeText) 2 else 3).forEach { prompt ->
+                    assistantQuickPrompts().take(if (largeText) 2 else 3).forEach { prompt ->
                         FilterChip(
                             selected = false,
                             onClick = { onQuestionChange(prompt) },
@@ -374,7 +381,7 @@ private fun AssistantComposer(
                             .weight(1f)
                             .padding(vertical = ClassingSpacing.md)
                             .semantics {
-                                contentDescription = "Ask Classing about your schedule"
+                                contentDescription = composerContentDescription
                             },
                         enabled = enabled,
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
@@ -383,7 +390,7 @@ private fun AssistantComposer(
                             Box {
                                 if (question.isBlank()) {
                                     Text(
-                                        text = "Ask about your schedule",
+                                        text = stringResource(R.string.home_ask_schedule_placeholder),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -404,7 +411,7 @@ private fun AssistantComposer(
                         IconButton(onClick = onSubmit, enabled = showSend) {
                             Icon(
                                 Icons.Rounded.ArrowUpward,
-                                contentDescription = "Send question",
+                                contentDescription = stringResource(R.string.assistant_send_question),
                                 tint = if (showSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                             )
                         }
@@ -425,9 +432,9 @@ private fun AccessIsland(onOpenAccount: () -> Unit) {
             modifier = Modifier.padding(ClassingSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            Text("Sign in to ask Classing", style = MaterialTheme.typography.headlineSmall)
-            Text("Your account keeps AI usage and conversations available across sessions.")
-            Button(onClick = onOpenAccount) { Text("Open account") }
+            Text(stringResource(R.string.assistant_sign_in_title), style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.assistant_sign_in_hint))
+            Button(onClick = onOpenAccount) { Text(stringResource(R.string.assistant_open_account)) }
         }
     }
 }
@@ -435,7 +442,7 @@ private fun AccessIsland(onOpenAccount: () -> Unit) {
 @Composable
 private fun MembershipNote() {
     Text(
-        text = "Free account AI quota applies. Membership credit remains available only while membership is active.",
+        text = stringResource(R.string.assistant_free_quota),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -445,7 +452,7 @@ private fun MembershipNote() {
 private fun MissingScheduleIsland() {
     Surface(shape = RoundedCornerShape(ClassingRadii.large), color = MaterialTheme.colorScheme.surface) {
         Text(
-            text = "Import a timetable before starting a new schedule question. Existing conversations remain available.",
+            text = stringResource(R.string.assistant_missing_schedule),
             modifier = Modifier.padding(ClassingSpacing.lg),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -469,7 +476,7 @@ private fun ModelSelector(
     onSelectModel: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
-        Text("Answer model", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.assistant_answer_model), style = MaterialTheme.typography.labelLarge)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -494,7 +501,7 @@ private fun ConversationHistory(
     onOpenConversation: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
-        Text("Recent context", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.assistant_recent_context), style = MaterialTheme.typography.labelLarge)
         conversations.take(3).forEach { conversation ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),

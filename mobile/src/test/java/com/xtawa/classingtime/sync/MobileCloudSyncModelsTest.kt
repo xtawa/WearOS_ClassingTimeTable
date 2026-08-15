@@ -63,6 +63,27 @@ class MobileCloudSyncModelsTest {
     }
 
     @Test
+    fun fromJson_preservesFullAcademicYearWeekRange() {
+        val raw = JSONObject(
+            """
+            {
+              "format":"classing_cloud_sync_v1",
+              "timetable":{
+                "updatedAt":1234,
+                "lessons":[{
+                  "id":"c1", "title":"Math", "dayOfWeek":1,
+                  "startMinute":480, "endMinute":570,
+                  "startWeek":1, "endWeek":53, "weekParity":"ALL"
+                }]
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(53, CloudDocument.fromJson(raw).timetable?.lessons?.single()?.endWeek)
+    }
+
+    @Test
     fun toCloudConfigPayload_excludesCredentials() {
         val settings = MobileSettings(
             showWeekend = true,

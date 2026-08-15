@@ -1,6 +1,8 @@
 package com.classing.wear.timetable.sync
 
 import com.classing.shared.sync.CloudSyncV2
+import com.classing.shared.model.MAX_SCHEDULE_WEEK
+import com.classing.shared.model.MIN_SCHEDULE_WEEK
 import com.classing.wear.timetable.data.sync.RemoteCourse
 import com.classing.wear.timetable.data.sync.RemoteException
 import com.classing.wear.timetable.data.sync.RemoteSchedulePayload
@@ -94,7 +96,8 @@ object OfficialCloudTimetableMapper {
             }
             val stableId = item.optString("id").ifBlank { recordId }
             val courseId = "mobile-course-$stableId"
-            val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
+            val startWeek = item.optInt("startWeek", MIN_SCHEDULE_WEEK)
+                .coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK)
             courses += RemoteCourse(
                 remoteId = courseId,
                 semesterRemoteId = semesterRemoteId,
@@ -113,7 +116,7 @@ object OfficialCloudTimetableMapper {
                 dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
                 timeSlotRemoteId = slot.remoteId,
                 startWeek = startWeek,
-                endWeek = item.optInt("endWeek", 30).coerceIn(startWeek, 30),
+                endWeek = item.optInt("endWeek", MAX_SCHEDULE_WEEK).coerceIn(startWeek, MAX_SCHEDULE_WEEK),
                 weekParity = parseWeekParity(item.optString("weekParity", "ALL")),
                 version = revision,
             )

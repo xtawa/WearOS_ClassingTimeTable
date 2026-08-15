@@ -64,6 +64,19 @@ class OfficialCloudTimetableMapperTest {
         }
     }
 
+    @Test
+    fun map_preservesFullAcademicYearWeekRange() {
+        val root = document(
+            lessonRecords = JSONArray().put(
+                record("lesson-53", lesson("lesson-53", "Math", 480, 525, endWeek = 53), 12),
+            ),
+        )
+
+        val mapped = OfficialCloudTimetableMapper.map(root, LocalDate.parse("2026-07-18"))!!
+
+        assertEquals(53, mapped.payload.courses.single().endWeek)
+    }
+
     private fun document(lessonRecords: JSONArray): JSONObject = JSONObject()
         .put("format", "classing_cloud_sync_v2")
         .put("updatedAt", 99)
@@ -74,14 +87,20 @@ class OfficialCloudTimetableMapperTest {
                 .put("timetable.exceptions", JSONArray()),
         )
 
-    private fun lesson(id: String, title: String, startMinute: Int, endMinute: Int): JSONObject = JSONObject()
+    private fun lesson(
+        id: String,
+        title: String,
+        startMinute: Int,
+        endMinute: Int,
+        endWeek: Int = 20,
+    ): JSONObject = JSONObject()
         .put("id", id)
         .put("title", title)
         .put("dayOfWeek", 1)
         .put("startMinute", startMinute)
         .put("endMinute", endMinute)
         .put("startWeek", 1)
-        .put("endWeek", 20)
+        .put("endWeek", endWeek)
         .put("weekParity", "ALL")
 
     private fun record(

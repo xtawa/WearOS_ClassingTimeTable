@@ -56,7 +56,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -153,12 +155,12 @@ private fun TimetableHeader(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back to Home",
+                    contentDescription = stringResource(R.string.timetable_back_home),
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
                 Text(
-                    text = "Timetable",
+                    text = stringResource(R.string.timetable_title),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.semantics { heading() },
@@ -175,9 +177,9 @@ private fun TimetableHeader(
                 Icon(
                     imageVector = Icons.Rounded.NotificationsActive,
                     contentDescription = if (scheduleChangeCount > 0) {
-                        "Open $scheduleChangeCount schedule changes"
+                        stringResource(R.string.timetable_open_changes_count, scheduleChangeCount)
                     } else {
-                        "Open schedule changes"
+                        stringResource(R.string.timetable_open_changes)
                     },
                     tint = if (scheduleChangeCount > 0) {
                         MaterialTheme.colorScheme.primary
@@ -189,7 +191,7 @@ private fun TimetableHeader(
             IconButton(onClick = onOpenCalendar) {
                 Icon(
                     imageVector = Icons.Rounded.CalendarMonth,
-                    contentDescription = "Open calendar",
+                    contentDescription = stringResource(R.string.timetable_open_calendar),
                 )
             }
         }
@@ -212,6 +214,13 @@ private fun WeekContextStrip(
     ) {
         items(days, key = { it.date }) { day ->
             val selected = day.date == selectedDate
+            val dayDescription = stringResource(
+                R.string.timetable_day_description,
+                day.dayLabel,
+                day.dateLabel,
+                day.courseCount,
+                if (day.isToday) stringResource(R.string.timetable_today_suffix) else "",
+            )
             Surface(
                 modifier = Modifier
                     .width(if (largeText) 68.dp else 54.dp)
@@ -221,15 +230,7 @@ private fun WeekContextStrip(
                         role = Role.Tab,
                     )
                     .semantics {
-                        contentDescription = buildString {
-                            append(day.dayLabel)
-                            append(' ')
-                            append(day.dateLabel)
-                            append(", ")
-                            append(day.courseCount)
-                            append(if (day.courseCount == 1) " class" else " classes")
-                            if (day.isToday) append(", today")
-                        }
+                        contentDescription = dayDescription
                         collectionItemInfo = CollectionItemInfo(
                             rowIndex = 0,
                             rowSpan = 1,
@@ -333,9 +334,14 @@ private fun DaySummaryIsland(state: TimetableUiState) {
                 fontWeight = FontWeight.SemiBold,
             )
             val summary = when {
-                state.courses.isEmpty() && state.hasImportedSchedule -> "A clear day — no classes scheduled."
-                state.courses.isEmpty() -> "Your timetable is ready to be set up."
-                else -> "${state.courses.size} classes · ${first?.startTime?.format(timetableClockFormatter)}–${last?.endTime?.format(timetableClockFormatter)}"
+                state.courses.isEmpty() && state.hasImportedSchedule -> stringResource(R.string.timetable_clear_day)
+                state.courses.isEmpty() -> stringResource(R.string.timetable_setup_day)
+                else -> stringResource(
+                    R.string.timetable_summary_count_time,
+                    state.courses.size,
+                    first?.startTime?.format(timetableClockFormatter).orEmpty(),
+                    last?.endTime?.format(timetableClockFormatter).orEmpty(),
+                )
             }
             Text(
                 text = summary,
@@ -355,15 +361,17 @@ private fun EmptyDayIsland(hasImportedSchedule: Boolean) {
         verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
         Text(
-            text = if (hasImportedSchedule) "Space for focused work" else "Build your first week",
+            text = stringResource(
+                if (hasImportedSchedule) R.string.timetable_focus_space else R.string.timetable_build_week,
+            ),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Medium,
         )
         Text(
             text = if (hasImportedSchedule) {
-                "Ask Classing to find the next academic anchor, or keep this time intentionally open."
+                stringResource(R.string.timetable_focus_hint)
             } else {
-                "Import a timetable or add a course manually to begin."
+                stringResource(R.string.timetable_setup_hint)
             },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -423,7 +431,7 @@ private fun TimetableCourseRow(
                     onClick = onOpenCourse,
                     onLongClick = onLongPressCourse,
                     role = Role.Button,
-                    onLongClickLabel = "Edit course",
+                    onLongClickLabel = stringResource(R.string.timetable_edit_course),
                 ),
             shape = RoundedCornerShape(if (isCurrent) ClassingRadii.large else ClassingRadii.medium),
             color = if (isCurrent) course.accent.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surface,
@@ -435,7 +443,7 @@ private fun TimetableCourseRow(
             ) {
                 if (isCurrent) {
                     Text(
-                        text = "NOW",
+                        text = stringResource(R.string.timetable_now),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = course.accent,
@@ -452,7 +460,7 @@ private fun TimetableCourseRow(
                 CourseMetadata(icon = Icons.Rounded.Person, text = course.teacher)
                 val minutes = Duration.between(course.startTime, course.endTime).toMinutes()
                 Text(
-                    text = "$minutes min",
+                    text = stringResource(R.string.home_time_minutes, minutes),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
