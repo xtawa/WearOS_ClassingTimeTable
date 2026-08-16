@@ -14,5 +14,6 @@ data class HomeUiState(
     val nextLesson: NextLessonHint = NextLessonHint(null, null),
     val todayLessons: List<LessonOccurrence> = emptyList(),
     val heatmapCells: List<HeatmapCell> = emptyList(),
+    val showAiOnHome: Boolean = true,
     val errorMessage: String? = null,
 )

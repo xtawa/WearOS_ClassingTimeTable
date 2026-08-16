@@ -83,6 +83,7 @@ class HomeViewModel(
                     nextLesson = inputs.next,
                     todayLessons = visibleLessons,
                     heatmapCells = heatmapCells,
+                    showAiOnHome = inputs.preferences.showAiOnHome,
                     errorMessage = (inputs.syncState as? SyncState.Failed)?.message,
                 )
             }.collect { state ->

@@ -78,7 +78,7 @@ fun HomeScreen(
                 hasSchedule = state.hasSchedule,
             )
         }
-        if (state.preferences.showAiOnHome) {
+        if (state.showAiOnHome) {
             item { AskAiEntryCard(onClick = onOpenAskAi) }
         }
         item {
