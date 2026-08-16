@@ -321,16 +321,16 @@ jobs:
             exit 1
           fi
 
-          wear_cert="$(
-            "$apksigner" verify --print-certs "$wear_apk" \
-              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-              | head -n 1
-          )"
-          mobile_cert="$(
-            "$apksigner" verify --print-certs "$mobile_apk" \
-              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-              | head -n 1
-          )"
+          extract_cert_sha256() {
+            "$apksigner" verify --print-certs "$1" \
+              | sed -nE 's/^.*certificate SHA-256 digest:[[:space:]]*([[:xdigit:]:]+).*$/\1/p' \
+              | head -n 1 \
+              | tr -d ':[:space:]' \
+              | tr '[:upper:]' '[:lower:]'
+          }
+
+          wear_cert="$(extract_cert_sha256 "$wear_apk")"
+          mobile_cert="$(extract_cert_sha256 "$mobile_apk")"
           wear_version="$(
             "$aapt" dump badging "$wear_apk" \
               | sed -n "s/^package:.*versionCode='\([0-9][0-9]*\)'.*/\1/p" \
@@ -342,8 +342,20 @@ jobs:
               | head -n 1
           )"
 
-          if [[ -z "$wear_cert" || -z "$mobile_cert" || -z "$wear_version" || -z "$mobile_version" ]]; then
-            echo "Unable to read release certificate fingerprints or version codes." >&2
+          if [[ -z "$wear_cert" ]]; then
+            echo "Unable to read the Wear release certificate SHA-256 digest." >&2
+            exit 1
+          fi
+          if [[ -z "$mobile_cert" ]]; then
+            echo "Unable to read the Mobile release certificate SHA-256 digest." >&2
+            exit 1
+          fi
+          if [[ -z "$wear_version" ]]; then
+            echo "Unable to read the Wear release version code." >&2
+            exit 1
+          fi
+          if [[ -z "$mobile_version" ]]; then
+            echo "Unable to read the Mobile release version code." >&2
             exit 1
           fi
 
