@@ -167,4 +167,34 @@
     <string name="settings_account_login_network_error">登入失敗，請檢查網路後重試</string>
     <string name="settings_account_login_identifier_invalid">請輸入有效的使用者名稱或電子郵件</string>
     <string name="settings_account_login_password_invalid">密碼至少需要 8 位</string>
+
+    <string name="settings_show_ai_on_home">在首頁顯示問問 AI</string>
+
+    <!-- Ask Classing on Wear -->
+    <string name="home_action_ask_ai">問問 AI</string>
+    <string name="home_action_ask_ai_short">AI</string>
+    <string name="ask_ai_title">問問 Classing</string>
+    <string name="ask_ai_context_no_schedule">暫無課表情境</string>
+    <string name="ask_ai_context_no_classes">今天 · 沒有課程</string>
+    <string name="ask_ai_context_classes">今天 · %1$d 節課 · 第一節 %2$s</string>
+    <string name="ask_ai_prompt_next">下一節是什麼？</string>
+    <string name="ask_ai_prompt_today">今天安排怎麼樣？</string>
+    <string name="ask_ai_prompt_free">我什麼時候有空？</string>
+    <string name="ask_ai_sign_in_required">請先在手錶上登入，再使用問問 Classing。</string>
+    <string name="ask_ai_sign_in_title">需要登入</string>
+    <string name="ask_ai_sign_in_body">問問 Classing 會使用手錶帳號與目前課表情境。</string>
+    <string name="ask_ai_open_account">開啟帳號</string>
+    <string name="ask_ai_no_schedule_title">暫無課表</string>
+    <string name="ask_ai_no_schedule_body">請先同步課表，再詢問行程問題。</string>
+    <string name="ask_ai_welcome">想瞭解什麼？</string>
+    <string name="ask_ai_welcome_body">輸入簡短的行程問題，或選擇一個建議。</string>
+    <string name="ask_ai_continue_prompt">從剛才中斷的位置繼續，不要重複已有內容。</string>
+    <string name="ask_ai_truncated">回答達到長度上限，已準備繼續產生。</string>
+    <string name="ask_ai_unavailable">問問 Classing 暫時無法使用。</string>
+    <string name="ask_ai_answer">回答</string>
+    <string name="ask_ai_reading_schedule">正在讀取你的課表…</string>
+    <string name="ask_ai_input_label">詢問你的行程</string>
+    <string name="ask_ai_send">提問</string>
+    <string name="ask_ai_recent">最近情境</string>
+    <string name="ask_ai_loading_conversation">正在讀取對話…</string>
 </resources>

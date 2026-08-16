@@ -167,4 +167,34 @@
     <string name="settings_account_login_network_error">登录失败，请检查网络后重试</string>
     <string name="settings_account_login_identifier_invalid">请输入有效的用户名或邮箱</string>
     <string name="settings_account_login_password_invalid">密码至少需要 8 位</string>
+
+    <string name="settings_show_ai_on_home">在首页显示问问 AI</string>
+
+    <!-- Ask Classing on Wear -->
+    <string name="home_action_ask_ai">问问 AI</string>
+    <string name="home_action_ask_ai_short">AI</string>
+    <string name="ask_ai_title">问问 Classing</string>
+    <string name="ask_ai_context_no_schedule">暂无课表上下文</string>
+    <string name="ask_ai_context_no_classes">今天 · 没有课程</string>
+    <string name="ask_ai_context_classes">今天 · %1$d 节课 · 第一节 %2$s</string>
+    <string name="ask_ai_prompt_next">下一节是什么？</string>
+    <string name="ask_ai_prompt_today">今天安排怎么样？</string>
+    <string name="ask_ai_prompt_free">我什么时候有空？</string>
+    <string name="ask_ai_sign_in_required">请先在手表上登录，再使用问问 Classing。</string>
+    <string name="ask_ai_sign_in_title">需要登录</string>
+    <string name="ask_ai_sign_in_body">问问 Classing 会使用手表账号与当前课表上下文。</string>
+    <string name="ask_ai_open_account">打开账号</string>
+    <string name="ask_ai_no_schedule_title">暂无课表</string>
+    <string name="ask_ai_no_schedule_body">请先同步课表，再询问日程问题。</string>
+    <string name="ask_ai_welcome">想了解什么？</string>
+    <string name="ask_ai_welcome_body">输入简短的日程问题，或选择一个建议。</string>
+    <string name="ask_ai_continue_prompt">从刚才中断的位置继续，不要重复已有内容。</string>
+    <string name="ask_ai_truncated">回答达到长度上限，已准备继续生成。</string>
+    <string name="ask_ai_unavailable">问问 Classing 暂时不可用。</string>
+    <string name="ask_ai_answer">回答</string>
+    <string name="ask_ai_reading_schedule">正在读取你的课表…</string>
+    <string name="ask_ai_input_label">询问你的日程</string>
+    <string name="ask_ai_send">提问</string>
+    <string name="ask_ai_recent">最近上下文</string>
+    <string name="ask_ai_loading_conversation">正在读取对话…</string>
 </resources>

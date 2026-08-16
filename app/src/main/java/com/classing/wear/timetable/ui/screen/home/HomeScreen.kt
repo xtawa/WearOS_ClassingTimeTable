@@ -52,6 +52,7 @@ fun HomeScreen(
     state: HomeUiState,
     onOpenWeek: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenAskAi: () -> Unit,
     onOpenSettings: () -> Unit,
     onLessonClick: (Long) -> Unit,
     onRetrySync: () -> Unit,
@@ -76,6 +77,9 @@ fun HomeScreen(
                 hint = state.nextLesson,
                 hasSchedule = state.hasSchedule,
             )
+        }
+        if (state.showAiOnHome) {
+            item { AskAiEntryCard(onClick = onOpenAskAi) }
         }
         item {
             QuickActionsRow(
@@ -305,6 +309,47 @@ private fun NextLessonHeroCard(hint: NextLessonHint, hasSchedule: Boolean) {
 }
 
 @Composable
+private fun AskAiEntryCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Ask Classing" },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(R.string.home_action_ask_ai),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = stringResource(R.string.ask_ai_welcome_body),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                )
+            }
+            Text(
+                text = stringResource(R.string.home_action_ask_ai_short),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
 private fun QuickActionsRow(
     onOpenWeek: () -> Unit,
     onOpenSearch: () -> Unit,
@@ -443,6 +488,7 @@ private fun HomeScreenPreview() {
             ),
             onOpenWeek = {},
             onOpenSearch = {},
+            onOpenAskAi = {},
             onOpenSettings = {},
             onLessonClick = {},
             onRetrySync = {},

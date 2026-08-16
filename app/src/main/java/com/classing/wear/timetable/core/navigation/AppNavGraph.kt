@@ -25,6 +25,7 @@ import com.classing.wear.timetable.ui.screen.week.WeekScreen
 import com.classing.wear.timetable.ui.screen.week.WeekViewModel
 import com.classing.wear.timetable.ui.screen.search.SearchScreen
 import com.classing.wear.timetable.ui.screen.search.SearchViewModel
+import com.classing.wear.timetable.ui.screen.assistant.AskAiScreen
 
 @Composable
 fun AppNavGraph(appContainer: AppContainer) {
@@ -52,9 +53,19 @@ fun AppNavGraph(appContainer: AppContainer) {
                 state = state,
                 onOpenWeek = { navController.navigate(Destinations.Week.route) },
                 onOpenSearch = { navController.navigate(Destinations.Search.route) },
+                onOpenAskAi = { navController.navigate(Destinations.AskAi.route) },
                 onOpenSettings = { navController.navigate(Destinations.Settings.route) },
                 onLessonClick = { courseId -> navController.navigate(Destinations.CourseDetail.createRoute(courseId)) },
                 onRetrySync = vm::retrySync,
+            )
+        }
+
+        composable(Destinations.AskAi.route) {
+            AskAiScreen(
+                scheduleRepository = appContainer.scheduleRepository,
+                timeProvider = appContainer.timeProvider,
+                onBack = { navController.popBackStack() },
+                onOpenAccount = { navController.navigate(Destinations.CloudSync.route) },
             )
         }
 
@@ -141,6 +152,7 @@ fun AppNavGraph(appContainer: AppContainer) {
                 onToggleAutoSync = vm::toggleAutoSync,
                 onToggleWeekend = vm::toggleWeekend,
                 onToggleShowCompletedToday = vm::toggleShowCompletedToday,
+                onToggleShowAiOnHome = vm::toggleShowAiOnHome,
                 onToggleTileShowTeacher = vm::toggleTileShowTeacher,
                 onToggleTileShowLocation = vm::toggleTileShowLocation,
                 onToggleTileShowCountdown = vm::toggleTileShowCountdown,
