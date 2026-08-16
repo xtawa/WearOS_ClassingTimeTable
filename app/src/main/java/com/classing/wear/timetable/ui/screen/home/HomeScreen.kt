@@ -246,24 +246,28 @@ private fun PrimaryCourseIsland(
     hasSchedule: Boolean,
     onLessonClick: (Long) -> Unit,
 ) {
-    val lesson = hint.lesson
-    val key = "${lesson?.course?.localId}:${lesson?.status}:${lesson?.startAt}"
     AnimatedContent(
-        targetState = key,
+        targetState = hint to hasSchedule,
+        contentKey = { (animatedHint, animatedHasSchedule) ->
+            val animatedLesson = animatedHint.lesson
+            "${animatedLesson?.course?.localId}:${animatedLesson?.status}:" +
+                "${animatedLesson?.startAt}:$animatedHasSchedule"
+        },
         transitionSpec = {
             ((fadeIn(tween(ClassingWearMotion.ContentReveal)) + scaleIn(initialScale = 0.94f)) togetherWith
                 (fadeOut(tween(ClassingWearMotion.Exit)) + scaleOut(targetScale = 0.98f)))
                 .using(SizeTransform(clip = false))
         },
         label = "wear_primary_course",
-    ) {
+    ) { (animatedHint, animatedHasSchedule) ->
+        val animatedLesson = animatedHint.lesson
         ClassingIsland(
             emphasized = true,
-            onClick = lesson?.let { { onLessonClick(it.course.localId) } },
+            onClick = animatedLesson?.let { { onLessonClick(it.course.localId) } },
         ) {
-            if (lesson == null) {
+            if (animatedLesson == null) {
                 WearStatusPill(
-                    label = if (hasSchedule) {
+                    label = if (animatedHasSchedule) {
                         stringResource(R.string.home_status_finished)
                     } else {
                         stringResource(R.string.home_status_setup)
@@ -271,7 +275,7 @@ private fun PrimaryCourseIsland(
                     color = MaterialTheme.colorScheme.tertiary,
                 )
                 Text(
-                    text = if (hasSchedule) {
+                    text = if (animatedHasSchedule) {
                         stringResource(R.string.home_day_clear_title)
                     } else {
                         stringResource(R.string.home_next_lesson_no_data)
@@ -280,7 +284,7 @@ private fun PrimaryCourseIsland(
                     modifier = Modifier.semantics { heading() },
                 )
                 Text(
-                    text = if (hasSchedule) {
+                    text = if (animatedHasSchedule) {
                         stringResource(R.string.home_day_clear_subtitle)
                     } else {
                         stringResource(R.string.home_onboarding_subtitle)
@@ -291,7 +295,7 @@ private fun PrimaryCourseIsland(
                 return@ClassingIsland
             }
 
-            val inClass = lesson.status == LessonStatus.IN_PROGRESS
+            val inClass = animatedLesson.status == LessonStatus.IN_PROGRESS
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -304,19 +308,19 @@ private fun PrimaryCourseIsland(
                     color = if (inClass) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = TimeFormatters.formatTimeRange(lesson.startAt, lesson.endAt),
+                    text = TimeFormatters.formatTimeRange(animatedLesson.startAt, animatedLesson.endAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                text = lesson.course.name,
+                text = animatedLesson.course.name,
                 style = MaterialTheme.typography.headlineMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() },
             )
-            val meta = listOf(lesson.course.classroom, lesson.course.teacher)
+            val meta = listOf(animatedLesson.course.classroom, animatedLesson.course.teacher)
                 .filter { it.isNotBlank() }
                 .joinToString(" · ")
             if (meta.isNotBlank()) {
@@ -328,7 +332,7 @@ private fun PrimaryCourseIsland(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            val countdown = hint.countdown
+            val countdown = animatedHint.countdown
             if (countdown != null) {
                 Text(
                     text = if (inClass) {
@@ -337,7 +341,7 @@ private fun PrimaryCourseIsland(
                             countdown.toMinutes().coerceAtLeast(0),
                         )
                     } else {
-                        TimeFormatters.formatCountdown(countdown, lesson.status)
+                        TimeFormatters.formatCountdown(countdown, animatedLesson.status)
                     },
                     style = MaterialTheme.typography.displayMedium,
                     color = if (inClass) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
