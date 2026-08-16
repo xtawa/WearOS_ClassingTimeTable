@@ -1,0 +1,23 @@
+name: Apply Wear Ask AI patch
+on:
+  push:
+    branches: [feat/wear-ask-ai]
+    paths:
+      - 'tools/wear-ai-patch/**'
+      - '.github/workflows/apply-wear-ask-ai.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: |
+          cat tools/wear-ai-patch/{0,1,2,3} | base64 -d | gzip -d > /tmp/wear-ai.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git am /tmp/wear-ai.patch
+          git push origin HEAD:feat/wear-ask-ai
