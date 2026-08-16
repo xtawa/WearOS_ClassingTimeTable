@@ -167,4 +167,34 @@
     <string name="settings_account_login_network_error">Sign in failed. Check the network and try again.</string>
     <string name="settings_account_login_identifier_invalid">Enter a valid username or email</string>
     <string name="settings_account_login_password_invalid">Password must be at least 8 characters</string>
+
+    <string name="settings_show_ai_on_home">Show Ask AI on home</string>
+
+    <!-- Ask Classing on Wear -->
+    <string name="home_action_ask_ai">Ask AI</string>
+    <string name="home_action_ask_ai_short">AI</string>
+    <string name="ask_ai_title">Ask Classing</string>
+    <string name="ask_ai_context_no_schedule">No timetable context</string>
+    <string name="ask_ai_context_no_classes">Today · No classes</string>
+    <string name="ask_ai_context_classes">Today · %1$d classes · %2$s first</string>
+    <string name="ask_ai_prompt_next">What is next?</string>
+    <string name="ask_ai_prompt_today">How is today looking?</string>
+    <string name="ask_ai_prompt_free">When am I free?</string>
+    <string name="ask_ai_sign_in_required">Sign in on this watch to use Ask Classing.</string>
+    <string name="ask_ai_sign_in_title">Sign in required</string>
+    <string name="ask_ai_sign_in_body">Ask Classing uses your watch account and the current timetable context.</string>
+    <string name="ask_ai_open_account">Open account</string>
+    <string name="ask_ai_no_schedule_title">No timetable yet</string>
+    <string name="ask_ai_no_schedule_body">Sync a timetable before asking schedule questions.</string>
+    <string name="ask_ai_welcome">What do you need to know?</string>
+    <string name="ask_ai_welcome_body">Ask a short schedule question or choose a suggestion.</string>
+    <string name="ask_ai_continue_prompt">Continue from where the answer stopped without repeating it.</string>
+    <string name="ask_ai_truncated">The answer reached its length limit. Continue is ready.</string>
+    <string name="ask_ai_unavailable">Ask Classing is temporarily unavailable.</string>
+    <string name="ask_ai_answer">ANSWER</string>
+    <string name="ask_ai_reading_schedule">Reading your schedule…</string>
+    <string name="ask_ai_input_label">Ask about your schedule</string>
+    <string name="ask_ai_send">Ask</string>
+    <string name="ask_ai_recent">Recent context</string>
+    <string name="ask_ai_loading_conversation">Loading conversation…</string>
 </resources>

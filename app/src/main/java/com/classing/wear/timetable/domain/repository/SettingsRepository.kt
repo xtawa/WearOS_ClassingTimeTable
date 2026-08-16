@@ -9,6 +9,7 @@ data class UserPreferences(
     val autoSync: Boolean = true,
     val showWeekend: Boolean = true,
     val showCompletedToday: Boolean = false,
+    val showAiOnHome: Boolean = true,
     val keepAliveLevel: KeepAliveLevel = KeepAliveLevel.BALANCED,
     val tileShowTeacher: Boolean = true,
     val tileShowLocation: Boolean = true,
@@ -27,6 +28,7 @@ interface SettingsRepository {
     suspend fun setAutoSync(enabled: Boolean)
     suspend fun setShowWeekend(enabled: Boolean)
     suspend fun setShowCompletedToday(enabled: Boolean)
+    suspend fun setShowAiOnHome(enabled: Boolean)
     suspend fun setKeepAliveLevel(level: KeepAliveLevel)
     suspend fun setTileShowTeacher(enabled: Boolean)
     suspend fun setTileShowLocation(enabled: Boolean)

@@ -30,6 +30,7 @@ class DefaultSettingsRepository(
                 autoSync = pref[KEY_AUTO_SYNC] ?: true,
                 showWeekend = pref[KEY_SHOW_WEEKEND] ?: true,
                 showCompletedToday = pref[KEY_SHOW_COMPLETED_TODAY] ?: false,
+                showAiOnHome = pref[KEY_SHOW_AI_ON_HOME] ?: true,
                 keepAliveLevel = KeepAliveLevel.fromRaw(pref[KEY_KEEP_ALIVE_LEVEL]),
                 tileShowTeacher = pref[KEY_TILE_SHOW_TEACHER] ?: true,
                 tileShowLocation = pref[KEY_TILE_SHOW_LOCATION] ?: true,
@@ -49,6 +50,7 @@ class DefaultSettingsRepository(
             .put("autoSync", pref[KEY_AUTO_SYNC] ?: true)
             .put("showWeekend", pref[KEY_SHOW_WEEKEND] ?: true)
             .put("showCompletedToday", pref[KEY_SHOW_COMPLETED_TODAY] ?: false)
+            .put("showAiOnHome", pref[KEY_SHOW_AI_ON_HOME] ?: true)
             .put("keepAliveLevel", pref[KEY_KEEP_ALIVE_LEVEL] ?: KeepAliveLevel.BALANCED.name)
             .put("tileShowTeacher", pref[KEY_TILE_SHOW_TEACHER] ?: true)
             .put("tileShowLocation", pref[KEY_TILE_SHOW_LOCATION] ?: true)
@@ -68,6 +70,7 @@ class DefaultSettingsRepository(
             it[KEY_AUTO_SYNC] = raw.optBoolean("autoSync", it[KEY_AUTO_SYNC] ?: true)
             it[KEY_SHOW_WEEKEND] = raw.optBoolean("showWeekend", it[KEY_SHOW_WEEKEND] ?: true)
             it[KEY_SHOW_COMPLETED_TODAY] = raw.optBoolean("showCompletedToday", it[KEY_SHOW_COMPLETED_TODAY] ?: false)
+            it[KEY_SHOW_AI_ON_HOME] = raw.optBoolean("showAiOnHome", it[KEY_SHOW_AI_ON_HOME] ?: true)
             it[KEY_KEEP_ALIVE_LEVEL] = KeepAliveLevel.fromRaw(
                 raw.optString("keepAliveLevel", it[KEY_KEEP_ALIVE_LEVEL] ?: KeepAliveLevel.BALANCED.name),
             ).name
@@ -99,6 +102,10 @@ class DefaultSettingsRepository(
 
     override suspend fun setShowCompletedToday(enabled: Boolean) {
         dataStore.edit { it[KEY_SHOW_COMPLETED_TODAY] = enabled }
+    }
+
+    override suspend fun setShowAiOnHome(enabled: Boolean) {
+        dataStore.edit { it[KEY_SHOW_AI_ON_HOME] = enabled }
     }
 
     override suspend fun setKeepAliveLevel(level: KeepAliveLevel) {
@@ -142,6 +149,7 @@ class DefaultSettingsRepository(
         private val KEY_AUTO_SYNC = booleanPreferencesKey("auto_sync")
         private val KEY_SHOW_WEEKEND = booleanPreferencesKey("show_weekend")
         private val KEY_SHOW_COMPLETED_TODAY = booleanPreferencesKey("show_completed_today")
+        private val KEY_SHOW_AI_ON_HOME = booleanPreferencesKey("show_ai_on_home")
         private val KEY_KEEP_ALIVE_LEVEL = stringPreferencesKey("keep_alive_level")
         private val KEY_TILE_SHOW_TEACHER = booleanPreferencesKey("tile_show_teacher")
         private val KEY_TILE_SHOW_LOCATION = booleanPreferencesKey("tile_show_location")

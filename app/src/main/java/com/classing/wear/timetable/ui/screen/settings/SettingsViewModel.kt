@@ -101,6 +101,13 @@ class SettingsViewModel(
         }
     }
 
+    fun toggleShowAiOnHome(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowAiOnHome(enabled)
+            notifyCloudSettingsChanged()
+        }
+    }
+
     fun toggleTileShowTeacher(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setTileShowTeacher(enabled)

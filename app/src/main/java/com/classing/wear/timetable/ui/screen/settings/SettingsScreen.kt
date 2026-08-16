@@ -67,6 +67,7 @@ fun SettingsScreen(
     onToggleAutoSync: (Boolean) -> Unit,
     onToggleWeekend: (Boolean) -> Unit,
     onToggleShowCompletedToday: (Boolean) -> Unit,
+    onToggleShowAiOnHome: (Boolean) -> Unit,
     onToggleTileShowTeacher: (Boolean) -> Unit,
     onToggleTileShowLocation: (Boolean) -> Unit,
     onToggleTileShowCountdown: (Boolean) -> Unit,
@@ -191,6 +192,16 @@ fun SettingsScreen(
                 onCheckedChange = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onToggleShowCompletedToday(it)
+                },
+            )
+        }
+        item {
+            PreferenceSwitchCard(
+                title = stringResource(R.string.settings_show_ai_on_home),
+                checked = state.preferences.showAiOnHome,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleShowAiOnHome(it)
                 },
             )
         }
@@ -565,6 +576,7 @@ private fun SettingsScreenPreview() {
             onToggleAutoSync = {},
             onToggleWeekend = {},
             onToggleShowCompletedToday = {},
+            onToggleShowAiOnHome = {},
             onToggleTileShowTeacher = {},
             onToggleTileShowLocation = {},
             onToggleTileShowCountdown = {},
