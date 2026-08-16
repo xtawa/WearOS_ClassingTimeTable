@@ -28,8 +28,13 @@ import com.classing.wear.timetable.domain.model.Course
 import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
+import com.classing.wear.timetable.ui.component.ClassingIsland
+import com.classing.wear.timetable.ui.component.ClassingWearBackground
+import com.classing.wear.timetable.ui.component.WearPageHeader
+import com.classing.wear.timetable.ui.component.WearSectionLabel
 import com.classing.wear.timetable.ui.state.SearchUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+import com.classing.wear.timetable.ui.theme.ClassingWearSpacing
 
 @Composable
 fun SearchScreen(
@@ -39,31 +44,25 @@ fun SearchScreen(
 ) {
     val listState = rememberScalingLazyListState()
 
+    ClassingWearBackground {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.md),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.home_brand_wordmark),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            WearPageHeader(
+                title = stringResource(R.string.search_title),
+                eyebrow = stringResource(R.string.home_brand_wordmark),
+            )
         }
 
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            ClassingIsland(emphasized = true) {
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -92,23 +91,10 @@ fun SearchScreen(
         }
 
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = stringResource(R.string.search_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = state.results.size.toString(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            WearSectionLabel(
+                title = stringResource(R.string.search_results_title),
+                trailing = state.results.size.toString(),
+            )
         }
 
         when {
@@ -137,19 +123,15 @@ fun SearchScreen(
             }
         }
     }
+    }
 }
 
 @Composable
 private fun CourseSearchItem(course: Course, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
+    ClassingIsland(onClick = onClick) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.xxs),
         ) {
             Text(text = course.name, style = MaterialTheme.typography.titleSmall)
             Text(

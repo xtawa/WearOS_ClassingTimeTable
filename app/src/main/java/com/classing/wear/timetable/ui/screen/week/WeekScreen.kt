@@ -14,6 +14,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +35,14 @@ import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.LessonCard
 import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
+import com.classing.wear.timetable.ui.component.ClassingIsland
+import com.classing.wear.timetable.ui.component.ClassingWearBackground
+import com.classing.wear.timetable.ui.component.WearPageHeader
+import com.classing.wear.timetable.ui.component.WearSectionLabel
 import com.classing.wear.timetable.ui.state.WeekUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+import com.classing.wear.timetable.ui.theme.ClassingWearRadii
+import com.classing.wear.timetable.ui.theme.ClassingWearSpacing
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
@@ -46,11 +56,12 @@ fun WeekScreen(
     onLessonClick: (Long) -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
+    ClassingWearBackground {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.md),
     ) {
         item {
             WeekHeader(
@@ -84,6 +95,7 @@ fun WeekScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -93,12 +105,14 @@ private fun WeekHeader(
     onNextWeek: () -> Unit,
     onCurrentWeek: () -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+    ClassingIsland(emphasized = true) {
+        WearPageHeader(
+            title = label,
+            eyebrow = stringResource(R.string.week_title),
+        )
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.sm),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -106,24 +120,19 @@ private fun WeekHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 CircleActionButton(
-                    label = "‹",
+                    icon = { Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.week_action_prev)) },
                     onClick = onPreviousWeek,
                 )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
+                Text(text = stringResource(R.string.week_swipe_hint), style = MaterialTheme.typography.labelSmall)
                 CircleActionButton(
-                    label = "›",
+                    icon = { Icon(Icons.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.week_action_next)) },
                     onClick = onNextWeek,
                 )
             }
             Card(
                 onClick = onCurrentWeek,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Row(
                     modifier = Modifier
@@ -146,22 +155,19 @@ private fun WeekHeader(
 
 @Composable
 private fun CircleActionButton(
-    label: String,
+    icon: @Composable () -> Unit,
     onClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(ClassingWearRadii.pill),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Box(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ClassingWearSpacing.minimumTouchTarget),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-            )
+            icon()
         }
     }
 }
@@ -172,39 +178,17 @@ private fun DayScheduleSection(
     lessons: List<LessonOccurrence>,
     onLessonClick: (Long) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.week_day_lesson_count, dayLabel(day), lessons.size),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (lessons.isEmpty()) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-            )
-            if (!lessons.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
-                )
-            }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.xs)) {
+        WearSectionLabel(
+            title = dayLabel(day),
+            trailing = stringResource(R.string.week_lesson_count_short, lessons.size),
+        )
         if (lessons.isEmpty()) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)),
-            ) {
+            ClassingIsland {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = ClassingWearSpacing.xxs),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

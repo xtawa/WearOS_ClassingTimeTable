@@ -41,16 +41,22 @@ class WearOfficialCloudHttpClientTest {
                     }
                 }.concatToString()
                 val method = requestLine.substringBefore(' ')
+                val path = requestLine.split(' ').getOrNull(1).orEmpty()
                 request.set(
                     CapturedRequest(
                         method = method,
+                        path = path,
                         authorization = headers["authorization"].orEmpty(),
                         ifMatch = headers["if-match"].orEmpty(),
                         idempotencyKey = headers["idempotency-key"].orEmpty(),
                         body = body,
                     ),
                 )
-                val response = if (method == "GET") EMPTY_DOCUMENT else "{\"success\":true}"
+                val response = when {
+                    path.endsWith("/ping") -> CAPABILITIES
+                    method == "GET" -> EMPTY_DOCUMENT
+                    else -> "{\"success\":true}"
+                }
                 val bytes = response.toByteArray(Charsets.UTF_8)
                 socket.getOutputStream().bufferedWriter(Charsets.UTF_8).use { writer ->
                     writer.write("HTTP/1.1 200 OK\r\n")
@@ -81,6 +87,18 @@ class WearOfficialCloudHttpClientTest {
     }
 
     @Test
+    fun capabilities_readsAuthoritativeTimetableEntitlement() = runBlocking {
+        val result = WearOfficialCloudHttpClient(baseUrl)
+            .capabilities("wear-access")
+            .getOrThrow()
+
+        assertTrue(result.canSyncSettings)
+        assertEquals(false, result.canSyncTimetable)
+        assertEquals("/api/v1/cloud/official/ping", request.get().path)
+        assertEquals("Bearer wear-access", request.get().authorization)
+    }
+
+    @Test
     fun write_sendsQuotedCasVersionAndBoundedIdempotencyKey() = runBlocking {
         WearOfficialCloudHttpClient(baseUrl)
             .write("wear-access", EMPTY_DOCUMENT, "7")
@@ -98,6 +116,7 @@ class WearOfficialCloudHttpClientTest {
 
     private data class CapturedRequest(
         val method: String,
+        val path: String,
         val authorization: String,
         val ifMatch: String,
         val idempotencyKey: String,
@@ -107,5 +126,7 @@ class WearOfficialCloudHttpClientTest {
     private companion object {
         const val EMPTY_DOCUMENT =
             "{\"format\":\"classing_cloud_sync_v2\",\"updatedAt\":0,\"records\":{},\"changes\":[],\"devices\":[]}"
+        const val CAPABILITIES =
+            "{\"status\":\"ok\",\"provider\":\"OFFICIAL\",\"canSyncSettings\":true,\"canSyncTimetable\":false}"
     }
 }

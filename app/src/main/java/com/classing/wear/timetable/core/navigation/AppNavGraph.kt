@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.ui.platform.LocalContext
 import com.classing.wear.timetable.core.AppContainer
 import com.classing.wear.timetable.ui.screen.detail.CourseDetailScreen
 import com.classing.wear.timetable.ui.screen.detail.CourseDetailViewModel
@@ -26,10 +27,12 @@ import com.classing.wear.timetable.ui.screen.week.WeekViewModel
 import com.classing.wear.timetable.ui.screen.search.SearchScreen
 import com.classing.wear.timetable.ui.screen.search.SearchViewModel
 import com.classing.wear.timetable.ui.screen.assistant.AskAiScreen
+import com.classing.wear.timetable.sync.WearSyncModeStore
 
 @Composable
 fun AppNavGraph(appContainer: AppContainer) {
     val navController = rememberNavController()
+    val appContext = LocalContext.current.applicationContext
 
     NavHost(
         navController = navController,
@@ -43,6 +46,10 @@ fun AppNavGraph(appContainer: AppContainer) {
                             scheduleRepository = appContainer.scheduleRepository,
                             settingsRepository = appContainer.settingsRepository,
                             mobileSyncRequester = appContainer.mobileSyncRequester,
+                            wearOfficialCloudSyncCoordinator = appContainer.wearOfficialCloudSyncCoordinator,
+                            isIndependentModeEnabled = {
+                                WearSyncModeStore.isIndependentModeEnabled(appContext)
+                            },
                             timeProvider = appContainer.timeProvider,
                         )
                     }
@@ -138,6 +145,9 @@ fun AppNavGraph(appContainer: AppContainer) {
                             mobileSyncRequester = appContainer.mobileSyncRequester,
                             wearCloudBridgeSender = appContainer.wearCloudBridgeSender,
                             wearOfficialCloudSyncCoordinator = appContainer.wearOfficialCloudSyncCoordinator,
+                            isIndependentModeEnabled = {
+                                WearSyncModeStore.isIndependentModeEnabled(appContext)
+                            },
                             autoSyncController = appContainer.autoSyncController,
                             reminderWorkController = appContainer.reminderWorkController,
                         )

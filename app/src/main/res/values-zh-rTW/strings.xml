@@ -28,6 +28,13 @@
     <string name="home_next_lesson_title">下一節課</string>
     <string name="home_next_lesson_empty">今天沒有後續課程</string>
     <string name="home_next_lesson_no_data">暫無課表資料</string>
+    <string name="home_status_in_class">正在上課</string>
+    <string name="home_status_up_next">下一節</string>
+    <string name="home_status_finished">今日完成</string>
+    <string name="home_status_setup">開始使用</string>
+    <string name="home_day_clear_title">今天的課程結束了</string>
+    <string name="home_day_clear_subtitle">今天沒有後續課程，可以查看明日安排。</string>
+    <string name="home_minutes_remaining">還剩 %1$d 分鐘</string>
     <string name="home_onboarding_title">請先在手機端匯入課程</string>
     <string name="home_onboarding_subtitle">優先支援 Wear OS 裝置。</string>
     <string name="home_quick_actions_title">快捷操作</string>
@@ -35,6 +42,9 @@
     <string name="home_brand_wordmark">CLASSING</string>
 
     <string name="week_loading">正在載入週課表</string>
+    <string name="week_title">課表</string>
+    <string name="week_swipe_hint">切換週次</string>
+    <string name="week_lesson_count_short">%1$d 節</string>
     <string name="week_empty_title">暫無課表</string>
     <string name="week_empty_subtitle">請先在手機端匯入並同步到 Wear</string>
     <string name="week_action_prev">上週</string>
@@ -44,6 +54,7 @@
     <string name="week_no_lessons">無課</string>
 
     <string name="search_title">搜尋課程</string>
+    <string name="search_results_title">搜尋結果</string>
     <string name="search_input_label">課程或教師</string>
     <string name="search_hint_watch_input">建議使用簡短關鍵字。</string>
     <string name="search_empty_input_title">請輸入關鍵詞</string>
@@ -59,6 +70,7 @@
     <string name="detail_course_not_found_subtitle">可能已被刪除</string>
     <string name="detail_no_schedule_title">本週無排課</string>
     <string name="detail_no_schedule_subtitle">請檢查單雙週或週次規則</string>
+    <string name="detail_upcoming_section">後續課程</string>
     <string name="detail_teacher">教師：%1$s</string>
     <string name="detail_location">地點：%1$s</string>
     <string name="detail_note">備註：%1$s</string>
@@ -118,7 +130,15 @@
     <string name="settings_cloud_sync_request_queued">請求已排隊等待手機處理</string>
     <string name="settings_cloud_sync_request_failed">無法將請求加入佇列</string>
     <string name="settings_cloud_sync_direct_success">官方雲端同步完成</string>
+    <string name="settings_cloud_sync_direct_success_detail">雲端同步完成 · 已套用 %1$d 節課程</string>
     <string name="settings_cloud_sync_direct_failed">官方雲端同步失敗，請檢查網路後重試</string>
+    <string name="settings_cloud_sync_account_summary">已登入：%1$s\n會員：%2$s\n同步方式：%3$s\n課表雲端同步：%4$s</string>
+    <string name="settings_cloud_sync_locked">需要登入</string>
+    <string name="settings_cloud_sync_timetable_available">可用</string>
+    <string name="settings_cloud_sync_settings_only">僅同步設定</string>
+    <string name="settings_cloud_sync_membership_required">設定已同步；課表雲端同步需要有效會員。</string>
+    <string name="settings_cloud_sync_login_required">手錶登入已過期，請重新登入。</string>
+    <string name="settings_cloud_sync_error_detail">官方雲端錯誤：%1$s</string>
     <string name="settings_independent_mode_title">獨立模式</string>
     <string name="settings_independent_mode_description">僅使用官方雲端同步，停用手機藍牙同步。</string>
     <string name="settings_section_keep_alive">背景保活</string>

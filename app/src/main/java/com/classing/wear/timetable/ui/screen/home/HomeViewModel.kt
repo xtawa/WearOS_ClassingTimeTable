@@ -11,6 +11,8 @@ import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.sync.MobileSyncRequester
+import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
+import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.ui.heatmap.buildHeatmapCells
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
@@ -34,6 +36,8 @@ class HomeViewModel(
     private val scheduleRepository: ScheduleRepository,
     private val settingsRepository: SettingsRepository,
     private val mobileSyncRequester: MobileSyncRequester,
+    private val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator,
+    private val isIndependentModeEnabled: () -> Boolean,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
 
@@ -100,11 +104,21 @@ class HomeViewModel(
 
     private suspend fun requestSyncFromPhone() {
         syncState.value = SyncState.Syncing
-        val result = mobileSyncRequester.requestSyncFromPhone()
-        syncState.value = if (result.getOrNull()?.let { it > 0 } == true) {
+        val result = if (isIndependentModeEnabled()) {
+            wearOfficialCloudSyncCoordinator
+                .sync(CloudSyncContracts.TRIGGER_MANUAL)
+                .mapCatching { outcome ->
+                    require(outcome.canSyncTimetable) { WearI18n.timetableMembershipRequired() }
+                }
+        } else {
+            mobileSyncRequester.requestSyncFromPhone().mapCatching { nodeCount ->
+                require(nodeCount > 0) { WearI18n.syncCheckPhoneConnection() }
+            }
+        }
+        syncState.value = if (result.isSuccess) {
             SyncState.Success(Instant.now())
         } else {
-            SyncState.Failed(result.exceptionOrNull()?.message ?: "Check phone connection")
+            SyncState.Failed(result.exceptionOrNull()?.message ?: WearI18n.syncCheckPhoneConnection())
         }
     }
 }

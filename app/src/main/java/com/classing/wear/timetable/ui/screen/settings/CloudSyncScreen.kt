@@ -51,7 +51,14 @@ import com.classing.wear.timetable.security.ClientSignatureException
 import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.sync.WearCloudBridgeSender
 import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
+import com.classing.wear.timetable.sync.WearOfficialCloudHttpException
+import com.classing.wear.timetable.sync.WearOfficialCloudLoginRequiredException
 import com.classing.wear.timetable.sync.WearSyncModeStore
+import com.classing.wear.timetable.ui.component.ClassingWearBackground
+import com.classing.wear.timetable.ui.component.ClassingIsland
+import com.classing.wear.timetable.ui.component.WearPageHeader
+import com.classing.wear.timetable.ui.theme.ClassingWearRadii
+import com.classing.wear.timetable.ui.theme.ClassingWearSpacing
 import com.classing.wear.timetable.ui.component.screenPadding
 import java.time.Instant
 import java.time.LocalDateTime
@@ -132,7 +139,14 @@ fun CloudSyncScreen(
         )
     }
     val effectiveLoggedIn = cloudSnapshot.loggedIn || directSession != null
-    val effectiveMember = directSession?.isMember ?: cloudSnapshot.isMember
+    val directCanSyncTimetable = remember(snapshotVersion) {
+        directCloudSync.lastCanSyncTimetable()
+    }
+    val storedDirectError = remember(snapshotVersion) { directCloudSync.lastError() }
+    val displayedStatus = status.ifBlank { storedDirectError }
+    val effectiveMember = directCanSyncTimetable
+        ?: directSession?.isMember
+        ?: cloudSnapshot.isMember
     val effectiveTier = directSession?.membershipTier ?: cloudSnapshot.membershipTier
     val effectiveProvider = if (directSession != null) "OFFICIAL" else cloudSnapshot.provider
 
@@ -164,17 +178,22 @@ fun CloudSyncScreen(
                 is WearDeviceAuthorizationPoll.Approved -> {
                     WearDirectAccountStore.save(context, poll.session)
                     directSession = poll.session
-                    independentMode = WearSyncModeStore.setIndependentMode(context, true)
+                    independentMode = WearSyncModeStore.setIndependentMode(context, false)
                     authorization = null
                     status = context.getString(R.string.settings_qr_login_syncing)
                     val syncResult = directCloudSync.sync(CloudSyncContracts.TRIGGER_APP_START)
                     directSession = WearDirectAccountStore.load(context)
                     qrBusy = false
-                    status = if (syncResult.isSuccess) {
-                        context.getString(R.string.settings_qr_login_sync_success)
-                    } else {
-                        context.getString(R.string.settings_qr_login_sync_failed)
-                    }
+                    val outcome = syncResult.getOrNull()
+                    independentMode = WearSyncModeStore.setIndependentMode(
+                        context,
+                        outcome?.canSyncTimetable == true,
+                    )
+                    status = directSyncStatusText(
+                        context = context,
+                        result = syncResult,
+                        loginCompleted = true,
+                    )
                     return@LaunchedEffect
                 }
             }
@@ -191,52 +210,50 @@ fun CloudSyncScreen(
         stringResource(R.string.settings_cloud_sync_never)
     }
 
+    ClassingWearBackground {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = rememberScalingLazyListState(),
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.md),
     ) {
         item {
-            Text(
-                text = stringResource(R.string.settings_cloud_sync_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+            WearPageHeader(
+                title = stringResource(R.string.settings_cloud_sync_title),
+                eyebrow = stringResource(R.string.home_brand_wordmark),
             )
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            ClassingIsland {
                 Text(
                     text = stringResource(R.string.settings_cloud_sync_phone_managed),
-                    modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            ClassingIsland(emphasized = displayedStatus.isNotBlank()) {
                 Text(
                     text = stringResource(R.string.settings_cloud_sync_last_phone_snapshot, lastSyncText) +
-                        if (status.isBlank()) "" else "\n$status",
-                    modifier = Modifier.padding(10.dp),
+                        if (displayedStatus.isBlank()) "" else "\n$displayedStatus",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            ClassingIsland {
                 Text(
-                    text = buildString {
-                        append("Login: ")
-                        append(if (effectiveLoggedIn) "Yes" else "No")
-                        append("\nMember: ")
-                        append(if (effectiveMember) effectiveTier else "FREE")
-                        append("\nProvider: ")
-                        append(effectiveProvider.ifBlank { "-" })
-                        append("\nOfficial cloud: ")
-                        append(if (effectiveLoggedIn) "Available" else "Locked")
-                    },
-                    modifier = Modifier.padding(10.dp),
+                    text = stringResource(
+                        R.string.settings_cloud_sync_account_summary,
+                        if (effectiveLoggedIn) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
+                        if (effectiveMember) effectiveTier else "FREE",
+                        effectiveProvider.ifBlank { "-" },
+                        when {
+                            !effectiveLoggedIn -> stringResource(R.string.settings_cloud_sync_locked)
+                            effectiveMember -> stringResource(R.string.settings_cloud_sync_timetable_available)
+                            else -> stringResource(R.string.settings_cloud_sync_settings_only)
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -260,7 +277,7 @@ fun CloudSyncScreen(
                     },
                     enabled = !qrBusy,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingWearRadii.pill),
                 ) {
                     Text(stringResource(R.string.settings_qr_login_button))
                 }
@@ -270,7 +287,7 @@ fun CloudSyncScreen(
                     onClick = { manualLoginVisible = !manualLoginVisible },
                     enabled = !manualLoginBusy,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingWearRadii.pill),
                 ) {
                     Text(stringResource(R.string.settings_account_login_button))
                 }
@@ -308,18 +325,23 @@ fun CloudSyncScreen(
                                     val session = result.getOrThrow()
                                     WearDirectAccountStore.save(context, session)
                                     directSession = session
-                                    independentMode = WearSyncModeStore.setIndependentMode(context, true)
+                                    independentMode = WearSyncModeStore.setIndependentMode(context, false)
                                     manualLoginVisible = false
                                     identifierInput = ""
                                     passwordInput = ""
                                     status = context.getString(R.string.settings_qr_login_syncing)
                                     val syncResult = directCloudSync.sync(CloudSyncContracts.TRIGGER_APP_START)
                                     directSession = WearDirectAccountStore.load(context)
-                                    status = if (syncResult.isSuccess) {
-                                        context.getString(R.string.settings_account_login_success)
-                                    } else {
-                                        context.getString(R.string.settings_qr_login_sync_failed)
-                                    }
+                                    val outcome = syncResult.getOrNull()
+                                    independentMode = WearSyncModeStore.setIndependentMode(
+                                        context,
+                                        outcome?.canSyncTimetable == true,
+                                    )
+                                    status = directSyncStatusText(
+                                        context = context,
+                                        result = syncResult,
+                                        loginCompleted = true,
+                                    )
                                 } else {
                                     val error = result.exceptionOrNull()
                                     status = when {
@@ -344,7 +366,7 @@ fun CloudSyncScreen(
                             isValidLoginIdentifier(identifierInput) &&
                             isValidLoginPassword(passwordInput),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingWearRadii.pill),
                     ) {
                         Text(
                             if (manualLoginBusy) {
@@ -386,16 +408,16 @@ fun CloudSyncScreen(
                         status = ""
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingWearRadii.pill),
                 ) {
                     Text(stringResource(R.string.settings_qr_login_cancel))
                 }
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            ClassingIsland {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 ) {
@@ -413,9 +435,20 @@ fun CloudSyncScreen(
                     Switch(
                         checked = independentMode,
                         onCheckedChange = {
-                            independentMode = WearSyncModeStore.setIndependentMode(context, it)
+                            if (!it) {
+                                independentMode = WearSyncModeStore.setIndependentMode(context, false)
+                            } else {
+                                scope.launch {
+                                    syncing = true
+                                    val result = directCloudSync.sync(CloudSyncContracts.TRIGGER_MANUAL)
+                                    val allowed = result.getOrNull()?.canSyncTimetable == true
+                                    independentMode = WearSyncModeStore.setIndependentMode(context, allowed)
+                                    status = directSyncStatusText(context, result)
+                                    syncing = false
+                                }
+                            }
                         },
-                        enabled = directSession != null,
+                        enabled = directSession != null && !syncing,
                     )
                 }
             }
@@ -441,7 +474,7 @@ fun CloudSyncScreen(
                     },
                     enabled = !qrBusy,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingWearRadii.pill),
                 ) {
                     Text(stringResource(R.string.settings_qr_logout_button))
                 }
@@ -470,10 +503,7 @@ fun CloudSyncScreen(
                         }
                         directSession = WearDirectAccountStore.load(context)
                         status = when {
-                            directResult?.isSuccess == true ->
-                                context.getString(R.string.settings_cloud_sync_direct_success)
-                            directResult != null ->
-                                context.getString(R.string.settings_cloud_sync_direct_failed)
+                            directResult != null -> directSyncStatusText(context, directResult)
                             settingsResult.isSuccess && requestResult.isSuccess ->
                                 context.getString(R.string.settings_cloud_sync_request_queued)
                             else -> context.getString(R.string.settings_cloud_sync_request_failed)
@@ -483,7 +513,7 @@ fun CloudSyncScreen(
                 },
                 enabled = !syncing,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Text(
                     if (syncing) {
@@ -498,11 +528,46 @@ fun CloudSyncScreen(
             Button(
                 onClick = onBack,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Text(stringResource(R.string.detail_back))
             }
         }
+    }
+    }
+}
+
+private fun directSyncStatusText(
+    context: android.content.Context,
+    result: Result<com.classing.wear.timetable.sync.WearOfficialCloudSyncOutcome>,
+    loginCompleted: Boolean = false,
+): String {
+    val outcome = result.getOrNull()
+    if (outcome != null) {
+        return when {
+            !outcome.canSyncTimetable -> context.getString(R.string.settings_cloud_sync_membership_required)
+            loginCompleted -> context.getString(R.string.settings_qr_login_sync_success)
+            else -> context.getString(
+                R.string.settings_cloud_sync_direct_success_detail,
+                outcome.appliedRemoteLessons,
+            )
+        }
+    }
+    val error = result.exceptionOrNull()
+    return when {
+        error is ClientSignatureException ->
+            context.getString(R.string.settings_account_login_signature_error)
+        error is WearOfficialCloudHttpException &&
+            error.errorCode.contains("SIGNATURE", ignoreCase = true) ->
+            context.getString(R.string.settings_account_login_signature_error)
+        error is WearOfficialCloudLoginRequiredException ->
+            context.getString(R.string.settings_cloud_sync_login_required)
+        error is WearOfficialCloudHttpException -> context.getString(
+            R.string.settings_cloud_sync_error_detail,
+            error.errorCode.ifBlank { error.statusCode.toString() },
+        )
+        else -> error?.message?.takeIf { it.isNotBlank() }
+            ?: context.getString(R.string.settings_cloud_sync_direct_failed)
     }
 }
 

@@ -19,6 +19,11 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import com.classing.wear.timetable.R
 import com.classing.wear.timetable.ui.component.screenPadding
+import com.classing.wear.timetable.ui.component.ClassingIsland
+import com.classing.wear.timetable.ui.component.ClassingWearBackground
+import com.classing.wear.timetable.ui.component.WearPageHeader
+import com.classing.wear.timetable.ui.theme.ClassingWearRadii
+import com.classing.wear.timetable.ui.theme.ClassingWearSpacing
 
 @Composable
 fun AboutScreen(
@@ -30,32 +35,32 @@ fun AboutScreen(
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     }.getOrDefault("")
 
+    ClassingWearBackground {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = rememberScalingLazyListState(),
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.md),
     ) {
         item {
-            Text(
-                text = stringResource(R.string.settings_about),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+            WearPageHeader(
+                title = stringResource(R.string.settings_about),
+                eyebrow = stringResource(R.string.home_brand_wordmark),
             )
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            ClassingIsland(emphasized = true) {
                 Text(
                 text = stringResource(R.string.settings_about_summary, context.getString(R.string.app_name), versionName),
-                    modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
         item {
-            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
+            Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(ClassingWearRadii.pill)) {
                 Text(text = context.getString(R.string.detail_back))
             }
         }
+    }
     }
 }
