@@ -74,7 +74,7 @@ class OfficialCloudTimetableMapperTest {
 
         val mapped = OfficialCloudTimetableMapper.map(root, LocalDate.parse("2026-07-18"))!!
 
-        assertEquals(53, mapped.payload.courses.single().endWeek)
+        assertEquals(53, mapped.payload.sessions.single().endWeek)
     }
 
     private fun document(lessonRecords: JSONArray): JSONObject = JSONObject()

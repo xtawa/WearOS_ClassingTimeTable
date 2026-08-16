@@ -686,7 +686,7 @@
     <string name="home_day_open">Your day is open</string>
     <string name="home_add_timetable">Add your timetable</string>
     <string name="home_no_classes_today">No classes scheduled for today.</string>
-    <string name="home_import_first_schedule">Import a schedule or add your first class to build today&apos;s context.</string>
+    <string name="home_import_first_schedule">Import a schedule or add your first class to build today\'s context.</string>
     <string name="home_tomorrow">Tomorrow</string>
     <string name="home_next_class">NEXT CLASS</string>
     <string name="home_in_class">IN CLASS</string>
@@ -708,12 +708,12 @@
     <string name="home_ask_classing">Ask Classing</string>
     <string name="home_send_schedule_question">Send schedule question</string>
     <string name="home_later_today">Later today</string>
-    <string name="prompt_whats_next">What&apos;s next?</string>
+    <string name="prompt_whats_next">What\'s next?</string>
     <string name="prompt_next_class_location">Where is my next class?</string>
-    <string name="prompt_afternoon">What&apos;s my afternoon like?</string>
-    <string name="prompt_after_this">What&apos;s after this?</string>
+    <string name="prompt_afternoon">What\'s my afternoon like?</string>
+    <string name="prompt_after_this">What\'s after this?</string>
     <string name="prompt_lunch">Do I have time for lunch?</string>
-    <string name="prompt_today_homework">Today&apos;s homework</string>
+    <string name="prompt_today_homework">Today\'s homework</string>
     <string name="prompt_free_time">How much time do I have?</string>
     <string name="prompt_show_today">Show today</string>
     <string name="prompt_tomorrow_morning">Tomorrow morning</string>
