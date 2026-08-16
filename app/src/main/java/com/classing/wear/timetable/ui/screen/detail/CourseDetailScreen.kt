@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,8 +32,14 @@ import com.classing.wear.timetable.ui.PreviewSamples
 import com.classing.wear.timetable.ui.component.EmptyState
 import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
+import com.classing.wear.timetable.ui.component.ClassingIsland
+import com.classing.wear.timetable.ui.component.ClassingWearBackground
+import com.classing.wear.timetable.ui.component.WearPageHeader
+import com.classing.wear.timetable.ui.component.WearSectionLabel
 import com.classing.wear.timetable.ui.state.CourseDetailUiState
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+import com.classing.wear.timetable.ui.theme.ClassingWearRadii
+import com.classing.wear.timetable.ui.theme.ClassingWearSpacing
 
 @Composable
 fun CourseDetailScreen(
@@ -39,29 +47,27 @@ fun CourseDetailScreen(
     onBack: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
+    ClassingWearBackground {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.md),
     ) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.detail_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.detail_back))
-                    }
-                }
+            WearPageHeader(
+                title = stringResource(R.string.detail_title),
+                eyebrow = stringResource(R.string.home_brand_wordmark),
+            )
+        }
+        item {
+            Button(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(ClassingWearRadii.pill),
+            ) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                Text(stringResource(R.string.detail_back), modifier = Modifier.padding(start = ClassingWearSpacing.xs))
             }
         }
 
@@ -76,12 +82,7 @@ fun CourseDetailScreen(
             else -> {
                 item { CourseSummaryCard(state) }
                 item {
-                    Text(
-                        text = stringResource(R.string.home_action_this_week),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
+                    WearSectionLabel(title = stringResource(R.string.detail_upcoming_section))
                 }
                 if (state.upcomingLessons.isEmpty()) {
                     item {
@@ -92,32 +93,24 @@ fun CourseDetailScreen(
                     }
                 } else {
                     items(state.upcomingLessons) { lesson ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                        ) {
+                        ClassingIsland {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(10.dp),
+                                    .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
-                                        text = TimeFormatters.formatTimeRange(lesson.startAt, lesson.endAt),
+                                        text = TimeFormatters.formatDateTime(lesson.startAt),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                     Text(
-                                        text = lesson.timeSlot.label,
+                                        text = TimeFormatters.formatTimeRange(lesson.startAt, lesson.endAt),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
-                                Text(
-                                    text = ">",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
                             }
                         }
                     }
@@ -125,19 +118,16 @@ fun CourseDetailScreen(
             }
         }
     }
+    }
 }
 
 @Composable
 private fun CourseSummaryCard(state: CourseDetailUiState) {
     val course = state.course ?: return
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
+    ClassingIsland(emphasized = true) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.sm),
         ) {
             Text(
                 text = course.name,
@@ -152,7 +142,7 @@ private fun CourseSummaryCard(state: CourseDetailUiState) {
                 text = stringResource(R.string.detail_location, course.classroom),
             )
             DetailMetaRow(
-                iconLabel = "*",
+                icon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                 text = stringResource(
                     R.string.detail_note,
                     course.note.ifBlank { stringResource(R.string.detail_note_empty) },
@@ -164,7 +154,6 @@ private fun CourseSummaryCard(state: CourseDetailUiState) {
 
 @Composable
 private fun DetailMetaRow(
-    iconLabel: String? = null,
     icon: (@Composable () -> Unit)? = null,
     text: String,
 ) {
@@ -173,16 +162,7 @@ private fun DetailMetaRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        when {
-            icon != null -> icon()
-            !iconLabel.isNullOrBlank() -> {
-                Text(
-                    text = iconLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
+        icon?.invoke()
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,

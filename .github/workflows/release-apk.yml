@@ -294,6 +294,98 @@ jobs:
             sha256sum ./*.apk > SHA256SUMS
           )
 
+      - name: Register Android client signatures
+        id: register-client-signatures
+        env:
+          CLASSING_API_BASE_URL: ${{ secrets.CLASSING_API_BASE_URL }}
+          CLASSING_SIGNATURE_REGISTER_TOKEN: ${{ secrets.CLASSING_SIGNATURE_REGISTER_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${CLASSING_API_BASE_URL:-}" || -z "${CLASSING_SIGNATURE_REGISTER_TOKEN:-}" ]]; then
+            echo "Missing CLASSING_API_BASE_URL or CLASSING_SIGNATURE_REGISTER_TOKEN." >&2
+            echo "Signed releases must register both mobile and Wear certificates before publishing." >&2
+            exit 1
+          fi
+
+          apksigner="$(
+            find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1
+          )"
+          aapt="$(dirname "$apksigner")/aapt"
+          wear_apk="release-artifacts/Classing-Wear-release.apk"
+          mobile_apk="release-artifacts/Classing-Mobile-release.apk"
+
+          if [[ ! -x "$aapt" ]]; then
+            echo "Android aapt was not found next to apksigner." >&2
+            exit 1
+          fi
+
+          wear_cert="$(
+            "$apksigner" verify --print-certs "$wear_apk" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | head -n 1
+          )"
+          mobile_cert="$(
+            "$apksigner" verify --print-certs "$mobile_apk" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | head -n 1
+          )"
+          wear_version="$(
+            "$aapt" dump badging "$wear_apk" \
+              | sed -n "s/^package:.*versionCode='\([0-9][0-9]*\)'.*/\1/p" \
+              | head -n 1
+          )"
+          mobile_version="$(
+            "$aapt" dump badging "$mobile_apk" \
+              | sed -n "s/^package:.*versionCode='\([0-9][0-9]*\)'.*/\1/p" \
+              | head -n 1
+          )"
+
+          if [[ -z "$wear_cert" || -z "$mobile_cert" || -z "$wear_version" || -z "$mobile_version" ]]; then
+            echo "Unable to read release certificate fingerprints or version codes." >&2
+            exit 1
+          fi
+
+          payload="$RUNNER_TEMP/classing-signatures.json"
+          WEAR_CERT="$wear_cert" \
+          MOBILE_CERT="$mobile_cert" \
+          WEAR_VERSION="$wear_version" \
+          MOBILE_VERSION="$mobile_version" \
+          python3 - <<'PY' > "$payload"
+          import json
+          import os
+
+          print(json.dumps({
+              "certificates": [
+                  {
+                      "packageName": "com.xtawa.classingtime",
+                      "platform": "ANDROID_MOBILE",
+                      "versionCode": int(os.environ["MOBILE_VERSION"]),
+                      "certSha256": os.environ["MOBILE_CERT"],
+                      "artifactName": "Classing-Mobile-release.apk",
+                  },
+                  {
+                      "packageName": "com.xtawa.classingtime",
+                      "platform": "ANDROID_WEAR",
+                      "versionCode": int(os.environ["WEAR_VERSION"]),
+                      "certSha256": os.environ["WEAR_CERT"],
+                      "artifactName": "Classing-Wear-release.apk",
+                  },
+              ],
+          }, separators=(",", ":")))
+          PY
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "X-Classing-Release-Key: $CLASSING_SIGNATURE_REGISTER_TOKEN" \
+            --data-binary "@$payload" \
+            "${CLASSING_API_BASE_URL%/}/api/v1/client/signing-certificates/register"
+
       - name: Upload release APKs
         uses: actions/upload-artifact@v4
         with:

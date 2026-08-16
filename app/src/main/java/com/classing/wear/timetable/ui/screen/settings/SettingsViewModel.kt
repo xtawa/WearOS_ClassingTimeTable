@@ -27,6 +27,7 @@ class SettingsViewModel(
     private val mobileSyncRequester: MobileSyncRequester,
     private val wearCloudBridgeSender: WearCloudBridgeSender,
     private val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator,
+    private val isIndependentModeEnabled: () -> Boolean,
     private val autoSyncController: AutoSyncController,
     private val reminderWorkController: ReminderWorkController,
 ) : ViewModel() {
@@ -153,13 +154,38 @@ class SettingsViewModel(
     fun forceFullSync() {
         viewModelScope.launch {
             _uiState.update { it.copy(syncMessage = WearI18n.syncRequesting()) }
-            val result = mobileSyncRequester.requestSyncFromPhone()
-            val feedback = resolveSyncFeedback(result)
+            val directMode = isIndependentModeEnabled()
+            val directResult = if (directMode) {
+                wearOfficialCloudSyncCoordinator.sync(CloudSyncContracts.TRIGGER_MANUAL)
+            } else {
+                null
+            }
+            val phoneResult = if (directMode) null else mobileSyncRequester.requestSyncFromPhone()
+            val feedback = when {
+                directResult != null && directResult.getOrNull()?.canSyncTimetable == true -> SyncFeedback.SUCCESS
+                phoneResult != null -> resolveSyncFeedback(phoneResult)
+                else -> SyncFeedback.CHECK_PHONE_CONNECTION
+            }
             if (feedback == SyncFeedback.SUCCESS) {
-                syncMessage.value = WearI18n.syncRequestSent(result.getOrDefault(0))
+                syncMessage.value = if (directMode) {
+                    WearI18n.directCloudSyncSuccess()
+                } else {
+                    WearI18n.syncRequestSent(phoneResult?.getOrDefault(0) ?: 0)
+                }
                 syncFeedback.value = SyncFeedback.SUCCESS
             } else {
-                syncMessage.value = WearI18n.syncRequestFailed(WearI18n.syncCheckPhoneConnection())
+                val failureMessage = if (directMode) {
+                    when {
+                        directResult?.getOrNull()?.canSyncTimetable == false ->
+                            WearI18n.timetableMembershipRequired()
+                        else -> directResult?.exceptionOrNull()?.message
+                            ?.takeIf(String::isNotBlank)
+                            ?: WearI18n.syncCheckPhoneConnection()
+                    }
+                } else {
+                    WearI18n.syncCheckPhoneConnection()
+                }
+                syncMessage.value = WearI18n.syncRequestFailed(failureMessage)
                 syncFeedback.value = SyncFeedback.CHECK_PHONE_CONNECTION
             }
         }
@@ -190,4 +216,3 @@ internal fun resolveSyncFeedback(result: Result<Int>): SyncFeedback {
         SyncFeedback.CHECK_PHONE_CONNECTION
     }
 }
-

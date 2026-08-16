@@ -47,6 +47,8 @@ fun ClassingTimetableTheme(
 
     MaterialTheme(
         colorScheme = scheme,
+        typography = ClassingWearTypography,
+        shapes = ClassingWearShapes,
         content = content,
     )
 }

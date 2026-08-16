@@ -30,6 +30,12 @@ data class WearOfficialCloudSyncOutcome(
     val uploaded: Boolean,
     val appliedRemoteSettings: Boolean,
     val appliedRemoteLessons: Int,
+    val canSyncTimetable: Boolean,
+)
+
+data class WearOfficialCloudCapabilities(
+    val canSyncSettings: Boolean,
+    val canSyncTimetable: Boolean,
 )
 
 class WearOfficialCloudLoginRequiredException : IllegalStateException("Wear official cloud requires login")
@@ -53,6 +59,18 @@ class WearOfficialCloudHttpClient(
     context: Context? = null,
 ) {
     private val appContext = context?.applicationContext
+
+    suspend fun capabilities(accessToken: String): Result<WearOfficialCloudCapabilities> = request(
+        method = "GET",
+        path = "/api/v1/cloud/official/ping",
+        accessToken = accessToken,
+    ).map { response ->
+        val json = JSONObject(response.body)
+        WearOfficialCloudCapabilities(
+            canSyncSettings = json.optBoolean("canSyncSettings", false),
+            canSyncTimetable = json.optBoolean("canSyncTimetable", false),
+        )
+    }
 
     suspend fun read(accessToken: String): Result<WearOfficialCloudReadResult> = request(
         method = "GET",
@@ -156,6 +174,20 @@ class WearOfficialCloudSyncCoordinator(
         .getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         .getLong(KEY_DOCUMENT_VERSION, 0L)
 
+    fun lastCanSyncTimetable(): Boolean? {
+        val prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_CAN_SYNC_TIMETABLE)) {
+            prefs.getBoolean(KEY_CAN_SYNC_TIMETABLE, false)
+        } else {
+            null
+        }
+    }
+
+    fun lastError(): String = appContext
+        .getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        .getString(KEY_LAST_ERROR, "")
+        .orEmpty()
+
     suspend fun sync(trigger: String): Result<WearOfficialCloudSyncOutcome> = mutex.withLock {
         runCatching {
             var lastConflict: Throwable? = null
@@ -171,13 +203,30 @@ class WearOfficialCloudSyncCoordinator(
             }
             throw lastConflict ?: WearOfficialCloudConflictException()
         }.onSuccess { outcome ->
-            state.saveSuccess(outcome.syncedAt, outcome.documentVersion)
+            state.saveSuccess(
+                syncedAt = outcome.syncedAt,
+                documentVersion = outcome.documentVersion,
+                canSyncTimetable = outcome.canSyncTimetable,
+            )
+            if (!outcome.canSyncTimetable) {
+                WearSyncModeStore.setIndependentMode(appContext, false)
+            }
         }.onFailure { error ->
-            state.saveFailure(error.message.orEmpty().ifBlank { error.javaClass.simpleName })
+            val diagnostic = if (error is WearOfficialCloudHttpException) {
+                listOf(error.errorCode, error.message)
+                    .filter { !it.isNullOrBlank() }
+                    .joinToString(": ")
+            } else {
+                error.message.orEmpty().ifBlank { error.javaClass.simpleName }
+            }
+            state.saveFailure(diagnostic)
         }
     }
 
     private suspend fun syncOnce(trigger: String): WearOfficialCloudSyncOutcome {
+        val authenticatedCapabilities = withAuthenticatedSession { token -> httpClient.capabilities(token) }
+        val capabilities = authenticatedCapabilities.value
+        require(capabilities.canSyncSettings) { "Official cloud settings sync is unavailable" }
         val authenticatedRead = withAuthenticatedSession { token -> httpClient.read(token) }
         val accountChanged = state.ensureAccount(authenticatedRead.session.userId)
         val read = authenticatedRead.value
@@ -204,7 +253,11 @@ class WearOfficialCloudSyncCoordinator(
             throw WearLocalCloudStateChangedException()
         }
         settingsRepository.applyWearSettingsSnapshot(merge.resolvedSettings.toString())
-        val appliedRemoteLessons = applyRemoteTimetable(root, force = accountChanged)
+        val appliedRemoteLessons = applyRemoteTimetable(
+            document = root,
+            force = accountChanged,
+            canSyncTimetable = capabilities.canSyncTimetable,
+        )
         state.saveBaseline(merge.resolvedSettings)
         return WearOfficialCloudSyncOutcome(
             syncedAt = System.currentTimeMillis(),
@@ -212,11 +265,20 @@ class WearOfficialCloudSyncCoordinator(
             uploaded = merge.uploaded,
             appliedRemoteSettings = merge.appliedRemoteSettings,
             appliedRemoteLessons = appliedRemoteLessons,
+            canSyncTimetable = capabilities.canSyncTimetable,
         )
     }
 
-    private suspend fun applyRemoteTimetable(document: JSONObject, force: Boolean): Int =
+    private suspend fun applyRemoteTimetable(
+        document: JSONObject,
+        force: Boolean,
+        canSyncTimetable: Boolean,
+    ): Int =
         WearTimetableApplyLock.mutex.withLock {
+            // The official-cloud API intentionally removes timetable domains for accounts
+            // without timetable entitlement. Missing domains are therefore not proof that
+            // the remote timetable is empty and must never clear the local Wear database.
+            if (!canSyncTimetable) return@withLock 0
             val snapshot = OfficialCloudTimetableMapper.map(
                 document = document,
                 missingDomainsAreEmpty = force,
@@ -455,6 +517,7 @@ class WearOfficialCloudSyncCoordinator(
                 .remove(KEY_LAST_SYNC_AT)
                 .remove(KEY_LAST_ERROR)
                 .remove(KEY_DOCUMENT_VERSION)
+                .remove(KEY_CAN_SYNC_TIMETABLE)
                 .commit()
             return true
         }
@@ -472,10 +535,11 @@ class WearOfficialCloudSyncCoordinator(
             return WearLogicalVersion(next, deviceId(), now)
         }
 
-        fun saveSuccess(syncedAt: Long, documentVersion: Long) {
+        fun saveSuccess(syncedAt: Long, documentVersion: Long, canSyncTimetable: Boolean) {
             prefs.edit()
                 .putLong(KEY_LAST_SYNC_AT, syncedAt)
                 .putLong(KEY_DOCUMENT_VERSION, documentVersion)
+                .putBoolean(KEY_CAN_SYNC_TIMETABLE, canSyncTimetable)
                 .putString(KEY_LAST_ERROR, "")
                 .apply()
         }
@@ -493,6 +557,7 @@ class WearOfficialCloudSyncCoordinator(
         const val KEY_LAST_SYNC_AT = "last_sync_at"
         const val KEY_LAST_ERROR = "last_error"
         const val KEY_DOCUMENT_VERSION = "document_version"
+        const val KEY_CAN_SYNC_TIMETABLE = "can_sync_timetable"
         private const val KEY_BASELINE = "baseline"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_DEVICE_ID = "device_id"

@@ -73,6 +73,22 @@ object WearI18n {
         }
     }
 
+    fun directCloudSyncSuccess(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "官方云同步完成"
+            Lang.ZH_TW -> "官方雲端同步完成"
+            Lang.EN -> "Official cloud synced"
+        }
+    }
+
+    fun timetableMembershipRequired(): String {
+        return when (currentLang()) {
+            Lang.ZH_CN -> "课表云同步需要有效会员"
+            Lang.ZH_TW -> "課表雲端同步需要有效會員"
+            Lang.EN -> "Timetable cloud sync requires an active membership"
+        }
+    }
+
     fun syncCheckPhoneConnection(): String {
         return when (currentLang()) {
             Lang.ZH_CN -> "请检查手机连接"

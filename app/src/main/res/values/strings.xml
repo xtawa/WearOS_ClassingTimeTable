@@ -28,6 +28,13 @@
     <string name="home_next_lesson_title">Next class</string>
     <string name="home_next_lesson_empty">No more classes today</string>
     <string name="home_next_lesson_no_data">No timetable data yet</string>
+    <string name="home_status_in_class">In class</string>
+    <string name="home_status_up_next">Up next</string>
+    <string name="home_status_finished">Day complete</string>
+    <string name="home_status_setup">Get started</string>
+    <string name="home_day_clear_title">Your day is clear</string>
+    <string name="home_day_clear_subtitle">No more classes are scheduled today.</string>
+    <string name="home_minutes_remaining">%1$d min left</string>
     <string name="home_onboarding_title">Import courses from phone first</string>
     <string name="home_onboarding_subtitle">Wear OS devices are supported first.</string>
     <string name="home_quick_actions_title">Quick actions</string>
@@ -35,6 +42,9 @@
     <string name="home_brand_wordmark">CLASSING</string>
 
     <string name="week_loading">Loading weekly schedule</string>
+    <string name="week_title">Timetable</string>
+    <string name="week_swipe_hint">Browse</string>
+    <string name="week_lesson_count_short">%1$d classes</string>
     <string name="week_empty_title">No schedule yet</string>
     <string name="week_empty_subtitle">Import on phone and sync to Wear first</string>
     <string name="week_action_prev">Prev</string>
@@ -44,6 +54,7 @@
     <string name="week_no_lessons">No class</string>
 
     <string name="search_title">Search courses</string>
+    <string name="search_results_title">Results</string>
     <string name="search_input_label">Course or teacher</string>
     <string name="search_hint_watch_input">Use short keywords.</string>
     <string name="search_empty_input_title">Enter keywords</string>
@@ -59,6 +70,7 @@
     <string name="detail_course_not_found_subtitle">It may have been deleted</string>
     <string name="detail_no_schedule_title">No classes this week</string>
     <string name="detail_no_schedule_subtitle">Check week and odd/even rules</string>
+    <string name="detail_upcoming_section">Upcoming classes</string>
     <string name="detail_teacher">Teacher: %1$s</string>
     <string name="detail_location">Location: %1$s</string>
     <string name="detail_note">Note: %1$s</string>
@@ -118,7 +130,15 @@
     <string name="settings_cloud_sync_request_queued">Request queued for phone</string>
     <string name="settings_cloud_sync_request_failed">Unable to queue request</string>
     <string name="settings_cloud_sync_direct_success">Official cloud sync complete</string>
+    <string name="settings_cloud_sync_direct_success_detail">Cloud sync complete · %1$d classes applied</string>
     <string name="settings_cloud_sync_direct_failed">Official cloud sync failed. Check the connection and try again.</string>
+    <string name="settings_cloud_sync_account_summary">Signed in: %1$s\nMembership: %2$s\nProvider: %3$s\nTimetable: %4$s</string>
+    <string name="settings_cloud_sync_locked">Sign in required</string>
+    <string name="settings_cloud_sync_timetable_available">Available</string>
+    <string name="settings_cloud_sync_settings_only">Settings only</string>
+    <string name="settings_cloud_sync_membership_required">Settings synced. Timetable cloud sync requires an active membership.</string>
+    <string name="settings_cloud_sync_login_required">The watch session expired. Sign in again.</string>
+    <string name="settings_cloud_sync_error_detail">Official cloud error: %1$s</string>
     <string name="settings_independent_mode_title">Independent mode</string>
     <string name="settings_independent_mode_description">Use official cloud only. Phone Bluetooth sync is disabled.</string>
     <string name="settings_section_keep_alive">Keep alive</string>

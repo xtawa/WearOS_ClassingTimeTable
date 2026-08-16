@@ -52,9 +52,15 @@ import com.classing.wear.timetable.domain.model.KeepAliveLevel
 import com.classing.wear.timetable.domain.repository.UserPreferences
 import com.classing.wear.timetable.ui.component.LoadingState
 import com.classing.wear.timetable.ui.component.screenPadding
+import com.classing.wear.timetable.ui.component.ClassingIsland
+import com.classing.wear.timetable.ui.component.ClassingWearBackground
+import com.classing.wear.timetable.ui.component.WearPageHeader
+import com.classing.wear.timetable.ui.component.WearSectionLabel
 import com.classing.wear.timetable.ui.state.SettingsUiState
 import com.classing.wear.timetable.ui.state.SyncFeedback
 import com.classing.wear.timetable.ui.theme.ClassingTimetableTheme
+import com.classing.wear.timetable.ui.theme.ClassingWearRadii
+import com.classing.wear.timetable.ui.theme.ClassingWearSpacing
 import org.json.JSONObject
 import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.account.WearDirectAccountStore
@@ -111,23 +117,18 @@ fun SettingsScreen(
         onConsumeSyncFeedback()
     }
 
+    ClassingWearBackground {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = screenPadding(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.md),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            WearPageHeader(
+                title = stringResource(R.string.settings_title),
+                eyebrow = stringResource(R.string.home_brand_wordmark),
+            )
         }
 
         if (state.isLoading) {
@@ -307,7 +308,7 @@ fun SettingsScreen(
                     onForceFullSync()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Text(stringResource(R.string.settings_force_full_sync))
             }
@@ -319,18 +320,17 @@ fun SettingsScreen(
                     onOpenCloudSync()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Text(stringResource(R.string.settings_cloud_sync_title))
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            ClassingIsland {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.xxs),
                 ) {
                     Text(stringResource(R.string.settings_phone_account), style = MaterialTheme.typography.bodyMedium)
                     Text(
@@ -352,11 +352,12 @@ fun SettingsScreen(
                     onOpenAbout()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Text(stringResource(R.string.settings_about))
             }
         }
+    }
     }
 }
 
@@ -390,12 +391,7 @@ private fun loadWearCloudSummary(context: Context): WearCloudSummary {
 
 @Composable
 private fun SettingsSectionTag(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f),
-        modifier = Modifier.padding(horizontal = 4.dp),
-    )
+    WearSectionLabel(title = title)
 }
 
 @Composable
@@ -404,13 +400,10 @@ private fun PreferenceSwitchCard(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
+    ClassingIsland {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -433,12 +426,11 @@ private fun KeepAliveLevelCard(
     level: KeepAliveLevel,
     onSetKeepAliveLevel: (KeepAliveLevel) -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    ClassingIsland {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(ClassingWearSpacing.sm),
         ) {
             Text(text = stringResource(R.string.settings_keepalive_level), style = MaterialTheme.typography.bodyMedium)
             Row(
@@ -452,7 +444,7 @@ private fun KeepAliveLevelCard(
                 ).forEach { (itemLevel, label) ->
                     Button(
                         onClick = { onSetKeepAliveLevel(itemLevel) },
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(ClassingWearRadii.pill),
                         colors = if (itemLevel == level) {
                             ButtonDefaults.buttonColors()
                         } else {
@@ -488,7 +480,7 @@ private fun KeepAliveStatusCard(
             Button(
                 onClick = { protectionMenuExpanded = !protectionMenuExpanded },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(ClassingWearRadii.pill),
             ) {
                 Text(stringResource(R.string.settings_reminder_protection_menu))
             }
@@ -499,7 +491,7 @@ private fun KeepAliveStatusCard(
                         onOpenExactAlarmSettings()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingWearRadii.pill),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -518,7 +510,7 @@ private fun KeepAliveStatusCard(
                         onOpenBatteryOptimizationSettings()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(ClassingWearRadii.pill),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
