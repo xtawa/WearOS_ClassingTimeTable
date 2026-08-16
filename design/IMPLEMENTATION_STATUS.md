@@ -2,12 +2,12 @@
 
 ## Active implementation
 
-- Branch: `ai/ui/mobile-ai-first-redesign`
+- Branch: `ai/codex/localize-ui-and-week-ranges`
 - Design source: `design/`
 - Executable UI source: `mobile/src/main/java/com/xtawa/classingtime/ui/`
 - Production adapters: `screen/MobileDashboardLayer.kt`, `screen/MobileLayersMain.kt`
-- Local commits: active on `ai/ui/mobile-ai-first-redesign`
-- GitHub publish: branch is tracked by pull request #26; each coherent UI batch is pushed to the same review branch
+- Local commits: active on `ai/codex/localize-ui-and-week-ranges`
+- GitHub publish: the AI-first redesign merged through pull request #26; localization and schedule-range correction are tracked by pull request #27
 
 ## Phase status
 
@@ -41,8 +41,7 @@
 - **Design requirement:** build and render each major screen before progressing.
 - **Environment limitation:** Google Maven is unreachable and the environment has no cached `com.android.tools.build:gradle:8.5.0` artifact.
 - **Current handling:** local code receives static syntax and diff checks. GitHub Actions provides clean Android compilation, unit-test, lint and release-build verification after each pushed batch. No local Preview screenshot result is claimed.
-- **Latest verified functional head:** Android CI run 122 and Release hardening run 64 completed successfully for PR #26 head `f6f84bd`.
-- **Current visual-unification batch:** local static diff checks pass; clean Android compilation and release verification must complete in GitHub Actions after publication.
+- **Latest verification:** Android CI run 126 and Release hardening run 67 completed successfully for PR #27 head `c9c4990`.
 - **Required follow-up:** render and compare Compose Preview screenshots in an Android Studio or screenshot-test environment with the required Android/Compose artifacts available.
 
 ### Dynamic color blend
