@@ -86,6 +86,7 @@ class MobilePrefsStoreStateTest {
         val loaded = MobilePrefsStore.loadTimetableState(context)
 
         assertEquals(1, loaded.baseLessons.size)
+        assertEquals(DEFAULT_END_WEEK, loaded.baseLessons.single().endWeek)
         assertEquals(1, loaded.exceptions.size)
         assertEquals("CANCEL", loaded.exceptions.first().type)
     }

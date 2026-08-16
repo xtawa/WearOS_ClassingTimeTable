@@ -38,11 +38,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import com.xtawa.classingtime.ui.home.HomeAssistantUiState
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -63,6 +65,7 @@ internal fun HomeAiPrompt(
         animationSpec = tween(ClassingMotion.ContentReveal),
         label = "ai_prompt_radius",
     )
+    val promptContentDescription = stringResource(R.string.home_ask_schedule)
 
     LaunchedEffect(state.focused) {
         if (state.focused) focusRequester.requestFocus()
@@ -98,7 +101,7 @@ internal fun HomeAiPrompt(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = ClassingSpacing.promptHeight)
-                .semantics { contentDescription = "Ask Classing about your schedule" },
+                .semantics { contentDescription = promptContentDescription },
             shape = RoundedCornerShape(radius.value),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
             shadowElevation = 10.dp,
@@ -140,7 +143,10 @@ internal fun HomeAiPrompt(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (state.query.isBlank()) {
                                 Text(
-                                    text = if (state.focused) "Ask about your schedule" else "Ask Classing",
+                                    text = stringResource(
+                                        if (state.focused) R.string.home_ask_schedule_placeholder
+                                        else R.string.home_ask_classing,
+                                    ),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -157,7 +163,7 @@ internal fun HomeAiPrompt(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.ArrowUpward,
-                            contentDescription = "Send schedule question",
+                            contentDescription = stringResource(R.string.home_send_schedule_question),
                         )
                     }
                 }

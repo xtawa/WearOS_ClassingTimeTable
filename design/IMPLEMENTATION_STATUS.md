@@ -2,12 +2,12 @@
 
 ## Active implementation
 
-- Branch: `ai/ui/mobile-ai-first-redesign`
+- Branch: `ai/codex/localize-ui-and-week-ranges`
 - Design source: `design/`
 - Executable UI source: `mobile/src/main/java/com/xtawa/classingtime/ui/`
 - Production adapters: `screen/MobileDashboardLayer.kt`, `screen/MobileLayersMain.kt`
-- Local commits: active on `ai/ui/mobile-ai-first-redesign`
-- GitHub publish: branch is tracked by pull request #26; each coherent UI batch is pushed to the same review branch
+- Local commits: active on `ai/codex/localize-ui-and-week-ranges`
+- GitHub publish: the AI-first redesign merged through pull request #26; localization and schedule-range correction are tracked by pull request #27
 
 ## Phase status
 
@@ -23,11 +23,13 @@
 | AI Assistant UI | Implemented, CI verified | Home query handoff, contextual anchor, in-place processing, result islands, quick prompts, model/history controls and existing API/account integration |
 | Settings and secondary navigation | Implemented, CI verified | Contextual headers, grouped information islands, source-aware back behavior, Appearance, account, import, reminder, sync and About routes without a persistent app bar or bottom navigation |
 | Legacy-surface visual unification | Implemented, CI verification pending | Onboarding, import, settings/account/sync surfaces and shared pills now use Classing information-island, radius and spacing tokens instead of local one-off geometry |
+| UI localization | Implemented, CI verification pending | AI-first Mobile UI copy is resource-backed with base, Simplified Chinese and Traditional Chinese variants; protocol keys and developer diagnostics remain unchanged |
 | Responsive and accessibility review | Implemented statically, screenshot review pending | 360/390 dp, light/dark and large-font previews across core screens and Settings; large-font layout adaptations, edge-to-edge insets, semantic headings/progress/live regions and 48 dp actions |
 
 ## Schedule visibility correction
 
 - New courses now default to the full valid week range rather than ending at week 30.
+- Device persistence, cloud serialization and phone-to-Wear transfer preserve the complete 1–53 week range instead of truncating it to 30 weeks.
 - Exact legacy natural-calendar defaults of weeks 1–30 are migrated to the full range when loaded or projected.
 - User-defined ranges and semester week mode remain unchanged.
 - Regression coverage verifies that a newly created course remains visible during natural calendar week 33.
@@ -39,8 +41,7 @@
 - **Design requirement:** build and render each major screen before progressing.
 - **Environment limitation:** Google Maven is unreachable and the environment has no cached `com.android.tools.build:gradle:8.5.0` artifact.
 - **Current handling:** local code receives static syntax and diff checks. GitHub Actions provides clean Android compilation, unit-test, lint and release-build verification after each pushed batch. No local Preview screenshot result is claimed.
-- **Latest verified functional head:** Android CI run 122 and Release hardening run 64 completed successfully for PR #26 head `f6f84bd`.
-- **Current visual-unification batch:** local static diff checks pass; clean Android compilation and release verification must complete in GitHub Actions after publication.
+- **Latest verification:** Android CI run 126 and Release hardening run 67 completed successfully for PR #27 head `c9c4990`.
 - **Required follow-up:** render and compare Compose Preview screenshots in an Android Studio or screenshot-test environment with the required Android/Compose artifacts available.
 
 ### Dynamic color blend
@@ -63,10 +64,10 @@
 - Home does not invent empty or completed task states.
 - UI models and Preview states will remain optional until an authoritative data source is introduced in a later non-UI phase.
 
-### Localization cleanup
+### Localization
 
-- The new executable design copy currently follows the approved English design specification while existing legacy areas retain their resource-backed locale coverage.
-- Before release, the new Home, Timetable, Course Detail, Schedule Changes and Assistant copy must move into base, Simplified Chinese and Traditional Chinese resources; this was not hidden behind fabricated translations during the unbuilt phase.
+- Home, Timetable, Course Detail, Schedule Changes and Assistant copy is now Android-resource-backed in base, Simplified Chinese and Traditional Chinese variants.
+- JSON schema keys, service protocol values, animation labels and developer diagnostics intentionally remain stable machine-facing values.
 
 ### AI result composition
 

@@ -1,6 +1,8 @@
 package com.xtawa.classingtime.sync
 
 import android.content.Context
+import com.classing.shared.model.MAX_SCHEDULE_WEEK
+import com.classing.shared.model.MIN_SCHEDULE_WEEK
 import com.classing.shared.sync.CloudSyncDocumentV2
 import com.classing.shared.sync.CloudSyncV2
 import com.classing.shared.sync.DeviceSyncMetadata
@@ -417,10 +419,15 @@ private fun lessonToJson(item: PersistedLesson) = JSONObject()
 private fun lessonFromJson(item: JSONObject): PersistedLesson? {
     val id = item.optString("id"); val title = item.optString("title")
     if (id.isBlank() || title.isBlank()) return null
-    val startWeek = item.optInt("startWeek", 1).coerceIn(1, 30)
+    val startWeek = item.optInt("startWeek", MIN_SCHEDULE_WEEK)
+        .coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK)
     return PersistedLesson(id, title, item.optStringOrNull("teacher"), item.optStringOrNull("location"),
         item.optStringOrNull("note"), item.optInt("dayOfWeek", 1).coerceIn(1, 7), item.optInt("startMinute"),
-        item.optInt("endMinute"), startWeek, item.optInt("endWeek", 30).coerceIn(startWeek, 30), item.optString("weekParity", "ALL"))
+        item.optInt("endMinute"),
+        startWeek,
+        item.optInt("endWeek", MAX_SCHEDULE_WEEK).coerceIn(startWeek, MAX_SCHEDULE_WEEK),
+        item.optString("weekParity", "ALL"),
+    )
 }
 
 private fun exceptionToJson(item: PersistedScheduleException) = JSONObject()

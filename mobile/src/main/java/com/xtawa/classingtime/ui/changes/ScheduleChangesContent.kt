@@ -42,20 +42,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
-private enum class ChangeFilter(val label: String) {
-    All("All"),
-    Moved("Moved"),
-    Cancelled("Cancelled"),
-    Added("Added"),
+private enum class ChangeFilter(@StringRes val labelRes: Int) {
+    All(R.string.schedule_change_filter_all),
+    Moved(R.string.schedule_change_filter_moved),
+    Cancelled(R.string.schedule_change_filter_cancelled),
+    Added(R.string.schedule_change_filter_added),
 }
 
 @Composable
@@ -89,20 +92,23 @@ internal fun ScheduleChangesContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                Icon(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = stringResource(R.string.assistant_back),
+                )
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs),
             ) {
                 Text(
-                    text = "Schedule changes",
+                    text = stringResource(R.string.schedule_change_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.semantics { heading() },
                 )
                 Text(
-                    text = "${state.changes.size} recorded",
+                    text = stringResource(R.string.schedule_change_recorded, state.changes.size),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -117,7 +123,7 @@ internal fun ScheduleChangesContent(
                 FilterChip(
                     selected = filter == item,
                     onClick = { filter = item },
-                    label = { Text(item.label) },
+                    label = { Text(stringResource(item.labelRes)) },
                 )
             }
         }
@@ -155,6 +161,7 @@ internal fun ScheduleChangesContent(
 
 @Composable
 private fun EmptyChanges(filter: ChangeFilter) {
+    val filterLabel = stringResource(filter.labelRes)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -162,12 +169,16 @@ private fun EmptyChanges(filter: ChangeFilter) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = if (filter == ChangeFilter.All) "No schedule changes" else "No ${filter.label.lowercase()} changes",
+            text = if (filter == ChangeFilter.All) {
+                stringResource(R.string.schedule_change_empty_all)
+            } else {
+                stringResource(R.string.schedule_change_empty_filtered, filterLabel)
+            },
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Medium,
         )
         Text(
-            text = "Your effective timetable matches the regular schedule.",
+            text = stringResource(R.string.schedule_change_empty_hint),
             modifier = Modifier.padding(top = ClassingSpacing.xs),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -181,9 +192,9 @@ private fun ScheduleChangeCard(
     onClick: () -> Unit,
 ) {
     val (icon, status) = when (change.type) {
-        ScheduleChangeType.Moved -> Icons.Rounded.SwapVert to "MOVED"
-        ScheduleChangeType.Cancelled -> Icons.Rounded.Cancel to "CANCELLED"
-        ScheduleChangeType.Added -> Icons.Rounded.Add to "ADDED"
+        ScheduleChangeType.Moved -> Icons.Rounded.SwapVert to R.string.schedule_change_moved
+        ScheduleChangeType.Cancelled -> Icons.Rounded.Cancel to R.string.schedule_change_cancelled
+        ScheduleChangeType.Added -> Icons.Rounded.Add to R.string.schedule_change_added
     }
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -204,7 +215,7 @@ private fun ScheduleChangeCard(
                 ChangeIcon(icon = icon)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = status,
+                        text = stringResource(status),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -223,8 +234,16 @@ private fun ScheduleChangeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            change.beforeLabel?.let { ComparisonRow(label = "Before", value = it) }
-            change.nowLabel?.let { ComparisonRow(label = "Now", value = it) }
+            change.beforeLabel?.let {
+                ComparisonRow(label = stringResource(R.string.schedule_change_before), value = it)
+            }
+            change.nowLabel?.let {
+                ComparisonRow(
+                    label = stringResource(R.string.schedule_change_now),
+                    value = it,
+                    emphasized = true,
+                )
+            }
             change.contextLabel?.let {
                 Text(
                     text = it,
@@ -255,7 +274,7 @@ private fun ChangeIcon(icon: ImageVector) {
 }
 
 @Composable
-private fun ComparisonRow(label: String, value: String) {
+private fun ComparisonRow(label: String, value: String, emphasized: Boolean = false) {
     val largeText = LocalDensity.current.fontScale >= 1.5f
     if (largeText) {
         Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
@@ -267,7 +286,7 @@ private fun ComparisonRow(label: String, value: String) {
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (label == "Now") FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Normal,
             )
         }
     } else {
@@ -285,7 +304,7 @@ private fun ComparisonRow(label: String, value: String) {
                 text = value,
                 modifier = Modifier.weight(0.72f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (label == "Now") FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Normal,
             )
         }
     }

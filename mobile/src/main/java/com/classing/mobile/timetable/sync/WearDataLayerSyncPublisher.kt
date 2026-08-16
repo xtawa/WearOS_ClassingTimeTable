@@ -1,6 +1,8 @@
 package com.xtawa.classingtime.sync
 
 import android.content.Context
+import com.classing.shared.model.MAX_SCHEDULE_WEEK
+import com.classing.shared.model.MIN_SCHEDULE_WEEK
 import com.classing.shared.sync.WearDataLayerContracts
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -177,8 +179,14 @@ object WearDataLayerSyncPublisher {
                     .put("endTime", end.format(timeFormatter))
                     .put("location", lesson.location ?: "")
                     .put("note", lesson.note ?: "")
-                    .put("startWeek", lesson.startWeek.coerceIn(1, 30))
-                    .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(1, 30), 30))
+                    .put("startWeek", lesson.startWeek.coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK))
+                    .put(
+                        "endWeek",
+                        lesson.endWeek.coerceIn(
+                            lesson.startWeek.coerceIn(MIN_SCHEDULE_WEEK, MAX_SCHEDULE_WEEK),
+                            MAX_SCHEDULE_WEEK,
+                        ),
+                    )
                     .put(
                         "weekParity",
                         lesson.weekParity.uppercase().let {
@@ -263,4 +271,3 @@ object WearDataLayerSyncPublisher {
     private const val KEY_BASELINE = "baseline"
     private const val KEY_LAST_REVISION = "last_revision"
 }
-
