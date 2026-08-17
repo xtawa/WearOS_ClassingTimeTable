@@ -88,7 +88,11 @@ class SyncPayloadApplier(
                     isActive = remote.isActive,
                     version = remote.version,
                 )
-                val id = semesterDao.upsert(entity)
+                val id = stableLocalId(
+                    existingLocalId = existing?.localId,
+                    upsertResult = semesterDao.upsert(entity),
+                    entityName = "semester",
+                )
                 semesterIdMap[remote.remoteId] = id
                 if (remote.isActive) activeSemesterId = id
                 total += 1
@@ -109,7 +113,11 @@ class SyncPayloadApplier(
                     endTime = remote.endTime,
                     version = remote.version,
                 )
-                val id = slotDao.upsert(entity)
+                val id = stableLocalId(
+                    existingLocalId = existing?.localId,
+                    upsertResult = slotDao.upsert(entity),
+                    entityName = "time slot",
+                )
                 slotIdMap[remote.remoteId] = id
                 total += 1
             }
@@ -129,7 +137,11 @@ class SyncPayloadApplier(
                     isFavorite = remote.isFavorite,
                     version = remote.version,
                 )
-                val id = courseDao.upsert(entity)
+                val id = stableLocalId(
+                    existingLocalId = existing?.localId,
+                    upsertResult = courseDao.upsert(entity),
+                    entityName = "course",
+                )
                 courseIdMap[remote.remoteId] = id
                 total += 1
             }
@@ -152,7 +164,11 @@ class SyncPayloadApplier(
                     weekParity = remote.weekParity,
                     version = remote.version,
                 )
-                val id = sessionDao.upsert(entity)
+                val id = stableLocalId(
+                    existingLocalId = existing?.localId,
+                    upsertResult = sessionDao.upsert(entity),
+                    entityName = "course session",
+                )
                 sessionIdMap[remote.remoteId] = id
                 total += 1
             }
@@ -303,4 +319,21 @@ class SyncPayloadApplier(
     companion object {
         private const val TAG = "SyncPayloadApplier"
     }
+}
+
+/**
+ * Room's [androidx.room.Upsert] returns the inserted row id for a new row, but returns `-1`
+ * after resolving a uniqueness conflict through an update. Parent ids used by later payload
+ * stages therefore have to keep the id that was already stored in the database.
+ */
+internal fun stableLocalId(
+    existingLocalId: Long?,
+    upsertResult: Long,
+    entityName: String,
+): Long {
+    val localId = existingLocalId ?: upsertResult
+    require(localId > 0) {
+        "Unable to resolve a persisted local id for $entityName (upsert result: $upsertResult)"
+    }
+    return localId
 }
