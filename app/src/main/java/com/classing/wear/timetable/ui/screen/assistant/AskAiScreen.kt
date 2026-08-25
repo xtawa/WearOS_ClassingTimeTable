@@ -72,7 +72,7 @@ fun AskAiScreen(
 
     var loggedIn by remember { mutableStateOf(false) }
     var models by remember { mutableStateOf<List<WearAiModel>>(emptyList()) }
-    var selectedModel by remember { mutableStateOf("deepseek-v4-flash") }
+    var selectedModel by remember { mutableStateOf("mimo-v2.5") }
     var conversations by remember { mutableStateOf<List<WearAiConversation>>(emptyList()) }
     var messages by remember { mutableStateOf<List<WearAiMessage>>(emptyList()) }
     var conversationId by remember { mutableStateOf("") }

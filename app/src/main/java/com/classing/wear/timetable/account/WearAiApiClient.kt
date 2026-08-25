@@ -29,15 +29,19 @@ class WearAiApiClient(
     private val appContext = context.applicationContext
 
     suspend fun models(accessToken: String): Result<Pair<String, List<WearAiModel>>> =
-        request("GET", "/api/v1/ai/models", accessToken).map { body ->
-            body.optString("defaultModel", "deepseek-v4-flash") to
-                body.optJSONArray("models").toObjects { item ->
-                    WearAiModel(
-                        id = item.optString("id"),
-                        name = item.optString("name"),
-                        description = item.optString("description"),
-                    )
-                }
+        request("GET", "/api/v1/ai/models", accessToken).map {
+            MIMO_FLASH_MODEL_ID to listOf(
+                WearAiModel(
+                    id = MIMO_FLASH_MODEL_ID,
+                    name = "Flash",
+                    description = "Fast responses for everyday timetable questions",
+                ),
+                WearAiModel(
+                    id = MIMO_PRO_MODEL_ID,
+                    name = "Pro",
+                    description = "Higher quality for complex timetable reasoning",
+                ),
+            )
         }
 
     suspend fun conversations(accessToken: String): Result<List<WearAiConversation>> =
@@ -167,5 +171,10 @@ class WearAiApiClient(
         return buildList {
             for (index in 0 until length()) optJSONObject(index)?.let { add(transform(it)) }
         }
+    }
+
+    private companion object {
+        const val MIMO_FLASH_MODEL_ID = "mimo-v2.5"
+        const val MIMO_PRO_MODEL_ID = "mimo-v2.5-pro"
     }
 }

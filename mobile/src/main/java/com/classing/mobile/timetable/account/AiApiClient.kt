@@ -46,10 +46,19 @@ class AiApiClient(
         )
     }
 
-    suspend fun models(accessToken: String): Result<Pair<String, List<AiModelOption>>> = request("GET", "/api/v1/ai/models", accessToken).map { body ->
-        body.optString("defaultModel", "deepseek-v4-flash") to body.optJSONArray("models").toObjects { item ->
-            AiModelOption(item.optString("id"), item.optString("name"), item.optString("description"))
-        }
+    suspend fun models(accessToken: String): Result<Pair<String, List<AiModelOption>>> = request("GET", "/api/v1/ai/models", accessToken).map {
+        MIMO_FLASH_MODEL_ID to listOf(
+            AiModelOption(
+                id = MIMO_FLASH_MODEL_ID,
+                name = "Flash",
+                description = "Fast responses for everyday timetable questions",
+            ),
+            AiModelOption(
+                id = MIMO_PRO_MODEL_ID,
+                name = "Pro",
+                description = "Higher quality for complex timetable reasoning",
+            ),
+        )
     }
 
     suspend fun conversations(accessToken: String): Result<List<AiConversationSummary>> = request("GET", "/api/v1/ai/conversations?limit=30", accessToken).map { body ->
@@ -127,5 +136,10 @@ class AiApiClient(
     private fun <T> JSONArray?.toObjects(transform: (JSONObject) -> T): List<T> {
         if (this == null) return emptyList()
         return buildList { for (index in 0 until length()) optJSONObject(index)?.let { add(transform(it)) } }
+    }
+
+    private companion object {
+        const val MIMO_FLASH_MODEL_ID = "mimo-v2.5"
+        const val MIMO_PRO_MODEL_ID = "mimo-v2.5-pro"
     }
 }
