@@ -40,6 +40,9 @@ object UsageReporter {
 
     private val uploadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    @Volatile
+    private var appStartHandled = false
+
     fun isEnabled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_ENABLED, true)
 
@@ -67,7 +70,10 @@ object UsageReporter {
         }
     }
 
+    @Synchronized
     fun onAppStart(context: Context) {
+        if (appStartHandled) return
+        appStartHandled = true
         if (!isEnabled(context)) {
             cancelPeriodicUpload(context)
             return
