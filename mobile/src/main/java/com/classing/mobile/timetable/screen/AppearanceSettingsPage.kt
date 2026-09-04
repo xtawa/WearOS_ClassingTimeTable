@@ -117,6 +117,8 @@ internal fun AppearanceSettingsPage(
             }
         }
 
+        UsageCollectionSettingsSection()
+
         Column(
             modifier = Modifier.padding(bottom = ClassingSpacing.xxl),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
