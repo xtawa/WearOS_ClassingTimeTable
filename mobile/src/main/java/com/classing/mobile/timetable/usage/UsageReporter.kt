@@ -12,6 +12,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.security.ClientIntegrity
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -30,7 +31,8 @@ import org.json.JSONObject
 object UsageReporter {
     private const val PREF_NAME = "classing_usage_collection"
     private const val KEY_ENABLED = "enabled"
-    private const val KEY_INSTALL_SERIAL = "install_serial"
+    private const val KEY_FALLBACK_INSTALL_SERIAL = "fallback_install_serial"
+    private const val INSTALL_SERIAL_FILE = "classing_install_serial"
     private const val UNIQUE_WORK_NAME = "classing_device_usage_upload"
     private const val REPORT_PATH = "/api/v1/client/device-usage"
     private const val CONNECT_TIMEOUT_MS = 10_000
@@ -41,12 +43,28 @@ object UsageReporter {
     fun isEnabled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_ENABLED, true)
 
+    @Synchronized
     fun installationSerial(context: Context): String {
-        val preferences = prefs(context)
-        preferences.getString(KEY_INSTALL_SERIAL, null)?.takeIf { it.isNotBlank() }?.let { return it }
-        val value = UUID.randomUUID().toString()
-        preferences.edit().putString(KEY_INSTALL_SERIAL, value).apply()
-        return value
+        val appContext = context.applicationContext
+        val serialFile = File(appContext.noBackupFilesDir, INSTALL_SERIAL_FILE)
+        try {
+            serialFile.takeIf { it.isFile }
+                ?.readText(Charsets.UTF_8)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { return it }
+            val value = UUID.randomUUID().toString()
+            serialFile.writeText(value, Charsets.UTF_8)
+            return value
+        } catch (_: IOException) {
+            val preferences = prefs(appContext)
+            preferences.getString(KEY_FALLBACK_INSTALL_SERIAL, null)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { return it }
+            val value = UUID.randomUUID().toString()
+            preferences.edit().putString(KEY_FALLBACK_INSTALL_SERIAL, value).apply()
+            return value
+        }
     }
 
     fun onAppStart(context: Context) {
@@ -97,7 +115,7 @@ object UsageReporter {
             connection.outputStream.use { it.write(body) }
             val status = connection.responseCode
             if (status !in 200..299) {
-                val message = (connection.errorStream ?: connection.inputStream)
+                val message = connection.errorStream
                     ?.bufferedReader(Charsets.UTF_8)
                     ?.use { it.readText() }
                     .orEmpty()
