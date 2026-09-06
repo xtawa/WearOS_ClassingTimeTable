@@ -17,9 +17,6 @@ interface CourseSessionDao {
     @Query("SELECT * FROM course_sessions WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getByRemoteId(remoteId: String): CourseSessionEntity?
 
-    @Query("SELECT COUNT(*) FROM course_sessions")
-    suspend fun countAll(): Int
-
     @Upsert
     suspend fun upsert(session: CourseSessionEntity): Long
 
