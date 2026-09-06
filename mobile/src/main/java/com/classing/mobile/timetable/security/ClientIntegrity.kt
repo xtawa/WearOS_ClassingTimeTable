@@ -15,6 +15,7 @@ import org.json.JSONObject
 data class ClientIntegritySnapshot(
     val packageName: String,
     val platform: String,
+    val market: String,
     val versionCode: Long,
     val signingCertSha256: String,
 )
@@ -34,6 +35,7 @@ object ClientIntegrity {
         return ClientIntegritySnapshot(
             packageName = appContext.packageName,
             platform = platform,
+            market = BuildConfig.CLIENT_MARKET,
             versionCode = versionCode(appContext),
             signingCertSha256 = signingCertSha256(appContext).orEmpty(),
         )
@@ -94,6 +96,7 @@ object ClientIntegrity {
 
     private fun ClientIntegritySnapshot.headers(): Map<String, String> = mapOf(
         "X-Classing-Client-Platform" to platform,
+        "X-Classing-Client-Market" to market,
         "X-Classing-Package-Name" to packageName,
         "X-Classing-Version-Code" to versionCode.toString(),
         "X-Classing-Signing-Cert-Sha256" to signingCertSha256,
