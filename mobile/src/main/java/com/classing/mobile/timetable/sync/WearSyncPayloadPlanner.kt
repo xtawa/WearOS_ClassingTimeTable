@@ -8,6 +8,11 @@ internal data class WearSyncBaseline(
     val exceptionFingerprints: Map<String, String>,
 )
 
+internal data class WearSyncBaselineRecord(
+    val nodeId: String,
+    val baseline: WearSyncBaseline,
+)
+
 internal data class WearSyncPayloadPlan(
     val mode: String,
     val lessons: List<PersistedLesson>,
@@ -16,6 +21,15 @@ internal data class WearSyncPayloadPlan(
     val deletedExceptionIds: Set<String>,
     val nextBaseline: WearSyncBaseline,
 )
+
+internal fun selectWearSyncBaseline(
+    connectedNodeIds: Set<String>,
+    stored: WearSyncBaselineRecord?,
+    forceFull: Boolean,
+): WearSyncBaseline? {
+    if (forceFull || connectedNodeIds.size != 1 || stored == null) return null
+    return stored.baseline.takeIf { stored.nodeId == connectedNodeIds.single() }
+}
 
 internal fun planWearSyncPayload(
     lessons: List<PersistedLesson>,
