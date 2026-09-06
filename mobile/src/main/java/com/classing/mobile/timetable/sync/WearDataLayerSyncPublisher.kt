@@ -70,6 +70,20 @@ object WearDataLayerSyncPublisher {
                 semesterWeekStartDate = semesterWeekStartDate,
                 requestId = requestId,
             )
+
+            // Stage before transport so an extremely fast Wear ACK cannot race ahead of pending
+            // state creation. Pending state is harmless if transport fails: it is request-scoped,
+            // never selected for future deltas, and expires automatically.
+            if (connectedNodeIds.size == 1) {
+                savePendingBaseline(
+                    context = context,
+                    requestId = requestId,
+                    nodeId = connectedNodeIds.single(),
+                    baseline = plan.nextBaseline,
+                    revision = updatedAt,
+                )
+            }
+
             val request = PutDataMapRequest.create(WearDataLayerContracts.PATH_SYNC_LESSONS).apply {
                 dataMap.putString(WearDataLayerContracts.KEY_PAYLOAD, payload)
                 dataMap.putString(WearDataLayerContracts.KEY_FORMAT, "classingtime_mobile_sync_v2")
@@ -100,18 +114,6 @@ object WearDataLayerSyncPublisher {
                 if (sent) successfulNodeIds += node.id
             }
 
-            // Incremental state is only trusted for one concrete Wear node. The next baseline is
-            // staged after direct delivery and becomes committed only after that exact node sends
-            // a successful ACK for this requestId. Old baselines without a node id, disconnected
-            // delivery, multiple watches, failed delivery, and failed apply therefore fall back to
-            // FULL instead of risking an empty/partial delta.
-            if (connectedNodeIds.size == 1) {
-                val nodeId = connectedNodeIds.single()
-                if (nodeId in successfulNodeIds) {
-                    savePendingBaseline(context, requestId, nodeId, plan.nextBaseline, updatedAt)
-                }
-            }
-
             WearSyncDispatchResult(
                 connectedNodeCount = successfulNodeIds.size,
                 queuedForCompanion = allowDisconnectedQueue && successfulNodeIds.isEmpty(),
@@ -137,10 +139,9 @@ object WearDataLayerSyncPublisher {
             val root = runCatching { JSONObject(raw) }.getOrNull() ?: return@synchronized false
             if (root.optString("nodeId") != nodeId) return@synchronized false
             val baseline = baselineFromJson(root.optJSONObject("baseline")) ?: return@synchronized false
-            val baselineJson = baselineToJson(baseline).toString()
             prefs.edit()
                 .putString(KEY_BASELINE_NODE_ID, nodeId)
-                .putString(KEY_BASELINE, baselineJson)
+                .putString(KEY_BASELINE, baselineToJson(baseline).toString())
                 .remove(key)
                 .commit()
         }
