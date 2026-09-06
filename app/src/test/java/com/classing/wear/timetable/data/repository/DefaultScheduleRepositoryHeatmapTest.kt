@@ -131,6 +131,7 @@ class DefaultScheduleRepositoryHeatmapTest {
         override fun observeBySemester(semesterId: Long): Flow<List<CourseSessionEntity>> = flow
         override suspend fun getById(sessionId: Long): CourseSessionEntity? = flow.value.firstOrNull { it.localId == sessionId }
         override suspend fun getByRemoteId(remoteId: String): CourseSessionEntity? = flow.value.firstOrNull { it.remoteId == remoteId }
+        override suspend fun countAll(): Int = flow.value.size
         override suspend fun upsert(session: CourseSessionEntity): Long = session.localId
         override suspend fun upsertAll(sessions: List<CourseSessionEntity>) = Unit
         override suspend fun deleteBySemester(semesterId: Long) = Unit
