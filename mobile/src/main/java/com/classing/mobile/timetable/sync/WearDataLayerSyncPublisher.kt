@@ -10,15 +10,15 @@ import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.PersistedLesson
 import com.xtawa.classingtime.data.PersistedScheduleException
 import java.nio.charset.StandardCharsets
-import java.time.LocalDateTime
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.UUID
 
 data class WearSyncDispatchResult(
     val connectedNodeCount: Int,
@@ -46,14 +46,20 @@ object WearDataLayerSyncPublisher {
                 error("No connected Wear device")
             }
 
-            val previousBaseline = loadBaseline(context)
+            val connectedNodeIds = connectedNodes.mapTo(linkedSetOf()) { it.id }
+            val storedBaseline = loadBaseline(context)
+            val previousBaseline = selectWearSyncBaseline(
+                connectedNodeIds = connectedNodeIds,
+                stored = storedBaseline,
+                forceFull = forceFull,
+            )
             val plan = planWearSyncPayload(
                 lessons = lessons,
                 exceptions = exceptions,
                 previous = previousBaseline,
                 forceFull = forceFull,
             )
-            val updatedAt = nextRevision(context)
+            val updatedAt = reserveRevision(context)
             val payload = buildPayload(
                 plan = plan,
                 zoneId = zoneId,
@@ -80,21 +86,32 @@ object WearDataLayerSyncPublisher {
             }.asPutDataRequest().setUrgent()
 
             Wearable.getDataClient(context).putDataItem(request).await()
-            saveBaseline(context, plan.nextBaseline, updatedAt)
 
             val payloadBytes = payload.toByteArray(StandardCharsets.UTF_8)
-            val messageNodeCount = connectedNodes.count { node ->
-                runCatching {
+            val successfulNodeIds = linkedSetOf<String>()
+            connectedNodes.forEach { node ->
+                val sent = runCatching {
                     Wearable.getMessageClient(context)
                         .sendMessage(node.id, WearDataLayerContracts.PATH_SYNC_LESSONS, payloadBytes)
                         .await()
                     true
                 }.getOrDefault(false)
+                if (sent) successfulNodeIds += node.id
+            }
+
+            // Incremental state is only trusted for one concrete Wear node. Old baselines without
+            // a node id, disconnected delivery, multiple watches, and failed direct delivery all
+            // fall back to FULL on the next publish instead of risking an empty/partial delta.
+            if (connectedNodeIds.size == 1) {
+                val nodeId = connectedNodeIds.single()
+                if (nodeId in successfulNodeIds) {
+                    saveBaseline(context, nodeId, plan.nextBaseline)
+                }
             }
 
             WearSyncDispatchResult(
-                connectedNodeCount = messageNodeCount,
-                queuedForCompanion = allowDisconnectedQueue && messageNodeCount == 0,
+                connectedNodeCount = successfulNodeIds.size,
+                queuedForCompanion = allowDisconnectedQueue && successfulNodeIds.isEmpty(),
             ).also { dispatch ->
                 val resultLabel = if (dispatch.connectedNodeCount > 0) {
                     "Pushed to ${dispatch.connectedNodeCount} node(s)"
@@ -232,34 +249,38 @@ object WearDataLayerSyncPublisher {
             .toString()
     }
 
-    private fun loadBaseline(context: Context): WearSyncBaseline? {
-        val raw = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_BASELINE, null)
-            ?.takeIf(String::isNotBlank)
-            ?: return null
+    private fun loadBaseline(context: Context): WearSyncBaselineRecord? {
+        val prefs = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
+        val nodeId = prefs.getString(KEY_BASELINE_NODE_ID, null)?.takeIf(String::isNotBlank) ?: return null
+        val raw = prefs.getString(KEY_BASELINE, null)?.takeIf(String::isNotBlank) ?: return null
         return runCatching {
             val root = JSONObject(raw)
-            WearSyncBaseline(
-                lessonFingerprints = root.optJSONObject("lessons").toStringMap(),
-                exceptionFingerprints = root.optJSONObject("exceptions").toStringMap(),
+            WearSyncBaselineRecord(
+                nodeId = nodeId,
+                baseline = WearSyncBaseline(
+                    lessonFingerprints = root.optJSONObject("lessons").toStringMap(),
+                    exceptionFingerprints = root.optJSONObject("exceptions").toStringMap(),
+                ),
             )
         }.getOrNull()
     }
 
-    private fun saveBaseline(context: Context, baseline: WearSyncBaseline, revision: Long) {
+    private fun saveBaseline(context: Context, nodeId: String, baseline: WearSyncBaseline) {
         val root = JSONObject()
             .put("lessons", JSONObject(baseline.lessonFingerprints))
             .put("exceptions", JSONObject(baseline.exceptionFingerprints))
         context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_BASELINE_NODE_ID, nodeId)
             .putString(KEY_BASELINE, root.toString())
-            .putLong(KEY_LAST_REVISION, revision)
             .apply()
     }
 
-    private fun nextRevision(context: Context): Long {
-        val previous = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
-            .getLong(KEY_LAST_REVISION, 0L)
-        return maxOf(System.currentTimeMillis(), previous + 1L)
+    private fun reserveRevision(context: Context): Long {
+        val prefs = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getLong(KEY_LAST_REVISION, 0L)
+        val next = maxOf(System.currentTimeMillis(), previous + 1L)
+        prefs.edit().putLong(KEY_LAST_REVISION, next).commit()
+        return next
     }
 
     private fun JSONObject?.toStringMap(): Map<String, String> {
@@ -269,5 +290,6 @@ object WearDataLayerSyncPublisher {
 
     private const val BASELINE_PREFS = "wear_sync_payload_baseline"
     private const val KEY_BASELINE = "baseline"
+    private const val KEY_BASELINE_NODE_ID = "baseline_node_id"
     private const val KEY_LAST_REVISION = "last_revision"
 }
