@@ -2,7 +2,6 @@ package com.xtawa.classingtime.sync
 
 import android.content.Context
 import com.xtawa.classingtime.security.ClientIntegrity
-import android.content.Context
 import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.account.AccountApiClient
