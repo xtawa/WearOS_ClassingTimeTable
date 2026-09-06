@@ -8,11 +8,12 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import java.nio.charset.StandardCharsets
+import org.json.JSONObject
 
 class MobileSyncAckListenerService : WearableListenerService() {
     override fun onMessageReceived(messageEvent: MessageEvent) {
         when (messageEvent.path) {
-            WearSyncAckStore.PATH_SYNC_ACK -> handleAck(messageEvent.data)
+            WearSyncAckStore.PATH_SYNC_ACK -> handleAck(messageEvent.data, messageEvent.sourceNodeId)
             else -> super.onMessageReceived(messageEvent)
         }
     }
@@ -34,15 +35,40 @@ class MobileSyncAckListenerService : WearableListenerService() {
                 errorMessage = map.getString(WearDataLayerContracts.KEY_ERROR).orEmpty(),
             )
             WearSyncAckStore.save(applicationContext, ack)
+            confirmBaselineIfApplied(
+                requestId = map.getString(WearDataLayerContracts.KEY_REQUEST_ID).orEmpty(),
+                nodeId = event.dataItem.uri.host.orEmpty(),
+                ackStatus = map.getString(WearDataLayerContracts.KEY_ACK_STATUS).orEmpty(),
+                success = ack.success,
+            )
             Log.i(TAG, "Received wear sync ACK(DataItem) success=${ack.success} count=${ack.appliedLessonCount}")
         }
     }
 
-    private fun handleAck(bytes: ByteArray) {
+    private fun handleAck(bytes: ByteArray, sourceNodeId: String) {
         val raw = runCatching { String(bytes, StandardCharsets.UTF_8) }.getOrNull().orEmpty()
         val ack = WearSyncAckStore.parse(raw) ?: return
         WearSyncAckStore.save(applicationContext, ack)
+        val json = runCatching { JSONObject(raw) }.getOrNull()
+        confirmBaselineIfApplied(
+            requestId = json?.optString(WearDataLayerContracts.KEY_REQUEST_ID).orEmpty(),
+            nodeId = sourceNodeId,
+            ackStatus = json?.optString(WearDataLayerContracts.KEY_ACK_STATUS).orEmpty(),
+            success = ack.success,
+        )
         Log.i(TAG, "Received wear sync ACK success=${ack.success} count=${ack.appliedLessonCount}")
+    }
+
+    private fun confirmBaselineIfApplied(
+        requestId: String,
+        nodeId: String,
+        ackStatus: String,
+        success: Boolean,
+    ) {
+        if (!success || !ackStatus.equals("applied", ignoreCase = true)) return
+        if (WearDataLayerSyncPublisher.confirmBaselineFromAck(applicationContext, requestId, nodeId)) {
+            Log.i(TAG, "Committed Wear sync baseline requestId=$requestId node=$nodeId")
+        }
     }
 
     companion object {
