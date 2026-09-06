@@ -27,6 +27,7 @@ data class WearSyncDispatchResult(
 
 object WearDataLayerSyncPublisher {
     private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val baselineLock = Any()
 
     suspend fun publishLessonsSnapshot(
         context: Context,
@@ -99,13 +100,15 @@ object WearDataLayerSyncPublisher {
                 if (sent) successfulNodeIds += node.id
             }
 
-            // Incremental state is only trusted for one concrete Wear node. Old baselines without
-            // a node id, disconnected delivery, multiple watches, and failed direct delivery all
-            // fall back to FULL on the next publish instead of risking an empty/partial delta.
+            // Incremental state is only trusted for one concrete Wear node. The next baseline is
+            // staged after direct delivery and becomes committed only after that exact node sends
+            // a successful ACK for this requestId. Old baselines without a node id, disconnected
+            // delivery, multiple watches, failed delivery, and failed apply therefore fall back to
+            // FULL instead of risking an empty/partial delta.
             if (connectedNodeIds.size == 1) {
                 val nodeId = connectedNodeIds.single()
                 if (nodeId in successfulNodeIds) {
-                    saveBaseline(context, nodeId, plan.nextBaseline)
+                    savePendingBaseline(context, requestId, nodeId, plan.nextBaseline, updatedAt)
                 }
             }
 
@@ -122,6 +125,24 @@ object WearDataLayerSyncPublisher {
                 }
                 MobilePrefsStore.markLastWearPush(context, updatedAt, resultLabel)
             }
+        }
+    }
+
+    fun confirmBaselineFromAck(context: Context, requestId: String, nodeId: String): Boolean {
+        if (requestId.isBlank() || nodeId.isBlank()) return false
+        return synchronized(baselineLock) {
+            val prefs = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
+            val key = pendingKey(requestId)
+            val raw = prefs.getString(key, null)?.takeIf(String::isNotBlank) ?: return@synchronized false
+            val root = runCatching { JSONObject(raw) }.getOrNull() ?: return@synchronized false
+            if (root.optString("nodeId") != nodeId) return@synchronized false
+            val baseline = baselineFromJson(root.optJSONObject("baseline")) ?: return@synchronized false
+            val baselineJson = baselineToJson(baseline).toString()
+            prefs.edit()
+                .putString(KEY_BASELINE_NODE_ID, nodeId)
+                .putString(KEY_BASELINE, baselineJson)
+                .remove(key)
+                .commit()
         }
     }
 
@@ -249,38 +270,57 @@ object WearDataLayerSyncPublisher {
             .toString()
     }
 
-    private fun loadBaseline(context: Context): WearSyncBaselineRecord? {
+    private fun loadBaseline(context: Context): WearSyncBaselineRecord? = synchronized(baselineLock) {
         val prefs = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
-        val nodeId = prefs.getString(KEY_BASELINE_NODE_ID, null)?.takeIf(String::isNotBlank) ?: return null
-        val raw = prefs.getString(KEY_BASELINE, null)?.takeIf(String::isNotBlank) ?: return null
-        return runCatching {
-            val root = JSONObject(raw)
-            WearSyncBaselineRecord(
-                nodeId = nodeId,
-                baseline = WearSyncBaseline(
-                    lessonFingerprints = root.optJSONObject("lessons").toStringMap(),
-                    exceptionFingerprints = root.optJSONObject("exceptions").toStringMap(),
-                ),
-            )
-        }.getOrNull()
+        val nodeId = prefs.getString(KEY_BASELINE_NODE_ID, null)?.takeIf(String::isNotBlank) ?: return@synchronized null
+        val raw = prefs.getString(KEY_BASELINE, null)?.takeIf(String::isNotBlank) ?: return@synchronized null
+        val baseline = runCatching { baselineFromJson(JSONObject(raw)) }.getOrNull() ?: return@synchronized null
+        WearSyncBaselineRecord(nodeId = nodeId, baseline = baseline)
     }
 
-    private fun saveBaseline(context: Context, nodeId: String, baseline: WearSyncBaseline) {
+    private fun savePendingBaseline(
+        context: Context,
+        requestId: String,
+        nodeId: String,
+        baseline: WearSyncBaseline,
+        revision: Long,
+    ) = synchronized(baselineLock) {
+        val prefs = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val editor = prefs.edit()
+        prefs.all.forEach { (key, value) ->
+            if (!key.startsWith(PENDING_PREFIX)) return@forEach
+            val createdAt = (value as? String)
+                ?.let { runCatching { JSONObject(it).optLong("createdAt", 0L) }.getOrDefault(0L) }
+                ?: 0L
+            if (createdAt <= 0L || now - createdAt > PENDING_TTL_MS) editor.remove(key)
+        }
         val root = JSONObject()
-            .put("lessons", JSONObject(baseline.lessonFingerprints))
-            .put("exceptions", JSONObject(baseline.exceptionFingerprints))
-        context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_BASELINE_NODE_ID, nodeId)
-            .putString(KEY_BASELINE, root.toString())
-            .apply()
+            .put("nodeId", nodeId)
+            .put("revision", revision)
+            .put("createdAt", now)
+            .put("baseline", baselineToJson(baseline))
+        editor.putString(pendingKey(requestId), root.toString()).commit()
     }
 
-    private fun reserveRevision(context: Context): Long {
+    private fun baselineToJson(baseline: WearSyncBaseline): JSONObject = JSONObject()
+        .put("lessons", JSONObject(baseline.lessonFingerprints))
+        .put("exceptions", JSONObject(baseline.exceptionFingerprints))
+
+    private fun baselineFromJson(root: JSONObject?): WearSyncBaseline? {
+        root ?: return null
+        return WearSyncBaseline(
+            lessonFingerprints = root.optJSONObject("lessons").toStringMap(),
+            exceptionFingerprints = root.optJSONObject("exceptions").toStringMap(),
+        )
+    }
+
+    private fun reserveRevision(context: Context): Long = synchronized(baselineLock) {
         val prefs = context.getSharedPreferences(BASELINE_PREFS, Context.MODE_PRIVATE)
         val previous = prefs.getLong(KEY_LAST_REVISION, 0L)
         val next = maxOf(System.currentTimeMillis(), previous + 1L)
         prefs.edit().putLong(KEY_LAST_REVISION, next).commit()
-        return next
+        next
     }
 
     private fun JSONObject?.toStringMap(): Map<String, String> {
@@ -288,8 +328,12 @@ object WearDataLayerSyncPublisher {
         return keys().asSequence().associateWith { key -> optString(key) }
     }
 
+    private fun pendingKey(requestId: String): String = "$PENDING_PREFIX$requestId"
+
     private const val BASELINE_PREFS = "wear_sync_payload_baseline"
     private const val KEY_BASELINE = "baseline"
     private const val KEY_BASELINE_NODE_ID = "baseline_node_id"
     private const val KEY_LAST_REVISION = "last_revision"
+    private const val PENDING_PREFIX = "pending_baseline_"
+    private const val PENDING_TTL_MS = 24 * 60 * 60 * 1000L
 }
