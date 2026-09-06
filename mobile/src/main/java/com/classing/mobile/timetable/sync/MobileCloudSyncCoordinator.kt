@@ -311,6 +311,7 @@ object MobileCloudSyncCoordinator {
             officialMemberAuthorized = verifiedMembership.isMember,
             clientPackageName = clientIntegrity?.packageName.orEmpty(),
             clientPlatform = clientIntegrity?.platform.orEmpty(),
+            clientMarket = clientIntegrity?.market.orEmpty(),
             clientVersionCode = clientIntegrity?.versionCode ?: 0L,
             clientSigningCertSha256 = clientIntegrity?.signingCertSha256.orEmpty(),
         )

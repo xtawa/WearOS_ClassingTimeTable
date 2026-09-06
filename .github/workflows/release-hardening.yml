@@ -23,15 +23,15 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - name: Build optimized release APKs
-        run: ./gradlew --no-daemon --max-workers=2 :app:assembleRelease :mobile:assembleRelease
+        run: ./gradlew --no-daemon --max-workers=2 :app:assembleCnRelease :mobile:assembleCnRelease
       - name: Verify R8 outputs
         shell: bash
         run: |
           set -euo pipefail
 
           for module in app mobile; do
-            mapping="$module/build/outputs/mapping/release/mapping.txt"
-            apk_dir="$module/build/outputs/apk/release"
+            mapping="$module/build/outputs/mapping/cnRelease/mapping.txt"
+            apk_dir="$module/build/outputs/apk/cn/release"
 
             if [[ ! -s "$mapping" ]]; then
               echo "Missing or empty R8 mapping file: $mapping" >&2

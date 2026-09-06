@@ -67,6 +67,20 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
+    flavorDimensions += "market"
+    productFlavors {
+        create("cn") {
+            dimension = "market"
+            buildConfigField("String", "CLIENT_MARKET", "\"CN\"")
+        }
+        create("global") {
+            dimension = "market"
+            applicationIdSuffix = ".global"
+            versionNameSuffix = "-global-preview"
+            buildConfigField("String", "CLIENT_MARKET", "\"GLOBAL\"")
+        }
+    }
+
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {

@@ -1,6 +1,8 @@
 package com.xtawa.classingtime.sync
 
 import android.content.Context
+import com.xtawa.classingtime.security.ClientIntegrity
+import android.content.Context
 import com.classing.shared.sync.CloudProvider
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.account.AccountApiClient
@@ -28,18 +30,21 @@ data class OfficialCloudEvent(
 
 class OfficialCloudEventClient {
     suspend fun listen(
+        context: Context,
         baseUrl: String,
         accessToken: String,
         lastVersion: Long,
         onEvent: (OfficialCloudEvent) -> Unit,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            ClientIntegrity.ensureTrusted(context, baseUrl).getOrThrow()
             val connection = (URL(baseUrl.trimEnd('/') + EVENTS_PATH).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10_000
                 readTimeout = 35_000
                 setRequestProperty("Accept", "text/event-stream")
                 setRequestProperty("Authorization", "Bearer $accessToken")
+                ClientIntegrity.applyHeaders(this, context)
                 if (lastVersion > 0L) setRequestProperty("Last-Event-ID", lastVersion.toString())
             }
             val completion = coroutineContext[Job]?.invokeOnCompletion { connection.disconnect() }
@@ -132,6 +137,7 @@ object OfficialCloudRealtimeController {
                     if (accessToken.isBlank()) break
                     val cursor = MobilePrefsStore.loadOfficialCloudEventVersion(appContext, userId)
                     val result = eventClient.listen(
+                        context = appContext,
                         baseUrl = AccountApiClient.BASE_URL,
                         accessToken = accessToken,
                         lastVersion = cursor,

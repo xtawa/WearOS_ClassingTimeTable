@@ -54,6 +54,6 @@ jobs:
         with:
           name: release-apks
           path: |
-            mobile/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/release/*.apk
+            mobile/build/outputs/apk/*/release/*.apk
+            app/build/outputs/apk/*/release/*.apk
           if-no-files-found: error

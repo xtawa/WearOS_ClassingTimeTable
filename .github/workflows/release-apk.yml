@@ -232,8 +232,8 @@ jobs:
           ./gradlew \
             --no-daemon \
             --max-workers=2 \
-            :app:assembleRelease \
-            :mobile:assembleRelease
+            :app:assembleCnRelease \
+            :mobile:assembleCnRelease
 
       - name: Verify signatures and collect artifacts
         shell: bash
@@ -253,8 +253,8 @@ jobs:
             exit 1
           fi
 
-          wear_apk="app/build/outputs/apk/release/app-release.apk"
-          mobile_apk="mobile/build/outputs/apk/release/mobile-release.apk"
+          wear_apk="app/build/outputs/apk/cn/release/app-cn-release.apk"
+          mobile_apk="mobile/build/outputs/apk/cn/release/mobile-cn-release.apk"
 
           if [[ ! -f "$wear_apk" ]]; then
             echo "Wear release APK was not generated: $wear_apk" >&2

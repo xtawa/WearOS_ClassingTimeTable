@@ -32,6 +32,7 @@ data class CloudRuntimeConfig(
     val officialMemberAuthorized: Boolean,
     val clientPackageName: String = "",
     val clientPlatform: String = "",
+    val clientMarket: String = "",
     val clientVersionCode: Long = 0L,
     val clientSigningCertSha256: String = "",
 ) {
@@ -354,6 +355,7 @@ fun MobileSettings.toCloudRuntimeConfig(
     officialMemberAuthorized: Boolean = false,
     clientPackageName: String = "",
     clientPlatform: String = "",
+    clientMarket: String = "",
     clientVersionCode: Long = 0L,
     clientSigningCertSha256: String = "",
 ): CloudRuntimeConfig {
@@ -377,6 +379,7 @@ fun MobileSettings.toCloudRuntimeConfig(
         officialMemberAuthorized = provider == CloudProvider.OFFICIAL && officialMemberAuthorized,
         clientPackageName = clientPackageName,
         clientPlatform = clientPlatform,
+        clientMarket = clientMarket,
         clientVersionCode = clientVersionCode,
         clientSigningCertSha256 = clientSigningCertSha256,
     )

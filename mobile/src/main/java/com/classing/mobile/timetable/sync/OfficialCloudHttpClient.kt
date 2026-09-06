@@ -111,6 +111,9 @@ class OfficialCloudHttpClient {
         if (config.clientPlatform.isNotBlank()) {
             connection.setRequestProperty("X-Classing-Client-Platform", config.clientPlatform)
         }
+        if (config.clientMarket.isNotBlank()) {
+            connection.setRequestProperty("X-Classing-Client-Market", config.clientMarket)
+        }
         if (config.clientPackageName.isNotBlank()) {
             connection.setRequestProperty("X-Classing-Package-Name", config.clientPackageName)
         }
