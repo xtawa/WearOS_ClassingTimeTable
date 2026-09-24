@@ -217,4 +217,5 @@
     <string name="ask_ai_send">提問</string>
     <string name="ask_ai_recent">最近情境</string>
     <string name="ask_ai_loading_conversation">正在讀取對話…</string>
+    <string name="ask_ai_cost_points">本次消耗 %1$d AI 點數</string>
 </resources>

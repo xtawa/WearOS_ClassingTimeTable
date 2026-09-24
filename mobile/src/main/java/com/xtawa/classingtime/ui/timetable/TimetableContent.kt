@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Person
@@ -74,6 +75,7 @@ internal fun TimetableContent(
     onBack: () -> Unit,
     onSelectDate: (TimetableDayUiModel) -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenHeatmap: () -> Unit,
     onOpenChanges: () -> Unit,
     onOpenCourse: (String) -> Unit,
     onLongPressCourse: (String) -> Unit,
@@ -90,6 +92,7 @@ internal fun TimetableContent(
             scheduleChangeCount = state.scheduleChangeCount,
             onBack = onBack,
             onOpenCalendar = onOpenCalendar,
+            onOpenHeatmap = onOpenHeatmap,
             onOpenChanges = onOpenChanges,
         )
         WeekContextStrip(
@@ -131,6 +134,7 @@ private fun TimetableHeader(
     scheduleChangeCount: Int,
     onBack: () -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenHeatmap: () -> Unit,
     onOpenChanges: () -> Unit,
 ) {
     Row(
@@ -173,6 +177,9 @@ private fun TimetableHeader(
             }
         }
         Row {
+            IconButton(onClick = onOpenHeatmap) {
+                Icon(Icons.Rounded.GridView, contentDescription = stringResource(R.string.heatmap_title))
+            }
             IconButton(onClick = onOpenChanges) {
                 Icon(
                     imageVector = Icons.Rounded.NotificationsActive,

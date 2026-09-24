@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.xtawa.classingtime.R
 import com.xtawa.classingtime.account.AiApiClient
 import com.xtawa.classingtime.account.AiConversationSummary
 import com.xtawa.classingtime.account.AiMessageSummary
@@ -45,7 +46,7 @@ internal fun AskAiSettingsPage(
     val scope = rememberCoroutineScope()
     val client = remember(context) { AiApiClient(appContext = context.applicationContext) }
     var models by remember { mutableStateOf<List<AiModelOption>>(emptyList()) }
-    var selectedModel by remember { mutableStateOf("mimo-v2.5") }
+    var selectedModel by remember { mutableStateOf("") }
     var conversations by remember { mutableStateOf<List<AiConversationSummary>>(emptyList()) }
     var messages by remember { mutableStateOf<List<AiMessageSummary>>(emptyList()) }
     var conversationId by remember { mutableStateOf("") }
@@ -145,10 +146,10 @@ internal fun AskAiSettingsPage(
                     )
                 if (result.truncated) {
                     question = "请从刚才中断的位置继续，不要重复已有内容。"
-                    status = "回答达到长度上限，已准备好继续生成。"
+                    status = "回答达到长度上限，已准备好继续生成。 · ${context.getString(R.string.ai_cost_points, result.costPoints)}"
                 } else {
                     question = ""
-                    status = ""
+                    status = context.getString(R.string.ai_cost_points, result.costPoints)
                 }
                 client.conversations(token).onSuccess { conversations = it }
             }.onFailure {

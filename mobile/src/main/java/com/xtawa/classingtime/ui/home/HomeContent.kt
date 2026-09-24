@@ -46,6 +46,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.screen.SystemCalendarEvent
+import com.xtawa.classingtime.ui.components.ClassingInformationIsland
 import com.xtawa.classingtime.ui.home.components.AmbientBackground
 import com.xtawa.classingtime.ui.home.components.HomeAiPrompt
 import com.xtawa.classingtime.ui.home.components.HomeCourseIsland
@@ -54,12 +56,15 @@ import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.FormatStyle
 import java.util.Locale
 
 @Composable
 internal fun HomeContent(
     state: HomeUiState,
+    calendarEvents: List<SystemCalendarEvent> = emptyList(),
     assistantState: HomeAssistantUiState,
     contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier,
@@ -130,6 +135,22 @@ internal fun HomeContent(
                 visible = !assistantState.focused && state.phase != HomePhase.Finished && state.phase != HomePhase.NoClasses,
                 onCourseClick = onCourseClick,
             )
+            val todayEvents = calendarEvents.filter {
+                Instant.ofEpochMilli(it.startMillis).atZone(ZoneId.systemDefault()).toLocalDate() == state.date
+            }
+            if (todayEvents.isNotEmpty() && !assistantState.focused) {
+                ClassingInformationIsland {
+                    Text(stringResource(R.string.calendar_sync_home_title), style = MaterialTheme.typography.titleMedium)
+                    todayEvents.take(4).forEach { event ->
+                        val time = if (event.allDay) stringResource(R.string.calendar_sync_all_day) else
+                            Instant.ofEpochMilli(event.startMillis).atZone(ZoneId.systemDefault()).toLocalTime()
+                                .format(DateTimeFormatter.ofPattern("HH:mm"))
+                        Text("$time  ${event.title}", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (todayEvents.size > 4) Text(stringResource(R.string.calendar_sync_more, todayEvents.size - 4),
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
             Spacer(Modifier.height(ClassingSpacing.sm))
         }
 

@@ -142,6 +142,7 @@ internal fun SettingsLayer(
     onOpenWeekModePage: () -> Unit,
     onOpenReminderKeepAlivePage: () -> Unit,
     onOpenSyncCommunicationPage: () -> Unit,
+    onOpenCalendarSyncPage: () -> Unit,
     onOpenAboutPage: () -> Unit,
     onClearAllSchedules: () -> Unit,
 ) {
@@ -224,6 +225,12 @@ internal fun SettingsLayer(
                     title = stringResource(R.string.settings_sync_comm_title),
                     desc = stringResource(R.string.settings_sync_comm_desc),
                     onClick = onOpenSyncCommunicationPage,
+                )
+                SettingsCategoryAction(
+                    icon = Icons.Filled.CalendarMonth,
+                    title = stringResource(R.string.calendar_sync_title),
+                    desc = stringResource(R.string.calendar_sync_description),
+                    onClick = onOpenCalendarSyncPage,
                 )
             }
 

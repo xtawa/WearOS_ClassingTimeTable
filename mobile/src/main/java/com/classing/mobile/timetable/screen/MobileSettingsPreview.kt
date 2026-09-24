@@ -21,6 +21,7 @@ private fun SettingsPreviewFrame(darkTheme: Boolean = false) {
                 onOpenWeekModePage = {},
                 onOpenReminderKeepAlivePage = {},
                 onOpenSyncCommunicationPage = {},
+                onOpenCalendarSyncPage = {},
                 onOpenAboutPage = {},
                 onClearAllSchedules = {},
             )

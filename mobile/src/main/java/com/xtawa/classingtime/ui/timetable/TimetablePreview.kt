@@ -81,6 +81,7 @@ private fun TimetablePreviewFrame(
             onBack = {},
             onSelectDate = {},
             onOpenCalendar = {},
+            onOpenHeatmap = {},
             onOpenChanges = {},
             onOpenCourse = {},
             onLongPressCourse = {},

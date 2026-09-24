@@ -217,4 +217,5 @@
     <string name="ask_ai_send">Ask</string>
     <string name="ask_ai_recent">Recent context</string>
     <string name="ask_ai_loading_conversation">Loading conversation…</string>
+    <string name="ask_ai_cost_points">Used %1$d AI points</string>
 </resources>

@@ -25,7 +25,7 @@ fun buildHeatmapCells(
     if (lessons.isEmpty()) return emptyList()
 
     val slotMap = linkedMapOf<String, Int>()
-    lessons.forEach { lesson ->
+    lessons.sortedWith(compareBy<HeatmapLessonInput> { it.startTime }.thenBy { it.endTime }).forEach { lesson ->
         val key = "${lesson.startTime.format(timeFmt)}-${lesson.endTime.format(timeFmt)}"
         if (key !in slotMap) {
             slotMap[key] = slotMap.size

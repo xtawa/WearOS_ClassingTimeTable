@@ -3,4 +3,5 @@
     <cache-path
         name="downloaded_updates"
         path="updates/" />
+    <cache-path name="ai_photos" path="ai_photos/" />
 </paths>

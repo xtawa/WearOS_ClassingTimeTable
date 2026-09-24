@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.classing.shared.time.nextMinuteDelay
 import com.xtawa.classingtime.screen.LessonUi
+import com.xtawa.classingtime.screen.SystemCalendarEvent
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.delay
@@ -19,6 +20,7 @@ internal fun HomeScreen(
     contentPadding: PaddingValues,
     lessonsForDate: (LocalDate) -> List<LessonUi>,
     hasImportedSchedule: Boolean,
+    calendarEvents: List<SystemCalendarEvent> = emptyList(),
     onOpenAskClassing: (String) -> Unit,
     onCourseClick: (HomeCourseUiModel) -> Unit,
     onOpenTimetable: () -> Unit,
@@ -47,6 +49,7 @@ internal fun HomeScreen(
 
     HomeContent(
         state = homeState,
+        calendarEvents = calendarEvents,
         assistantState = HomeAssistantUiState(
             focused = assistantFocused,
             query = assistantQuery,

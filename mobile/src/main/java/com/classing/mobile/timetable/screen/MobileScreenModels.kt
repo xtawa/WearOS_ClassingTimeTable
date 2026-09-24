@@ -13,6 +13,7 @@ internal enum class MobileLayer {
 internal enum class ScheduleSubview {
     Timetable,
     Calendar,
+    Heatmap,
     CourseDetail,
     Changes,
 }
@@ -33,6 +34,7 @@ internal enum class SettingsPage {
     SyncCommunication,
     WearCommunication,
     CloudSync,
+    CalendarSync,
     About,
 }
 

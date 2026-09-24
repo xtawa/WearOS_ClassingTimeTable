@@ -14,7 +14,7 @@ import org.json.JSONObject
 data class WearAiModel(val id: String, val name: String, val description: String)
 data class WearAiConversation(val id: String, val title: String, val updatedAt: Long)
 data class WearAiMessage(val id: String, val role: String, val content: String)
-data class WearAiChatResult(val conversationId: String, val reply: String, val truncated: Boolean)
+data class WearAiChatResult(val conversationId: String, val reply: String, val truncated: Boolean, val costPoints: Int)
 
 class WearAiApiException(
     val statusCode: Int,
@@ -29,19 +29,13 @@ class WearAiApiClient(
     private val appContext = context.applicationContext
 
     suspend fun models(accessToken: String): Result<Pair<String, List<WearAiModel>>> =
-        request("GET", "/api/v1/ai/models", accessToken).map {
-            MIMO_FLASH_MODEL_ID to listOf(
-                WearAiModel(
-                    id = MIMO_FLASH_MODEL_ID,
-                    name = "Flash",
-                    description = "Fast responses for everyday timetable questions",
-                ),
-                WearAiModel(
-                    id = MIMO_PRO_MODEL_ID,
-                    name = "Pro",
-                    description = "Higher quality for complex timetable reasoning",
-                ),
-            )
+        request("GET", "/api/v1/ai/models", accessToken).map { body ->
+            val items = body.optJSONArray("models").toObjects { item ->
+                WearAiModel(item.optString("id"), item.optString("name"), item.optString("description"))
+            }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
+            body.optString("defaultModel").takeIf { default -> items.any { it.id == default } }.orEmpty().ifBlank {
+                items.firstOrNull()?.id.orEmpty()
+            } to items
         }
 
     suspend fun conversations(accessToken: String): Result<List<WearAiConversation>> =
@@ -91,6 +85,7 @@ class WearAiApiClient(
                 var activeConversationId = conversationId.orEmpty()
                 var event = ""
                 var truncated = false
+				var costPoints = 0
                 val reply = StringBuilder()
                 connection.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
                     lines.forEach { line ->
@@ -101,7 +96,10 @@ class WearAiApiClient(
                                 when (event) {
                                     "conversation" -> activeConversationId = data.optString("conversationId", activeConversationId)
                                     "delta" -> reply.append(data.optString("text"))
-                                    "done" -> truncated = data.optBoolean("truncated", false)
+                                    "done" -> {
+                                        truncated = data.optBoolean("truncated", false)
+                                        costPoints = data.optInt("costPoints", 0)
+                                    }
                                     "error" -> throw WearAiApiException(
                                         statusCode = 502,
                                         errorCode = data.optString("code"),
@@ -113,7 +111,7 @@ class WearAiApiClient(
                         }
                     }
                 }
-                WearAiChatResult(activeConversationId, reply.toString(), truncated)
+                WearAiChatResult(activeConversationId, reply.toString(), truncated, costPoints)
             } finally {
                 connection.disconnect()
             }
@@ -173,8 +171,4 @@ class WearAiApiClient(
         }
     }
 
-    private companion object {
-        const val MIMO_FLASH_MODEL_ID = "mimo-v2.5"
-        const val MIMO_PRO_MODEL_ID = "mimo-v2.5-pro"
-    }
 }

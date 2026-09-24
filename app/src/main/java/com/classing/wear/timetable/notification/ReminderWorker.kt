@@ -12,6 +12,9 @@ import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.classing.wear.timetable.R
+import com.classing.wear.timetable.sync.WearSyncModeStore
+import com.google.android.gms.wearable.Wearable
+import kotlinx.coroutines.tasks.await
 
 class ReminderWorker(
     appContext: Context,
@@ -19,6 +22,12 @@ class ReminderWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (!WearSyncModeStore.isIndependentModeEnabled(applicationContext)) {
+            val phoneConnected = runCatching {
+                Wearable.getNodeClient(applicationContext).connectedNodes.await().isNotEmpty()
+            }.getOrDefault(false)
+            if (phoneConnected) return Result.success()
+        }
         ensureChannel()
         val courseId = inputData.getLong(KEY_COURSE_ID, -1L)
         val content = inputData.getString(KEY_CONTENT)

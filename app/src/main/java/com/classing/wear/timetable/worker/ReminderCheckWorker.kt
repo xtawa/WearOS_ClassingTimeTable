@@ -13,11 +13,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.classing.wear.timetable.R
 import com.classing.wear.timetable.sync.MobileSyncPrefs
+import com.classing.wear.timetable.sync.WearSyncModeStore
+import com.google.android.gms.wearable.Wearable
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -27,6 +30,14 @@ class ReminderCheckWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        // Paired phones bridge their Classing notifications through Wear OS. Keep the watch's
+        // local reminder as the offline/independent fallback to avoid two cards for one class.
+        if (!WearSyncModeStore.isIndependentModeEnabled(applicationContext)) {
+            val phoneConnected = runCatching {
+                Wearable.getNodeClient(applicationContext).connectedNodes.await().isNotEmpty()
+            }.getOrDefault(false)
+            if (phoneConnected) return Result.success()
+        }
         val payload = applicationContext.getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE)
             .getString(MobileSyncPrefs.KEY_LAST_PAYLOAD, "")
             .orEmpty()

@@ -105,6 +105,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.xtawa.classingtime.BuildConfig
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.account.AccountApiClient
+import com.xtawa.classingtime.account.AiApiClient
 import com.xtawa.classingtime.account.AccountApiException
 import com.xtawa.classingtime.account.LegalAgreementUrls
 import com.xtawa.classingtime.account.PendingEmailChange
@@ -192,6 +193,14 @@ internal fun MobileTimetableScreen(
     var weekStartDay by remember { mutableStateOf(DayOfWeek.MONDAY) }
     var rawIcs by remember { mutableStateOf("") }
     var rawJson by remember { mutableStateOf("") }
+    var photoImportBusy by remember { mutableStateOf(false) }
+    var photoImportStatus by remember { mutableStateOf("") }
+    var calendarPreferences by remember { mutableStateOf(SystemCalendarBridge.loadPreferences(context)) }
+    var calendarChoices by remember { mutableStateOf<List<SystemCalendarChoice>>(emptyList()) }
+    var calendarEvents by remember { mutableStateOf<List<SystemCalendarEvent>>(emptyList()) }
+    var calendarSyncBusy by remember { mutableStateOf(false) }
+    var calendarSyncStatus by remember { mutableStateOf("") }
+    var calendarPermissionRevision by remember { mutableIntStateOf(0) }
     var jsonImportMode by remember { mutableStateOf(JsonImportMode.REPLACE) }
     var parseMessage by remember { mutableStateOf(context.getString(R.string.initial_parse_message)) }
     var warnings by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -280,6 +289,21 @@ internal fun MobileTimetableScreen(
     var lastProjectionDate by remember { mutableStateOf(LocalDate.now()) }
     val accountApiClient = remember(context) {
         AccountApiClient(deviceId = MobileCloudSyncV2Store.deviceId(context))
+    }
+    val aiApiClient = remember(context) { AiApiClient(appContext = context.applicationContext) }
+    val calendarReadPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        calendarPermissionRevision++
+        if (granted) {
+            calendarPreferences = calendarPreferences.copy(importEnabled = true)
+            SystemCalendarBridge.savePreferences(context, calendarPreferences)
+        }
+    }
+    val calendarWritePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        calendarPermissionRevision++
+        if (result.values.all { it }) {
+            calendarPreferences = calendarPreferences.copy(exportEnabled = true)
+            SystemCalendarBridge.savePreferences(context, calendarPreferences)
+        }
     }
 
     LaunchedEffect(loginLockSeconds) {
@@ -399,6 +423,50 @@ internal fun MobileTimetableScreen(
             semesterWeekStartDate = semesterWeekStartDate,
             weekStartDay = weekStartDay,
         ).map { it.lesson }
+    }
+
+    fun syncSystemCalendar() {
+        if (calendarSyncBusy) return
+        calendarSyncBusy = true
+        coroutineScope.launch {
+            try {
+                val today = LocalDate.now(zoneId)
+                var exported = 0
+                if (calendarPreferences.exportEnabled) {
+                    val occurrences = buildEffectiveOccurrencesForDateRange(
+                        baseLessons = baseLessons,
+                        exceptions = scheduleExceptions,
+                        startDate = today,
+                        endDate = today.plusDays(120),
+                        weekNumberMode = weekNumberMode,
+                        semesterWeekStartDate = semesterWeekStartDate,
+                        weekStartDay = weekStartDay,
+                    )
+                    exported = SystemCalendarBridge.exportOccurrences(context, calendarPreferences.exportCalendarId,
+                        occurrences, today, today.plusDays(120))
+                }
+                calendarEvents = if (calendarPreferences.importEnabled) {
+                    SystemCalendarBridge.importEvents(context, today.minusDays(7), today.plusDays(120))
+                } else emptyList()
+                calendarSyncStatus = context.getString(R.string.calendar_sync_done, exported, calendarEvents.size)
+            } catch (_: Exception) {
+                calendarSyncStatus = context.getString(R.string.calendar_sync_failed)
+            } finally {
+                calendarSyncBusy = false
+            }
+        }
+    }
+
+    LaunchedEffect(initialized, calendarPreferences, baseLessons, scheduleExceptions, calendarPermissionRevision) {
+        if (initialized && (calendarPreferences.importEnabled || calendarPreferences.exportEnabled)) {
+            syncSystemCalendar()
+        }
+    }
+
+    LaunchedEffect(settingsPageName, calendarPermissionRevision) {
+        if (settingsPageName == SettingsPage.CalendarSync.name && SystemCalendarBridge.canRead(context)) {
+            calendarChoices = runCatching { SystemCalendarBridge.calendars(context) }.getOrDefault(emptyList())
+        }
     }
 
     fun clearPendingRestoreState() {
@@ -1485,6 +1553,33 @@ internal fun MobileTimetableScreen(
                 }
                 persistSettings()
             },
+            photoBusy = photoImportBusy,
+            photoStatus = photoImportStatus,
+            photoLoggedIn = accountSummary.userId.isNotBlank(),
+            onPhotoLogin = { openSettingsPage(SettingsPage.Account) },
+            onPhotoSelected = { uri ->
+                if (!photoImportBusy) {
+                    coroutineScope.launch {
+                        photoImportBusy = true
+                        photoImportStatus = ""
+                        try {
+                            val token = ensureAccessToken() ?: error(context.getString(R.string.ai_photo_login))
+                            val photo = prepareTimetablePhoto(context, uri)
+                            val result = aiApiClient.photoImport(token, photo).getOrThrow()
+                            rawJson = result.timetable.toString()
+                            applyJsonPreviewFromRaw(rawJson)
+                            jsonImportMode = JsonImportMode.APPEND
+                            onboardingImportFocusMethod = ImportFocusMethod.JSON
+                            photoImportStatus = context.getString(R.string.ai_photo_ready, jsonPreview.size, result.costPoints)
+                        } catch (_: Exception) {
+                            photoImportStatus = context.getString(R.string.ai_photo_failed)
+                        } finally {
+                            photoImportBusy = false
+                            java.io.File(context.cacheDir, "ai_photos").listFiles()?.forEach { it.delete() }
+                        }
+                    }
+                }
+            },
             onManualImport = { title, teacher, location, note, dayOfWeek, startRaw, endRaw, startWeekRaw, endWeekRaw, weekParity ->
                 val safeTitle = title.trim()
                 val safeTeacher = teacher.trim().ifBlank { null }
@@ -1621,6 +1716,7 @@ internal fun MobileTimetableScreen(
                         scheduleChangeCount = scheduleExceptions.size,
                         onBackToHome = { layerName = MobileLayer.Dashboard.name },
                         onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
+                        onOpenHeatmap = { scheduleSubviewName = ScheduleSubview.Heatmap.name },
                         onOpenChanges = { scheduleSubviewName = ScheduleSubview.Changes.name },
                         onOpenLesson = { lesson, date ->
                             selectedDetailLesson = lesson
@@ -1689,6 +1785,13 @@ internal fun MobileTimetableScreen(
                         },
                     )
 
+                    ScheduleSubview.Heatmap -> CourseHeatmapLayer(
+                        contentPadding = innerPadding,
+                        lessons = displayLessons,
+                        calendarEvents = if (calendarPreferences.showOnHeatmap && calendarPreferences.importEnabled) calendarEvents else emptyList(),
+                        onBack = { scheduleSubviewName = ScheduleSubview.Timetable.name },
+                    )
+
                     ScheduleSubview.CourseDetail -> {
                         val detailLesson = selectedDetailLesson
                         val detailDate = selectedDetailDate
@@ -1732,6 +1835,7 @@ internal fun MobileTimetableScreen(
                 MobileLayer.Dashboard -> DashboardLayer(
                     contentPadding = innerPadding,
                     lessons = displayLessons,
+                    calendarEvents = if (calendarPreferences.showOnHome && calendarPreferences.importEnabled) calendarEvents else emptyList(),
                     lessonsForDate = ::lessonsForDate,
                     onOpenAskAi = { query ->
                         pendingAssistantQuestion = query
@@ -1781,6 +1885,9 @@ internal fun MobileTimetableScreen(
                     onOpenSyncCommunicationPage = {
                         openSettingsPage(SettingsPage.SyncCommunication)
                     },
+                    onOpenCalendarSyncPage = {
+                        openSettingsPage(SettingsPage.CalendarSync)
+                    },
                     onOpenAboutPage = {
                         openSettingsPage(SettingsPage.About)
                     },
@@ -1809,6 +1916,24 @@ internal fun MobileTimetableScreen(
                     contentPadding = innerPadding,
                     state = appearanceState,
                     onStateChange = onAppearanceStateChange,
+                    onBack = { handleBackNavigation() },
+                )
+
+                SettingsPage.CalendarSync -> CalendarSyncSettingsPage(
+                    contentPadding = innerPadding,
+                    preferences = calendarPreferences,
+                    calendars = calendarChoices,
+                    canRead = SystemCalendarBridge.canRead(context),
+                    canWrite = SystemCalendarBridge.canRead(context) && SystemCalendarBridge.canWrite(context),
+                    busy = calendarSyncBusy,
+                    status = calendarSyncStatus,
+                    onChange = {
+                        calendarPreferences = it
+                        SystemCalendarBridge.savePreferences(context, it)
+                    },
+                    onRequestRead = { calendarReadPermissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+                    onRequestWrite = { calendarWritePermissionLauncher.launch(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) },
+                    onSync = { syncSystemCalendar() },
                     onBack = { handleBackNavigation() },
                 )
 
@@ -2989,6 +3114,7 @@ private fun MobileContentDestination.transitionDepth(): Int {
         MobileLayer.Schedule -> when (scheduleSubview) {
             ScheduleSubview.Timetable -> 100
             ScheduleSubview.Calendar -> 150
+            ScheduleSubview.Heatmap -> 150
             ScheduleSubview.CourseDetail -> 180
             ScheduleSubview.Changes -> 170
         }

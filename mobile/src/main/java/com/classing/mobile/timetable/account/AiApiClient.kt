@@ -1,6 +1,7 @@
 package com.xtawa.classingtime.account
 
 import android.content.Context
+import android.util.Base64
 import com.xtawa.classingtime.security.ClientIntegrity
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -24,7 +25,8 @@ data class AiUsageSummary(
 data class AiModelOption(val id: String, val name: String, val description: String)
 data class AiConversationSummary(val conversationId: String, val title: String, val updatedAt: Long)
 data class AiMessageSummary(val messageId: String, val role: String, val content: String, val createdAt: Long)
-data class AiChatResult(val conversationId: String, val reply: String, val truncated: Boolean)
+data class AiChatResult(val conversationId: String, val reply: String, val truncated: Boolean, val costPoints: Int)
+data class AiPhotoImportResult(val timetable: JSONObject, val costPoints: Int)
 
 class AiApiClient(
     private val baseUrl: String = AccountApiClient.BASE_URL,
@@ -46,19 +48,33 @@ class AiApiClient(
         )
     }
 
-    suspend fun models(accessToken: String): Result<Pair<String, List<AiModelOption>>> = request("GET", "/api/v1/ai/models", accessToken).map {
-        MIMO_FLASH_MODEL_ID to listOf(
-            AiModelOption(
-                id = MIMO_FLASH_MODEL_ID,
-                name = "Flash",
-                description = "Fast responses for everyday timetable questions",
-            ),
-            AiModelOption(
-                id = MIMO_PRO_MODEL_ID,
-                name = "Pro",
-                description = "Higher quality for complex timetable reasoning",
-            ),
-        )
+    suspend fun photoImport(accessToken: String, jpeg: ByteArray): Result<AiPhotoImportResult> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(jpeg.size <= 2_500_000) { "Photo is too large" }
+            appContext?.let { ClientIntegrity.ensureTrusted(it, baseUrl).getOrThrow() }
+            val payload = JSONObject()
+                .put("clientRequestId", java.util.UUID.randomUUID().toString())
+                .put("imageBase64", Base64.encodeToString(jpeg, Base64.NO_WRAP))
+            val connection = open("POST", "/api/v1/ai/photo-import", accessToken, payload)
+            try {
+                val code = connection.responseCode
+                if (code !in 200..299) throw apiError(connection, code)
+                val response = JSONObject(connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                AiPhotoImportResult(
+                    timetable = response.optJSONObject("timetable") ?: error("No timetable returned"),
+                    costPoints = response.optInt("costPoints"),
+                )
+            } finally { connection.disconnect() }
+        }
+    }
+
+    suspend fun models(accessToken: String): Result<Pair<String, List<AiModelOption>>> = request("GET", "/api/v1/ai/models", accessToken).map { body ->
+        val items = body.optJSONArray("models").toObjects { item ->
+            AiModelOption(item.optString("id"), item.optString("name"), item.optString("description"))
+        }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
+        body.optString("defaultModel").takeIf { default -> items.any { it.id == default } }.orEmpty().ifBlank {
+            items.firstOrNull()?.id.orEmpty()
+        } to items
     }
 
     suspend fun conversations(accessToken: String): Result<List<AiConversationSummary>> = request("GET", "/api/v1/ai/conversations?limit=30", accessToken).map { body ->
@@ -86,6 +102,7 @@ class AiApiClient(
                 var currentConversationId = conversationId.orEmpty()
                 val reply = StringBuilder()
                 var truncated = false
+				var costPoints = 0
                 var event = ""
                 connection.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines -> lines.forEach { line ->
                     when {
@@ -95,14 +112,17 @@ class AiApiClient(
                             when (event) {
                                 "conversation" -> currentConversationId = data.optString("conversationId", currentConversationId)
                                 "delta" -> reply.append(data.optString("text"))
-                                "done" -> truncated = data.optBoolean("truncated", false)
+                                "done" -> {
+                                    truncated = data.optBoolean("truncated", false)
+                                    costPoints = data.optInt("costPoints", 0)
+                                }
                                 "error" -> throw AccountApiException(502, data.optString("code"), message = data.optString("message", "Ask AI failed"))
                             }
                             event = ""
                         }
                     }
                 } }
-                AiChatResult(currentConversationId, reply.toString(), truncated)
+                AiChatResult(currentConversationId, reply.toString(), truncated, costPoints)
             } finally { connection.disconnect() }
         }
     }
@@ -138,8 +158,4 @@ class AiApiClient(
         return buildList { for (index in 0 until length()) optJSONObject(index)?.let { add(transform(it)) } }
     }
 
-    private companion object {
-        const val MIMO_FLASH_MODEL_ID = "mimo-v2.5"
-        const val MIMO_PRO_MODEL_ID = "mimo-v2.5-pro"
-    }
 }

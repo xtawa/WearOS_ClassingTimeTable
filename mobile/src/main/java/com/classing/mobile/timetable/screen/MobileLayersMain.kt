@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -124,6 +126,7 @@ internal fun WeekBoardLayer(
     scheduleChangeCount: Int,
     onBackToHome: () -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenHeatmap: () -> Unit,
     onOpenChanges: () -> Unit,
     onOpenLesson: (LessonUi, LocalDate) -> Unit,
     onLongPressLesson: (LessonUi) -> Unit,
@@ -192,6 +195,7 @@ internal fun WeekBoardLayer(
         onBack = onBackToHome,
         onSelectDate = { selectedDate = it.date },
         onOpenCalendar = onOpenCalendar,
+        onOpenHeatmap = onOpenHeatmap,
         onOpenChanges = onOpenChanges,
         onOpenCourse = { uiId -> lessonByUiId[uiId]?.let { onOpenLesson(it, selectedDate) } },
         onLongPressCourse = { uiId -> lessonByUiId[uiId]?.let(onLongPressLesson) },
@@ -344,6 +348,11 @@ internal fun ImportLayer(
     onToggleImportItem: (Int) -> Unit,
     onIcsFileSelected: (android.net.Uri) -> Unit,
     onJsonFileSelected: (android.net.Uri) -> Unit,
+    photoBusy: Boolean,
+    photoStatus: String,
+    photoLoggedIn: Boolean,
+    onPhotoLogin: () -> Unit,
+    onPhotoSelected: (android.net.Uri) -> Unit,
     onManualImport: (
         title: String,
         teacher: String,
@@ -387,6 +396,15 @@ internal fun ImportLayer(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri != null) onJsonFileSelected(uri)
+    }
+    var cameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val captured = cameraUri
+        cameraUri = null
+        if (success && captured != null) onPhotoSelected(captured)
+    }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) onPhotoSelected(uri)
     }
 
     LaunchedEffect(initialFocusMethod, showJsonPromptPage) {
@@ -432,6 +450,30 @@ internal fun ImportLayer(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = ClassingSpacing.xxs),
         )
+        ClassingInformationIsland {
+            Text(stringResource(R.string.ai_photo_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.ai_photo_description), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!photoLoggedIn) {
+                Button(onClick = onPhotoLogin) { Text(stringResource(R.string.ai_photo_login)) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
+                Button(onClick = {
+                    val dir = File(context.cacheDir, "ai_photos").apply { mkdirs() }
+                    val file = File.createTempFile("timetable_", ".jpg", dir)
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    cameraUri = uri
+                    cameraLauncher.launch(uri)
+                }, enabled = !photoBusy && photoLoggedIn) { Text(stringResource(R.string.ai_photo_take)) }
+                Button(onClick = { photoPicker.launch("image/*") }, enabled = !photoBusy && photoLoggedIn) {
+                    Text(stringResource(R.string.ai_photo_choose))
+                }
+            }
+            if (photoBusy || photoStatus.isNotBlank()) {
+                Text(if (photoBusy) stringResource(R.string.ai_photo_processing) else photoStatus,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()

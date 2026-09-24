@@ -13,6 +13,7 @@ import java.time.LocalDate
 internal fun DashboardLayer(
     contentPadding: PaddingValues,
     lessons: List<LessonUi>,
+    calendarEvents: List<SystemCalendarEvent> = emptyList(),
     lessonsForDate: (LocalDate) -> List<LessonUi>,
     onOpenAskAi: (String) -> Unit,
     onOpenCourse: (LessonUi, LocalDate) -> Unit,
@@ -23,6 +24,7 @@ internal fun DashboardLayer(
         contentPadding = contentPadding,
         lessonsForDate = lessonsForDate,
         hasImportedSchedule = lessons.isNotEmpty(),
+        calendarEvents = calendarEvents,
         onOpenAskClassing = onOpenAskAi,
         onCourseClick = { course ->
             lessonsForDate(course.date)
