@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_usage_privacy_title">Usage &amp; privacy</string>
+    <string name="settings_usage_collection_title">Share usage information</string>
+    <string name="settings_usage_collection_desc">Share Android ID, an installation-specific serial, install date, timezone, device model and manufacturer, OS details, and app version to improve compatibility. Wear OS does not collect this information.</string>
+</resources>

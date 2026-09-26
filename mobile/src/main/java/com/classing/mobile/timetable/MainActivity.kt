@@ -22,6 +22,7 @@ import com.xtawa.classingtime.ui.theme.ClassingTheme
 import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
 import com.xtawa.classingtime.ui.theme.ClassingAppearanceStore
 import com.xtawa.classingtime.ui.theme.ClassingThemeMode
+import com.xtawa.classingtime.usage.UsageReporter
 
 class MainActivity : ComponentActivity() {
     internal val sharedImportUri = mutableStateOf<Uri?>(null)
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        UsageReporter.onAppStart(this)
         CloudSyncEngine.schedulePeriodic(this)
         handleIncomingIntent(intent)
         setContent { MobileApp() }
