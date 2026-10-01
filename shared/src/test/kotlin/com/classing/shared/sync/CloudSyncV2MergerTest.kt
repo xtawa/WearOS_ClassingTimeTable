@@ -59,4 +59,43 @@ class CloudSyncV2MergerTest {
         assertNull(compacted.payload)
         assertNull(compacted.recoverableUntil)
     }
+
+    @Test
+    fun `compact keeps the most recently active devices within the limit`() {
+        val devices = (1..70).associate { index ->
+            "device-$index" to DeviceSyncMetadata("device-$index", lastCounter = index.toLong(), lastChangedAt = index.toLong())
+        }
+        val document = CloudSyncDocumentV2(devices = devices)
+
+        val compacted = document.compact(now = 1_000L)
+
+        assertEquals(CloudSyncV2.MAX_DEVICES, compacted.devices.size)
+        assertTrue(compacted.devices.containsKey("device-70"))
+        assertFalse(compacted.devices.containsKey("device-1"))
+        assertFalse(compacted.devices.containsKey("device-6"))
+        assertTrue(compacted.devices.containsKey("device-7"))
+    }
+
+    @Test
+    fun `compact leaves device metadata untouched below the limit`() {
+        val devices = mapOf(
+            "a" to DeviceSyncMetadata("a", 1, 1),
+            "b" to DeviceSyncMetadata("b", 2, 2),
+        )
+        val compacted = CloudSyncDocumentV2(devices = devices).compact(now = 10L)
+        assertEquals(devices, compacted.devices)
+    }
+
+    @Test
+    fun `merge bounds device metadata growth`() {
+        val left = CloudSyncDocumentV2(
+            devices = (1..40).associate { "l$it" to DeviceSyncMetadata("l$it", it.toLong(), it.toLong()) },
+        )
+        val right = CloudSyncDocumentV2(
+            devices = (1..40).associate { "r$it" to DeviceSyncMetadata("r$it", 100L + it, 100L + it) },
+        )
+        val merged = CloudSyncV2Merger.merge(left, right, 1_000L).document
+        assertEquals(CloudSyncV2.MAX_DEVICES, merged.devices.size)
+        assertTrue(merged.devices.keys.all { it.startsWith("r") || it in (17..40).map { n -> "l$n" } })
+    }
 }

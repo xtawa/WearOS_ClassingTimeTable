@@ -581,7 +581,7 @@ class WearOfficialCloudSyncCoordinator(
         private const val MAX_CAS_ATTEMPTS = 3
         private const val CAS_BACKOFF_MS = 250L
         private const val MAX_CHANGES = 100
-        private const val MAX_DEVICES = 64
+        private const val MAX_DEVICES = CloudSyncV2.MAX_DEVICES
 
         private fun valuePayload(value: Any?): String = JSONObject()
             .put("value", value ?: JSONObject.NULL)
