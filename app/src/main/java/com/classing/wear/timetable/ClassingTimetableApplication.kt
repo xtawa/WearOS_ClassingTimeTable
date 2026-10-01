@@ -1,6 +1,7 @@
 package com.classing.wear.timetable
 
 import android.app.Application
+import android.util.Log
 import androidx.work.Configuration
 import com.classing.wear.timetable.core.AppContainer
 import com.classing.wear.timetable.core.DefaultAppContainer
@@ -19,12 +20,18 @@ class ClassingTimetableApplication : Application(), Configuration.Provider {
         super.onCreate()
         appContainer = DefaultAppContainer(this)
         appScope.launch {
-            val preferences = appContainer.settingsRepository.observePreferences().first()
-            appContainer.autoSyncController.setEnabled(preferences.autoSync)
-            appContainer.reminderWorkController.setPolicy(
-                enabled = preferences.remindersEnabled,
-                level = preferences.keepAliveLevel,
-            )
+            // A failure here (missing GMS, blocked background work on OEM builds, unreadable
+            // preferences) must never take the whole process down before the UI is shown.
+            runCatching {
+                val preferences = appContainer.settingsRepository.observePreferences().first()
+                appContainer.autoSyncController.setEnabled(preferences.autoSync)
+                appContainer.reminderWorkController.setPolicy(
+                    enabled = preferences.remindersEnabled,
+                    level = preferences.keepAliveLevel,
+                )
+            }.onFailure { error ->
+                Log.e(TAG, "Startup bootstrap failed; continuing with defaults", error)
+            }
         }
     }
 
@@ -32,4 +39,8 @@ class ClassingTimetableApplication : Application(), Configuration.Provider {
         get() = Configuration.Builder()
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
+
+    private companion object {
+        const val TAG = "ClassingTimetable"
+    }
 }
