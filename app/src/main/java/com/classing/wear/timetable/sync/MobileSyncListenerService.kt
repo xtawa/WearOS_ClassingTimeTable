@@ -147,7 +147,47 @@ class MobileSyncListenerService : WearableListenerService() {
         }
 
         serviceScope.launch {
-            WearTimetableApplyLock.mutex.withLock {
+            try {
+                applyUnderLock(
+                    parsed = parsed,
+                    payload = payload,
+                    incomingStamp = incomingStamp,
+                    lessonCount = lessonCount,
+                    requestId = requestId,
+                    sourceNodeId = sourceNodeId,
+                    ackSource = ackSource,
+                )
+            } catch (error: Throwable) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                // Never let a malformed payload escape the coroutine: an uncaught exception here
+                // kills the process and leaves the requestId stuck in the in-flight set.
+                Log.e(TAG, "Mobile sync payload handling failed", error)
+                val message = error.message.orEmpty().ifBlank { error.javaClass.simpleName }
+                runCatching { persistApplyStatus(false, lessonCount, "apply_failed", message) }
+                if (requestId.isNotBlank()) runCatching { markRequestHandled(requestId) }
+                runCatching {
+                    sendSyncAckToMobile(
+                        sourceNodeId,
+                        lessonCount,
+                        ApplyResult(false, 0, message),
+                        ackSource,
+                        requestId,
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun applyUnderLock(
+        parsed: JSONObject,
+        payload: String,
+        incomingStamp: SyncStamp,
+        lessonCount: Int,
+        requestId: String,
+        sourceNodeId: String?,
+        ackSource: String,
+    ) {
+        WearTimetableApplyLock.mutex.withLock {
             val latestStamp = WearSyncStampStore.load(applicationContext, SyncDomain.TIMETABLE)
             if (!SyncArbitrator.shouldApply(SyncDomain.TIMETABLE, incomingStamp, latestStamp)) {
                 val reason = "stale_skipped_after_queue: incoming=$incomingStamp current=$latestStamp"
@@ -197,7 +237,6 @@ class MobileSyncListenerService : WearableListenerService() {
             WearSurfaceUpdateRequester.requestAll(applicationContext)
             sendSyncAckToMobile(sourceNodeId, lessonCount, result, ackSource, requestId)
             Log.i(TAG, "Received mobile sync payload with $lessonCount lessons, applied=${result.success}")
-            }
         }
     }
 
@@ -315,7 +354,9 @@ class MobileSyncListenerService : WearableListenerService() {
                 if (type == "MAKE_UP" || type == "RESCHEDULE") {
                     val startMinute = item.optInt("startMinute", -1)
                     val endMinute = item.optInt("endMinute", -1)
-                    if (startMinute >= 0 && endMinute > startMinute) {
+                    // Same bounds as OfficialCloudTimetableMapper: an out-of-range minute (e.g. 1440)
+                    // would make LocalTime.of throw and take down the whole listener coroutine.
+                    if (startMinute in 0..1439 && endMinute in 1..1439 && endMinute > startMinute) {
                         val start = LocalTime.of(startMinute / 60, startMinute % 60)
                         val end = LocalTime.of(endMinute / 60, endMinute % 60)
                         syntheticSlotId = "mobile-exception-slot-$exceptionId"

@@ -564,6 +564,7 @@
     <string name="daily_briefing_login_required">请先登录，再启用邮件简报。</string>
     <string name="daily_briefing_invalid_time">请输入 HH:mm 格式的有效 24 小时时间。</string>
     <string name="daily_briefing_saved">每日简报设置已保存。</string>
+    <string name="daily_briefing_saved_timezone_unsupported">每日简报设置已保存。当前设备时区为固定 UTC 偏移且无法被服务端识别，推送时间将按服务端默认时区计算。</string>
     <string name="daily_briefing_saved_local">本机每日简报已保存。</string>
     <string name="daily_briefing_save_failed">无法保存每日简报设置。</string>
     <string name="daily_briefing_service_disabled">邮件简报服务暂时不可用。</string>
@@ -651,6 +652,10 @@
     <string name="account_email_change_expired">待确认的邮箱变更已过期。</string>
     <string name="account_error_current_password">当前密码不正确。</string>
     <string name="account_error_email_conflict">该邮箱已被使用。</string>
+    <string name="account_error_client_signature">客户端签名校验未通过，在线功能已停用。请重新安装官方版本。</string>
+    <string name="account_error_market_mismatch">该账号属于另一版本的 Classing，请使用对应版本的应用登录。</string>
+    <string name="account_error_service_unavailable">账号服务暂时不可用，请稍后重试。</string>
+    <string name="account_error_email_unchanged">新邮箱与当前邮箱相同。</string>
     <string name="calendar_restore_original">恢复原安排</string>
     <string name="calendar_restore_cancelled_original">恢复已取消课程</string>
     <string name="onboarding_import_configure_title">配置所选方案</string>

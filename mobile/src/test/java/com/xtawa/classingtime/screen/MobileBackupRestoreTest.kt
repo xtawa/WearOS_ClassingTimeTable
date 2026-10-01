@@ -68,6 +68,55 @@ class MobileBackupRestoreTest {
     }
 
     @Test
+    fun parseScheduleBackup_v2_preservesLessonIdsSoCancelAndRescheduleExceptionsStillApply() {
+        val cancel = ScheduleExceptionUi(
+            id = "cancel-1",
+            lessonId = lesson.id,
+            type = ScheduleExceptionKind.CANCEL,
+            date = LocalDate.of(2026, 3, 10),
+        )
+        val backup = buildScheduleBackupJson(
+            baseLessons = listOf(lesson),
+            exceptions = listOf(cancel),
+            zoneId = ZoneId.of("Asia/Shanghai"),
+            weekNumberMode = WeekNumberMode.SEMESTER,
+            semesterWeekStartDate = LocalDate.of(2026, 3, 2),
+        )
+
+        val parsed = parseScheduleBackupJson(
+            raw = backup,
+            context = ApplicationProvider.getApplicationContext(),
+        )
+
+        assertNotNull(parsed)
+        val restoredLesson = parsed!!.baseLessons.single()
+        assertEquals(lesson.id, restoredLesson.id)
+        assertEquals(lesson.id, parsed.exceptions.single().lessonId)
+
+        // 2026-03-10 is a Tuesday in semester week 2: the base lesson is due but cancelled.
+        val occurrences = buildEffectiveOccurrencesForDateRange(
+            baseLessons = parsed.baseLessons,
+            exceptions = parsed.exceptions,
+            startDate = LocalDate.of(2026, 3, 10),
+            endDate = LocalDate.of(2026, 3, 10),
+            weekNumberMode = WeekNumberMode.SEMESTER,
+            semesterWeekStartDate = LocalDate.of(2026, 3, 2),
+        )
+        assertTrue(occurrences.isEmpty())
+    }
+
+    @Test
+    fun parseJsonToLessons_ignoresIncomingIdsForPlainImports() {
+        val raw = """[{"id":"keep-me","title":"Math","dayOfWeek":1,"startTime":"08:00","endTime":"09:00"}]"""
+        val imported = parseJsonToLessons(raw, ApplicationProvider.getApplicationContext())
+        assertEquals(1, imported.lessons.size)
+        assertTrue(imported.lessons.single().id.startsWith("json-"))
+
+        val preserved = parseJsonToLessons(raw, ApplicationProvider.getApplicationContext(), preserveIds = true)
+        assertEquals("keep-me", preserved.lessons.single().id)
+    }
+
+    @Test
     fun parseScheduleBackup_v1_keepsCompatibility() {
         val raw = """
             {

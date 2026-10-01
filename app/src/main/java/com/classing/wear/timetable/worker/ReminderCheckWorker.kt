@@ -12,17 +12,14 @@ import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.classing.wear.timetable.R
-import com.classing.wear.timetable.sync.MobileSyncPrefs
 import com.classing.wear.timetable.sync.WearSyncModeStore
 import com.google.android.gms.wearable.Wearable
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
-import org.json.JSONObject
 
 class ReminderCheckWorker(
     appContext: Context,
@@ -38,45 +35,28 @@ class ReminderCheckWorker(
             }.getOrDefault(false)
             if (phoneConnected) return Result.success()
         }
-        val payload = applicationContext.getSharedPreferences(MobileSyncPrefs.PREF_NAME, Context.MODE_PRIVATE)
-            .getString(MobileSyncPrefs.KEY_LAST_PAYLOAD, "")
-            .orEmpty()
-        if (payload.isBlank()) return Result.success()
-
-        val lessons = parseLessons(payload)
-        if (lessons.isEmpty()) return Result.success()
-
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
+        // Reminder candidates come from the projected Wear database (week rules and schedule
+        // exceptions applied), never from the raw phone payload which may be partial or absent.
+        // A transient read failure is not an empty timetable: retry later and leave the alarm alone.
+        val occurrences = WearReminderSource.loadOrNull(applicationContext, now) ?: return Result.retry()
         val notified = loadNotifiedSet(today).toMutableSet()
+
+        // An exact alarm carries the key it was armed for. The lesson may have been cancelled or
+        // rescheduled between arming and firing, so the key is validated against the current
+        // projection and the notification uses the database copy, not the alarm payload.
         val directReminderKey = inputData.getString(KEY_DIRECT_REMINDER_KEY).orEmpty()
-        val directLessonId = inputData.getString(KEY_DIRECT_LESSON_ID).orEmpty()
-        val directTitle = inputData.getString(KEY_DIRECT_LESSON_TITLE).orEmpty()
-        val directStartMinute = inputData.getInt(KEY_DIRECT_START_MINUTE, -1)
-        val directLocation = inputData.getString(KEY_DIRECT_LESSON_LOCATION)
-        if (directReminderKey.isNotBlank() &&
-            directLessonId.isNotBlank() &&
-            directTitle.isNotBlank() &&
-            directStartMinute >= 0 &&
-            directReminderKey !in notified
-        ) {
+        val direct = ReminderCheckLogic.resolveDirectReminder(occurrences, directReminderKey, now)
+        if (direct != null && directReminderKey !in notified) {
             if (!canNotify()) return Result.success()
             ensureChannel()
-            postNotification(
-                lesson = SyncedLesson(
-                    id = directLessonId,
-                    title = directTitle,
-                    dayOfWeek = now.dayOfWeek.value,
-                    startTime = LocalTime.of(directStartMinute / 60, directStartMinute % 60),
-                    location = directLocation,
-                ),
-                notificationId = directReminderKey.hashCode(),
-            )
+            postNotification(direct.asSyncedLesson(), directReminderKey.hashCode())
             notified += directReminderKey
             saveNotifiedSet(today, notified)
         }
 
-        val due = ReminderCheckLogic.dueLessons(lessons, now, notified)
+        val due = ReminderCheckLogic.dueOccurrences(occurrences, now, notified)
         if (due.isEmpty()) {
             refreshAlarm()
             return Result.success()
@@ -85,49 +65,14 @@ class ReminderCheckWorker(
         if (!canNotify()) return Result.success()
         ensureChannel()
 
-        due.forEach { lesson ->
-            val key = ReminderCheckLogic.reminderKey(today, lesson)
-            postNotification(lesson, key.hashCode())
+        due.forEach { occurrence ->
+            val key = ReminderCheckLogic.reminderKey(occurrence)
+            postNotification(occurrence.asSyncedLesson(), key.hashCode())
             notified += key
         }
         saveNotifiedSet(today, notified)
         refreshAlarm()
         return Result.success()
-    }
-
-    private fun parseLessons(payload: String): List<SyncedLesson> {
-        val root = runCatching { JSONObject(payload) }.getOrNull() ?: return emptyList()
-        val lessons = root.optJSONArray("lessons") ?: return emptyList()
-
-        return buildList {
-            for (i in 0 until lessons.length()) {
-                val item = lessons.optJSONObject(i) ?: continue
-                val id = item.optString("id").ifBlank { "lesson-$i" }
-                val title = item.optString("title").ifBlank {
-                    applicationContext.getString(R.string.reminder_unknown_class)
-                }
-                val day = item.optInt("dayOfWeek", 1).coerceIn(1, 7)
-                val start = parseTime(item.optString("startTime")) ?: continue
-
-                add(
-                    SyncedLesson(
-                        id = id,
-                        title = title,
-                        dayOfWeek = day,
-                        startTime = start,
-                        location = item.optString("location").ifBlank { null },
-                    ),
-                )
-            }
-        }
-    }
-
-    private fun parseTime(raw: String): LocalTime? {
-        val text = raw.trim()
-        if (text.isBlank()) return null
-
-        return runCatching { LocalTime.parse(text, DateTimeFormatter.ofPattern("HH:mm")) }.getOrNull()
-            ?: runCatching { LocalTime.parse(text, DateTimeFormatter.ofPattern("H:mm")) }.getOrNull()
     }
 
     private fun canNotify(): Boolean {
@@ -217,11 +162,10 @@ class ReminderCheckWorker(
         const val KEY_DIRECT_START_MINUTE = "direct_start_minute"
     }
 
-    private fun refreshAlarm() {
+    private suspend fun refreshAlarm() {
         val app = applicationContext as? com.classing.wear.timetable.ClassingTimetableApplication ?: return
-        val pref = runCatching {
-            kotlinx.coroutines.runBlocking { app.appContainer.settingsRepository.observePreferences().first() }
-        }.getOrNull() ?: return
+        val pref = runCatching { app.appContainer.settingsRepository.observePreferences().first() }
+            .getOrNull() ?: return
         WearReminderAlarmScheduler.refresh(
             context = applicationContext,
             enabled = pref.remindersEnabled,

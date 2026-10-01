@@ -38,6 +38,47 @@ object AccountSessionManager {
             refresh = apiClient::refresh,
         )
     }
+
+    /**
+     * Revokes the server-side session (best effort) and clears local credentials.
+     * Returns true when the server acknowledged the revocation.
+     */
+    suspend fun logout(
+        context: Context,
+        apiClient: AccountApiClient = AccountApiClient(),
+    ): Boolean {
+        val store = AndroidAccountSessionStore(context)
+        return AccountLogoutFlow.logoutAndClear(
+            store = store,
+            ensureAccessToken = { refreshGate.ensureAccessToken(store, apiClient::refresh) },
+            logout = apiClient::logout,
+        )
+    }
+}
+
+internal object AccountLogoutFlow {
+    /**
+     * Access tokens are short-lived, so a stale one would make the server reject the logout and
+     * leave the refresh token valid. Refresh first (which may rotate the refresh token), then
+     * revoke with the current pair, and finally clear local credentials regardless of outcome.
+     */
+    suspend fun logoutAndClear(
+        store: AccountSessionStore,
+        ensureAccessToken: suspend () -> String?,
+        logout: suspend (accessToken: String, refreshToken: String) -> Result<Unit>,
+    ): Boolean {
+        var revoked = false
+        try {
+            val accessToken = ensureAccessToken() ?: store.loadAccessToken()
+            val refreshToken = store.loadRefreshToken()
+            if (accessToken.isNotBlank() && refreshToken.isNotBlank()) {
+                revoked = logout(accessToken, refreshToken).isSuccess
+            }
+        } finally {
+            store.clear()
+        }
+        return revoked
+    }
 }
 
 internal interface AccountSessionStore {

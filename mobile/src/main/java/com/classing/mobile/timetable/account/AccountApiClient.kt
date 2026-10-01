@@ -10,6 +10,9 @@ import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.util.TimeZone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -95,6 +98,27 @@ data class EmailChangeRequest(
     val expiresAt: Long,
     val resendAfterSeconds: Int,
 )
+
+/**
+ * How a device zone id maps onto the briefing API's `timezone` field.
+ *
+ * - [id] non-null: a tz-database identifier the API accepts (region id, `UTC`, or `Etc/GMT±H`
+ *   for whole-hour fixed offsets).
+ * - [id] null and [unsupportedOffset] true: the device uses a fixed offset that the tz database
+ *   cannot name (minute-level offsets such as +05:30, or outside UTC-12..UTC+14). The request
+ *   omits the field and the service applies its default zone; callers should tell the user.
+ * - [id] null and [unsupportedOffset] false: unrecognised id; the field is omitted.
+ */
+data class BriefingTimezoneResolution(
+    val id: String?,
+    val unsupportedOffset: Boolean,
+) {
+    companion object {
+        fun supported(id: String) = BriefingTimezoneResolution(id, unsupportedOffset = false)
+        fun unsupportedOffset() = BriefingTimezoneResolution(null, unsupportedOffset = true)
+        fun unknown() = BriefingTimezoneResolution(null, unsupportedOffset = false)
+    }
+}
 
 data class AccountProfile(
     val account: AccountSummary,
@@ -327,14 +351,7 @@ class AccountApiClient(
                 .put("username", username.trim())
                 .put("email", email.trim())
                 .put("currentPassword", currentPassword),
-        ).map { json ->
-            val change = json.getJSONObject("emailChange")
-            EmailChangeRequest(
-                requestId = change.getString("requestId"),
-                expiresAt = change.optLong("expiresAt", 0L),
-                resendAfterSeconds = change.optInt("resendAfterSeconds", 60),
-            )
-        }
+        ).mapCatching { json -> parseEmailChangeResponse(json) }
     }
 
     suspend fun confirmEmailChange(
@@ -366,15 +383,21 @@ class AccountApiClient(
         enabled: Boolean,
         channel: DailyBriefingChannel,
         time: String,
+        timezone: String = TimeZone.getDefault().id,
     ): Result<Unit> {
+        val body = JSONObject()
+            .put("enabled", enabled)
+            .put("channel", channel.name)
+            .put("time", time)
+        // The delivery time is a local wall-clock value; without the zone the service applies
+        // its default region. UTC aliases and whole-hour offsets are normalised to tz-database
+        // names; offsets the database cannot name are omitted (see BriefingTimezoneResolution).
+        resolveBriefingTimezone(timezone).id?.let { body.put("timezone", it) }
         return request(
             method = "PUT",
             path = "/api/v1/briefings/daily",
             accessToken = accessToken,
-            body = JSONObject()
-                .put("enabled", enabled)
-                .put("channel", channel.name)
-                .put("time", time),
+            body = body,
         ).map { Unit }
     }
 
@@ -495,6 +518,79 @@ class AccountApiClient(
     companion object {
         val BASE_URL: String
             get() = BuildConfig.API_BASE_URL
+
+        /** Client-side error code: the requested email equals the account's current address. */
+        const val ERROR_EMAIL_UNCHANGED = "ACCOUNT_EMAIL_UNCHANGED"
+
+        /**
+         * When the submitted address equals the current one the API applies the profile update
+         * and responds without a verification challenge. Surface that as a dedicated error
+         * instead of a JSON parsing failure so the UI can explain it.
+         */
+        internal fun parseEmailChangeResponse(json: JSONObject): EmailChangeRequest {
+            val change = json.optJSONObject("emailChange")
+                ?: throw AccountApiException(
+                    statusCode = 200,
+                    errorCode = ERROR_EMAIL_UNCHANGED,
+                    message = "new email matches the current address",
+                )
+            return EmailChangeRequest(
+                requestId = change.getString("requestId"),
+                expiresAt = change.optLong("expiresAt", 0L),
+                resendAfterSeconds = change.optInt("resendAfterSeconds", 60),
+            )
+        }
+
+        /**
+         * Resolves a device zone id into the form accepted by the briefing API, or reports why it
+         * cannot be expressed. See [BriefingTimezoneResolution].
+         */
+        fun resolveBriefingTimezone(timezone: String?): BriefingTimezoneResolution {
+            val value = timezone.orEmpty().trim()
+            if (value.isEmpty() || value.length > 64) return BriefingTimezoneResolution.unknown()
+            if (value.uppercase() in UTC_ALIASES) return BriefingTimezoneResolution.supported("UTC")
+            val zone = runCatching { ZoneId.of(value) }.getOrNull()
+                ?: return if (looksLikeRegionId(value)) {
+                    BriefingTimezoneResolution.supported(value)
+                } else {
+                    BriefingTimezoneResolution.unknown()
+                }
+            val normalized = zone.normalized()
+            if (normalized is ZoneOffset) {
+                val totalSeconds = normalized.totalSeconds
+                if (totalSeconds == 0) return BriefingTimezoneResolution.supported("UTC")
+                if (totalSeconds % 3600 != 0) return BriefingTimezoneResolution.unsupportedOffset()
+                val hours = totalSeconds / 3600
+                if (hours !in ETC_GMT_MIN_HOURS..ETC_GMT_MAX_HOURS) return BriefingTimezoneResolution.unsupportedOffset()
+                // tz database "Etc/GMT" zones use POSIX sign convention: Etc/GMT-8 is UTC+08:00.
+                val sign = if (hours > 0) "-" else "+"
+                return BriefingTimezoneResolution.supported("Etc/GMT$sign${kotlin.math.abs(hours)}")
+            }
+            val regionId = zone.id
+            return if (looksLikeRegionId(regionId)) {
+                BriefingTimezoneResolution.supported(regionId)
+            } else {
+                BriefingTimezoneResolution.unknown()
+            }
+        }
+
+        /** Convenience for callers that only need the request value. */
+        fun briefingTimezoneOrNull(timezone: String?): String? = resolveBriefingTimezone(timezone).id
+
+        private fun looksLikeRegionId(value: String): Boolean =
+            value.length <= 64 &&
+                value.contains('/') &&
+                value.all { it.isLetterOrDigit() || it == '/' || it == '_' || it == '-' || it == '+' }
+
+        private val UTC_ALIASES = setOf(
+            "UTC", "GMT", "UT", "Z", "UCT", "ZULU", "UNIVERSAL", "GREENWICH", "GMT0",
+            "ETC/UTC", "ETC/GMT", "ETC/UCT", "ETC/UT", "ETC/GMT0", "ETC/GMT+0", "ETC/GMT-0",
+            "ETC/UNIVERSAL", "ETC/ZULU", "ETC/GREENWICH",
+        )
+
+        /** Fixed-offset zones exist in the tz database as Etc/GMT+12 (UTC-12) through Etc/GMT-14 (UTC+14). */
+        private const val ETC_GMT_MIN_HOURS = -12
+        private const val ETC_GMT_MAX_HOURS = 14
     }
 }
 
