@@ -8,6 +8,7 @@ import com.classing.wear.timetable.domain.model.WeekSchedule
 import com.classing.shared.ui.heatmap.HeatmapLessonInput
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 interface ScheduleRepository {
     fun observeActiveSemester(): Flow<Semester?>
@@ -17,4 +18,11 @@ interface ScheduleRepository {
     fun observeNextLesson(): Flow<NextLessonHint>
     fun searchCourses(keyword: String): Flow<List<Course>>
     fun observeCourseDetail(courseId: Long): Flow<Course?>
+
+    /**
+     * One-shot projection of every lesson occurrence in [startDate]..[endDate] (inclusive) for the
+     * active semester, with week rules and schedule exceptions applied. Returns an empty list when
+     * no semester is active.
+     */
+    suspend fun loadOccurrences(startDate: LocalDate, endDate: LocalDate, now: LocalDateTime): List<LessonOccurrence>
 }

@@ -52,6 +52,15 @@ fun CourseEntity.asDomain(): Course = Course(
 fun CourseSessionEntity.asDomainOrNull(): CourseSession? {
     val safeDayOfWeek = runCatching { DayOfWeek.of(dayOfWeek) }.getOrNull() ?: return null
     val safeParity = runCatching { WeekParity.valueOf(weekParity) }.getOrNull() ?: return null
+    // WeekRule validates its bounds in init; a legacy/corrupt row must not take down every reader
+    // of the session flow (home screen, complication, reminder source), so skip it instead.
+    val safeWeekRule = runCatching {
+        WeekRule(
+            startWeek = startWeek,
+            endWeek = endWeek,
+            parity = safeParity,
+        )
+    }.getOrNull() ?: return null
     return CourseSession(
         localId = localId,
         remoteId = remoteId,
@@ -59,11 +68,7 @@ fun CourseSessionEntity.asDomainOrNull(): CourseSession? {
         courseId = courseId,
         dayOfWeek = safeDayOfWeek,
         timeSlotId = timeSlotId,
-        weekRule = WeekRule(
-            startWeek = startWeek,
-            endWeek = endWeek,
-            parity = safeParity,
-        ),
+        weekRule = safeWeekRule,
         version = version,
     )
 }

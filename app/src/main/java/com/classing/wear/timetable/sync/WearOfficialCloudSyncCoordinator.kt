@@ -13,6 +13,8 @@ import com.classing.wear.timetable.domain.model.SyncMode
 import com.classing.wear.timetable.domain.repository.SettingsRepository
 import com.classing.wear.timetable.security.ClientIntegrity
 import com.classing.wear.timetable.widget.WearSurfaceUpdateRequester
+import com.classing.wear.timetable.worker.WearReminderAlarmScheduler
+import kotlinx.coroutines.flow.first
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -303,8 +305,22 @@ class WearOfficialCloudSyncCoordinator(
                 reason = "official cloud timetable applied revision=${snapshot.revision} lessons=${snapshot.lessonCount}",
             )
             WearSurfaceUpdateRequester.requestAll(appContext)
+            refreshReminderAlarm()
             snapshot.lessonCount
         }
+
+    /** Re-arm the local reminder alarm after the timetable database changed (cloud-only mode never
+     * receives a phone payload, so this is the only trigger for watch-side reminders). */
+    private suspend fun refreshReminderAlarm() {
+        runCatching {
+            val preferences = settingsRepository.observePreferences().first()
+            WearReminderAlarmScheduler.refresh(
+                context = appContext,
+                enabled = preferences.remindersEnabled,
+                level = preferences.keepAliveLevel,
+            )
+        }
+    }
 
     private data class AuthenticatedResult<T>(
         val session: com.classing.wear.timetable.account.WearDirectAccountSession,

@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -139,6 +140,31 @@ class DefaultScheduleRepository(
 
     override fun observeCourseDetail(courseId: Long): Flow<Course?> {
         return courseDao.observeById(courseId).map { it?.asDomain() }
+    }
+
+    override suspend fun loadOccurrences(
+        startDate: LocalDate,
+        endDate: LocalDate,
+        now: LocalDateTime,
+    ): List<LessonOccurrence> {
+        if (endDate.isBefore(startDate)) return emptyList()
+        val semester = observeActiveSemester().first() ?: return emptyList()
+        val ctx = observeScheduleContext(semester).first()
+        val occurrences = ArrayList<LessonOccurrence>()
+        var date = startDate
+        while (!date.isAfter(endDate)) {
+            occurrences += assembler.buildDayOccurrences(
+                date = date,
+                now = now,
+                semester = semester,
+                courses = ctx.courses,
+                sessions = ctx.sessions,
+                slots = ctx.slots,
+                exceptions = ctx.exceptions,
+            )
+            date = date.plusDays(1)
+        }
+        return occurrences
     }
 
     private fun minuteTicker(): Flow<LocalDateTime> = flow {
