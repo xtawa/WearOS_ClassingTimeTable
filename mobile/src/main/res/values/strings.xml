@@ -564,6 +564,7 @@
     <string name="daily_briefing_login_required">Sign in to use email briefings.</string>
     <string name="daily_briefing_invalid_time">Enter a valid 24-hour time in HH:mm format.</string>
     <string name="daily_briefing_saved">Daily briefing settings saved.</string>
+    <string name="daily_briefing_saved_timezone_unsupported">Daily briefing settings saved. Your device uses a fixed UTC offset that the service cannot name, so the delivery time follows the service default time zone.</string>
     <string name="daily_briefing_saved_local">On-device daily briefing saved.</string>
     <string name="daily_briefing_save_failed">Could not save daily briefing settings.</string>
     <string name="daily_briefing_service_disabled">Email briefings are temporarily unavailable.</string>
@@ -651,6 +652,10 @@
     <string name="account_email_change_expired">The pending email change has expired.</string>
     <string name="account_error_current_password">The current password is incorrect.</string>
     <string name="account_error_email_conflict">This email is already in use.</string>
+    <string name="account_error_client_signature">This build failed the signature check, so online features are disabled. Reinstall the official release.</string>
+    <string name="account_error_market_mismatch">This account belongs to a different Classing edition. Use the matching app edition to sign in.</string>
+    <string name="account_error_service_unavailable">The account service is temporarily unavailable. Please try again later.</string>
+    <string name="account_error_email_unchanged">The new email is the same as your current address.</string>
     <string name="calendar_restore_original">Restore original arrangement</string>
     <string name="calendar_restore_cancelled_original">Restore cancelled class</string>
     <string name="onboarding_import_configure_title">Configure your selected setup</string>

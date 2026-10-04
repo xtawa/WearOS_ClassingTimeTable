@@ -9,8 +9,8 @@ import java.util.concurrent.TimeUnit
 
 class ReminderWorkController(
     private val context: Context,
-    private val onEnable: (KeepAliveLevel) -> Unit,
-    private val onDisable: () -> Unit,
+    private val onEnable: suspend (KeepAliveLevel) -> Unit,
+    private val onDisable: suspend () -> Unit,
 ) {
     constructor(context: Context) : this(
         context = context,
@@ -30,11 +30,11 @@ class ReminderWorkController(
         },
     )
 
-    fun setPolicy(enabled: Boolean, level: KeepAliveLevel) {
+    suspend fun setPolicy(enabled: Boolean, level: KeepAliveLevel) {
         if (enabled) onEnable(level) else onDisable()
     }
 
-    fun refresh(level: KeepAliveLevel) {
+    suspend fun refresh(level: KeepAliveLevel) {
         WearReminderAlarmScheduler.refresh(context = context, enabled = true, level = level)
     }
 

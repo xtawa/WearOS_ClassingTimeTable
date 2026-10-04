@@ -278,7 +278,13 @@ internal fun parseScheduleBackupJson(raw: String, context: Context): BackupResto
 
     val format = root.optString("format")
     if (format == "classingtime_backup_v2") {
-        val baseLessons = parseJsonToLessons(root.optJSONArray("courses")?.toString().orEmpty(), context).lessons
+        // v2 exceptions reference base lessons by id (CANCEL / RESCHEDULE), so the exported ids
+        // must survive the round trip; otherwise those exceptions silently stop matching.
+        val baseLessons = parseJsonToLessons(
+            raw = root.optJSONArray("courses")?.toString().orEmpty(),
+            context = context,
+            preserveIds = true,
+        ).lessons
         val exceptions = parseBackupExceptions(root.optJSONArray("exceptions"))
         return BackupRestorePayload(
             baseLessons = baseLessons,
@@ -572,7 +578,11 @@ internal fun resolveWearSyncSourceLabel(context: Context, source: String): Strin
     }
 }
 
-internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome {
+internal fun parseJsonToLessons(
+    raw: String,
+    context: Context,
+    preserveIds: Boolean = false,
+): JsonParseOutcome {
     if (raw.isBlank()) {
         return JsonParseOutcome(
             lessons = emptyList(),
@@ -588,6 +598,7 @@ internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome
         warnings = emptyList(),
     )
 
+    val usedIds = mutableSetOf<String>()
     val lessons = buildList {
         for (index in 0 until jsonArray.length()) {
             val item = jsonArray.optJSONObject(index)
@@ -639,9 +650,12 @@ internal fun parseJsonToLessons(raw: String, context: Context): JsonParseOutcome
             val safeStartWeek = (parsedStartWeek ?: DEFAULT_START_WEEK).coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK)
             val safeEndWeek = (parsedEndWeek ?: DEFAULT_END_WEEK).coerceIn(safeStartWeek, DEFAULT_END_WEEK)
 
+            val generatedId = "json-${System.currentTimeMillis()}-$index-${title.hashCode()}"
+            val preservedId = item.optString("id").trim()
+                .takeIf { preserveIds && it.isNotBlank() && usedIds.add(it) }
             add(
                 LessonUi(
-                    id = "json-${System.currentTimeMillis()}-$index-${title.hashCode()}",
+                    id = preservedId ?: generatedId,
                     title = title,
                     teacher = teacher,
                     location = item.optString("location").ifBlank { item.optString("classroom") }.ifBlank { null },

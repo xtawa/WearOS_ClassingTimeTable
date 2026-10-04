@@ -22,11 +22,45 @@ data class ClientIntegritySnapshot(
 
 class ClientSignatureException(message: String) : IllegalStateException(message)
 
+/** Outcome of the pre-flight signature check against the API. */
+enum class ClientTrustCheckOutcome {
+    /** The API confirmed this build is trusted. */
+    TRUSTED,
+
+    /** The API definitively rejected this build (tampered, unknown package or wrong edition). */
+    REJECTED,
+
+    /**
+     * The check could not be completed (rate limited, server error, policy not configured).
+     * The caller proceeds and lets the real API call be the authority; the result is not cached.
+     */
+    INCONCLUSIVE,
+}
+
 object ClientIntegrity {
     const val PLATFORM_MOBILE = "ANDROID_MOBILE"
     private const val CHECK_PATH = "/api/v1/client/signature/check"
     private const val TRUST_CACHE_TTL_MS = 5 * 60 * 1_000L
     private const val SIGNATURE_ERROR_MESSAGE = "签名异常，客户端可能被非法修改，已禁止使用在线功能"
+    private val SIGNATURE_REJECTION_CODES = setOf(
+        "CLIENT_SIGNATURE_INVALID",
+        "CLIENT_MARKET_INVALID",
+    )
+
+    /**
+     * Classifies a signature-check HTTP response. Only an explicit 403 rejection (or a
+     * signature-specific error code) is treated as proof of tampering; throttling, outages and
+     * missing server policy are transient and must never be presented as a tampered client.
+     */
+    fun classifyTrustCheck(status: Int, errorCode: String?): ClientTrustCheckOutcome {
+        if (status in 200..299) return ClientTrustCheckOutcome.TRUSTED
+        val code = errorCode.orEmpty().trim()
+        return when {
+            code in SIGNATURE_REJECTION_CODES -> ClientTrustCheckOutcome.REJECTED
+            status == 403 && code.isBlank() -> ClientTrustCheckOutcome.REJECTED
+            else -> ClientTrustCheckOutcome.INCONCLUSIVE
+        }
+    }
 
     @Volatile private var trustCache: TrustCache? = null
 
@@ -82,10 +116,16 @@ object ClientIntegrity {
                     ?.bufferedReader(Charsets.UTF_8)
                     ?.use { it.readText() }
                     .orEmpty()
-                if (status !in 200..299) {
-                    val error = runCatching { JSONObject(body) }.getOrNull()
-                    val detail = error?.optString("code").orEmpty().ifBlank { "HTTP $status" }
-                    throw ClientSignatureException("$SIGNATURE_ERROR_MESSAGE ($detail)")
+                val error = runCatching { JSONObject(body) }.getOrNull()
+                val code = error?.optString("code").orEmpty()
+                when (classifyTrustCheck(status, code)) {
+                    ClientTrustCheckOutcome.REJECTED -> {
+                        val detail = code.ifBlank { "HTTP $status" }
+                        throw ClientSignatureException("$SIGNATURE_ERROR_MESSAGE ($detail)")
+                    }
+                    // Throttled or unavailable: do not cache, let the real request decide.
+                    ClientTrustCheckOutcome.INCONCLUSIVE -> return@runCatching
+                    ClientTrustCheckOutcome.TRUSTED -> Unit
                 }
                 trustCache = TrustCache(normalizedBaseUrl, snapshot, now + TRUST_CACHE_TTL_MS)
             } finally {

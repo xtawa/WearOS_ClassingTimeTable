@@ -110,6 +110,7 @@ import com.xtawa.classingtime.account.AccountApiException
 import com.xtawa.classingtime.account.LegalAgreementUrls
 import com.xtawa.classingtime.account.PendingEmailChange
 import com.xtawa.classingtime.account.WearLoginDebugInfo
+import com.xtawa.classingtime.security.ClientSignatureException
 import com.xtawa.classingtime.data.MobilePrefsStore
 import com.xtawa.classingtime.data.MobileSettings
 import com.xtawa.classingtime.data.PersistedLesson
@@ -714,6 +715,7 @@ internal fun MobileTimetableScreen(
             enabled = dailyBriefingEnabled,
             channel = dailyBriefingChannel,
             time = dailyBriefingTime,
+            timezone = zoneId.id,
         )
         if (result.isFailure) {
             dailyBriefingStatusMessage = accountErrorMessage(
@@ -722,7 +724,12 @@ internal fun MobileTimetableScreen(
                 R.string.daily_briefing_save_failed,
             )
         } else {
-            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_saved)
+            // Some fixed offsets (e.g. +05:30) have no tz-database name; the service then uses
+            // its default zone, so say so instead of implying the local time was honoured.
+            val timezoneUnsupported = AccountApiClient.resolveBriefingTimezone(zoneId.id).unsupportedOffset
+            dailyBriefingStatusMessage = context.getString(
+                if (timezoneUnsupported) R.string.daily_briefing_saved_timezone_unsupported else R.string.daily_briefing_saved,
+            )
         }
         return result.isSuccess
     }
@@ -2162,12 +2169,9 @@ internal fun MobileTimetableScreen(
                         coroutineScope.launch {
                             accountBusy = true
                             try {
-                                val accessToken = AuthCredentialStore.loadAccessToken(context)
-                                val refreshToken = AuthCredentialStore.loadRefreshToken(context)
-                                if (accessToken.isNotBlank() && refreshToken.isNotBlank()) {
-                                    accountApiClient.logout(accessToken, refreshToken)
-                                }
-                                AuthCredentialStore.clear(context)
+                                // Refreshes the short-lived access token first so the server
+                                // actually revokes the session, then clears local credentials.
+                                AccountSessionManager.logout(context, accountApiClient)
                                 accountSummary = AccountSummary()
                                 membershipSummary = MembershipSummary()
                                 pendingEmailChange = null
@@ -2319,6 +2323,10 @@ internal fun MobileTimetableScreen(
                         coroutineScope.launch {
                             accountBusy = true
                             try {
+                                if (newEmail.trim().equals(accountSummary.email.trim(), ignoreCase = true)) {
+                                    accountStatusMessage = context.getString(R.string.account_error_email_unchanged)
+                                    return@launch
+                                }
                                 val accessToken = ensureAccessToken()
                                 val result = if (accessToken == null) null else accountApiClient.requestEmailChange(
                                     accessToken = accessToken,
@@ -3030,9 +3038,18 @@ internal fun MobileTimetableScreen(
     )
 }
 
-private fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes: Int): String {
+internal fun accountErrorMessage(context: Context, error: Throwable?, fallbackRes: Int): String {
+    if (error is ClientSignatureException) {
+        return context.getString(R.string.account_error_client_signature)
+    }
     val resource = when ((error as? AccountApiException)?.errorCode) {
         "AUTH_INVALID_CREDENTIALS" -> R.string.account_error_invalid_credentials
+        "AUTH_MARKET_MISMATCH" -> R.string.account_error_market_mismatch
+        "CLIENT_SIGNATURE_INVALID", "CLIENT_MARKET_INVALID" -> R.string.account_error_client_signature
+        "CLIENT_SIGNATURE_POLICY_MISSING" -> R.string.account_error_service_unavailable
+        AccountApiClient.ERROR_EMAIL_UNCHANGED -> R.string.account_error_email_unchanged
+        "ACCOUNT_USERNAME_INVALID" -> R.string.account_error_username_invalid
+        "ACCOUNT_EMAIL_INVALID" -> R.string.account_error_email_invalid
         "AUTH_ACCOUNT_DISABLED", "AUTH_ACCOUNT_UNAVAILABLE" -> R.string.account_error_disabled
         "AUTH_REGISTRATION_DISABLED" -> R.string.account_error_registration_disabled
         "AUTH_CONSENT_REQUIRED" -> R.string.legal_agreement_required

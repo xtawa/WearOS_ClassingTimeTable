@@ -61,13 +61,32 @@ data class CloudSyncDocumentV2(
     val devices: Map<String, DeviceSyncMetadata> = emptyMap(),
     val updatedAt: Long = 0L,
 ) {
-    fun compact(now: Long, maxChanges: Int = 100): CloudSyncDocumentV2 {
+    fun compact(
+        now: Long,
+        maxChanges: Int = 100,
+        maxDevices: Int = CloudSyncV2.MAX_DEVICES,
+    ): CloudSyncDocumentV2 {
         val compacted = records.mapValues { (_, domainRecords) ->
             domainRecords.mapValues { (_, record) -> record.compact(now) }
+        }
+        // Device metadata grows with every (re)install that ever synced the account. Keep the
+        // most recently active devices so the document stays within the storage contract.
+        val compactedDevices = if (devices.size <= maxDevices) {
+            devices
+        } else {
+            devices.values
+                .sortedWith(
+                    compareByDescending<DeviceSyncMetadata> { it.lastChangedAt }
+                        .thenByDescending { it.lastCounter }
+                        .thenBy { it.deviceId },
+                )
+                .take(maxDevices)
+                .associateBy { it.deviceId }
         }
         return copy(
             records = compacted,
             changes = changes.sortedByDescending { it.occurredAt }.take(maxChanges),
+            devices = compactedDevices,
         )
     }
 }
@@ -144,6 +163,9 @@ object CloudSyncV2Merger {
 object CloudSyncV2 {
     const val DOCUMENT_FORMAT = "classing_cloud_sync_v2"
     const val TOMBSTONE_RETENTION_MS = 30L * 24L * 60L * 60L * 1000L
+
+    /** Upper bound of device metadata entries kept in a synced document. */
+    const val MAX_DEVICES = 64
 
     const val DOMAIN_TIMETABLE_LESSONS = "timetable.lessons"
     const val DOMAIN_TIMETABLE_EXCEPTIONS = "timetable.exceptions"
