@@ -274,6 +274,7 @@ internal fun MobileTimetableScreen(
     var loginLockSeconds by remember { mutableIntStateOf(0) }
     var pendingTurnstileRegistration by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var registrationTurnstileSiteKey by remember { mutableStateOf("") }
+    var registrationConfigRevision by remember { mutableIntStateOf(0) }
     var legalAgreementUrls by remember { mutableStateOf(LegalAgreementUrls()) }
     var dailyBriefingStatusMessage by remember { mutableStateOf("") }
     var dailyBriefingEnabled by remember { mutableStateOf(false) }
@@ -314,9 +315,19 @@ internal fun MobileTimetableScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        accountApiClient.registrationSecurityConfig().getOrNull()?.let { config ->
-            legalAgreementUrls = config.legalAgreementUrls
+    LaunchedEffect(registrationConfigRevision, settingsPageName == SettingsPage.AccountRegister.name) {
+        val onRegistrationPage = settingsPageName == SettingsPage.AccountRegister.name
+        if (!onRegistrationPage && legalAgreementUrls.privacyPolicy.isNotBlank()) return@LaunchedEffect
+        if (onRegistrationPage) accountBusy = true
+        try {
+            accountApiClient.registrationSecurityConfig().fold(
+                onSuccess = { legalAgreementUrls = it.legalAgreementUrls },
+                onFailure = {
+                    if (onRegistrationPage) accountStatusMessage = context.getString(R.string.account_registration_config_failed)
+                },
+            )
+        } finally {
+            if (onRegistrationPage) accountBusy = false
         }
     }
 
@@ -2396,13 +2407,17 @@ internal fun MobileTimetableScreen(
                     challengeId = registrationChallengeId,
                     legalAgreementUrls = legalAgreementUrls,
                     onBack = { handleBackNavigation() },
+                    onReloadSecurityConfig = { registrationConfigRevision++ },
                     onRequestVerification = { username, email, password ->
                         coroutineScope.launch {
                             accountBusy = true
                             try {
-                                val security = accountApiClient.registrationSecurityConfig().getOrNull()
-                                security?.let { legalAgreementUrls = it.legalAgreementUrls }
-                                if (security?.turnstileRequired == true) {
+                                val security = accountApiClient.registrationSecurityConfig().getOrElse {
+                                    accountStatusMessage = context.getString(R.string.account_registration_config_failed)
+                                    return@launch
+                                }
+                                legalAgreementUrls = security.legalAgreementUrls
+                                if (security.turnstileRequired) {
                                     if (security.turnstileSiteKey.isBlank()) {
                                         accountStatusMessage = context.getString(R.string.account_turnstile_unavailable)
                                     } else {
@@ -2879,28 +2894,30 @@ internal fun MobileTimetableScreen(
         TurnstileVerificationDialog(
             siteKey = registrationTurnstileSiteKey,
             onVerified = { token ->
-                pendingTurnstileRegistration = null
-                coroutineScope.launch {
+                if (pendingTurnstileRegistration == pending && !accountBusy) {
+                    pendingTurnstileRegistration = null
                     accountBusy = true
-                    try {
-                        val challenge = accountApiClient.requestRegistrationVerification(
-                            pending.first,
-                            pending.second,
-                            pending.third,
-                            token,
-                        )
-                        if (challenge.isSuccess) {
-                            registrationChallengeId = challenge.getOrThrow().challengeId
-                            accountStatusMessage = context.getString(R.string.account_verification_sent)
-                        } else {
-                            accountStatusMessage = accountErrorMessage(
-                                context,
-                                challenge.exceptionOrNull(),
-                                R.string.account_verification_send_failed,
+                    coroutineScope.launch {
+                        try {
+                            val challenge = accountApiClient.requestRegistrationVerification(
+                                pending.first,
+                                pending.second,
+                                pending.third,
+                                token,
                             )
+                            if (challenge.isSuccess) {
+                                registrationChallengeId = challenge.getOrThrow().challengeId
+                                accountStatusMessage = context.getString(R.string.account_verification_sent)
+                            } else {
+                                accountStatusMessage = accountErrorMessage(
+                                    context,
+                                    challenge.exceptionOrNull(),
+                                    R.string.account_verification_send_failed,
+                                )
+                            }
+                        } finally {
+                            accountBusy = false
                         }
-                    } finally {
-                        accountBusy = false
                     }
                 }
             },
@@ -3061,7 +3078,8 @@ internal fun accountErrorMessage(context: Context, error: Throwable?, fallbackRe
         "AUTH_LOGIN_LOCKED" -> R.string.account_error_rate_limited
         "AUTH_EMAIL_VERIFICATION_INVALID", "AUTH_EMAIL_VERIFICATION_EXPIRED" -> R.string.account_verification_invalid
         "AUTH_EMAIL_DELIVERY_FAILED" -> R.string.account_verification_send_failed
-        "AUTH_TURNSTILE_INVALID", "AUTH_TURNSTILE_UNAVAILABLE" -> R.string.account_turnstile_unavailable
+        "AUTH_TURNSTILE_INVALID" -> R.string.account_turnstile_expired
+        "AUTH_TURNSTILE_UNAVAILABLE" -> R.string.account_turnstile_unavailable
         "AUTH_REFRESH_REVOKED", "AUTH_ACCESS_EXPIRED", "AUTH_SESSION_REVOKED", "AUTH_REQUIRED" -> R.string.account_error_session_expired
         "AUTH_RESET_TOKEN_INVALID" -> R.string.password_reset_error_token_invalid
         "ACCOUNT_PASSWORD_CURRENT_INVALID" -> R.string.account_error_current_password

@@ -1,5 +1,7 @@
 package com.xtawa.classingtime.screen
 
+import androidx.compose.ui.graphics.Color
+import com.xtawa.classingtime.ui.components.ClassingAmbientBackdrop
 import android.app.DatePickerDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,7 +34,7 @@ import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -160,12 +163,16 @@ internal fun MobileOnboardingFlow(
         stepIndex = previousOnboardingStep(stepIndex)
     }
 
+    Box(Modifier.fillMaxSize()) {
+    ClassingAmbientBackdrop()
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
-            Surface(color = MaterialTheme.colorScheme.surface) {
+            Surface(color = Color.Transparent) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .statusBarsPadding()
                         .padding(
                             horizontal = ClassingSpacing.sm,
                             vertical = ClassingSpacing.xs,
@@ -204,7 +211,7 @@ internal fun MobileOnboardingFlow(
             }
         },
         bottomBar = {
-            Surface(color = MaterialTheme.colorScheme.surface) {
+            Surface(color = Color.Transparent) {
                 if (stepIndex < stepCount - 1) {
                     Row(
                         modifier = Modifier
@@ -691,6 +698,8 @@ internal fun MobileOnboardingFlow(
             }
         }
     }
+}
+
 }
 
 internal fun previousOnboardingStep(stepIndex: Int): Int = (stepIndex - 1).coerceAtLeast(0)

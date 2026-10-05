@@ -166,7 +166,8 @@
     <string name="no_location">No location</string>
     <string name="one_time_schedule">One-time event</string>
 
-    <string name="settings_title">Display &amp; Reminder</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_overview_desc">Manage your timetable, account and app preferences.</string>
     <string name="settings_show_weekend_title">Show weekend</string>
     <string name="settings_show_weekend_desc">Include Saturday and Sunday in timetable.</string>
     <string name="settings_badge_weekend">W</string>
@@ -828,4 +829,12 @@
     <string name="calendar_sync_all_day">All day</string>
     <string name="calendar_sync_more">+%1$d more events</string>
     <string name="ai_cost_points">Used %1$d AI points</string>
+
+    <string name="course_detail_heading">Course details</string>
+    <string name="account_turnstile_load_failed">Verification could not load. Check your connection and try again.</string>
+    <string name="account_turnstile_expired">Verification expired. Please verify again.</string>
+    <string name="account_turnstile_retry">Retry</string>
+    <string name="account_turnstile_web_register">Register on the website</string>
+    <string name="account_registration_config_failed">Could not load registration security settings. Please try again.</string>
+    <string name="heatmap_cell_description">%1$s, %2$s: %3$d courses</string>
 </resources>

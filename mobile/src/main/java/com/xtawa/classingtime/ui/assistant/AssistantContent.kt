@@ -2,6 +2,8 @@
 
 package com.xtawa.classingtime.ui.assistant
 
+import androidx.compose.runtime.getValue
+import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.RepeatMode
@@ -26,14 +28,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -45,7 +45,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -90,9 +89,7 @@ internal fun AssistantContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(contentPadding)
-            .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
         AssistantHeader(onBack = onBack, onNewConversation = onNewConversation)
@@ -178,29 +175,18 @@ internal fun AssistantContent(
 
 @Composable
 private fun AssistantHeader(onBack: () -> Unit, onNewConversation: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = ClassingSpacing.xs, vertical = ClassingSpacing.sm),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = stringResource(R.string.assistant_back),
-            )
-        }
-        Text(
-            text = stringResource(R.string.assistant_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.semantics { heading() },
-        )
-        IconButton(onClick = onNewConversation) {
-            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.assistant_new_conversation))
-        }
-    }
+    ClassingPageHeader(
+        title = stringResource(R.string.assistant_title),
+        eyebrow = "Classing",
+        onBack = onBack,
+        backLabel = stringResource(R.string.assistant_back),
+        modifier = Modifier.padding(horizontal = ClassingSpacing.referenceScreenInset, vertical = ClassingSpacing.sm),
+        action = {
+            IconButton(onClick = onNewConversation, modifier = Modifier.size(ClassingSpacing.minimumTouchTarget)) {
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.assistant_new_conversation))
+            }
+        },
+    )
 }
 
 @Composable

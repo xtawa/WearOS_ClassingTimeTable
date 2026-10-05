@@ -454,6 +454,9 @@ internal fun parseRRuleByDays(rrule: String?): List<DayOfWeek> {
     }.distinct()
 }
 
+/** Chinese keyboards can insert a full-width colon in an otherwise valid time. */
+internal fun normalizeTimeInput(raw: String): String = raw.replace('：', ':')
+
 internal fun parseManualTime(raw: String): LocalTime? {
     val trimmed = raw.trim()
     if (trimmed.isBlank()) return null

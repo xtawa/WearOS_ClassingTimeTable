@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.xtawa.classingtime.screen
 
 import android.Manifest
@@ -19,6 +21,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,7 +45,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -510,9 +515,10 @@ internal fun ImportLayer(
                 label = { Text(stringResource(R.string.import_input_label)) },
                 maxLines = 14,
             )
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Button(onClick = onParsePreview) { Text(stringResource(R.string.import_button_parse_preview)) }
                 Button(onClick = {
@@ -522,7 +528,7 @@ internal fun ImportLayer(
                 Button(onClick = onCancelPreview, enabled = hasPendingImport) { Text(stringResource(R.string.import_button_cancel_preview)) }
                 Button(onClick = onClearInput) { Text(stringResource(R.string.import_button_clear)) }
             }
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
                 Column(
                     modifier = Modifier.padding(ClassingSpacing.sm),
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -639,9 +645,10 @@ internal fun ImportLayer(
                 label = { Text(stringResource(R.string.json_input_label)) },
                 maxLines = 12,
             )
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
                 Button(onClick = onParseJsonPreview) { Text(stringResource(R.string.json_button_parse_preview)) }
                 Button(onClick = {
@@ -649,7 +656,7 @@ internal fun ImportLayer(
                 }) { Text(stringResource(R.string.import_button_select_json_file)) }
                 Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
             }
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
                 Column(
                     modifier = Modifier.padding(ClassingSpacing.sm),
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -825,18 +832,20 @@ internal fun ImportLayer(
             }
             OutlinedTextField(
                 value = manualStart,
-                onValueChange = { manualStart = it },
+                onValueChange = { manualStart = normalizeTimeInput(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.manual_input_start_time_label)) },
                 placeholder = { Text(stringResource(R.string.manual_input_start_time_placeholder)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrect = false),
                 singleLine = true,
             )
             OutlinedTextField(
                 value = manualEnd,
-                onValueChange = { manualEnd = it },
+                onValueChange = { manualEnd = normalizeTimeInput(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.manual_input_end_time_label)) },
                 placeholder = { Text(stringResource(R.string.manual_input_end_time_placeholder)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrect = false),
                 singleLine = true,
             )
             OutlinedTextField(

@@ -1,11 +1,14 @@
 package com.xtawa.classingtime.ui.changes
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.BorderStroke
+import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,35 +19,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,42 +75,17 @@ internal fun ScheduleChangesContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(contentPadding)
-            .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ClassingSpacing.xs, vertical = ClassingSpacing.sm),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.assistant_back),
-                )
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs),
-            ) {
-                Text(
-                    text = stringResource(R.string.schedule_change_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    text = stringResource(R.string.schedule_change_recorded, state.changes.size),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Box(modifier = Modifier.size(ClassingSpacing.minimumTouchTarget))
-        }
+        ClassingPageHeader(
+            title = stringResource(R.string.schedule_change_title),
+            eyebrow = "Classing",
+            supportingText = stringResource(R.string.schedule_change_recorded, state.changes.size),
+            onBack = onBack,
+            backLabel = stringResource(R.string.assistant_back),
+            modifier = Modifier.padding(horizontal = ClassingSpacing.referenceScreenInset, vertical = ClassingSpacing.sm),
+        )
         LazyRow(
             contentPadding = PaddingValues(horizontal = ClassingSpacing.referenceScreenInset),
             horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -124,6 +95,7 @@ internal fun ScheduleChangesContent(
                     selected = filter == item,
                     onClick = { filter = item },
                     label = { Text(stringResource(item.labelRes)) },
+                    shape = RoundedCornerShape(ClassingRadii.pill),
                 )
             }
         }
@@ -201,8 +173,8 @@ private fun ScheduleChangeCard(
         onClick = onClick,
         enabled = change.type != ScheduleChangeType.Cancelled,
         shape = RoundedCornerShape(ClassingRadii.large),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f)),
     ) {
         Column(
             modifier = Modifier.padding(ClassingSpacing.lg),

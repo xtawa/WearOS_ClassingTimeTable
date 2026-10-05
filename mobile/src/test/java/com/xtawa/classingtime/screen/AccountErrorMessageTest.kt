@@ -39,6 +39,12 @@ class AccountErrorMessageTest {
     }
 
     @Test
+    fun expiredHumanVerificationRequestsANewAttempt() {
+        assertEquals(context.getString(R.string.account_turnstile_expired), message(apiError("AUTH_TURNSTILE_INVALID")))
+        assertEquals(context.getString(R.string.account_turnstile_unavailable), message(apiError("AUTH_TURNSTILE_UNAVAILABLE", 503)))
+    }
+
+    @Test
     fun unknownErrorsFallBack() {
         assertEquals(context.getString(R.string.account_error_login_failed), message(apiError("SOMETHING_ELSE", 500)))
         assertEquals(context.getString(R.string.account_error_login_failed), message(java.io.IOException("offline")))

@@ -1,9 +1,6 @@
 package com.xtawa.classingtime.screen
 
 import android.app.DatePickerDialog
-import android.webkit.JavascriptInterface
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,7 +43,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -85,7 +82,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import com.classing.shared.sync.SyncChangeLogEntry
 import com.xtawa.classingtime.R
@@ -159,7 +155,7 @@ internal fun SettingsLayer(
             ClassingPageHeader(
                 title = stringResource(R.string.settings_title),
                 eyebrow = "Classing",
-                supportingText = stringResource(R.string.settings_account_desc),
+                supportingText = stringResource(R.string.settings_overview_desc),
                 onBack = onBack,
                 backLabel = stringResource(R.string.settings_about_back_button),
                 modifier = Modifier.padding(top = ClassingSpacing.sm),
@@ -321,6 +317,7 @@ internal fun SecondaryPageHeader(
         title = title,
         onBack = onBack,
         backLabel = backLabel,
+        eyebrow = "Classing",
         modifier = modifier.padding(top = ClassingSpacing.sm),
     )
 }
@@ -431,7 +428,7 @@ internal fun BackupRestoreSettingsPage(
                             java.time.Instant.ofEpochMilli(snapshot.createdAt),
                             java.time.ZoneId.systemDefault(),
                         ).format(DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -584,7 +581,7 @@ internal fun WeekModeSettingsPage(
             Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)),
                 ) {
                     Column(
                         modifier = Modifier
@@ -1467,7 +1464,7 @@ internal fun AccountSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1850,6 +1847,7 @@ internal fun AccountRegisterPage(
     challengeId: String,
     legalAgreementUrls: LegalAgreementUrls,
     onBack: () -> Unit,
+    onReloadSecurityConfig: () -> Unit,
     onRequestVerification: (String, String, String) -> Unit,
     onConfirmVerification: (String) -> Unit,
 ) {
@@ -1860,6 +1858,9 @@ internal fun AccountRegisterPage(
     var resendCooldownSeconds by remember { mutableStateOf(0) }
     var consentAccepted by remember { mutableStateOf(false) }
     val legalLinksReady = legalAgreementUrls.isComplete()
+    LaunchedEffect(challengeId) {
+        if (challengeId.isNotBlank()) resendCooldownSeconds = 60
+    }
     LaunchedEffect(resendCooldownSeconds) {
         if (resendCooldownSeconds > 0) {
             delay(1_000)
@@ -1897,6 +1898,9 @@ internal fun AccountRegisterPage(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                    TextButton(onClick = onReloadSecurityConfig, enabled = !busy) {
+                        Text(stringResource(R.string.account_turnstile_retry))
+                    }
                 }
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
@@ -1904,7 +1908,6 @@ internal fun AccountRegisterPage(
                 if (challengeId.isBlank()) {
                     Button(
                         onClick = {
-                            resendCooldownSeconds = 60
                             onRequestVerification(username.trim(), email.trim(), password)
                         },
                         enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password) && consentAccepted && legalLinksReady,
@@ -1930,7 +1933,6 @@ internal fun AccountRegisterPage(
                     }
                     TextButton(
                         onClick = {
-                            resendCooldownSeconds = 60
                             onRequestVerification(username.trim(), email.trim(), password)
                         },
                         enabled = !busy && resendCooldownSeconds == 0 && isValidUsername(username) && isValidEmail(email) && isValidPassword(password) && consentAccepted && legalLinksReady,
@@ -2009,51 +2011,6 @@ private fun LegalAgreementLink(
             style = MaterialTheme.typography.bodySmall,
         )
     }
-}
-
-@Composable
-internal fun TurnstileVerificationDialog(
-    siteKey: String,
-    onVerified: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-            shape = MaterialTheme.shapes.large,
-            containerColor = MaterialTheme.colorScheme.surface,
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.account_turnstile_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
-                Text(stringResource(R.string.account_turnstile_desc), style = MaterialTheme.typography.bodySmall)
-                AndroidView(
-                    modifier = Modifier.fillMaxWidth().height(110.dp),
-                    factory = { context ->
-                        WebView(context).apply {
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            webViewClient = WebViewClient()
-                            addJavascriptInterface(object {
-                                @JavascriptInterface
-                                fun verified(token: String) {
-                                    post { if (token.isNotBlank()) onVerified(token) }
-                                }
-                            }, "ClassingNative")
-                            val safeSiteKey = siteKey.replace(Regex("[^A-Za-z0-9_-]"), "")
-                            loadDataWithBaseURL(
-                                "https://api-classing.underflo.ink/",
-                                """<!doctype html><html><head><meta name="viewport" content="width=device-width"></head><body style="margin:0;background:transparent"><div class="cf-turnstile" data-sitekey="$safeSiteKey" data-callback="verified"></div><script>function verified(token){ClassingNative.verified(token)}</script><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></body></html>""",
-                                "text/html",
-                                "UTF-8",
-                                null,
-                            )
-                        }
-                    },
-                )
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_about_update_close)) } },
-    )
 }
 
 @Composable
@@ -2151,7 +2108,7 @@ internal fun DailyBriefingSettingsPage(
             onCheckedChange = onEnabledChange,
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
@@ -2177,9 +2134,10 @@ internal fun DailyBriefingSettingsPage(
                 }
                 OutlinedTextField(
                     value = time,
-                    onValueChange = onTimeChange,
+                    onValueChange = { onTimeChange(normalizeTimeInput(it)) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.daily_briefing_time_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrect = false),
                     singleLine = true,
                 )
                 if (statusMessage.isNotBlank()) {
@@ -2303,7 +2261,7 @@ internal fun AboutLayer(
             .fillMaxSize()
             .padding(contentPadding)
             .navigationBarsPadding()
-            .background(MaterialTheme.colorScheme.surface),
+            .padding(horizontal = ClassingSpacing.referenceScreenInset),
     ) {
         SecondaryPageHeader(
             title = stringResource(R.string.settings_about_page_title),
@@ -2316,13 +2274,13 @@ internal fun AboutLayer(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = ClassingSpacing.md, vertical = ClassingSpacing.md),
+                .padding(vertical = ClassingSpacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.md),
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)),
             ) {
                 Column(
                     modifier = Modifier
@@ -2385,7 +2343,7 @@ internal fun AboutLayer(
             if (devModeEnabled) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)),
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
@@ -2407,7 +2365,7 @@ internal fun AboutLayer(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)),
             ) {
                 Column {
 					Column(
@@ -2738,7 +2696,7 @@ private fun AboutResourceRow(
 
 @Composable
 internal fun LessonCard(lesson: LessonUi) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

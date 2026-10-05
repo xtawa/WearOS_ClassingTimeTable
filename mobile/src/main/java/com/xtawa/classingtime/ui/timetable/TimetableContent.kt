@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.ui.timetable
 
+import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
@@ -30,7 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.LocationOn
@@ -52,7 +52,6 @@ import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.collectionInfo
 import androidx.compose.ui.semantics.collectionItemInfo
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,7 +83,6 @@ internal fun TimetableContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(contentPadding),
     ) {
         TimetableHeader(
@@ -137,45 +135,13 @@ private fun TimetableHeader(
     onOpenHeatmap: () -> Unit,
     onOpenChanges: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = ClassingSpacing.referenceScreenInset,
-                end = ClassingSpacing.sm,
-                top = ClassingSpacing.md,
-                bottom = ClassingSpacing.sm,
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.timetable_back_home),
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs)) {
-                Text(
-                    text = stringResource(R.string.timetable_title),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    text = weekLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+    ClassingPageHeader(
+        title = stringResource(R.string.timetable_title),
+        supportingText = weekLabel,
+        onBack = onBack,
+        backLabel = stringResource(R.string.timetable_back_home),
+        modifier = Modifier.padding(horizontal = ClassingSpacing.referenceScreenInset, vertical = ClassingSpacing.sm),
+        action = {
         Row {
             IconButton(onClick = onOpenHeatmap) {
                 Icon(Icons.Rounded.GridView, contentDescription = stringResource(R.string.heatmap_title))
@@ -202,7 +168,8 @@ private fun TimetableHeader(
                 )
             }
         }
-    }
+        },
+    )
 }
 
 @Composable

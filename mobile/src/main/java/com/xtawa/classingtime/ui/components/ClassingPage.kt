@@ -1,7 +1,6 @@
 package com.xtawa.classingtime.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -37,7 +34,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.xtawa.classingtime.ui.theme.ClassingColors
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
@@ -46,22 +42,10 @@ internal fun ClassingPageBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val background = MaterialTheme.colorScheme.background
-    val ambient = Brush.verticalGradient(
-        colorStops = arrayOf(
-            0f to MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-            0.26f to ClassingColors.AmbientBlue.copy(alpha = 0.07f),
-            0.62f to Color.Transparent,
-            1f to background,
-        ),
-    )
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(background)
-            .background(ambient),
-        content = content,
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        ClassingAmbientBackdrop()
+        content()
+    }
 }
 
 @Composable
@@ -75,57 +59,53 @@ internal fun ClassingPageHeader(
     action: (@Composable () -> Unit)? = null,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics { heading() },
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (onBack != null) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = backLabel,
-                    )
-                }
-                Spacer(Modifier.width(ClassingSpacing.xs))
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs),
+        if (onBack != null || action != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                eyebrow?.takeIf(String::isNotBlank)?.let {
-                    Text(
-                        text = it.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                if (onBack != null) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(ClassingSpacing.minimumTouchTarget),
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel)
+                    }
                 }
+                Spacer(Modifier.weight(1f))
+                action?.invoke()
+            }
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xxs),
+        ) {
+            eyebrow?.takeIf(String::isNotBlank)?.let {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    text = it.uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            action?.invoke()
+            Text(
+                text = title,
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         supportingText?.takeIf(String::isNotBlank)?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(
-                    start = if (onBack == null) ClassingSpacing.xxs else ClassingSpacing.minimumTouchTarget,
-                ),
+                modifier = Modifier.padding(start = ClassingSpacing.xxs),
             )
         }
     }

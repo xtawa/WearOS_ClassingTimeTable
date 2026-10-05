@@ -1,5 +1,9 @@
 package com.xtawa.classingtime.ui.course
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.BorderStroke
+import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -16,12 +20,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Notes
@@ -37,14 +39,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -76,28 +74,12 @@ internal fun CourseDetailContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(contentPadding),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(310.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            state.accent.copy(alpha = 0.24f),
-                            state.accent.copy(alpha = 0.06f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding(),
+                    .navigationBarsPadding(),
             contentPadding = PaddingValues(
                 start = ClassingSpacing.referenceScreenInset,
                 end = ClassingSpacing.referenceScreenInset,
@@ -107,24 +89,17 @@ internal fun CourseDetailContent(
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = stringResource(R.string.course_detail_back),
-                        )
-                    }
-                    Text(
-                        text = state.dateLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Box(modifier = Modifier.size(ClassingSpacing.minimumTouchTarget))
-                }
+                ClassingPageHeader(
+                    title = stringResource(R.string.course_detail_heading),
+                    eyebrow = state.dateLabel,
+                    onBack = onBack,
+                    backLabel = stringResource(R.string.course_detail_back),
+                    action = {
+                        IconButton(onClick = onEdit, modifier = Modifier.size(ClassingSpacing.minimumTouchTarget)) {
+                            Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.course_detail_edit))
+                        }
+                    },
+                )
             }
             item { CourseHero(state = state) }
             item {
@@ -184,9 +159,9 @@ internal fun CourseDetailContent(
 private fun CourseHero(state: CourseDetailUiState) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(ClassingRadii.extraLarge),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(ClassingRadii.large),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f)),
     ) {
         Column(
             modifier = Modifier.padding(ClassingSpacing.xl),

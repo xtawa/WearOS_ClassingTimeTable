@@ -18,7 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,6 +52,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
 
@@ -112,6 +113,7 @@ internal fun CalendarMonthLayer(
             ClassingPageHeader(
                 title = displayedMonth.atDay(1).format(monthFormatter),
                 eyebrow = String.format(locale, "%02d", displayedMonth.monthValue),
+                supportingText = stringResource(R.string.calendar_timeline_hint),
                 onBack = onBackToTimetable,
                 backLabel = stringResource(R.string.calendar_back_to_timetable),
                 action = {
@@ -137,20 +139,6 @@ internal fun CalendarMonthLayer(
                     }
                 },
             )
-        }
-
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-            ) {
-                Text(
-                    text = stringResource(R.string.calendar_timeline_hint),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
 
         item(key = "month-grid-$displayedMonth") {
@@ -197,7 +185,7 @@ internal fun CalendarMonthLayer(
         if (pastDates.isNotEmpty()) {
             item(key = "past-days-group") {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
                 ) {
                     Column(
@@ -274,8 +262,16 @@ private fun MonthDateGrid(
 ) {
     val cells = buildMonthGridDates(displayedMonth, firstDayOfWeek)
     val dateSemanticsFormatter = remember { DateTimeFormatter.ISO_LOCAL_DATE }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
+        Column(Modifier.fillMaxWidth().padding(ClassingSpacing.md), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(7) { index ->
+                    Box(Modifier.weight(1f).padding(vertical = ClassingSpacing.xs), contentAlignment = Alignment.Center) {
+                        Text(firstDayOfWeek.plus(index.toLong()).getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             cells.chunked(7).forEach { week ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (week + List(7 - week.size) { null }).forEach { date ->
@@ -299,19 +295,20 @@ private fun MonthDateGrid(
                                 ),
                             shape = CircleShape,
                             color = when {
-                                isSelected -> MaterialTheme.colorScheme.primaryContainer
-                                isToday -> MaterialTheme.colorScheme.secondaryContainer
-                                else -> MaterialTheme.colorScheme.surface
+                                isSelected -> MaterialTheme.colorScheme.onSurface
+                                isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                                else -> androidx.compose.ui.graphics.Color.Transparent
                             },
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
                         ) {
                             Box(Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
                                 if (date != null) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.bodySmall)
+                                        Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.bodyMedium)
                                         Text(
                                             text = if (occurrenceProvider(date).isEmpty()) " " else "•",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary,
                                         )
                                     }
                                 }
@@ -370,7 +367,7 @@ private fun TimelineDayCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(ClassingSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
@@ -394,7 +391,7 @@ private fun TimelineDayCard(
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = dayTitle,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
                         if (inCurrentWeek) {
@@ -461,13 +458,14 @@ private fun TimelineLessonRow(
 ) {
     val lesson = occurrence.lesson
     Card(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(com.xtawa.classingtime.ui.theme.ClassingRadii.medium),
         modifier = Modifier.clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(ClassingSpacing.md),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -490,8 +488,8 @@ private fun TimelineLessonRow(
             ) {
                 Text(
                     text = lesson.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (!lesson.location.isNullOrBlank()) {

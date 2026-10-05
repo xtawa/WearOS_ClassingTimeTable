@@ -166,7 +166,8 @@
     <string name="no_location">無地點</string>
     <string name="one_time_schedule">單次安排</string>
 
-    <string name="settings_title">顯示與提醒</string>
+    <string name="settings_title">設定</string>
+    <string name="settings_overview_desc">管理課表、帳戶與應用程式偏好。</string>
     <string name="settings_show_weekend_title">顯示週末</string>
     <string name="settings_show_weekend_desc">課表包含週六與週日。</string>
     <string name="settings_badge_weekend">週</string>
@@ -828,4 +829,12 @@
     <string name="calendar_sync_all_day">全天</string>
     <string name="calendar_sync_more">還有 %1$d 個項目</string>
     <string name="ai_cost_points">本次消耗 %1$d AI 點數</string>
+
+    <string name="course_detail_heading">課程詳情</string>
+    <string name="account_turnstile_load_failed">人機驗證載入失敗，請檢查網路後重試。</string>
+    <string name="account_turnstile_expired">驗證已失效，請重新完成人機驗證。</string>
+    <string name="account_turnstile_retry">重新驗證</string>
+    <string name="account_turnstile_web_register">前往網頁註冊</string>
+    <string name="account_registration_config_failed">無法取得註冊安全設定，請重試。</string>
+    <string name="heatmap_cell_description">%1$s，%2$s：%3$d 節課程</string>
 </resources>

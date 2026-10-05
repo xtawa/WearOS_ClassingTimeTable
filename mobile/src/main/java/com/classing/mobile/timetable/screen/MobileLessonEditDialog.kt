@@ -1,5 +1,8 @@
 package com.xtawa.classingtime.screen
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -200,16 +203,18 @@ internal fun LessonEditDialog(
                 }
                 OutlinedTextField(
                     value = startRaw,
-                    onValueChange = { startRaw = it },
+                    onValueChange = { startRaw = normalizeTimeInput(it) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.manual_input_start_time_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrect = false),
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = endRaw,
-                    onValueChange = { endRaw = it },
+                    onValueChange = { endRaw = normalizeTimeInput(it) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.manual_input_end_time_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrect = false),
                     singleLine = true,
                 )
                 OutlinedTextField(
