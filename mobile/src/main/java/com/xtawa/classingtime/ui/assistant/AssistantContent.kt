@@ -388,8 +388,8 @@ private fun AssistantComposer(
                 Text(stringResource(R.string.assistant_file_retention), style = MaterialTheme.typography.bodySmall)
             }
             if (uploading || transcribing) Text(stringResource(if (uploading) R.string.assistant_uploading else R.string.assistant_transcribing), style = MaterialTheme.typography.bodySmall)
-            if (recording) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.assistant_recording_hint), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            if (recording || transcribing) Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { onVoiceFinish(true) }) { Text(stringResource(R.string.assistant_cancel_voice)) }
             }
             if (question.isBlank()) {

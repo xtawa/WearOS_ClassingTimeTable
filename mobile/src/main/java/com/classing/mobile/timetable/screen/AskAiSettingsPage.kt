@@ -195,7 +195,7 @@ internal fun AskAiSettingsPage(
 
     val submitLatest by rememberUpdatedState(::submitQuestion)
     val voice = remember(context, userId) {
-        AskAiVoiceInput(context, scope, onRecording = { recording = it }, onText = { text -> question = text; submitLatest() },
+        AskAiVoiceInput(context, scope, onRecording = { recording = it }, onProcessing = { transcribing = it }, onText = { text -> question = text; submitLatest() },
             onCloudAudio = { file ->
                 transcribing = true
                 transcriptionJob = scope.launch {
@@ -295,7 +295,10 @@ internal fun AskAiSettingsPage(
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) voice.start()
             else micPermission.launch(Manifest.permission.RECORD_AUDIO)
         },
-        onVoiceFinish = { cancelled -> voice.finish(cancelled) },
+        onVoiceFinish = { cancelled ->
+            if (cancelled) { transcriptionJob?.cancel(); transcribing = false }
+            voice.finish(cancelled)
+        },
         assistantMessage = { MarkdownText(it) },
     )
 }

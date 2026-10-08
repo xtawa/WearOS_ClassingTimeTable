@@ -20,6 +20,7 @@ internal class AskAiVoiceInput(
     private val context: Context,
     private val scope: CoroutineScope,
     private val onRecording: (Boolean) -> Unit,
+    private val onProcessing: (Boolean) -> Unit,
     private val onText: (String) -> Unit,
     private val onCloudAudio: (File) -> Unit,
     private val onError: (String) -> Unit,
@@ -106,11 +107,13 @@ internal class AskAiVoiceInput(
         released = true; active = false; timeout?.cancel(); onRecording(false)
         if (recognizer != null) {
             if (localResult != null) completeLocal() else {
+                onProcessing(true)
                 recognizer?.stopListening()
                 val current = generation
                 timeout = scope.launch { delay(12_000); if (current == generation) { cancel(); onError("Voice recognition timed out.") } }
             }
         } else {
+            onProcessing(true)
             val audio = recorder
             runCatching { audio?.stop() }
             val output = file
@@ -121,7 +124,7 @@ internal class AskAiVoiceInput(
                 if (recorder === audio) recorder = null
                 if (current != generation) { output?.delete(); return@launch }
                 file = null
-                if (output != null && output.length() > 44) onCloudAudio(output) else { output?.delete(); onError("No speech recorded") }
+                if (output != null && output.length() > 44) onCloudAudio(output) else { output?.delete(); onProcessing(false); onError("No speech recorded") }
             }
         }
     }
@@ -143,6 +146,7 @@ internal class AskAiVoiceInput(
         if (job != null) { job.cancel(); job.invokeOnCompletion { output?.delete() } }
         else output?.delete()
         onRecording(false)
+        onProcessing(false)
     }
 }
 

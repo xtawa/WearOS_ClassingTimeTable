@@ -168,12 +168,27 @@ class AiApiClient(
             val body = MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("file", name, file.asRequestBody(mime.toMediaType())).build()
             val builder = Request.Builder().url(baseUrl + path).post(body).header("Authorization", "Bearer $token")
             appContext?.let { ClientIntegrity.requestHeaders(it).forEach { (k,v) -> builder.header(k,v) } }
-            execute(builder.build()).use { response ->
-                val json = JSONObject(response.body?.string().orEmpty())
-                if (!response.isSuccessful) throw AccountApiException(response.code, json.optString("code"), message = json.optString("message"))
-                Result.success(json)
-            }
+            Result.success(executeJSON(builder.build()))
         } catch (e: CancellationException) { throw e } catch (e: Exception) { Result.failure(e) }
+    }
+
+    // Keep cancellation attached to the call until the entire body has been read.
+    private suspend fun executeJSON(request: Request): JSONObject = suspendCancellableCoroutine { continuation ->
+        val call = http.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) { if (continuation.isActive) continuation.resumeWithException(e) }
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val json = response.use {
+                        val result = JSONObject(it.body?.string().orEmpty())
+                        if (!it.isSuccessful) throw AccountApiException(it.code, result.optString("code"), message = result.optString("message"))
+                        result
+                    }
+                    if (continuation.isActive) continuation.resume(json)
+                } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(e) }
+            }
+        })
     }
 
     private suspend fun execute(request: Request): Response = suspendCancellableCoroutine { continuation ->
