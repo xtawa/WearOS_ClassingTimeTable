@@ -68,6 +68,9 @@ object MobileCloudSyncCoordinator {
             val startedAt = System.currentTimeMillis()
             val current = MobilePrefsStore.loadSettings(context)
             val config = resolveRuntimeConfig(context, current, allowSilentDriveRefresh = true)
+            if (config.provider == CloudProvider.OFFICIAL && !config.officialMemberAuthorized) {
+                return@runCatching CloudSyncOutcome(false, "Official cloud sync requires Pro", startedAt, 0)
+            }
             if (!config.isComplete()) {
                 val message = when (config.provider) {
                     CloudProvider.WEBDAV -> "Cloud sync disabled or WebDAV config incomplete"
@@ -177,6 +180,9 @@ object MobileCloudSyncCoordinator {
             val startedAt = System.currentTimeMillis()
             val settings = MobilePrefsStore.loadSettings(context)
             val config = resolveOfficialRuntimeConfig(context, settings)
+            if (!config.officialMemberAuthorized) {
+                return@runCatching CloudSyncOutcome(false, "Official cloud sync requires Pro", startedAt, 0)
+            }
             if (config.accountAccessToken.isBlank()) {
                 return@runCatching CloudSyncOutcome(false, "Official settings sync requires login", startedAt, 0)
             }
@@ -312,6 +318,7 @@ object MobileCloudSyncCoordinator {
             clientPackageName = clientIntegrity?.packageName.orEmpty(),
             clientPlatform = clientIntegrity?.platform.orEmpty(),
             clientMarket = clientIntegrity?.market.orEmpty(),
+            accountMarket = settings.accountSummary.market,
             clientVersionCode = clientIntegrity?.versionCode ?: 0L,
             clientSigningCertSha256 = clientIntegrity?.signingCertSha256.orEmpty(),
         )
@@ -349,7 +356,7 @@ object MobileCloudSyncCoordinator {
         if (config.provider != CloudProvider.OFFICIAL || config.officialMemberAuthorized) {
             return scopes
         }
-        return (scopes - SyncScope.TIMETABLE).ifEmpty { setOf(SyncScope.MOBILE_SETTINGS) }
+        return emptySet()
     }
 
     private suspend fun fetchVerifiedMembershipSummary(

@@ -685,6 +685,7 @@ internal fun MobileTimetableScreen(
             val profile = result.getOrThrow()
             accountSummary = profile.account
             membershipSummary = profile.membership.copy(lastCheckedAt = System.currentTimeMillis())
+            if (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY") dailyBriefingEnabled = false
             pendingEmailChange = profile.pendingEmailChange
             if (showStatus) {
                 accountStatusMessage = context.getString(R.string.account_synced)
@@ -704,6 +705,11 @@ internal fun MobileTimetableScreen(
     }
 
     suspend fun saveDailyBriefingSettings(pushRemote: Boolean): Boolean {
+        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember && accountSummary.accountClass != "LEGACY" && dailyBriefingEnabled) {
+            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_tier_required)
+            return false
+        }
+
         if ((dailyBriefingChannel == DailyBriefingChannel.EMAIL || dailyBriefingChannel == DailyBriefingChannel.BOTH) &&
             accountSummary.userId.isBlank()
         ) {
@@ -1177,9 +1183,10 @@ internal fun MobileTimetableScreen(
         }
     }
 
-    LaunchedEffect(initialized, cloudSyncEnabled, cloudProvider, accountSummary.userId, lifecycleOwner, showOnboarding) {
+    LaunchedEffect(initialized, cloudSyncEnabled, cloudProvider, accountSummary.userId, membershipSummary.isMember, lifecycleOwner, showOnboarding) {
         if (!initialized) return@LaunchedEffect
         if (showOnboarding || !cloudSyncEnabled) return@LaunchedEffect
+        if (cloudProvider == CloudProviderUi.OFFICIAL && !membershipSummary.isMember) return@LaunchedEffect
         if (cloudProvider == CloudProviderUi.OFFICIAL && accountSummary.userId.isNotBlank()) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 OfficialCloudRealtimeController.run(context) {
@@ -1188,6 +1195,19 @@ internal fun MobileTimetableScreen(
             }
         } else if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             CloudSyncEngine.enqueue(context, CloudSyncContracts.TRIGGER_FOREGROUND_TICK, markDirty = false)
+        }
+    }
+
+    LaunchedEffect(initialized, accountSummary.userId, accountSummary.accountClass, membershipSummary.isMember, lifecycleOwner) {
+        if (!initialized || accountSummary.userId.isBlank()) return@LaunchedEffect
+        if (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY") return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                ensureAccessToken()?.let { token -> accountApiClient.dailyBriefingNotifications(token).onSuccess { commands ->
+                    MobileCloudSyncV2Store.consumeDailyBriefingCommands(context, commands)
+                } }
+                kotlinx.coroutines.delay(60_000)
+            }
         }
     }
 
@@ -1589,8 +1609,9 @@ internal fun MobileTimetableScreen(
                             jsonImportMode = JsonImportMode.APPEND
                             onboardingImportFocusMethod = ImportFocusMethod.JSON
                             photoImportStatus = context.getString(R.string.ai_photo_ready, jsonPreview.size, result.costPoints)
-                        } catch (_: Exception) {
-                            photoImportStatus = context.getString(R.string.ai_photo_failed)
+                        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+                        } catch (e: Exception) {
+                            photoImportStatus = accountErrorMessage(context, e, R.string.ai_photo_failed)
                         } finally {
                             photoImportBusy = false
                             java.io.File(context.cacheDir, "ai_photos").listFiles()?.forEach { it.delete() }
@@ -1915,6 +1936,7 @@ internal fun MobileTimetableScreen(
                 )
 
                 SettingsPage.AskAi -> AskAiSettingsPage(
+                    userId = accountSummary.userId,
                     contentPadding = innerPadding,
                     loggedIn = accountSummary.userId.isNotBlank(),
                     member = membershipSummary.isMember,
@@ -2522,6 +2544,7 @@ internal fun MobileTimetableScreen(
                 )
 
                 SettingsPage.DailyBriefing -> DailyBriefingSettingsPage(
+                    accessAllowed = accountSummary.userId.isBlank() || membershipSummary.isMember || accountSummary.accountClass == "LEGACY",
                     contentPadding = innerPadding,
                     enabled = dailyBriefingEnabled,
                     channel = dailyBriefingChannel,
@@ -2532,7 +2555,9 @@ internal fun MobileTimetableScreen(
                         handleBackNavigation()
                     },
                     onEnabledChange = {
-                        dailyBriefingEnabled = it
+                        if (it && accountSummary.userId.isNotBlank() && !membershipSummary.isMember && accountSummary.accountClass != "LEGACY") {
+                            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_tier_required)
+                        } else dailyBriefingEnabled = it
                     },
                     onChannelChange = {
                         if (accountSummary.userId.isBlank() && (it == DailyBriefingChannel.EMAIL || it == DailyBriefingChannel.BOTH)) {

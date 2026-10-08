@@ -837,4 +837,26 @@
     <string name="account_turnstile_web_register">Register on the website</string>
     <string name="account_registration_config_failed">Could not load registration security settings. Please try again.</string>
     <string name="heatmap_cell_description">%1$s, %2$s: %3$d courses</string>
+    <string name="account_choose_edition">Choose your edition</string>
+    <string name="account_edition_cn">China edition</string>
+    <string name="account_edition_global">International edition</string>
+    <string name="account_editions_separate">Accounts in the China and international editions are separate.</string>
+    <string name="account_edition_difference">Differences between the China and international editions</string>
+    <string name="account_global_preview">International sign-in is being prepared. Google sign-in will be available here.</string>
+    <string name="account_google_sign_in">Continue with Google</string>
+    <string name="account_google_pending">Google sign-in is not connected yet. No sign-in request will be sent. You can switch to the China edition to use the existing account login.</string>
+    <string name="account_preview_ok">OK</string>
+    <string name="assistant_menu">Open conversations</string>
+    <string name="assistant_attach">Attach a file</string>
+    <string name="assistant_remove_file">Remove and delete file</string>
+    <string name="assistant_file_retention">Attachments are stored for 14 days, then deleted.</string>
+    <string name="assistant_uploading">Uploading file…</string>
+    <string name="assistant_transcribing">Transcribing voice…</string>
+    <string name="assistant_recording_hint">Release to send · Slide up to cancel</string>
+    <string name="assistant_cancel_voice">Cancel</string>
+    <string name="assistant_voice_hold">Hold to speak, release to send. Slide up to cancel.</string>
+    <string name="assistant_mic_denied">Allow microphone access to use voice input.</string>
+    <string name="assistant_star">Star this model</string>
+    <string name="assistant_unstar">Unstar this model</string>
+    <string name="daily_briefing_tier_required">Daily briefings require a Legacy or Pro account.</string>
 </resources>

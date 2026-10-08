@@ -32,6 +32,7 @@ data class WearDirectAccountSession(
     val username: String,
     val isMember: Boolean,
     val membershipTier: String,
+    val accountType: String = "FREE",
 )
 
 sealed interface WearDeviceAuthorizationPoll {
@@ -155,6 +156,7 @@ class WearQrAuthApiClient(
             username = account?.optString("username").orEmpty().ifBlank { fallbackUsername },
             isMember = membership.optBoolean("isMember", false),
             membershipTier = membership.optString("tier", "FREE").ifBlank { "FREE" },
+            accountType = membership.optString("accountType", "FREE"),
         )
     }
 
@@ -256,6 +258,7 @@ object WearDirectAccountStore {
             .putString(KEY_USERNAME, session.username)
             .putBoolean(KEY_IS_MEMBER, session.isMember)
             .putString(KEY_MEMBERSHIP_TIER, session.membershipTier)
+            .putString("account_type", session.accountType)
             .apply()
     }
 
@@ -274,6 +277,7 @@ object WearDirectAccountStore {
             username = prefs.getString(KEY_USERNAME, "").orEmpty(),
             isMember = prefs.getBoolean(KEY_IS_MEMBER, false),
             membershipTier = prefs.getString(KEY_MEMBERSHIP_TIER, "FREE").orEmpty().ifBlank { "FREE" },
+            accountType = prefs.getString("account_type", "FREE").orEmpty(),
         )
     }
 

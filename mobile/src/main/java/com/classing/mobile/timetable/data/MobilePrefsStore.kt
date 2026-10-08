@@ -519,6 +519,8 @@ object MobilePrefsStore {
             identifier = json.optString("identifier"),
             username = json.optString("username"),
             email = json.optString("email"),
+            accountClass = json.optString("accountClass", "FREE"),
+            market = json.optString("market", "CN"),
         )
     }
 
@@ -528,6 +530,7 @@ object MobilePrefsStore {
             // SharedPreferences are editable on rooted devices; do not restore entitlements from disk.
             isMember = false,
             tier = json.optString("tier", "FREE").ifBlank { "FREE" },
+            accountType = json.optString("accountType", "FREE"),
             expiresAt = json.optLong("expiresAt", 0L),
             lastCheckedAt = json.optLong("lastCheckedAt", 0L),
         )
@@ -539,12 +542,15 @@ object MobilePrefsStore {
             .put("identifier", summary.identifier)
             .put("username", summary.username)
             .put("email", summary.email)
+            .put("accountClass", summary.accountClass)
+            .put("market", summary.market)
     }
 
     private fun buildMembershipSummaryJson(summary: MembershipSummary): JSONObject {
         return JSONObject()
             .put("isMember", false)
             .put("tier", summary.tier)
+            .put("accountType", summary.accountType)
             .put("expiresAt", summary.expiresAt)
             .put("lastCheckedAt", summary.lastCheckedAt)
     }

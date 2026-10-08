@@ -494,6 +494,14 @@ class AccountApiClient(
         }
     }
 
+    suspend fun dailyBriefingNotifications(accessToken: String): Result<List<Pair<String, Long>>> =
+        request("GET", "/api/v1/briefings/daily/notifications", accessToken = accessToken).map { response ->
+            val commands = response.optJSONArray("commands")
+            buildList { if (commands != null) for (i in 0 until commands.length()) {
+                commands.optJSONObject(i)?.let { add(it.getString("id") to it.getLong("createdAt")) }
+            } }
+        }
+
     private fun parseAccountSummary(json: JSONObject): AccountSummary {
         val account = json.optJSONObject("account") ?: json
         return AccountSummary(
@@ -502,6 +510,8 @@ class AccountApiClient(
                 .ifBlank { account.optString("email").ifBlank { account.optString("username") } },
             username = account.optString("username"),
             email = account.optString("email"),
+            accountClass = account.optString("accountClass", "FREE"),
+            market = account.optString("market", "CN"),
         )
     }
 
@@ -510,6 +520,7 @@ class AccountApiClient(
         return MembershipSummary(
             isMember = membership.optBoolean("isMember", false),
             tier = membership.optString("tier", "FREE").ifBlank { "FREE" },
+            accountType = membership.optString("accountType", if (membership.optBoolean("isMember")) "PRO" else "FREE"),
             expiresAt = membership.optLong("expiresAt", 0L),
             lastCheckedAt = membership.optLong("lastCheckedAt", System.currentTimeMillis()),
         )

@@ -241,28 +241,24 @@ object MobileCloudSyncV2Store {
     }
 
     private fun consumeAppCommands(context: Context, document: CloudSyncDocumentV2, now: Long = System.currentTimeMillis()) {
+        val commands = document.records[CloudSyncV2.DOMAIN_APP_COMMANDS].orEmpty().values.filterNot { it.isDeleted }.mapNotNull { record ->
+            val payload = runCatching { JSONObject(record.payload ?: "") }.getOrNull() ?: return@mapNotNull null
+            if (payload.optString("type") != "DAILY_BRIEFING_TEST") null else record.id to payload.optLong("createdAt", record.version.changedAt)
+        }
+        consumeDailyBriefingCommands(context, commands, now)
+    }
+
+    @Synchronized
+    fun consumeDailyBriefingCommands(context: Context, commands: List<Pair<String, Long>>, now: Long = System.currentTimeMillis()) {
         val prefs = prefs(context)
-        val processed = prefs.getString(KEY_PROCESSED_COMMANDS, "").orEmpty()
-            .split(',')
-            .filter { it.isNotBlank() }
-            .toMutableSet()
+        val processed = prefs.getString(KEY_PROCESSED_COMMANDS, "").orEmpty().split(',').filter { it.isNotBlank() }.toMutableSet()
         var changed = false
-        document.records[CloudSyncV2.DOMAIN_APP_COMMANDS].orEmpty().values
-            .filterNot { it.isDeleted }
-            .forEach { record ->
-                if (record.id in processed) return@forEach
-                val payload = runCatching { JSONObject(record.payload ?: "") }.getOrNull() ?: return@forEach
-                val createdAt = payload.optLong("createdAt", record.version.changedAt)
-                if (createdAt <= 0L || now - createdAt > COMMAND_MAX_AGE_MS) return@forEach
-                if (payload.optString("type") == "DAILY_BRIEFING_TEST") {
-                    DailyBriefingScheduler.postTestNotification(context)
-                    processed += record.id
-                    changed = true
-                }
+        commands.forEach { (id, createdAt) ->
+            if (id in processed || createdAt <= 0 || now - createdAt > COMMAND_MAX_AGE_MS) return@forEach
+            DailyBriefingScheduler.postTestNotification(context)
+            processed += id; changed = true
         }
-        if (changed) {
-            prefs.edit().putString(KEY_PROCESSED_COMMANDS, processed.toList().takeLast(50).joinToString(",")).apply()
-        }
+        if (changed) prefs.edit().putString(KEY_PROCESSED_COMMANDS, processed.toList().takeLast(50).joinToString(",")).apply()
     }
 
     private fun reconcileDomain(

@@ -33,6 +33,7 @@ data class CloudRuntimeConfig(
     val clientPackageName: String = "",
     val clientPlatform: String = "",
     val clientMarket: String = "",
+    val accountMarket: String = "CN",
     val clientVersionCode: Long = 0L,
     val clientSigningCertSha256: String = "",
 ) {
@@ -356,6 +357,7 @@ fun MobileSettings.toCloudRuntimeConfig(
     clientPackageName: String = "",
     clientPlatform: String = "",
     clientMarket: String = "",
+    accountMarket: String = accountSummary.market,
     clientVersionCode: Long = 0L,
     clientSigningCertSha256: String = "",
 ): CloudRuntimeConfig {
@@ -380,6 +382,7 @@ fun MobileSettings.toCloudRuntimeConfig(
         clientPackageName = clientPackageName,
         clientPlatform = clientPlatform,
         clientMarket = clientMarket,
+        accountMarket = accountMarket,
         clientVersionCode = clientVersionCode,
         clientSigningCertSha256 = clientSigningCertSha256,
     )
@@ -435,6 +438,7 @@ fun MobileSettings.toWearCloudSnapshot(
         .put("loggedIn", accountSummary.userId.isNotBlank())
         .put("isMember", membershipSummary.isMember)
         .put("membershipTier", membershipSummary.tier)
+        .put("accountType", if (membershipSummary.isMember) "PRO" else accountSummary.accountClass)
         .put("membershipExpiresAt", membershipSummary.expiresAt)
         .put("officialAvailable", accountSummary.userId.isNotBlank())
         .put(WearDataLayerContracts.KEY_CLOUD_PROVIDER, cloudProvider)

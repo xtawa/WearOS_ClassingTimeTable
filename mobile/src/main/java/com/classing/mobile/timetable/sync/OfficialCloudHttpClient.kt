@@ -108,6 +108,7 @@ class OfficialCloudHttpClient {
     }
 
     private fun applyClientIntegrityHeaders(connection: HttpURLConnection, config: CloudRuntimeConfig) {
+        connection.setRequestProperty("X-Classing-Account-Market", config.accountMarket)
         if (config.clientPlatform.isNotBlank()) {
             connection.setRequestProperty("X-Classing-Client-Platform", config.clientPlatform)
         }

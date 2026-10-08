@@ -5,6 +5,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import com.xtawa.classingtime.BuildConfig
+import com.xtawa.classingtime.account.AccountEdition
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -80,11 +81,15 @@ object ClientIntegrity {
         context: Context,
         platform: String = PLATFORM_MOBILE,
     ) {
+        connection.setRequestProperty("X-Classing-Account-Market", AccountEdition.selected(context))
         if (BuildConfig.DEBUG) return
         snapshot(context, platform).headers().forEach { (name, value) ->
             connection.setRequestProperty(name, value)
         }
     }
+
+    fun requestHeaders(context: Context): Map<String, String> =
+        (if (BuildConfig.DEBUG) emptyMap() else snapshot(context).headers()) + ("X-Classing-Account-Market" to AccountEdition.selected(context))
 
     suspend fun ensureTrusted(
         context: Context,
