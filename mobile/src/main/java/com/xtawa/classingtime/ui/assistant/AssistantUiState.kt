@@ -12,6 +12,7 @@ internal data class AssistantModelUiModel(
     val id: String,
     val name: String,
     val description: String,
+    val starred: Boolean = false,
 )
 
 @Immutable
@@ -40,4 +41,11 @@ internal data class AssistantUiState(
     val models: List<AssistantModelUiModel>,
     val conversations: List<AssistantConversationUiModel>,
     val messages: List<AssistantMessageUiModel>,
+    val attachments: List<AssistantAttachmentUiModel> = emptyList(),
+    val recording: Boolean = false,
+    val uploading: Boolean = false,
+    val transcribing: Boolean = false,
 )
+
+@Immutable
+internal data class AssistantAttachmentUiModel(val id: String, val name: String)

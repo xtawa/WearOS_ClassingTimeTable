@@ -13,7 +13,12 @@ import kotlinx.coroutines.withContext
 internal suspend fun prepareTimetablePhoto(context: Context, uri: Uri): ByteArray = withContext(Dispatchers.IO) {
     val resolver = context.contentResolver
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    resolver.openInputStream(uri)?.use {
+        // inJustDecodeBounds intentionally returns null; the stream, not the bitmap,
+        // determines whether the source can be read.
+        BitmapFactory.decodeStream(it, null, bounds)
+        Unit
+    }
         ?: error("Cannot read photo")
     require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Invalid photo" }
     var sample = 1
@@ -21,14 +26,14 @@ internal suspend fun prepareTimetablePhoto(context: Context, uri: Uri): ByteArra
     val decoded = resolver.openInputStream(uri)?.use { stream ->
         BitmapFactory.decodeStream(stream, null, BitmapFactory.Options().apply { inSampleSize = sample })
     } ?: error("Cannot decode photo")
-    val rotation = resolver.openInputStream(uri)?.use { stream ->
+    val rotation = runCatching { resolver.openInputStream(uri)?.use { stream ->
         when (ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
             ExifInterface.ORIENTATION_ROTATE_90 -> 90f
             ExifInterface.ORIENTATION_ROTATE_180 -> 180f
             ExifInterface.ORIENTATION_ROTATE_270 -> 270f
             else -> 0f
         }
-    } ?: 0f
+    } ?: 0f }.getOrDefault(0f)
     val bitmap = if (rotation == 0f) decoded else Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height,
         Matrix().apply { postRotate(rotation) }, true).also { decoded.recycle() }
     try {

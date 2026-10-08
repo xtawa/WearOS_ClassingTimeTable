@@ -837,4 +837,26 @@
     <string name="account_turnstile_web_register">前往網頁註冊</string>
     <string name="account_registration_config_failed">無法取得註冊安全設定，請重試。</string>
     <string name="heatmap_cell_description">%1$s，%2$s：%3$d 節課程</string>
+    <string name="account_choose_edition">選擇登入版本</string>
+    <string name="account_edition_cn">國內版</string>
+    <string name="account_edition_global">國際版</string>
+    <string name="account_editions_separate">國內版與國際版帳號不互通。</string>
+    <string name="account_edition_difference">國內版與國際版的區別</string>
+    <string name="account_global_preview">國際版登入正在準備中，將透過 Google 帳號登入。</string>
+    <string name="account_google_sign_in">使用 Google 登入</string>
+    <string name="account_google_pending">Google 登入尚未接入，目前不會傳送登入請求。可切換國內版使用現有帳號登入。</string>
+    <string name="account_preview_ok">知道了</string>
+    <string name="assistant_menu">開啟對話選單</string>
+    <string name="assistant_attach">上傳附件</string>
+    <string name="assistant_remove_file">移除並刪除附件</string>
+    <string name="assistant_file_retention">附件保存 14 天後自動刪除。</string>
+    <string name="assistant_uploading">正在上傳附件…</string>
+    <string name="assistant_transcribing">正在轉寫語音…</string>
+    <string name="assistant_recording_hint">鬆手發送 · 上滑取消</string>
+    <string name="assistant_cancel_voice">取消</string>
+    <string name="assistant_voice_hold">按住說話，鬆手發送，上滑取消。</string>
+    <string name="assistant_mic_denied">需要麥克風權限才能使用語音輸入。</string>
+    <string name="assistant_star">星標此模型</string>
+    <string name="assistant_unstar">取消模型星標</string>
+    <string name="daily_briefing_tier_required">每日簡報僅對 Legacy 和 Pro 用戶開放。</string>
 </resources>

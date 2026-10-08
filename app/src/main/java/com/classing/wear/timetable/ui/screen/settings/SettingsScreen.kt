@@ -337,7 +337,7 @@ fun SettingsScreen(
                         stringResource(
                             R.string.settings_phone_account_summary,
                             if (cloudSnapshot.loggedIn) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
-                            if (cloudSnapshot.isMember) cloudSnapshot.membershipTier else "FREE",
+                            if (cloudSnapshot.isMember) "Pro" else cloudSnapshot.accountType,
                             cloudSnapshot.provider.ifBlank { "-" },
                         ),
                         style = MaterialTheme.typography.bodySmall,
@@ -365,6 +365,7 @@ private data class WearCloudSummary(
     val loggedIn: Boolean = false,
     val isMember: Boolean = false,
     val membershipTier: String = "FREE",
+    val accountType: String = "FREE",
     val provider: String = "",
 )
 
@@ -374,6 +375,7 @@ private fun loadWearCloudSummary(context: Context): WearCloudSummary {
             loggedIn = true,
             isMember = direct.isMember,
             membershipTier = direct.membershipTier,
+            accountType = direct.accountType,
             provider = "OFFICIAL",
         )
     }
@@ -385,6 +387,7 @@ private fun loadWearCloudSummary(context: Context): WearCloudSummary {
         loggedIn = json.optBoolean("loggedIn", false),
         isMember = json.optBoolean("isMember", false),
         membershipTier = json.optString("membershipTier", "FREE"),
+        accountType = json.optString("accountType", "FREE"),
         provider = json.optString("cloudProvider"),
     )
 }

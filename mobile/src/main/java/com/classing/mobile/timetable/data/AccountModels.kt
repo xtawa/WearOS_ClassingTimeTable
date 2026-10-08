@@ -46,6 +46,8 @@ data class AccountSummary(
     val identifier: String = "",
     val username: String = "",
     val email: String = "",
+    val accountClass: String = "FREE",
+    val market: String = "CN",
 )
 
 data class MembershipSummary(
@@ -53,4 +55,5 @@ data class MembershipSummary(
     val tier: String = "FREE",
     val expiresAt: Long = 0L,
     val lastCheckedAt: Long = 0L,
+    val accountType: String = "FREE",
 )

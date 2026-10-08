@@ -61,6 +61,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -1417,6 +1418,9 @@ internal fun AccountSettingsPage(
     onOpenEmailChange: () -> Unit,
     onApproveWearLogin: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    var loginEdition by rememberSaveable { mutableStateOf(com.xtawa.classingtime.account.AccountEdition.selected(context)) }
+    var showGooglePreview by remember { mutableStateOf(false) }
     var identifier by remember { mutableStateOf(accountSummary.identifier) }
     var password by remember { mutableStateOf("") }
     var redeemCode by remember { mutableStateOf("") }
@@ -1426,10 +1430,17 @@ internal fun AccountSettingsPage(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var wearScanMessage by remember { mutableStateOf("") }
     var pendingWearAuthorizationId by remember { mutableStateOf<String?>(null) }
+    if (showGooglePreview) {
+        AlertDialog(
+            onDismissRequest = { showGooglePreview = false },
+            title = { Text(stringResource(R.string.account_google_sign_in)) },
+            text = { Text(stringResource(R.string.account_google_pending)) },
+            confirmButton = { TextButton(onClick = { showGooglePreview = false }) { Text(stringResource(R.string.account_preview_ok)) } },
+        )
+    }
     val legalLinksReady = legalAgreementUrls.isComplete()
-    val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val aiClient = remember { AiApiClient() }
+    val aiClient = remember { AiApiClient(appContext = context.applicationContext) }
     var aiUsage by remember { mutableStateOf<AiUsageSummary?>(null) }
     var aiUsageError by remember { mutableStateOf("") }
     LaunchedEffect(accountSummary.userId, membershipSummary.isMember) {
@@ -1483,7 +1494,7 @@ internal fun AccountSettingsPage(
                 Text(
                     stringResource(
                         R.string.account_membership_status,
-                        if (membershipSummary.isMember) membershipSummary.tier else "FREE",
+                        if (membershipSummary.isMember) "Pro" else if (accountSummary.accountClass == "LEGACY") "Legacy user" else "Free",
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1568,6 +1579,17 @@ internal fun AccountSettingsPage(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
+                LoginEditionSelector(
+                    edition = loginEdition,
+                    enabled = !busy,
+                    onSelect = { loginEdition = it; com.xtawa.classingtime.account.AccountEdition.select(context, it); password = ""; loginConsentAccepted = false },
+                )
+                if (loginEdition == "GLOBAL") {
+                    Text(stringResource(R.string.account_global_preview), style = MaterialTheme.typography.bodyMedium)
+                    Button(onClick = { showGooglePreview = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.account_google_sign_in))
+                    }
+                } else {
                 Text(stringResource(R.string.account_login), fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
                     value = identifier,
@@ -1618,6 +1640,10 @@ internal fun AccountSettingsPage(
                     TextButton(onClick = onOpenPasswordReset, enabled = !busy) {
                         Text(stringResource(R.string.account_forgot_password))
                     }
+                }
+                }
+                TextButton(onClick = { uriHandler.openUri("https://xtawa.craft.me/diff-classing") }) {
+                    Text(stringResource(R.string.account_edition_difference), textDecoration = TextDecoration.Underline)
                 }
             }
         }
@@ -2083,6 +2109,7 @@ internal fun DailyBriefingSettingsPage(
     onChannelChange: (DailyBriefingChannel) -> Unit,
     onTimeChange: (String) -> Unit,
     onSave: () -> Unit,
+    accessAllowed: Boolean = true,
 ) {
     Column(
         modifier = Modifier
@@ -2103,9 +2130,9 @@ internal fun DailyBriefingSettingsPage(
         SettingsSwitchCard(
             icon = Icons.Filled.MailOutline,
             title = stringResource(R.string.daily_briefing_enable_title),
-            desc = stringResource(R.string.daily_briefing_enable_desc),
+            desc = stringResource(if (accessAllowed) R.string.daily_briefing_enable_desc else R.string.daily_briefing_tier_required),
             checked = enabled,
-            onCheckedChange = onEnabledChange,
+            onCheckedChange = { if (accessAllowed) onEnabledChange(it) },
         )
 
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
@@ -2116,9 +2143,10 @@ internal fun DailyBriefingSettingsPage(
                 Text(stringResource(R.string.daily_briefing_channel_title), fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
                     DailyBriefingChannel.entries.forEach { item ->
-                        val disabled = !loggedIn && item == DailyBriefingChannel.EMAIL
+                        val disabled = !accessAllowed || !loggedIn && item != DailyBriefingChannel.APP_NOTIFICATION
                         FilterChip(
                             selected = channel == item,
+                            enabled = !disabled,
                             onClick = { if (!disabled) onChannelChange(item) },
                             label = {
                                 Text(
@@ -2143,7 +2171,7 @@ internal fun DailyBriefingSettingsPage(
                 if (statusMessage.isNotBlank()) {
                     Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
-                Button(onClick = onSave, shape = RoundedCornerShape(ClassingRadii.pill)) {
+                Button(onClick = onSave, enabled = accessAllowed, shape = RoundedCornerShape(ClassingRadii.pill)) {
                     Text(stringResource(R.string.daily_briefing_save))
                 }
             }

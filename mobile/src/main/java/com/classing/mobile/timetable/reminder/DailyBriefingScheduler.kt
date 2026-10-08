@@ -27,11 +27,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 object DailyBriefingScheduler {
+    private fun canUseBriefing(settings: MobileSettings): Boolean =
+        settings.accountSummary.userId.isBlank() || settings.accountSummary.accountClass == "LEGACY" ||
+            settings.membershipSummary.isMember || settings.membershipSummary.expiresAt > System.currentTimeMillis()
+
     private const val REQUEST_CODE = 24011
     private const val CHANNEL_ID = "daily_briefing_channel"
 
     fun sync(context: Context, settings: MobileSettings) {
-        if (!settings.dailyBriefingEnabled || settings.dailyBriefingChannel == DailyBriefingChannel.EMAIL) {
+        if (!canUseBriefing(settings) || !settings.dailyBriefingEnabled || settings.dailyBriefingChannel == DailyBriefingChannel.EMAIL) {
             cancel(context)
             return
         }
@@ -70,7 +74,7 @@ object DailyBriefingScheduler {
 
     fun handleTrigger(context: Context) {
         val settings = MobilePrefsStore.loadSettings(context)
-        if (!settings.dailyBriefingEnabled) {
+        if (!canUseBriefing(settings) || !settings.dailyBriefingEnabled) {
             cancel(context)
             return
         }
