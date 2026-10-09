@@ -236,11 +236,7 @@ object MobilePrefsStore {
     }
 
     fun loadTimetableState(context: Context): PersistedTimetableState {
-        return loadTimetableState(prefs(context))
-    }
-
-    // Local storage is deliberately independent of account, membership and networking.
-    internal fun loadTimetableState(p: android.content.SharedPreferences): PersistedTimetableState {
+        val p = prefs(context)
         val baseRaw = p.getString(KEY_BASE_LESSONS_JSON, null)
         val legacyRaw = p.getString(KEY_LESSONS_JSON, null)
         val baseLessons = when {
@@ -248,7 +244,7 @@ object MobilePrefsStore {
             !legacyRaw.isNullOrBlank() -> {
                 val migrated = parseLessonList(legacyRaw)
                 saveTimetableState(
-                    preferences = p,
+                    context = context,
                     baseLessons = migrated,
                     exceptions = emptyList(),
                     snapshots = loadScheduleSnapshotsRaw(p),
@@ -282,16 +278,7 @@ object MobilePrefsStore {
         exceptions: List<PersistedScheduleException>,
         snapshots: List<PersistedScheduleSnapshot>,
     ) {
-        saveTimetableState(prefs(context), baseLessons, exceptions, snapshots)
-    }
-
-    internal fun saveTimetableState(
-        preferences: android.content.SharedPreferences,
-        baseLessons: List<PersistedLesson>,
-        exceptions: List<PersistedScheduleException>,
-        snapshots: List<PersistedScheduleSnapshot>,
-    ) {
-        preferences.edit()
+        prefs(context).edit()
             .putString(KEY_BASE_LESSONS_JSON, buildLessonArray(baseLessons).toString())
             .putString(KEY_SCHEDULE_EXCEPTIONS_JSON, buildExceptionArray(exceptions).toString())
             .putString(KEY_SCHEDULE_SNAPSHOTS_JSON, buildSnapshotArray(snapshots).toString())
