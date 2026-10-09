@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.ExpandMore
 import kotlinx.coroutines.launch
 import com.xtawa.classingtime.ui.components.ClassingPageHeader
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.RepeatMode

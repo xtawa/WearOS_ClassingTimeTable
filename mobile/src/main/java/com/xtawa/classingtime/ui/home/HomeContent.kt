@@ -2,7 +2,6 @@ package com.xtawa.classingtime.ui.home
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -39,7 +38,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
@@ -82,17 +80,6 @@ internal fun HomeContent(
             maxWidth >= 412.dp -> ClassingSpacing.spaciousScreenInset
             else -> ClassingSpacing.referenceScreenInset
         }
-        val contextScale by animateFloatAsState(
-            targetValue = if (assistantState.focused) 0.94f else 1f,
-            animationSpec = if (motionEnabled) ClassingMotion.settledSpring() else tween(0),
-            label = "home_context_scale",
-        )
-        val contextAlpha by animateFloatAsState(
-            targetValue = if (assistantState.focused) 0.58f else 1f,
-            animationSpec = tween(if (motionEnabled) ClassingMotion.LayoutReflow else 0),
-            label = "home_context_alpha",
-        )
-
         AmbientBackground(
             phase = state.phase,
             motionEnabled = motionEnabled,
@@ -115,11 +102,7 @@ internal fun HomeContent(
 
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        // Scaling a translucent shadow during IME reflow leaves a rim.
-                        alpha = if (assistantState.focused) 0.82f else 1f
-                    },
+                    .fillMaxWidth(),
             ) {
                 PrimaryHomeIsland(
                     state = state,
