@@ -28,6 +28,7 @@ internal enum class SettingsPage {
     AskAi,
     Account,
     AccountEmailChange,
+    AccountDelete,
     AccountRegister,
     AccountPasswordReset,
     DailyBriefing,
@@ -133,6 +134,7 @@ internal fun reduceBackState(state: MobileBackState): MobileBackState? {
     if (state.layer == MobileLayer.Schedule && state.scheduleSubview != ScheduleSubview.Timetable) {
         return state.copy(scheduleSubview = ScheduleSubview.Timetable)
     }
+    if (state.layer == MobileLayer.Schedule) return state.copy(layer = MobileLayer.Dashboard)
     if (state.layer != MobileLayer.Settings) return null
     if (state.settingsPage == SettingsPage.AskAi) {
         return state.copy(
@@ -143,7 +145,7 @@ internal fun reduceBackState(state: MobileBackState): MobileBackState? {
     if (state.settingsPage == SettingsPage.Import && state.showImportJsonPromptPage) {
         return state.copy(showImportJsonPromptPage = false)
     }
-    if (state.settingsPage == SettingsPage.AccountRegister || state.settingsPage == SettingsPage.AccountPasswordReset) {
+    if (state.settingsPage in setOf(SettingsPage.AccountRegister, SettingsPage.AccountPasswordReset, SettingsPage.AccountEmailChange, SettingsPage.AccountDelete)) {
         return state.copy(settingsPage = SettingsPage.Account)
     }
     if (state.settingsPage != SettingsPage.Main) {

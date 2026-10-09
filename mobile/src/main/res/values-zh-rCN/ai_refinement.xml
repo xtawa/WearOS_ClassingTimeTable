@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_usage_limits">用量与限额</string>
+    <string name="assistant_settings">Ask AI 设置</string>
+    <string name="assistant_default_model">默认模型</string>
+    <string name="assistant_settings_sync">设置保存在 Classing 账号中，自动跨设备同步。</string>
+    <string name="assistant_auto_prompts">每次打开时刷新提示词</string>
+    <string name="assistant_auto_prompts_warning">每次打开都会调用模型并消耗额度，频繁打开可能大量消耗额度。</string>
+    <string name="assistant_voice_autosend">语音转写完成后自动发送</string>
+    <string name="assistant_image_previews">图片缩略图</string>
+    <string name="assistant_show_reasoning">显示模型思考过程</string>
+    <string name="assistant_timestamps">消息时间</string>
+    <string name="assistant_refresh_prompts">刷新推荐提示词</string>
+    <string name="assistant_synced">已跨设备同步</string>
+    <string name="assistant_sync_pending">正在保存设置…</string>
+    <string name="assistant_transcription_cost">语音转写消耗：%1$d 点</string>
+    <string name="assistant_suggestion_cost">推荐提示词消耗：%1$d 点</string>
+    <string name="assistant_proposal_title">预览课程变更</string>
+    <string name="assistant_proposal_apply">确认应用变更</string>
+    <string name="assistant_proposal_applied">课程变更已保存</string>
+    <string name="assistant_proposal_stale">课表已变动，请重新生成变更建议。</string>
+    <string name="account_security_settings">账号安全</string>
+    <string name="assistant_voice_cloud">语音上传云端转写并消耗额度，处理后立即删除音频。</string>
+    <string name="ai_photo_reasoning">思考过程</string>
+    <string name="ai_photo_response">AI 回复</string>
+    <string name="ai_photo_no_reasoning">该供应商未返回思考内容。</string>
+    <string name="appearance_preview_course">生物</string>
+    <string name="appearance_preview_room">A201 教室 · 09:00–09:45</string>
+    <string name="appearance_preview_question">下一节是什么课？</string>
+    <string name="appearance_preview_reply">09:00 开始上生物课，记得带课本。</string>
+    <string name="onboarding_import_now">现在导入</string>
+    <string name="onboarding_add_course">添加课程</string>
+    <string name="onboarding_import_done">已准备好 %1$d 门课程</string>
+    <string name="onboarding_import_error">无法读取课表，请检查文件格式。</string>
+    <string name="onboarding_sample_warning">这门课程会实际保存到你的课表。</string>
+</resources>

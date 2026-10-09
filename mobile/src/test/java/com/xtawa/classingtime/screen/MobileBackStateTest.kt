@@ -6,7 +6,7 @@ import org.junit.Test
 
 class MobileBackStateTest {
     @Test
-    fun reduceBackState_returnsNull_whenNotInSettingsLayer() {
+    fun reduceBackState_returnsDashboard_fromTimetable() {
         val state = MobileBackState(
             layer = MobileLayer.Schedule,
             scheduleSubview = ScheduleSubview.Timetable,
@@ -17,7 +17,7 @@ class MobileBackStateTest {
 
         val reduced = reduceBackState(state)
 
-        assertNull(reduced)
+        assertEquals(MobileLayer.Dashboard, reduced?.layer)
     }
 
     @Test

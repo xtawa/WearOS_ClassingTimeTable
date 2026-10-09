@@ -26,6 +26,9 @@ internal data class AssistantMessageUiModel(
     val id: String,
     val role: AssistantMessageRole,
     val content: String,
+    val attachments: List<AssistantAttachmentUiModel> = emptyList(),
+    val createdAt: Long = 0,
+    val reasoning: String = "",
 )
 
 @Immutable
@@ -45,7 +48,11 @@ internal data class AssistantUiState(
     val recording: Boolean = false,
     val uploading: Boolean = false,
     val transcribing: Boolean = false,
+    val prompts: List<String> = emptyList(),
+    val showImagePreviews: Boolean = true,
+    val showReasoning: Boolean = true,
+    val showTimestamps: Boolean = false,
 )
 
 @Immutable
-internal data class AssistantAttachmentUiModel(val id: String, val name: String)
+internal data class AssistantAttachmentUiModel(val id: String, val name: String, val preview: android.graphics.Bitmap? = null)

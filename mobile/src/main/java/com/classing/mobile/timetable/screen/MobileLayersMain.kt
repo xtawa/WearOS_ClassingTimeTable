@@ -355,6 +355,8 @@ internal fun ImportLayer(
     onJsonFileSelected: (android.net.Uri) -> Unit,
     photoBusy: Boolean,
     photoStatus: String,
+    photoReply: String,
+    photoReasoning: String,
     photoLoggedIn: Boolean,
     onPhotoLogin: () -> Unit,
     onPhotoSelected: (android.net.Uri) -> Unit,
@@ -473,6 +475,24 @@ internal fun ImportLayer(
                 Button(onClick = { photoPicker.launch("image/*") }, enabled = !photoBusy && photoLoggedIn) {
                     Text(stringResource(R.string.ai_photo_choose))
                 }
+            }
+            var reasoningExpanded by remember { mutableStateOf(false) }
+            LaunchedEffect(photoBusy) { reasoningExpanded = photoBusy }
+            if (photoBusy) com.xtawa.classingtime.ui.assistant.ThinkingIndicator()
+            if (photoReasoning.isNotBlank()) {
+                androidx.compose.material3.TextButton(onClick = { reasoningExpanded = !reasoningExpanded }) {
+                    Text(stringResource(R.string.ai_photo_reasoning) + if (reasoningExpanded) " ▴" else " ▾")
+                }
+                androidx.compose.animation.AnimatedVisibility(reasoningExpanded) {
+                    MarkdownText(photoReasoning)
+                }
+            } else if (!photoBusy && photoReply.isNotBlank()) {
+                Text(stringResource(R.string.ai_photo_no_reasoning), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (photoReply.isNotBlank()) {
+                Text(stringResource(R.string.ai_photo_response), style = MaterialTheme.typography.titleSmall)
+                MarkdownText(photoReply)
             }
             if (photoBusy || photoStatus.isNotBlank()) {
                 Text(if (photoBusy) stringResource(R.string.ai_photo_processing) else photoStatus,
