@@ -122,7 +122,7 @@ internal fun AskAiSettingsPage(
   val token = AccountSessionManager.ensureAccessToken(context) ?: return@LaunchedEffect
   val force = !refreshedOnEntry && preferences.autoRefreshPrompts
   refreshedOnEntry = true
-  client.prompts(token, snapshot, force).onSuccess { prompts = it.prompts }
+  client.prompts(token, snapshot, force).onSuccess { prompts = it.prompts; cache.edit().putString("promptHash:$userId", fingerprint).putString("prompts:$userId", JSONArray(it.prompts).toString()).apply() }
    .onFailure { prompts = emptyList(); status = it.message.orEmpty() }
  }
  suspend fun loadThumbnails(token: String, items: List<AiAttachment>) {

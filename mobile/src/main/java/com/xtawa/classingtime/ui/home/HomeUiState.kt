@@ -47,4 +47,5 @@ internal data class HomeAssistantUiState(
     val focused: Boolean = false,
     val query: String = "",
     val processing: Boolean = false,
+    val prompts: List<String> = emptyList(),
 )

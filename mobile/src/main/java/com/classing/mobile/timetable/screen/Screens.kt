@@ -187,6 +187,7 @@ internal fun MobileTimetableScreen(
     var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
     var showImportJsonPromptPage by remember { mutableStateOf(false) }
     var pendingAssistantQuestion by remember { mutableStateOf("") }
+    var homePrompts by remember { mutableStateOf<List<String>>(emptyList()) }
     var celebrationTrigger by remember { mutableIntStateOf(0) }
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
@@ -1338,6 +1339,25 @@ internal fun MobileTimetableScreen(
         return
     }
 
+    val homePromptHash = remember(baseLessons, zoneId, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+        timetableFingerprint(baseLessons, zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay)
+    }
+    LaunchedEffect(layerName, accountSummary.userId, homePromptHash) {
+        val uid = accountSummary.userId
+        if (uid.isBlank()) { homePrompts = emptyList(); return@LaunchedEffect }
+        if (layerName != MobileLayer.Dashboard.name) return@LaunchedEffect
+        val cached = context.getSharedPreferences("ask_ai", 0)
+        homePrompts = if (cached.getString("promptHash:$uid", "") == homePromptHash) {
+            runCatching { val array = org.json.JSONArray(cached.getString("prompts:$uid", "[]")); List(array.length()) { array.getString(it) } }.getOrDefault(emptyList())
+        } else emptyList()
+        val token = ensureAccessToken() ?: return@LaunchedEffect
+        val date = LocalDate.now(zoneId)
+        val snapshot = timetableSnapshot(baseLessons, date, weekIndexForMode(date, weekNumberMode, semesterWeekStartDate, weekStartDay), zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay)
+        aiApiClient.prompts(token, snapshot, false).onSuccess { result ->
+            homePrompts = result.prompts
+            cached.edit().putString("promptHash:$uid", homePromptHash).putString("prompts:$uid", org.json.JSONArray(result.prompts).toString()).apply()
+        }
+    }
     CelebrationOverlay(celebrationTrigger)
     val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Dashboard
     val scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable
@@ -1939,6 +1959,7 @@ internal fun MobileTimetableScreen(
                 }
 
                 MobileLayer.Dashboard -> DashboardLayer(
+                    prompts = homePrompts,
                     contentPadding = innerPadding,
                     lessons = displayLessons,
                     calendarEvents = if (calendarPreferences.showOnHome && calendarPreferences.importEnabled) calendarEvents else emptyList(),

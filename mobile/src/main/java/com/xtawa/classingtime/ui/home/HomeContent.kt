@@ -138,7 +138,7 @@ internal fun HomeContent(
 
         HomeAiPrompt(
             state = assistantState,
-            suggestions = quickPrompts(state.phase),
+            suggestions = assistantState.prompts,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .widthIn(max = 430.dp)
@@ -325,33 +325,4 @@ private fun NextAcademicAnchor(course: HomeCourseUiModel, onCourseClick: (HomeCo
             }
         }
     }
-}
-
-@Composable
-private fun quickPrompts(phase: HomePhase): List<String> = when (phase) {
-    HomePhase.Upcoming -> listOf(
-        stringResource(R.string.prompt_whats_next),
-        stringResource(R.string.prompt_next_class_location),
-        stringResource(R.string.prompt_afternoon),
-    )
-    HomePhase.InClass -> listOf(
-        stringResource(R.string.prompt_after_this),
-        stringResource(R.string.prompt_lunch),
-        stringResource(R.string.prompt_today_homework),
-    )
-    HomePhase.Break -> listOf(
-        stringResource(R.string.prompt_free_time),
-        stringResource(R.string.prompt_next_class_location),
-        stringResource(R.string.prompt_show_today),
-    )
-    HomePhase.Finished -> listOf(
-        stringResource(R.string.prompt_tomorrow_morning),
-        stringResource(R.string.prompt_homework_due),
-        stringResource(R.string.prompt_lightest_day),
-    )
-    HomePhase.NoClasses -> listOf(
-        stringResource(R.string.prompt_show_week),
-        stringResource(R.string.prompt_biology),
-        stringResource(R.string.prompt_prepare),
-    )
 }
