@@ -208,7 +208,7 @@ internal fun AskAiSettingsPage(
        } } ?: error("Could not open file")
       }
       client.uploadAttachment(token, temp, name, if (mime.startsWith("image/")) "image/jpeg" else mime.ifBlank { "application/octet-stream" }).onSuccess {
-       attachments = attachments + it; preview?.let { image -> thumbnails[it.attachmentId] = image }; status = context.getString(R.string.assistant_file_retention)
+       attachments = attachments + it; preview?.let { image -> if (thumbnails.size >= 32) thumbnails.keys.firstOrNull()?.let { key -> thumbnails.remove(key) }; thumbnails[it.attachmentId] = image }; status = context.getString(R.string.assistant_file_retention)
       }.onFailure { status = it.message.orEmpty() }
      } finally { temp.delete() }
     }

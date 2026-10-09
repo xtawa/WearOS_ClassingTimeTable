@@ -18,9 +18,10 @@ internal fun applyAskAiCourseProposal(existing: List<LessonUi>, proposal: JSONOb
   val item = action.getJSONObject("lesson")
   val title = item.getString("title").trim(); require(title.isNotBlank() && title.length <= 1000)
   val start = LocalTime.parse(item.getString("startTime")); val end = LocalTime.parse(item.getString("endTime")); require(end > start)
-  val startWeek = item.optInt("startWeek", 1); val endWeek = item.optInt("endWeek", 20); require(startWeek in 1..53 && endWeek in startWeek..53)
-  val parity = item.optString("weekParity", "ALL"); require(parity in listOf("ALL", "ODD", "EVEN"))
-  fun optional(key: String): String? = if (item.isNull(key)) null else item.optString(key).takeIf { it.isNotBlank() }?.also { require(it.length <= 1000) }
+  val previous = result.getOrNull(index)
+  val startWeek = item.optInt("startWeek", previous?.startWeek ?: 1); val endWeek = item.optInt("endWeek", previous?.endWeek ?: 20); require(startWeek in 1..53 && endWeek in startWeek..53)
+  val parity = item.optString("weekParity", previous?.weekParity?.name ?: "ALL"); require(parity in listOf("ALL", "ODD", "EVEN"))
+  fun optional(key: String): String? = if (!item.has(key)) when (key) { "teacher" -> previous?.teacher; "location" -> previous?.location; else -> previous?.note } else if (item.isNull(key)) null else item.optString(key).takeIf { it.isNotBlank() }?.also { require(it.length <= 1000) }
   val lesson = LessonUi(id, title, optional("teacher"), optional("location"), optional("note"), DayOfWeek.of(item.getInt("dayOfWeek")), start, end, startWeek, endWeek, LessonWeekParity.valueOf(parity))
   if (operation == "create") result.add(lesson) else result[index] = lesson
  }
