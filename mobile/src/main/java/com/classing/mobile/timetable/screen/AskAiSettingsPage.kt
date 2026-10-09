@@ -48,6 +48,7 @@ internal fun AskAiSettingsPage(
  val cache = remember(context) { context.getSharedPreferences("ask_ai", 0) }
  var models by remember(userId) { mutableStateOf<List<AiModelOption>>(emptyList()) }
  var selectedModel by remember(userId) { mutableStateOf("") }
+ var serverDefaultModel by remember(userId) { mutableStateOf("") }
  var conversations by remember(userId) { mutableStateOf<List<AiConversationSummary>>(emptyList()) }
  var messages by remember(userId) { mutableStateOf<List<AiMessageSummary>>(emptyList()) }
  var conversationId by remember(userId) { mutableStateOf("") }
@@ -84,7 +85,6 @@ internal fun AskAiSettingsPage(
  val latestFingerprint by rememberUpdatedState(fingerprint)
  val applyProposal by rememberUpdatedState(onApplyCourseProposal)
  fun acceptPreferences(item: AiPreferences) {
-  if (item.version < preferences.version) return
   preferences = item; cache.edit().putString("preferences:$userId", item.toJson().toString()).apply()
   syncStatus = context.getString(R.string.assistant_synced)
  }
@@ -112,7 +112,7 @@ internal fun AskAiSettingsPage(
  LaunchedEffect(loggedIn, member, userId) {
   if (loggedIn) {
    val token = AccountSessionManager.ensureAccessToken(context) ?: return@LaunchedEffect
-   client.models(token).onSuccess { (default, items) -> models = items; selectedModel = default }.onFailure { status = it.message.orEmpty() }
+   client.models(token).onSuccess { (default, items) -> models = items; serverDefaultModel = default; selectedModel = default }.onFailure { status = it.message.orEmpty() }
    loadPreferences(token)
    preferences.defaultModel.takeIf { id -> models.any { it.id == id } }?.let { selectedModel = it }
    client.conversations(token).onSuccess { conversations = it }.onFailure { status = it.message.orEmpty() }
@@ -239,13 +239,13 @@ internal fun AskAiSettingsPage(
    AssistantContent(state = uiState, contentPadding = contentPadding, onBack = onBack, onOpenAccount = onOpenAccount,
     onQuestionChange = { question = it }, onSubmit = ::submitQuestion, onSelectModel = { selectedModel = it },
     onOpenSettings = { subpage = "settings" }, onOpenUsage = { subpage = "usage" },
-    onNewConversation = { conversationId = ""; messages = emptyList(); status = ""; proposal = null },
+    onNewConversation = { conversationId = ""; messages = emptyList(); status = ""; proposal = null; selectedModel = preferences.defaultModel.takeIf { id -> models.any { it.id == id } } ?: serverDefaultModel },
     onOpenConversation = { id -> scope.launch {
      val token = AccountSessionManager.ensureAccessToken(context) ?: return@launch
      status = "正在读取对话…"
      client.messages(token, id).onSuccess { conversationId = id; messages = it; proposal = null; status = ""; loadThumbnails(token, it.flatMap { m -> m.attachments }) }.onFailure { status = it.message.orEmpty() }
     } },
-    onToggleStar = { id -> patchPreferences(JSONObject().put(if (id in preferences.favoriteModels) "favoriteRemove" else "favoriteAdd", id)) },
+    onToggleStar = { id -> if (!preferencesSaving) patchPreferences(JSONObject().put(if (id in preferences.favoriteModels) "favoriteRemove" else "favoriteAdd", id)) },
     onAttach = { filePicker.launch(arrayOf("application/pdf", "image/*", "audio/*", "text/*", "application/json", "application/ogg")) },
     onRemoveAttachment = { id -> scope.launch { AccountSessionManager.ensureAccessToken(context)?.let { token -> client.deleteAttachment(token, id).onSuccess { attachments = attachments.filterNot { it.attachmentId == id }; thumbnails.remove(id) }.onFailure { status = it.message.orEmpty() } } } },
     onVoiceStart = { if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) voice.start() else micPermission.launch(Manifest.permission.RECORD_AUDIO) },
