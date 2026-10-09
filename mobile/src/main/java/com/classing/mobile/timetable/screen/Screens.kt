@@ -1339,8 +1339,8 @@ internal fun MobileTimetableScreen(
         return
     }
 
-    val homePromptHash = remember(baseLessons, zoneId, weekNumberMode, semesterWeekStartDate, weekStartDay) {
-        timetableFingerprint(baseLessons, zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay)
+    val homePromptHash = remember(baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+        timetableFingerprint(baseLessons, zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay, scheduleExceptions)
     }
     LaunchedEffect(layerName, accountSummary.userId, homePromptHash) {
         val uid = accountSummary.userId
@@ -1352,7 +1352,7 @@ internal fun MobileTimetableScreen(
         } else emptyList()
         val token = ensureAccessToken() ?: return@LaunchedEffect
         val date = LocalDate.now(zoneId)
-        val snapshot = timetableSnapshot(baseLessons, date, weekIndexForMode(date, weekNumberMode, semesterWeekStartDate, weekStartDay), zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay)
+        val snapshot = timetableSnapshot(baseLessons, date, weekIndexForMode(date, weekNumberMode, semesterWeekStartDate, weekStartDay), zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay).put("exceptions", org.json.JSONObject(buildScheduleBackupJson(baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
         aiApiClient.prompts(token, snapshot, false).onSuccess { result ->
             homePrompts = result.prompts
             cached.edit().putString("promptHash:$uid", homePromptHash).putString("prompts:$uid", org.json.JSONArray(result.prompts).toString()).apply()
@@ -2030,6 +2030,7 @@ internal fun MobileTimetableScreen(
                     member = membershipSummary.isMember,
                     lessons = displayLessons,
                     editableLessons = baseLessons,
+                    exceptions = scheduleExceptions,
                     currentDate = LocalDate.now(zoneId),
                     currentWeek = weekIndexForMode(LocalDate.now(zoneId), weekNumberMode, semesterWeekStartDate, weekStartDay),
                     timezone = zoneId.id,

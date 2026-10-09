@@ -35,7 +35,7 @@ import org.json.JSONObject
 @Composable
 internal fun AskAiSettingsPage(
  contentPadding: PaddingValues, loggedIn: Boolean, member: Boolean, userId: String = "",
- lessons: List<LessonUi>, editableLessons: List<LessonUi> = lessons,
+ lessons: List<LessonUi>, editableLessons: List<LessonUi> = lessons, exceptions: List<ScheduleExceptionUi> = emptyList(),
  currentDate: LocalDate, currentWeek: Int, timezone: String, weekNumberMode: WeekNumberMode,
  semesterWeekStartDate: LocalDate, weekStartDay: java.time.DayOfWeek,
  initialQuestion: String = "", onInitialQuestionConsumed: () -> Unit = {},
@@ -74,9 +74,11 @@ internal fun AskAiSettingsPage(
  var proposal by remember { mutableStateOf<JSONObject?>(null) }
  var proposalFingerprint by remember { mutableStateOf("") }
 
- val snapshot = timetableSnapshot(lessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).put("editableLessons", timetableSnapshot(editableLessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).getJSONArray("lessons"))
- val fingerprint = remember(editableLessons, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
-  timetableFingerprint(editableLessons, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay)
+ val snapshot = remember(lessons, editableLessons, exceptions, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+  timetableSnapshot(lessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).put("editableLessons", timetableSnapshot(editableLessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).getJSONArray("lessons")).put("exceptions", JSONObject(buildScheduleBackupJson(editableLessons, exceptions, java.time.ZoneId.of(timezone), weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
+ }
+ val fingerprint = remember(editableLessons, exceptions, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+  timetableFingerprint(editableLessons, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay, exceptions)
  }
  val latestSnapshot by rememberUpdatedState(snapshot)
  val latestFingerprint by rememberUpdatedState(fingerprint)
@@ -269,8 +271,8 @@ internal fun AskAiSettingsPage(
  }
 }
 
-internal fun timetableFingerprint(lessons: List<LessonUi>, timezone: String, mode: WeekNumberMode, startDate: LocalDate, startDay: java.time.DayOfWeek): String {
- val data = lessons.sortedBy { it.id }.joinToString("\n") { it.toString() } + "|$timezone|$mode|$startDate|$startDay"
+internal fun timetableFingerprint(lessons: List<LessonUi>, timezone: String, mode: WeekNumberMode, startDate: LocalDate, startDay: java.time.DayOfWeek, exceptions: List<ScheduleExceptionUi> = emptyList()): String {
+ val data = lessons.sortedBy { it.id }.joinToString("\n") { it.toString() } + "|$timezone|$mode|$startDate|$startDay|" + exceptions.sortedBy { it.id }.joinToString("\n") { it.toString() }
  return MessageDigest.getInstance("SHA-256").digest(data.toByteArray()).joinToString("") { "%02x".format(it) }
 }
 
