@@ -117,9 +117,8 @@ internal fun HomeContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .graphicsLayer {
-                        scaleX = contextScale
-                        scaleY = contextScale
-                        alpha = contextAlpha
+                        // Scaling a translucent shadow during IME reflow leaves a rim.
+                        alpha = if (assistantState.focused) 0.82f else 1f
                     },
             ) {
                 PrimaryHomeIsland(

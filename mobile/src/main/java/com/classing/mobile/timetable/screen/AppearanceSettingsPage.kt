@@ -12,6 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Button
+import androidx.compose.material3.AssistChip
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -135,6 +143,29 @@ internal fun AppearanceSettingsPage(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Surface(Modifier.size(44.dp), shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                            Box(contentAlignment = Alignment.Center) { Text("09:00", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(stringResource(R.string.appearance_preview_course), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.appearance_preview_room), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AssistChip(onClick = {}, label = { Text("Mon · 09:00") })
+                    AssistChip(onClick = {}, label = { Text("★ Classing") })
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Surface(shape = RoundedCornerShape(20.dp, 20.dp, 5.dp, 20.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                        Text(stringResource(R.string.appearance_preview_question), Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                Text(stringResource(R.string.appearance_preview_reply), style = MaterialTheme.typography.bodyMedium)
+                Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.assistant_title)) }
+
             }
         }
     }

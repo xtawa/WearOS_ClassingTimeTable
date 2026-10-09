@@ -133,6 +133,8 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
 
     implementation(project(":shared"))
+    implementation("de.sciss:jump3r:1.0.5")
+    implementation("nl.dionsegijn:konfetti-compose:2.0.5")
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.10.1")

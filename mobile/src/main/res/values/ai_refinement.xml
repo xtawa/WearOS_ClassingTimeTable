@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_usage_limits">Usage &amp; limits</string>
+    <string name="assistant_settings">Ask AI settings</string>
+    <string name="assistant_default_model">Default model</string>
+    <string name="assistant_settings_sync">Settings sync with your Classing account.</string>
+    <string name="assistant_auto_prompts">Refresh suggestions every time</string>
+    <string name="assistant_auto_prompts_warning">Each refresh uses AI quota. Frequent visits may consume a large amount of quota.</string>
+    <string name="assistant_voice_autosend">Send after voice transcription</string>
+    <string name="assistant_image_previews">Image previews</string>
+    <string name="assistant_show_reasoning">Show provider reasoning</string>
+    <string name="assistant_timestamps">Message timestamps</string>
+    <string name="assistant_refresh_prompts">Refresh suggestions</string>
+    <string name="assistant_synced">Synced across devices</string>
+    <string name="assistant_sync_pending">Saving settings…</string>
+    <string name="assistant_transcription_cost">Voice transcription: %1$d points</string>
+    <string name="assistant_suggestion_cost">Suggestions: %1$d points</string>
+    <string name="assistant_proposal_title">Review course changes</string>
+    <string name="assistant_proposal_apply">Apply changes</string>
+    <string name="assistant_proposal_applied">Course changes saved</string>
+    <string name="assistant_proposal_stale">The timetable changed. Ask AI to create a fresh proposal.</string>
+    <string name="account_security_settings">Account security</string>
+    <string name="assistant_voice_cloud">Voice is uploaded for cloud transcription and uses AI quota. Audio is deleted after processing.</string>
+    <string name="ai_photo_reasoning">Thinking</string>
+    <string name="ai_photo_response">AI response</string>
+    <string name="ai_photo_no_reasoning">This provider did not return reasoning.</string>
+    <string name="appearance_preview_course">Biology</string>
+    <string name="appearance_preview_room">Room A201 · 09:00–09:45</string>
+    <string name="appearance_preview_question">What is my next class?</string>
+    <string name="appearance_preview_reply">Biology starts at 09:00. Remember your textbook.</string>
+    <string name="onboarding_import_now">Import now</string>
+    <string name="onboarding_add_course">Add course</string>
+    <string name="onboarding_import_done">%1$d courses ready</string>
+    <string name="onboarding_import_error">Could not read this timetable. Please check the file.</string>
+    <string name="onboarding_sample_warning">This course will be saved to your timetable.</string>
+</resources>

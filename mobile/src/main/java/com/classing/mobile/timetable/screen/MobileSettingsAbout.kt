@@ -42,6 +42,8 @@ import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
@@ -1410,7 +1412,7 @@ internal fun AccountSettingsPage(
     onBack: () -> Unit,
     onLogin: (String, String) -> Unit,
     onLogout: () -> Unit,
-    onDeleteAccount: (String, String) -> Unit,
+    onOpenDeleteAccount: () -> Unit,
     onRefresh: () -> Unit,
     onRedeem: (String) -> Unit,
     onOpenRegister: () -> Unit,
@@ -1425,9 +1427,6 @@ internal fun AccountSettingsPage(
     var password by remember { mutableStateOf("") }
     var redeemCode by remember { mutableStateOf("") }
     var loginConsentAccepted by remember { mutableStateOf(false) }
-    var deletePassword by remember { mutableStateOf("") }
-    var deleteConfirmText by remember { mutableStateOf("") }
-    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var wearScanMessage by remember { mutableStateOf("") }
     var pendingWearAuthorizationId by remember { mutableStateOf<String?>(null) }
     if (showGooglePreview) {
@@ -1440,18 +1439,6 @@ internal fun AccountSettingsPage(
     }
     val legalLinksReady = legalAgreementUrls.isComplete()
     val uriHandler = LocalUriHandler.current
-    val aiClient = remember { AiApiClient(appContext = context.applicationContext) }
-    var aiUsage by remember { mutableStateOf<AiUsageSummary?>(null) }
-    var aiUsageError by remember { mutableStateOf("") }
-    LaunchedEffect(accountSummary.userId, membershipSummary.isMember) {
-        aiUsage = null
-        aiUsageError = ""
-        if (accountSummary.userId.isNotBlank()) {
-            AccountSessionManager.ensureAccessToken(context)?.let { token ->
-                aiClient.usage(token).onSuccess { aiUsage = it }.onFailure { aiUsageError = it.message.orEmpty() }
-            }
-        }
-    }
     val wearLoginScanner = remember(context) {
         val options = GmsBarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
@@ -1475,7 +1462,7 @@ internal fun AccountSettingsPage(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
+        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1549,36 +1536,13 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-            ) {
-                Text(stringResource(R.string.account_ai_quota_title), fontWeight = FontWeight.SemiBold)
-                aiUsage?.let { usage ->
-                    val remaining = if (usage.limit < 0) -1 else (usage.limit + usage.creditAvailable - usage.used - usage.reserved).coerceAtLeast(0)
-                    Text(if (remaining < 0) stringResource(R.string.account_ai_quota_unlimited) else stringResource(R.string.account_ai_quota_remaining, remaining, usage.limit))
-                    LinearProgressIndicator(
-                        progress = { if (usage.limit <= 0) 0f else ((usage.used + usage.reserved).toFloat() / usage.limit).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(stringResource(R.string.account_ai_credit_balance, usage.creditBalance), style = MaterialTheme.typography.bodySmall)
-                    if (usage.creditFrozen) {
-                        Text(stringResource(R.string.account_ai_credit_frozen), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    }
-                    if (!usage.isMember) {
-                        Text(stringResource(R.string.account_ai_free_quota_hint), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text(stringResource(R.string.account_ai_quota_reset, LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(usage.resetAt), java.time.ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))), style = MaterialTheme.typography.bodySmall)
-                } ?: Text(if (aiUsageError.isBlank()) stringResource(R.string.account_ai_quota_loading) else aiUsageError, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-
         if (accountSummary.userId.isBlank()) ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
+                Text(stringResource(R.string.account_login), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                if (statusMessage.isNotBlank()) Text(statusMessage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 LoginEditionSelector(
                     edition = loginEdition,
                     enabled = !busy,
@@ -1590,7 +1554,6 @@ internal fun AccountSettingsPage(
                         Text(stringResource(R.string.account_google_sign_in))
                     }
                 } else {
-                Text(stringResource(R.string.account_login), fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
                     value = identifier,
                     onValueChange = { identifier = it },
@@ -1622,6 +1585,7 @@ internal fun AccountSettingsPage(
                 }
                 Button(
                     onClick = { onLogin(identifier, password) },
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = !busy && loginLockSeconds <= 0 && identifier.isNotBlank() && password.isNotBlank() && loginConsentAccepted && legalLinksReady,
                     shape = RoundedCornerShape(ClassingRadii.pill),
                 ) {
@@ -1634,16 +1598,16 @@ internal fun AccountSettingsPage(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
-                    TextButton(onClick = onOpenRegister, enabled = !busy) {
+                    FilledTonalButton(onClick = onOpenRegister, enabled = !busy, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.account_register))
                     }
-                    TextButton(onClick = onOpenPasswordReset, enabled = !busy) {
+                    FilledTonalButton(onClick = onOpenPasswordReset, enabled = !busy, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.account_forgot_password))
                     }
                 }
                 }
-                TextButton(onClick = { uriHandler.openUri("https://xtawa.craft.me/diff-classing") }) {
-                    Text(stringResource(R.string.account_edition_difference), textDecoration = TextDecoration.Underline)
+                OutlinedButton(onClick = { uriHandler.openUri("https://xtawa.craft.me/diff-classing") }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.account_edition_difference))
                 }
             }
         }
@@ -1686,7 +1650,64 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))) {
+        if (accountSummary.userId.isNotBlank()) OutlinedButton(onClick = onOpenDeleteAccount, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.account_security_settings))
+        }
+
+        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
+            ) {
+                Text(stringResource(R.string.account_membership_code), fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_redeem_code)) }, singleLine = true)
+                Button(
+                    onClick = { onRedeem(redeemCode) },
+                    enabled = !busy && accountSummary.userId.isNotBlank() && isValidRedeemCode(redeemCode),
+                    shape = RoundedCornerShape(ClassingRadii.pill),
+                ) {
+                    Text(stringResource(R.string.account_redeem))
+                }
+            }
+        }
+    }
+
+    pendingWearAuthorizationId?.let { authorizationId ->
+        AlertDialog(
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
+            onDismissRequest = { pendingWearAuthorizationId = null },
+            title = { Text(stringResource(R.string.account_wear_qr_confirm_title)) },
+            text = { Text(stringResource(R.string.account_wear_qr_confirm_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingWearAuthorizationId = null
+                        onApproveWearLogin(authorizationId)
+                    },
+                ) {
+                    Text(stringResource(R.string.account_wear_qr_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingWearAuthorizationId = null }) {
+                    Text(stringResource(R.string.account_wear_qr_cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+internal fun AccountDeletePage(contentPadding: PaddingValues, busy: Boolean, statusMessage: String, onBack: () -> Unit, onDeleteAccount: (String, String) -> Unit) {
+    var deletePassword by remember { mutableStateOf("") }
+    var deleteConfirmText by remember { mutableStateOf("") }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = ClassingSpacing.referenceScreenInset).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.md)) {
+        SecondaryPageHeader(title = stringResource(R.string.account_delete_title), onBack = onBack, backLabel = stringResource(R.string.assistant_back))
+        if (statusMessage.isNotBlank()) Text(statusMessage, color = MaterialTheme.colorScheme.error)
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
@@ -1724,24 +1745,7 @@ internal fun AccountSettingsPage(
             }
         }
 
-        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember) ClassingInformationIsland(contentPadding = PaddingValues(0.dp)) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(ClassingSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-            ) {
-                Text(stringResource(R.string.account_membership_code), fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(value = redeemCode, onValueChange = { redeemCode = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.account_redeem_code)) }, singleLine = true)
-                Button(
-                    onClick = { onRedeem(redeemCode) },
-                    enabled = !busy && accountSummary.userId.isNotBlank() && isValidRedeemCode(redeemCode),
-                    shape = RoundedCornerShape(ClassingRadii.pill),
-                ) {
-                    Text(stringResource(R.string.account_redeem))
-                }
-            }
-        }
     }
-
     if (showDeleteConfirmDialog) {
         AlertDialog(
             shape = MaterialTheme.shapes.large,
@@ -1767,31 +1771,7 @@ internal fun AccountSettingsPage(
         )
     }
 
-    pendingWearAuthorizationId?.let { authorizationId ->
-        AlertDialog(
-            shape = MaterialTheme.shapes.large,
-            containerColor = MaterialTheme.colorScheme.surface,
-            onDismissRequest = { pendingWearAuthorizationId = null },
-            title = { Text(stringResource(R.string.account_wear_qr_confirm_title)) },
-            text = { Text(stringResource(R.string.account_wear_qr_confirm_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pendingWearAuthorizationId = null
-                        onApproveWearLogin(authorizationId)
-                    },
-                ) {
-                    Text(stringResource(R.string.account_wear_qr_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingWearAuthorizationId = null }) {
-                    Text(stringResource(R.string.account_wear_qr_cancel))
-                }
-            },
-        )
-    }
-}
+ }
 
 @Composable
 internal fun AccountEmailChangePage(
@@ -1987,7 +1967,7 @@ private fun LegalAgreementConsentRow(
     Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
         ) {
             Checkbox(checked = checked, onCheckedChange = onCheckedChange)
@@ -2005,18 +1985,17 @@ private fun LegalAgreementConsentRow(
                 text = stringResource(R.string.legal_privacy_policy),
                 url = urls.privacyPolicy,
                 onOpen = uriHandler::openUri,
+                modifier = Modifier.weight(1f),
             )
             LegalAgreementLink(
                 text = stringResource(R.string.legal_terms_of_service),
                 url = urls.termsOfService,
                 onOpen = uriHandler::openUri,
+                modifier = Modifier.weight(1f),
             )
+            LegalAgreementLink(text = stringResource(R.string.legal_cross_border_transfer), url = urls.crossBorderTransfer,
+                onOpen = uriHandler::openUri, modifier = Modifier.weight(1.5f))
         }
-        LegalAgreementLink(
-            text = stringResource(R.string.legal_cross_border_transfer),
-            url = urls.crossBorderTransfer,
-            onOpen = uriHandler::openUri,
-        )
     }
 }
 
@@ -2025,15 +2004,17 @@ private fun LegalAgreementLink(
     text: String,
     url: String,
     onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     TextButton(
         onClick = { if (url.isNotBlank()) onOpen(url) },
+        modifier = modifier,
         enabled = url.isNotBlank(),
         contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
     ) {
         Text(
-            text = text,
-            textDecoration = TextDecoration.Underline,
+            text = text.removePrefix("《").removeSuffix("》"),
+            textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodySmall,
         )
     }

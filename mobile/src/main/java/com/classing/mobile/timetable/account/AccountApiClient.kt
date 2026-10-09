@@ -378,6 +378,13 @@ class AccountApiClient(
         ).map { parseMembershipSummary(it) }
     }
 
+    suspend fun fetchDailyBriefingSubscription(accessToken: String): Result<DailyBriefingRemote> =
+        request("GET", "/api/v1/briefings/daily", accessToken = accessToken).map { body ->
+            val item = body.getJSONObject("briefing")
+            DailyBriefingRemote(item.optBoolean("enabled"), DailyBriefingChannel.fromRaw(item.optString("channel")),
+                item.optString("time", "20:00"), item.optString("timezone", "Asia/Shanghai"))
+        }
+
     suspend fun saveDailyBriefingSubscription(
         accessToken: String,
         enabled: Boolean,
@@ -618,3 +625,5 @@ private fun JSONObject.toWearLoginDebugInfo(): WearLoginDebugInfo = WearLoginDeb
 
 private fun JSONObject.nullableBoolean(name: String): Boolean? =
     if (has(name) && !isNull(name)) optBoolean(name) else null
+
+data class DailyBriefingRemote(val enabled: Boolean, val channel: DailyBriefingChannel, val time: String, val timezone: String)

@@ -5,6 +5,19 @@ package com.xtawa.classingtime.ui.assistant
 import androidx.compose.runtime.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.input.pointer.pointerInput
@@ -81,16 +94,9 @@ import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
 @Composable
-private fun assistantQuickPrompts() = listOf(
-    stringResource(R.string.prompt_whats_next),
-    stringResource(R.string.prompt_afternoon),
-    stringResource(R.string.prompt_biology),
-    stringResource(R.string.prompt_lunch),
-)
-
-@Composable
 internal fun AssistantContent(
     state: AssistantUiState,
+    courseProposal: @Composable () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
     onBack: () -> Unit,
     onOpenAccount: () -> Unit,
@@ -106,6 +112,8 @@ internal fun AssistantContent(
     onRemoveAttachment: (String) -> Unit = {},
     onVoiceStart: () -> Unit = {},
     onVoiceFinish: (Boolean) -> Unit = {},
+    onOpenUsage: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -119,6 +127,10 @@ internal fun AssistantContent(
                     icon = { Icon(Icons.Rounded.ArrowBack, null) }, onClick = { scope.launch { drawer.close() }; onBack() })
                 NavigationDrawerItem(label = { Text(stringResource(R.string.assistant_new_conversation)) }, selected = false,
                     icon = { Icon(Icons.Rounded.Add, null) }, onClick = { if (!busy) { onNewConversation(); scope.launch { drawer.close() } } })
+                NavigationDrawerItem(label = { Text(stringResource(R.string.assistant_usage_limits)) }, selected = false,
+                    icon = { Icon(Icons.Rounded.Speed, null) }, onClick = { scope.launch { drawer.close() }; onOpenUsage() })
+                NavigationDrawerItem(label = { Text(stringResource(R.string.assistant_settings)) }, selected = false,
+                    icon = { Icon(Icons.Rounded.Settings, null) }, onClick = { scope.launch { drawer.close() }; onOpenSettings() })
                 Text(stringResource(R.string.assistant_recent_context), Modifier.padding(24.dp), style = MaterialTheme.typography.labelLarge)
                 LazyColumn { items(state.conversations, key = { it.id }) { conversation ->
                     NavigationDrawerItem(label = { Text(conversation.title, maxLines = 2, overflow = TextOverflow.Ellipsis) }, selected = false,
@@ -131,10 +143,17 @@ internal fun AssistantContent(
         modifier = modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .navigationBarsPadding().imePadding(),
+            .consumeWindowInsets(contentPadding)
+            .imePadding(),
     ) {
         AssistantHeader(onMenu = { scope.launch { drawer.open() } }, onNewConversation = onNewConversation, enabled = !busy)
+        val listState = rememberLazyListState()
+        LaunchedEffect(state.messages.size, state.sending, state.transcribing) {
+            val last = listState.layoutInfo.totalItemsCount - 1
+            if (last >= 0) listState.animateScrollToItem(last)
+        }
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
@@ -173,37 +192,37 @@ internal fun AssistantContent(
                     }
                     items(state.messages, key = { it.id }) { message ->
                         when (message.role) {
-                            AssistantMessageRole.User -> QueryAnchor(message.content)
+                            AssistantMessageRole.User -> QueryAnchor(message, state.showImagePreviews, state.showTimestamps)
                             AssistantMessageRole.Assistant -> ResultIsland {
+                                if (state.showReasoning && message.reasoning.isNotBlank()) {
+                                    var expanded by remember(message.id) { mutableStateOf(state.sending) }
+                                    LaunchedEffect(state.sending) { if (!state.sending) expanded = false }
+                                    TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.ai_photo_reasoning) + if (expanded) " ▴" else " ▾") }
+                                    AnimatedVisibility(expanded) { assistantMessage(message.reasoning) }
+                                }
                                 assistantMessage(message.content)
                             }
                         }
                     }
+                    item { courseProposal() }
                     if (state.sending) item { ProcessingIsland() }
                     if (state.status.isNotBlank()) item { StatusIsland(state.status) }
-                    if (state.models.isNotEmpty()) {
-                        item {
-                            ModelSelector(
-                                models = state.models,
-                                selectedModelId = state.selectedModelId,
-                                onSelectModel = onSelectModel,
-                                onToggleStar = onToggleStar,
-                                enabled = !busy,
-                            )
-                        }
-                    }
+
                 }
             }
         }
         if (state.loggedIn) {
+            if (state.models.isNotEmpty()) ModelSelector(state.models, state.selectedModelId, onSelectModel, onToggleStar, !busy)
             AssistantComposer(
                 question = state.question,
                 enabled = !state.sending && !state.uploading && !state.transcribing,
                 canSubmit = !busy && state.question.isNotBlank() &&
-                    state.selectedModelId.isNotBlank() && (state.hasSchedule || state.messages.isNotEmpty() || state.attachments.isNotEmpty()),
+                    state.selectedModelId.isNotBlank(),
                 onQuestionChange = onQuestionChange,
                 onSubmit = onSubmit,
                 attachments = state.attachments,
+                prompts = state.prompts,
+                showImagePreviews = state.showImagePreviews,
                 recording = state.recording,
                 uploading = state.uploading,
                 transcribing = state.transcribing,
@@ -257,16 +276,33 @@ private fun ContextAnchor(label: String) {
 }
 
 @Composable
-private fun QueryAnchor(query: String) {
-    Text(
-        text = query,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = ClassingSpacing.sm),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+private fun QueryAnchor(message: AssistantMessageUiModel, previewImages: Boolean, timestamps: Boolean) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Surface(shape = RoundedCornerShape(22.dp, 22.dp, 6.dp, 22.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.widthIn(max = 320.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(message.content, style = MaterialTheme.typography.bodyLarge)
+                message.attachments.forEach { a ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (previewImages) a.preview?.let { Image(it.asImageBitmap(), a.name, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
+                        Text("📎 " + a.name, maxLines = 2, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (timestamps && message.createdAt > 0) Text(java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(message.createdAt)),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ThinkingIndicator() {
+    val transition = rememberInfiniteTransition(label = "thinking_shimmer")
+    val offset by transition.animateFloat(0f, 500f, infiniteRepeatable(tween(1400)), label = "thinking_offset")
+    Text("thinking…", style = MaterialTheme.typography.bodyMedium.copy(brush = Brush.linearGradient(
+        colors = listOf(MaterialTheme.colorScheme.onSurfaceVariant, Color.LightGray, MaterialTheme.colorScheme.onSurfaceVariant),
+        start = Offset(offset - 200f, 0f), end = Offset(offset + 200f, 0f))),
+        modifier = Modifier.padding(vertical = 8.dp).semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 @Composable
@@ -356,6 +392,8 @@ private fun AssistantComposer(
     onQuestionChange: (String) -> Unit,
     onSubmit: () -> Unit,
     attachments: List<AssistantAttachmentUiModel>,
+    prompts: List<String>,
+    showImagePreviews: Boolean,
     recording: Boolean,
     uploading: Boolean,
     transcribing: Boolean,
@@ -381,23 +419,30 @@ private fun AssistantComposer(
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
         ) {
             if (attachments.isNotEmpty()) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    attachments.forEach { a -> InputChip(selected = false, onClick = {}, label = { Text(a.name, maxLines = 1) },
-                        trailingIcon = { IconButton(onClick = { onRemoveAttachment(a.id) }, enabled = enabled && !recording) { Icon(Icons.Rounded.Close, stringResource(R.string.assistant_remove_file)) } }) }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 80.dp)) {
+                    items(attachments, key = { it.id }) { a ->
+                        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                            Row(Modifier.padding(6.dp).widthIn(max = 220.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (showImagePreviews) a.preview?.let { Image(it.asImageBitmap(), a.name, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
+                                Text(a.name, Modifier.weight(1f, fill = false).padding(horizontal = 6.dp), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+                                IconButton(onClick = { onRemoveAttachment(a.id) }, enabled = enabled && !recording) { Icon(Icons.Rounded.Close, stringResource(R.string.assistant_remove_file)) }
+                            }
+                        }
+                    }
                 }
-                Text(stringResource(R.string.assistant_file_retention), style = MaterialTheme.typography.bodySmall)
             }
-            if (uploading || transcribing) Text(stringResource(if (uploading) R.string.assistant_uploading else R.string.assistant_transcribing), style = MaterialTheme.typography.bodySmall)
+            if (transcribing) ThinkingIndicator()
+            else if (uploading) Text(stringResource(R.string.assistant_uploading), style = MaterialTheme.typography.bodySmall)
             if (recording || transcribing) Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { onVoiceFinish(true) }) { Text(stringResource(R.string.assistant_cancel_voice)) }
             }
-            if (question.isBlank()) {
+            if (question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
-                    assistantQuickPrompts().take(if (largeText) 2 else 3).forEach { prompt ->
+                    prompts.take(if (largeText) 2 else 3).forEach { prompt ->
                         FilterChip(
                             selected = false,
                             onClick = { onQuestionChange(prompt) },
@@ -421,6 +466,7 @@ private fun AssistantComposer(
                     BasicTextField(
                         value = question,
                         onValueChange = onQuestionChange,
+                        maxLines = 4,
                         modifier = Modifier
                             .weight(1f)
                             .padding(vertical = ClassingSpacing.md)
@@ -432,7 +478,7 @@ private fun AssistantComposer(
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         decorationBox = { inner ->
                             Box {
-                                if (question.isBlank()) {
+                                if (question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0) {
                                     Text(
                                         text = stringResource(R.string.home_ask_schedule_placeholder),
                                         style = MaterialTheme.typography.bodyLarge,
@@ -526,7 +572,7 @@ private fun ModelSelector(
     val sorted = models.sortedByDescending { it.starred }
     Column {
         Box {
-            OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().padding(horizontal = ClassingSpacing.referenceScreenInset)) {
                 Text(models.firstOrNull { it.id == selectedModelId }?.name ?: stringResource(R.string.assistant_answer_model), Modifier.weight(1f))
                 Icon(Icons.Rounded.ExpandMore, null)
             }
@@ -540,9 +586,7 @@ private fun ModelSelector(
                 }
             }
         }
-        models.firstOrNull { it.id == selectedModelId }?.description?.takeIf { it.isNotBlank() }?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+
     }
 }
 

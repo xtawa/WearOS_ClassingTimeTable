@@ -90,6 +90,7 @@ internal data class OnboardingCompletion(
     val showWeekend: Boolean,
     val semesterWeekStartDate: LocalDate,
     val openSettingsHomeAfterFinish: Boolean,
+    val importedData: BackupRestorePayload? = null,
 )
 
 @Composable
@@ -106,7 +107,9 @@ internal fun MobileOnboardingFlow(
     initialCloudPassword: String,
     initialCloudDriveFileName: String,
     onComplete: (OnboardingCompletion) -> Unit,
+    onParseFile: suspend (android.net.Uri, OnboardingImportTarget) -> Result<BackupRestorePayload>,
 ) {
+    var stagedImport by remember { mutableStateOf<BackupRestorePayload?>(null) }
     val context = LocalContext.current
     var stepIndex by remember { mutableIntStateOf(0) }
     var importTarget by remember { mutableStateOf(OnboardingImportTarget.NONE) }
@@ -141,7 +144,8 @@ internal fun MobileOnboardingFlow(
     fun complete(openSettingsHomeAfterFinish: Boolean) {
         onComplete(
             OnboardingCompletion(
-                importTarget = importTarget,
+                importTarget = if (stagedImport != null) OnboardingImportTarget.NONE else importTarget,
+                importedData = stagedImport,
                 wearSyncMode = wearSyncMode,
                 openCloudSyncSettingsAfterFinish = openCloudSyncSettingsAfterFinish,
                 cloudProvider = cloudProvider,
@@ -487,21 +491,7 @@ internal fun MobileOnboardingFlow(
                                 }
 
                                 else -> {
-                                    Text(
-                                        text = stringResource(R.string.import_page_desc),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.settings_import_entry_title),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.settings_import_entry_desc),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    OnboardingImportEditor(importTarget, stagedImport, { stagedImport = it; it.semesterWeekStartDate?.let { date -> semesterWeekStartDate = date } }, onParseFile)
                                 }
                             }
                     }

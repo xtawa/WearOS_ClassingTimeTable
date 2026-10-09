@@ -73,6 +73,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.isActive
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -151,6 +153,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -184,6 +187,7 @@ internal fun MobileTimetableScreen(
     var settingsPageName by remember { mutableStateOf(SettingsPage.Main.name) }
     var showImportJsonPromptPage by remember { mutableStateOf(false) }
     var pendingAssistantQuestion by remember { mutableStateOf("") }
+    var celebrationTrigger by remember { mutableIntStateOf(0) }
     var showWeekend by remember { mutableStateOf(true) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableIntStateOf(15) }
@@ -196,6 +200,8 @@ internal fun MobileTimetableScreen(
     var rawJson by remember { mutableStateOf("") }
     var photoImportBusy by remember { mutableStateOf(false) }
     var photoImportStatus by remember { mutableStateOf("") }
+    var photoReply by remember { mutableStateOf("") }
+    var photoReasoning by remember { mutableStateOf("") }
     var calendarPreferences by remember { mutableStateOf(SystemCalendarBridge.loadPreferences(context)) }
     var calendarChoices by remember { mutableStateOf<List<SystemCalendarChoice>>(emptyList()) }
     var calendarEvents by remember { mutableStateOf<List<SystemCalendarEvent>>(emptyList()) }
@@ -280,6 +286,7 @@ internal fun MobileTimetableScreen(
     var dailyBriefingEnabled by remember { mutableStateOf(false) }
     var dailyBriefingChannel by remember { mutableStateOf(DailyBriefingChannel.APP_NOTIFICATION) }
     var dailyBriefingTime by remember { mutableStateOf("20:00") }
+    var briefingDirty by remember { mutableStateOf(false) }
     var officialSyncFrequency by remember { mutableStateOf(OfficialSyncFrequency.MANUAL_ONLY) }
     var syncScopes by remember { mutableStateOf(SyncScope.entries.toSet()) }
     var devModeEnabled by remember { mutableStateOf(false) }
@@ -669,6 +676,20 @@ internal fun MobileTimetableScreen(
         return AccountSessionManager.ensureAccessToken(context, accountApiClient)
     }
 
+    suspend fun pullDailyBriefingSettings() {
+        val uid = accountSummary.userId
+        if (uid.isBlank() || briefingDirty || (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY")) return
+        val token = ensureAccessToken() ?: return
+        accountApiClient.fetchDailyBriefingSubscription(token).onSuccess { remote ->
+            if (uid == accountSummary.userId && !briefingDirty) {
+                dailyBriefingEnabled = remote.enabled
+                dailyBriefingChannel = remote.channel
+                dailyBriefingTime = remote.time
+                persistSettings()
+            }
+        }.onFailure { dailyBriefingStatusMessage = accountErrorMessage(context, it, R.string.daily_briefing_save_failed) }
+    }
+
     suspend fun refreshAccountProfile(showStatus: Boolean = true): Boolean {
         val accessToken = ensureAccessToken()
         if (accessToken == null) {
@@ -687,6 +708,7 @@ internal fun MobileTimetableScreen(
             membershipSummary = profile.membership.copy(lastCheckedAt = System.currentTimeMillis())
             if (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY") dailyBriefingEnabled = false
             pendingEmailChange = profile.pendingEmailChange
+            pullDailyBriefingSettings()
             if (showStatus) {
                 accountStatusMessage = context.getString(R.string.account_synced)
             }
@@ -741,6 +763,7 @@ internal fun MobileTimetableScreen(
                 R.string.daily_briefing_save_failed,
             )
         } else {
+            briefingDirty = false
             // Some fixed offsets (e.g. +05:30) have no tz-database name; the service then uses
             // its default zone, so say so instead of implying the local time was honoured.
             val timezoneUnsupported = AccountApiClient.resolveBriefingTimezone(zoneId.id).unsupportedOffset
@@ -794,9 +817,11 @@ internal fun MobileTimetableScreen(
         weekNumberMode = WeekNumberMode.entries.firstOrNull { it.name == synced.weekNumberMode } ?: WeekNumberMode.NATURAL
         semesterWeekStartDate = runCatching { LocalDate.parse(synced.semesterWeekStartDate) }.getOrDefault(semesterWeekStartDate)
         weekStartDay = parseWeekStartDay(synced.weekStartDay)
-        dailyBriefingEnabled = synced.dailyBriefingEnabled
-        dailyBriefingChannel = synced.dailyBriefingChannel
-        dailyBriefingTime = synced.dailyBriefingTime
+        if (accountSummary.userId.isBlank()) {
+            dailyBriefingEnabled = synced.dailyBriefingEnabled
+            dailyBriefingChannel = synced.dailyBriefingChannel
+            dailyBriefingTime = synced.dailyBriefingTime
+        }
         val syncedCloudProvider = if (synced.cloudProvider.isBlank()) {
             CloudProviderUi.WEBDAV
         } else {
@@ -1234,7 +1259,29 @@ internal fun MobileTimetableScreen(
             initialCloudUsername = cloudUsername,
             initialCloudPassword = cloudPassword,
             initialCloudDriveFileName = cloudDriveFileName,
+            onParseFile = { uri, target -> withContext(Dispatchers.IO) { runCatching {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+                    val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(8192)
+                    while (true) { val n = input.read(buffer); if (n < 0) break; require(out.size() + n <= 5 * 1024 * 1024) { "Maximum file size is 5 MB" }; out.write(buffer, 0, n) }; out.toByteArray()
+                } ?: error("Could not open file")
+                val raw = decodeImportBytes(bytes)
+                val parsed = when (target) {
+                    OnboardingImportTarget.ICS -> parseToLessons(raw, parser, adapter, zoneId, weekNumberMode, semesterWeekStartDate, context).let { BackupRestorePayload(it.lessons, it.exceptions, null, null, it.warnings) }
+                    OnboardingImportTarget.BACKUP_RESTORE -> parseScheduleBackupJson(raw, context) ?: error(context.getString(R.string.onboarding_import_error))
+                    else -> parseJsonToLessons(raw, context).let { BackupRestorePayload(it.lessons, emptyList(), null, null, it.warnings) }
+                }
+                require(parsed.baseLessons.isNotEmpty()) { context.getString(R.string.onboarding_import_error) }; parsed
+            } } },
             onComplete = { completion ->
+                completion.importedData?.let { data ->
+                    snapshotBefore("onboarding_import")
+                    val wasEmpty = baseLessons.isEmpty()
+                    applyJsonImportedLessons(data.baseLessons, JsonImportMode.APPEND)
+                    scheduleExceptions = scheduleExceptions + data.exceptions.filter { exception -> exception.lessonId == null || baseLessons.any { it.id == exception.lessonId } }
+                    if (wasEmpty) data.weekNumberMode?.let { weekNumberMode = it }
+                    rebuildScheduleProjection(); persistScheduleState()
+                }
+                celebrationTrigger++
                 showWeekend = completion.showWeekend
                 semesterWeekStartDate = completion.semesterWeekStartDate
                 wearSyncMode = completion.wearSyncMode
@@ -1270,7 +1317,7 @@ internal fun MobileTimetableScreen(
                 val targetSettingsPage = navigationDecision.targetSettingsPage
 
                 if (targetSettingsPage == null) {
-                    layerName = MobileLayer.Schedule.name
+                    layerName = MobileLayer.Dashboard.name
                     scheduleSubviewName = ScheduleSubview.Timetable.name
                     settingsPageName = SettingsPage.Main.name
                     showImportJsonPromptPage = false
@@ -1291,9 +1338,20 @@ internal fun MobileTimetableScreen(
         return
     }
 
+    CelebrationOverlay(celebrationTrigger)
     val layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Dashboard
     val scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable
     val settingsPage = SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Main
+    LaunchedEffect(accountSummary.userId) { briefingDirty = false; pullDailyBriefingSettings() }
+    val briefingLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(settingsPage, accountSummary.userId, briefingLifecycle) {
+        if (settingsPage == SettingsPage.DailyBriefing) {
+            briefingLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                while (kotlinx.coroutines.currentCoroutineContext().isActive) { pullDailyBriefingSettings(); kotlinx.coroutines.delay(30_000) }
+            }
+        }
+    }
+
     val contentDestination = remember(layer, scheduleSubview, settingsPage, showImportJsonPromptPage) {
         MobileContentDestination(
             layer = layer,
@@ -1593,6 +1651,8 @@ internal fun MobileTimetableScreen(
             },
             photoBusy = photoImportBusy,
             photoStatus = photoImportStatus,
+            photoReply = photoReply,
+            photoReasoning = photoReasoning,
             photoLoggedIn = accountSummary.userId.isNotBlank(),
             onPhotoLogin = { openSettingsPage(SettingsPage.Account) },
             onPhotoSelected = { uri ->
@@ -1600,10 +1660,17 @@ internal fun MobileTimetableScreen(
                     coroutineScope.launch {
                         photoImportBusy = true
                         photoImportStatus = ""
+                        photoReply = ""
+                        photoReasoning = ""
                         try {
                             val token = ensureAccessToken() ?: error(context.getString(R.string.ai_photo_login))
                             val photo = prepareTimetablePhoto(context, uri)
-                            val result = aiApiClient.photoImport(token, photo).getOrThrow()
+                            val result = aiApiClient.photoImport(token, photo,
+                                onReply = { delta -> coroutineScope.launch { photoReply += delta } },
+                                onReasoning = { delta -> coroutineScope.launch { photoReasoning += delta } },
+                            ).getOrThrow()
+                            photoReply = result.response
+                            photoReasoning = result.reasoning
                             rawJson = result.timetable.toString()
                             applyJsonPreviewFromRaw(rawJson)
                             jsonImportMode = JsonImportMode.APPEND
@@ -1941,6 +2008,7 @@ internal fun MobileTimetableScreen(
                     loggedIn = accountSummary.userId.isNotBlank(),
                     member = membershipSummary.isMember,
                     lessons = displayLessons,
+                    editableLessons = baseLessons,
                     currentDate = LocalDate.now(zoneId),
                     currentWeek = weekIndexForMode(LocalDate.now(zoneId), weekNumberMode, semesterWeekStartDate, weekStartDay),
                     timezone = zoneId.id,
@@ -1948,6 +2016,14 @@ internal fun MobileTimetableScreen(
                     semesterWeekStartDate = semesterWeekStartDate,
                     weekStartDay = weekStartDay,
                     initialQuestion = pendingAssistantQuestion,
+                    onInitialQuestionConsumed = { pendingAssistantQuestion = "" },
+                    onApplyCourseProposal = { proposed -> runCatching {
+                        val revised = applyAskAiCourseProposal(baseLessons, proposed)
+                        snapshotBefore("ask_ai_courses")
+                        baseLessons = revised
+                        rebuildScheduleProjection()
+                        persistScheduleState()
+                    } },
                     onBack = { handleBackNavigation() },
                     onOpenAccount = { openSettingsPage(SettingsPage.Account) },
                 )
@@ -2215,36 +2291,7 @@ internal fun MobileTimetableScreen(
                             }
                         }
                     },
-                    onDeleteAccount = { currentPassword, confirm ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val accessToken = ensureAccessToken()
-                                if (accessToken == null) {
-                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
-                                } else {
-                                    val result = accountApiClient.deleteAccount(accessToken, currentPassword, confirm)
-                                    if (result.isSuccess) {
-                                        AuthCredentialStore.clear(context)
-                                        accountSummary = AccountSummary()
-                                        membershipSummary = MembershipSummary()
-                                        pendingEmailChange = null
-                                        emailChangeRequestId = ""
-                                        accountStatusMessage = context.getString(R.string.account_delete_success)
-                                        persistSettings()
-                                    } else {
-                                        accountStatusMessage = accountErrorMessage(
-                                            context,
-                                            result.exceptionOrNull(),
-                                            R.string.account_delete_failed,
-                                        )
-                                    }
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
+                    onOpenDeleteAccount = { openSettingsPage(SettingsPage.AccountDelete) },
                     onRefresh = {
                         coroutineScope.launch {
                             accountBusy = true
@@ -2334,6 +2381,41 @@ internal fun MobileTimetableScreen(
                                             ),
                                             devModeEnabled,
                                             (error as? AccountApiException)?.debugInfo,
+                                        )
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.AccountDelete -> AccountDeletePage(
+                    contentPadding = innerPadding, busy = accountBusy, statusMessage = accountStatusMessage,
+                    onBack = { handleBackNavigation() },
+                    onDeleteAccount = { currentPassword, confirm ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
+                                } else {
+                                    val result = accountApiClient.deleteAccount(accessToken, currentPassword, confirm)
+                                    if (result.isSuccess) {
+                                        AuthCredentialStore.clear(context)
+                                        accountSummary = AccountSummary()
+                                        membershipSummary = MembershipSummary()
+                                        pendingEmailChange = null
+                                        emailChangeRequestId = ""
+                                        accountStatusMessage = context.getString(R.string.account_delete_success)
+                                        persistSettings()
+                                    } else {
+                                        accountStatusMessage = accountErrorMessage(
+                                            context,
+                                            result.exceptionOrNull(),
+                                            R.string.account_delete_failed,
                                         )
                                     }
                                 }
@@ -2557,16 +2639,18 @@ internal fun MobileTimetableScreen(
                     onEnabledChange = {
                         if (it && accountSummary.userId.isNotBlank() && !membershipSummary.isMember && accountSummary.accountClass != "LEGACY") {
                             dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_tier_required)
-                        } else dailyBriefingEnabled = it
+                        } else { briefingDirty = true; dailyBriefingEnabled = it }
                     },
                     onChannelChange = {
                         if (accountSummary.userId.isBlank() && (it == DailyBriefingChannel.EMAIL || it == DailyBriefingChannel.BOTH)) {
                             dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_login_required)
                         } else {
+                            briefingDirty = true
                             dailyBriefingChannel = it
                         }
                     },
                     onTimeChange = {
+                        briefingDirty = true
                         dailyBriefingTime = it
                     },
                     onSave = {
