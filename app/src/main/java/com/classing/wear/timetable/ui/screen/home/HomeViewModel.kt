@@ -10,9 +10,6 @@ import com.classing.wear.timetable.domain.model.LessonStatus
 import com.classing.wear.timetable.domain.model.SyncState
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
 import com.classing.wear.timetable.domain.repository.SettingsRepository
-import com.classing.wear.timetable.sync.MobileSyncRequester
-import com.classing.wear.timetable.sync.WearOfficialCloudSyncCoordinator
-import com.classing.shared.sync.CloudSyncContracts
 import com.classing.shared.ui.heatmap.buildHeatmapCells
 import com.classing.wear.timetable.ui.state.HomeUiState
 import java.time.Instant
@@ -21,6 +18,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private data class HomeInputs(
@@ -35,20 +36,17 @@ private data class HomeInputs(
 class HomeViewModel(
     private val scheduleRepository: ScheduleRepository,
     private val settingsRepository: SettingsRepository,
-    private val mobileSyncRequester: MobileSyncRequester,
-    private val wearOfficialCloudSyncCoordinator: WearOfficialCloudSyncCoordinator,
-    private val isIndependentModeEnabled: () -> Boolean,
     private val timeProvider: TimeProvider,
+    private val requestScheduleSync: suspend () -> Result<Unit>,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
     private val syncState = MutableStateFlow<SyncState>(SyncState.Idle)
+    private var syncJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            requestSyncFromPhone()
-        }
+        retrySync()
 
         viewModelScope.launch {
             val heatmapFlow = scheduleRepository.observeHeatmapLessons()
@@ -88,8 +86,11 @@ class HomeViewModel(
                     todayLessons = visibleLessons,
                     heatmapCells = heatmapCells,
                     showAiOnHome = inputs.preferences.showAiOnHome,
-                    errorMessage = (inputs.syncState as? SyncState.Failed)?.message,
+                    // The database is the course source. Network failures belong
+                    // to syncState and must never replace the saved timetable.
                 )
+            }.catch { error ->
+                _uiState.update { it.copy(isLoading = false, errorMessage = error.message) }
             }.collect { state ->
                 _uiState.value = state
             }
@@ -97,23 +98,20 @@ class HomeViewModel(
     }
 
     fun retrySync() {
-        viewModelScope.launch {
-            requestSyncFromPhone()
+        if (syncJob?.isActive == true) return
+        syncJob = viewModelScope.launch {
+            refreshSchedule()
         }
     }
 
-    private suspend fun requestSyncFromPhone() {
+    private suspend fun refreshSchedule() {
         syncState.value = SyncState.Syncing
-        val result = if (isIndependentModeEnabled()) {
-            wearOfficialCloudSyncCoordinator
-                .sync(CloudSyncContracts.TRIGGER_MANUAL)
-                .mapCatching { outcome ->
-                    require(outcome.canSyncTimetable) { WearI18n.timetableMembershipRequired() }
-                }
-        } else {
-            mobileSyncRequester.requestSyncFromPhone().mapCatching { nodeCount ->
-                require(nodeCount > 0) { WearI18n.syncCheckPhoneConnection() }
-            }
+        val result = try {
+            requestScheduleSync()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Result.failure(error)
         }
         syncState.value = if (result.isSuccess) {
             SyncState.Success(Instant.now())

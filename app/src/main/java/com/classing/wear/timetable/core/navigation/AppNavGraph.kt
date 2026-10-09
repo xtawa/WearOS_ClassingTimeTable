@@ -45,10 +45,22 @@ fun AppNavGraph(appContainer: AppContainer) {
                         HomeViewModel(
                             scheduleRepository = appContainer.scheduleRepository,
                             settingsRepository = appContainer.settingsRepository,
-                            mobileSyncRequester = appContainer.mobileSyncRequester,
-                            wearOfficialCloudSyncCoordinator = appContainer.wearOfficialCloudSyncCoordinator,
-                            isIndependentModeEnabled = {
-                                WearSyncModeStore.isIndependentModeEnabled(appContext)
+                            requestScheduleSync = {
+                                if (WearSyncModeStore.isIndependentModeEnabled(appContext)) {
+                                    appContainer.wearOfficialCloudSyncCoordinator
+                                        .sync(com.classing.shared.sync.CloudSyncContracts.TRIGGER_MANUAL)
+                                        .mapCatching { outcome ->
+                                            require(outcome.canSyncTimetable) {
+                                                com.classing.wear.timetable.core.i18n.WearI18n.timetableMembershipRequired()
+                                            }
+                                        }
+                                } else {
+                                    appContainer.mobileSyncRequester.requestSyncFromPhone().mapCatching { nodeCount ->
+                                        require(nodeCount > 0) {
+                                            com.classing.wear.timetable.core.i18n.WearI18n.syncCheckPhoneConnection()
+                                        }
+                                    }
+                                }
                             },
                             timeProvider = appContainer.timeProvider,
                         )

@@ -47,8 +47,8 @@ android {
         applicationId = "com.xtawa.classingtime"
         minSdk = 30
         targetSdk = 35
-        versionCode = 110
-        versionName = "1.1.0"
+        versionCode = 112
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
