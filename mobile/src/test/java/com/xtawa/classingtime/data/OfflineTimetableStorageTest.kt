@@ -8,6 +8,7 @@ class OfflineTimetableStorageTest {
     private val lesson = PersistedLesson("math", "数学", "李老师", "A201", "Saved offline", 1, 540, 600, 1, 20, "ALL")
     private val cancellation = PersistedScheduleException(
         id = "cancel", lessonId = lesson.id, type = "CANCEL", date = "2026-10-12", note = "Holiday",
+        title = null, teacher = null, location = null,
         dayOfWeek = null, startMinute = null, endMinute = null,
     )
 
