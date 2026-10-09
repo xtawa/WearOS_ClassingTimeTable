@@ -1,0 +1,4 @@
+<resources>
+    <string name="home_sync_saved_timetable">Showing the timetable saved on this watch. It remains available offline; you can retry syncing later.</string>
+    <string name="home_sync_no_saved_timetable">No timetable has been saved yet. Import or sync one first to view it offline.</string>
+</resources>

@@ -1,0 +1,4 @@
+<resources>
+    <string name="home_sync_saved_timetable">正在顯示手錶已儲存的課表，可繼續離線查看，稍後再重試同步。</string>
+    <string name="home_sync_no_saved_timetable">本機還沒有儲存課表，請先匯入或同步一次，即可離線查看。</string>
+</resources>

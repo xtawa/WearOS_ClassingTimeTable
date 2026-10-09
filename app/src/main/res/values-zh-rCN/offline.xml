@@ -1,0 +1,4 @@
+<resources>
+    <string name="home_sync_saved_timetable">正在显示手表已保存的课表，可继续离线查看，稍后再重试同步。</string>
+    <string name="home_sync_no_saved_timetable">本机还没有保存课表，请先导入或同步一次，即可离线查看。</string>
+</resources>

@@ -331,8 +331,7 @@ internal fun ImportLayer(
     onInitialFocusConsumed: ((ImportFocusMethod) -> Unit)? = null,
     rawIcs: String,
     rawJson: String,
-    parseMessage: String,
-    warnings: List<String>,
+    importFeedback: ImportFeedbackState,
     preview: List<CourseDraft>,
     jsonPreview: List<LessonUi>,
     hasPendingImport: Boolean,
@@ -392,7 +391,8 @@ internal fun ImportLayer(
     val icsSectionRequester = remember { BringIntoViewRequester() }
     val jsonSectionRequester = remember { BringIntoViewRequester() }
     val manualSectionRequester = remember { BringIntoViewRequester() }
-    val hasPendingJsonImport = hasPendingImport && jsonPreview.isNotEmpty()
+    val hasPendingJsonImport = importFeedback.canConfirm(ImportFocusMethod.JSON) && jsonPreview.isNotEmpty()
+    val icsFeedback = importFeedback.forMethod(ImportFocusMethod.ICS)
 
     val icsFilePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -554,9 +554,9 @@ internal fun ImportLayer(
                     verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 ) {
                     Text(stringResource(R.string.status_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text(parseMessage, style = MaterialTheme.typography.bodySmall)
-                    if (warnings.isNotEmpty()) {
-                        warnings.take(5).forEach {
+                    Text(icsFeedback.message.ifBlank { stringResource(R.string.initial_parse_message) }, style = MaterialTheme.typography.bodySmall)
+                    if (icsFeedback.warnings.isNotEmpty()) {
+                        icsFeedback.warnings.take(5).forEach {
                             Text(stringResource(R.string.status_warning_prefix, it), style = MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -676,6 +676,7 @@ internal fun ImportLayer(
                 }) { Text(stringResource(R.string.import_button_select_json_file)) }
                 Button(onClick = onOpenJsonPromptPage) { Text(stringResource(R.string.json_button_prompt_page)) }
             }
+            ImportMethodStatus(importFeedback.forMethod(ImportFocusMethod.JSON))
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))) {
                 Column(
                     modifier = Modifier.padding(ClassingSpacing.sm),
@@ -938,8 +939,19 @@ internal fun ImportLayer(
             ) {
                 Text(stringResource(R.string.manual_import_button))
             }
+            ImportMethodStatus(importFeedback.forMethod(ImportFocusMethod.MANUAL))
             }
         }
+    }
+}
+
+@Composable
+private fun ImportMethodStatus(feedback: ImportMethodFeedback) {
+    if (feedback.message.isBlank() && feedback.warnings.isEmpty()) return
+    ClassingInformationIsland {
+        Text(stringResource(R.string.status_title), style = MaterialTheme.typography.titleSmall)
+        if (feedback.message.isNotBlank()) Text(feedback.message, style = MaterialTheme.typography.bodySmall)
+        feedback.warnings.take(5).forEach { Text(stringResource(R.string.status_warning_prefix, it), style = MaterialTheme.typography.bodySmall) }
     }
 }
 

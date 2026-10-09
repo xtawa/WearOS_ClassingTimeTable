@@ -28,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -142,6 +143,20 @@ fun HomeScreen(
                         lesson = lesson,
                         onClick = { onLessonClick(lesson.course.localId) },
                     )
+                }
+            }
+
+            if (state.syncState is SyncState.Failed) {
+                item {
+                    ClassingIsland {
+                        Text(stringResource(R.string.home_sync_failed), style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            stringResource(if (state.hasSchedule) R.string.home_sync_saved_timetable else R.string.home_sync_no_saved_timetable),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(onClick = onRetrySync) { Text(stringResource(R.string.common_retry)) }
+                    }
                 }
             }
 

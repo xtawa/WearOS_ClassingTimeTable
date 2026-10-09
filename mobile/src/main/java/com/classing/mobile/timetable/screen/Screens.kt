@@ -211,6 +211,7 @@ internal fun MobileTimetableScreen(
     var calendarPermissionRevision by remember { mutableIntStateOf(0) }
     var jsonImportMode by remember { mutableStateOf(JsonImportMode.REPLACE) }
     var parseMessage by remember { mutableStateOf(context.getString(R.string.initial_parse_message)) }
+    var importFeedback by remember { mutableStateOf(ImportFeedbackState()) }
     var warnings by remember { mutableStateOf<List<String>>(emptyList()) }
     var draftPreview by remember { mutableStateOf<List<CourseDraft>>(emptyList()) }
     var jsonPreview by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
@@ -375,7 +376,27 @@ internal fun MobileTimetableScreen(
         return true
     }
 
+    fun showImportMessage(message: String, method: ImportFocusMethod? = importFeedback.pendingMethod) {
+        parseMessage = message
+        if (method != null) importFeedback = importFeedback.message(method, message)
+    }
+
+    fun invalidateImportPreview(method: ImportFocusMethod) {
+        if (importFeedback.canConfirm(method)) {
+            pendingImportLessons = emptyList()
+            pendingImportExceptions = emptyList()
+            pendingImportConflicts = emptyList()
+            showImportConflictDialog = false
+            draftPreview = emptyList()
+            jsonPreview = emptyList()
+            importItemStates = emptyList()
+            importPreviewSummary = null
+        }
+        importFeedback = importFeedback.editing(method)
+    }
+
     fun persistSettings() {
+        if (pendingImportLessons.isEmpty()) importFeedback = importFeedback.clearPreview()
         com.xtawa.classingtime.screen.persistSettings(
             context = context,
             showWeekend = showWeekend,
@@ -790,6 +811,7 @@ internal fun MobileTimetableScreen(
         draftPreview = result.drafts
         jsonPreview = emptyList()
         parseMessage = result.message
+        importFeedback = importFeedback.parsed(ImportFocusMethod.ICS, result.message, result.warnings, result.lessons.isNotEmpty())
         warnings = result.warnings
         importItemStates = buildImportItemStates(result.lessons, lessons)
         importPreviewSummary = buildImportPreviewSummary(importItemStates)
@@ -802,6 +824,7 @@ internal fun MobileTimetableScreen(
         draftPreview = emptyList()
         jsonPreview = result.lessons
         parseMessage = result.message
+        importFeedback = importFeedback.parsed(ImportFocusMethod.JSON, result.message, result.warnings, result.lessons.isNotEmpty())
         warnings = result.warnings
         importItemStates = buildImportItemStates(result.lessons, lessons)
         importPreviewSummary = buildImportPreviewSummary(importItemStates)
@@ -1504,28 +1527,18 @@ internal fun MobileTimetableScreen(
             },
             rawIcs = rawIcs,
             rawJson = rawJson,
-            parseMessage = parseMessage,
-            warnings = warnings,
+            importFeedback = importFeedback,
             preview = draftPreview,
             jsonPreview = jsonPreview,
-            hasPendingImport = pendingImportLessons.isNotEmpty(),
+            hasPendingImport = pendingImportLessons.isNotEmpty() && importFeedback.canConfirm(ImportFocusMethod.ICS),
             importItemStates = importItemStates,
             importPreviewSummary = importPreviewSummary,
-            onRawChange = { rawIcs = it },
-            onJsonRawChange = { rawJson = it },
+            onRawChange = { invalidateImportPreview(ImportFocusMethod.ICS); rawIcs = it },
+            onJsonRawChange = { invalidateImportPreview(ImportFocusMethod.JSON); rawJson = it },
             onClearInput = {
+                invalidateImportPreview(ImportFocusMethod.ICS)
                 rawIcs = ""
-                rawJson = ""
-                pendingImportLessons = emptyList()
-                pendingImportExceptions = emptyList()
-                pendingImportConflicts = emptyList()
-                showImportConflictDialog = false
-                draftPreview = emptyList()
-                jsonPreview = emptyList()
-                warnings = emptyList()
-                importItemStates = emptyList()
-                importPreviewSummary = null
-                parseMessage = context.getString(R.string.message_input_cleared)
+                showImportMessage(context.getString(R.string.message_input_cleared), ImportFocusMethod.ICS)
                 persistSettings()
             },
             onParsePreview = {
@@ -1539,14 +1552,14 @@ internal fun MobileTimetableScreen(
             jsonImportMode = jsonImportMode,
             onJsonImportModeChange = { jsonImportMode = it },
             onConfirmImport = {
-                if (pendingImportLessons.isEmpty()) {
-                    parseMessage = context.getString(R.string.no_pending_import_message)
+                if (pendingImportLessons.isEmpty() || !importFeedback.canConfirm(ImportFocusMethod.ICS)) {
+                    showImportMessage(context.getString(R.string.no_pending_import_message), ImportFocusMethod.ICS)
                 } else {
                     val conflicts = detectImportConflicts(pendingImportLessons, lessons)
                     if (conflicts.isEmpty()) {
                         snapshotBefore("import_replace")
                         applyImportedLessons(pendingImportLessons, pendingImportExceptions)
-                        parseMessage = context.getString(R.string.import_confirmed_message, pendingImportLessons.size)
+                        showImportMessage(context.getString(R.string.import_confirmed_message, pendingImportLessons.size), ImportFocusMethod.ICS)
                         pendingImportLessons = emptyList()
                         pendingImportExceptions = emptyList()
                         draftPreview = emptyList()
@@ -1557,14 +1570,14 @@ internal fun MobileTimetableScreen(
                     } else {
                         pendingImportConflicts = conflicts
                         showImportConflictDialog = true
-                        parseMessage = context.getString(R.string.import_conflict_detected_message, conflicts.size)
+                        showImportMessage(context.getString(R.string.import_conflict_detected_message, conflicts.size), ImportFocusMethod.ICS)
                     }
                 }
                 persistSettings()
             },
             onConfirmJsonImport = {
-                if (pendingImportLessons.isEmpty()) {
-                    parseMessage = context.getString(R.string.no_pending_import_message)
+                if (pendingImportLessons.isEmpty() || !importFeedback.canConfirm(ImportFocusMethod.JSON)) {
+                    showImportMessage(context.getString(R.string.no_pending_import_message), ImportFocusMethod.JSON)
                 } else {
                     val conflicts = if (jsonImportMode == JsonImportMode.REPLACE) {
                         detectLessonConflicts(pendingImportLessons)
@@ -1576,7 +1589,7 @@ internal fun MobileTimetableScreen(
                             snapshotBefore("json_replace")
                         }
                         val result = applyJsonImportedLessons(pendingImportLessons, jsonImportMode)
-                        parseMessage = buildJsonImportMessage(jsonImportMode, result)
+                        showImportMessage(buildJsonImportMessage(jsonImportMode, result), ImportFocusMethod.JSON)
                         pendingImportLessons = emptyList()
                         draftPreview = emptyList()
                         jsonPreview = emptyList()
@@ -1586,7 +1599,7 @@ internal fun MobileTimetableScreen(
                     } else {
                         pendingImportConflicts = conflicts
                         showImportConflictDialog = true
-                        parseMessage = context.getString(R.string.import_conflict_detected_message, conflicts.size)
+                        showImportMessage(context.getString(R.string.import_conflict_detected_message, conflicts.size), ImportFocusMethod.JSON)
                     }
                 }
                 persistSettings()
@@ -1598,7 +1611,7 @@ internal fun MobileTimetableScreen(
                     selectedLessons,
                     pendingImportExceptions.filter { it.lessonId in selectedLessons.map(LessonUi::id).toSet() },
                 )
-                parseMessage = context.getString(R.string.import_selective_applied, selectedLessons.size, skippedCount)
+                showImportMessage(context.getString(R.string.import_selective_applied, selectedLessons.size, skippedCount), ImportFocusMethod.ICS)
                 pendingImportLessons = emptyList()
                 pendingImportExceptions = emptyList()
                 pendingImportConflicts = emptyList()
@@ -1615,7 +1628,7 @@ internal fun MobileTimetableScreen(
                     snapshotBefore("json_selective_replace")
                 }
                 val result = applyJsonImportedLessons(selectedLessons, jsonImportMode)
-                parseMessage = buildJsonImportMessage(jsonImportMode, result)
+                showImportMessage(buildJsonImportMessage(jsonImportMode, result), ImportFocusMethod.JSON)
                 pendingImportLessons = emptyList()
                 pendingImportConflicts = emptyList()
                 showImportConflictDialog = false
@@ -1633,7 +1646,7 @@ internal fun MobileTimetableScreen(
                 warnings = emptyList()
                 importItemStates = emptyList()
                 importPreviewSummary = null
-                parseMessage = context.getString(R.string.import_preview_canceled_message)
+                showImportMessage(context.getString(R.string.import_preview_canceled_message))
                 persistSettings()
             },
             onToggleImportItem = { index ->
@@ -1646,11 +1659,12 @@ internal fun MobileTimetableScreen(
                 }
             },
             onIcsFileSelected = { uri ->
+                invalidateImportPreview(ImportFocusMethod.ICS)
                 val content = runCatching {
                     context.contentResolver.openInputStream(uri)?.use { decodeImportBytes(it.readBytes()) }
                 }.getOrNull()
                 if (content.isNullOrBlank()) {
-                    parseMessage = context.getString(R.string.import_file_read_failed)
+                    showImportMessage(context.getString(R.string.import_file_read_failed), ImportFocusMethod.ICS)
                 } else {
                     rawIcs = content
                     applyIcsPreviewFromRaw(content)
@@ -1658,11 +1672,12 @@ internal fun MobileTimetableScreen(
                 persistSettings()
             },
             onJsonFileSelected = { uri ->
+                invalidateImportPreview(ImportFocusMethod.JSON)
                 val content = runCatching {
                     context.contentResolver.openInputStream(uri)?.use { decodeImportBytes(it.readBytes()) }
                 }.getOrNull()
                 if (content.isNullOrBlank()) {
-                    parseMessage = context.getString(R.string.import_file_read_failed)
+                    showImportMessage(context.getString(R.string.import_file_read_failed), ImportFocusMethod.JSON)
                 } else {
                     rawJson = content
                     applyJsonPreviewFromRaw(content)
@@ -1717,31 +1732,31 @@ internal fun MobileTimetableScreen(
                 val endWeek = endWeekRaw.trim().toIntOrNull()
                 when {
                     safeTitle.isBlank() -> {
-                        parseMessage = context.getString(R.string.manual_import_title_required_message)
+                        showImportMessage(context.getString(R.string.manual_import_title_required_message), ImportFocusMethod.MANUAL)
                         persistSettings()
                         false
                     }
 
                     start == null || end == null -> {
-                        parseMessage = context.getString(R.string.manual_import_time_format_message)
+                        showImportMessage(context.getString(R.string.manual_import_time_format_message), ImportFocusMethod.MANUAL)
                         persistSettings()
                         false
                     }
 
                     !end.isAfter(start) -> {
-                        parseMessage = context.getString(R.string.manual_import_time_order_message)
+                        showImportMessage(context.getString(R.string.manual_import_time_order_message), ImportFocusMethod.MANUAL)
                         persistSettings()
                         false
                     }
 
                     startWeek == null || startWeek !in DEFAULT_START_WEEK..DEFAULT_END_WEEK -> {
-                        parseMessage = context.getString(R.string.week_rule_invalid_start_week_message)
+                        showImportMessage(context.getString(R.string.week_rule_invalid_start_week_message), ImportFocusMethod.MANUAL)
                         persistSettings()
                         false
                     }
 
                     endWeek == null || endWeek !in startWeek..DEFAULT_END_WEEK -> {
-                        parseMessage = context.getString(R.string.week_rule_invalid_end_week_message)
+                        showImportMessage(context.getString(R.string.week_rule_invalid_end_week_message), ImportFocusMethod.MANUAL)
                         persistSettings()
                         false
                     }
@@ -1763,14 +1778,14 @@ internal fun MobileTimetableScreen(
                         val conflicts = findConflictsWithExisting(newLesson, lessons)
                         if (conflicts.isEmpty()) {
                             appendManualLesson(newLesson)
-                            parseMessage = context.getString(R.string.manual_import_success_message, safeTitle)
+                            showImportMessage(context.getString(R.string.manual_import_success_message, safeTitle), ImportFocusMethod.MANUAL)
                             persistSettings()
                             true
                         } else {
                             pendingManualLesson = newLesson
                             pendingManualConflicts = conflicts
                             showManualConflictDialog = true
-                            parseMessage = context.getString(R.string.manual_import_conflict_detected_message, conflicts.size)
+                            showImportMessage(context.getString(R.string.manual_import_conflict_detected_message, conflicts.size), ImportFocusMethod.MANUAL)
                             persistSettings()
                             false
                         }
@@ -3066,7 +3081,7 @@ internal fun MobileTimetableScreen(
         onDismissImportConflict = {
             showImportConflictDialog = false
             pendingImportConflicts = emptyList()
-            parseMessage = context.getString(R.string.import_conflict_cancel_message)
+            showImportMessage(context.getString(R.string.import_conflict_cancel_message))
             persistSettings()
         },
         onConfirmImportConflict = {
@@ -3077,11 +3092,11 @@ internal fun MobileTimetableScreen(
                         snapshotBefore("json_replace_with_conflict")
                     }
                     val result = applyJsonImportedLessons(pendingImportLessons, jsonImportMode)
-                    parseMessage = buildJsonImportMessage(jsonImportMode, result)
+                    showImportMessage(buildJsonImportMessage(jsonImportMode, result))
                 } else {
                     snapshotBefore("import_replace_with_conflict")
                     applyImportedLessons(pendingImportLessons, pendingImportExceptions)
-                    parseMessage = context.getString(R.string.import_confirmed_with_conflict_message, importSize)
+                    showImportMessage(context.getString(R.string.import_confirmed_with_conflict_message, importSize))
                     pendingImportExceptions = emptyList()
                 }
             }
@@ -3098,7 +3113,7 @@ internal fun MobileTimetableScreen(
         onCancelImportConflict = {
             showImportConflictDialog = false
             pendingImportConflicts = emptyList()
-            parseMessage = context.getString(R.string.import_conflict_cancel_message)
+            showImportMessage(context.getString(R.string.import_conflict_cancel_message))
             persistSettings()
         },
         showManualConflictDialog = showManualConflictDialog,
@@ -3108,12 +3123,12 @@ internal fun MobileTimetableScreen(
             pendingManualLesson = null
             pendingManualConflicts = emptyList()
             showManualConflictDialog = false
-            parseMessage = context.getString(R.string.manual_conflict_cancel_message)
+            showImportMessage(context.getString(R.string.manual_conflict_cancel_message), ImportFocusMethod.MANUAL)
             persistSettings()
         },
         onConfirmManualConflict = { lesson ->
             appendManualLesson(lesson)
-            parseMessage = context.getString(R.string.manual_import_success_with_conflict_message, lesson.title)
+            showImportMessage(context.getString(R.string.manual_import_success_with_conflict_message, lesson.title), ImportFocusMethod.MANUAL)
             pendingManualLesson = null
             pendingManualConflicts = emptyList()
             showManualConflictDialog = false
@@ -3123,7 +3138,7 @@ internal fun MobileTimetableScreen(
             pendingManualLesson = null
             pendingManualConflicts = emptyList()
             showManualConflictDialog = false
-            parseMessage = context.getString(R.string.manual_conflict_cancel_message)
+            showImportMessage(context.getString(R.string.manual_conflict_cancel_message), ImportFocusMethod.MANUAL)
             persistSettings()
         },
         editingContext = editingContext,
