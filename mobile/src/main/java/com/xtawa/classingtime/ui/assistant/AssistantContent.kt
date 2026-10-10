@@ -255,6 +255,7 @@ private fun AssistantHeader(onMenu: () -> Unit, onNewConversation: () -> Unit, e
 
 @Composable
 private fun ContextAnchor(label: String) {
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(ClassingRadii.pill),
