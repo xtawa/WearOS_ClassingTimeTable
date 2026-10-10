@@ -131,6 +131,12 @@ android {
     }
 }
 
+// Robolectric ParcelFileDescriptor needs this JDK 17 module access to test
+// camera output streams. This affects unit-test JVMs only.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED")
+}
+
 dependencies {
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
