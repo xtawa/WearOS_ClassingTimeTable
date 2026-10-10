@@ -39,6 +39,7 @@ data class AiUsageSummary(
 )
 
 data class AiModelOption(val id: String, val name: String, val description: String)
+data class AiResetCard(val cardId: String, val expiresAt: Long, val note: String)
 data class AiConversationSummary(val conversationId: String, val title: String, val updatedAt: Long)
 data class AiAttachment(val attachmentId: String, val name: String, val mimeType: String, val sizeBytes: Long, val expiresAt: Long)
 data class AiMessageSummary(val messageId: String, val role: String, val content: String, val createdAt: Long, val attachments: List<AiAttachment> = emptyList(), val reasoning: String = "")
@@ -52,9 +53,17 @@ class AiApiClient(
     private val appContext = appContext?.applicationContext
     private val http = OkHttpClient.Builder().callTimeout(200, TimeUnit.SECONDS).build()
 
-    suspend fun usage(accessToken: String): Result<AiUsageSummary> = request("GET", "/api/v1/ai/usage/me", accessToken).map { body ->
+    suspend fun resetCards(accessToken: String): Result<List<AiResetCard>> = request("GET", "/api/v1/ai/reset-cards", accessToken).map { body ->
+        body.optJSONArray("cards").toObjects { AiResetCard(it.getString("cardId"), it.optLong("expiresAt"), it.optString("note")) }
+    }
+
+    suspend fun useResetCard(accessToken: String, cardId: String = "", code: String = ""): Result<AiUsageSummary> = request("POST", "/api/v1/ai/reset-cards/use", accessToken, JSONObject().put("cardId", cardId).put("code", code)).map(::parseUsage)
+
+    suspend fun usage(accessToken: String): Result<AiUsageSummary> = request("GET", "/api/v1/ai/usage/me", accessToken).map(::parseUsage)
+
+    private fun parseUsage(body: JSONObject): AiUsageSummary {
         val usage = body.optJSONObject("usage") ?: body
-        AiUsageSummary(
+        return AiUsageSummary(
             usage.optInt("limit"),
             usage.optInt("used"),
             usage.optInt("reserved"),

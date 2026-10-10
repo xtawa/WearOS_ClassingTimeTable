@@ -1,0 +1,11 @@
+<resources>
+ <string name="assistant_reset_cards">AI reset cards</string>
+ <string name="assistant_reset_hint">Restore this week’s quota with a single-use card. The scheduled reset date and permanent credits stay unchanged.</string>
+ <string name="assistant_reset_code">Reset card code</string>
+ <string name="assistant_reset_redeem">Redeem and reset</string>
+ <string name="assistant_reset_owned">Your cards: %1$d</string>
+ <string name="assistant_reset_use">Use reset card</string>
+ <string name="assistant_reset_confirm">Restore the current weekly quota? One card will be consumed. The next scheduled reset date stays unchanged.</string>
+ <string name="assistant_reset_success">Weekly quota restored. The scheduled reset date is unchanged.</string>
+ <string name="assistant_reset_busy">Wait for ongoing AI requests to finish before using a card.</string>
+</resources>

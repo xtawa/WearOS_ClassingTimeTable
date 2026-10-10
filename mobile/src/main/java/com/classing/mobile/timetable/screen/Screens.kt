@@ -1370,15 +1370,19 @@ internal fun MobileTimetableScreen(
         if (uid.isBlank()) { homePrompts = emptyList(); return@LaunchedEffect }
         if (layerName != MobileLayer.Dashboard.name) return@LaunchedEffect
         val cached = context.getSharedPreferences("ask_ai", 0)
-        homePrompts = if (cached.getString("promptHash:$uid", "") == homePromptHash) {
-            runCatching { val array = org.json.JSONArray(cached.getString("prompts:$uid", "[]")); List(array.length()) { array.getString(it) } }.getOrDefault(emptyList())
+        val savedAiPreferences = runCatching { com.xtawa.classingtime.account.AiPreferences.fromJson(org.json.JSONObject(cached.getString("preferences:$uid", "{}").orEmpty())) }.getOrDefault(com.xtawa.classingtime.account.AiPreferences())
+        homePrompts = if (savedAiPreferences.showPromptSuggestions && cached.getString("promptHash:v2:$uid", "") == homePromptHash) {
+            runCatching { val array = org.json.JSONArray(cached.getString("prompts:v2:$uid", "[]")); List(array.length()) { array.getString(it) } }.getOrDefault(emptyList())
         } else emptyList()
         val token = ensureAccessToken() ?: return@LaunchedEffect
+        val aiPreferences = aiApiClient.preferences(token).getOrElse { savedAiPreferences }
+        cached.edit().putString("preferences:$uid", aiPreferences.toJson().toString()).apply()
+        if (!aiPreferences.showPromptSuggestions) { homePrompts = emptyList(); return@LaunchedEffect }
         val date = LocalDate.now(zoneId)
         val snapshot = timetableSnapshot(baseLessons, date, weekIndexForMode(date, weekNumberMode, semesterWeekStartDate, weekStartDay), zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay).put("exceptions", org.json.JSONObject(buildScheduleBackupJson(baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
         aiApiClient.prompts(token, snapshot, false).onSuccess { result ->
             homePrompts = result.prompts
-            cached.edit().putString("promptHash:$uid", homePromptHash).putString("prompts:$uid", org.json.JSONArray(result.prompts).toString()).apply()
+            cached.edit().putString("promptHash:v2:$uid", homePromptHash).putString("prompts:v2:$uid", org.json.JSONArray(result.prompts).toString()).apply()
         }
     }
     CelebrationOverlay(celebrationTrigger)

@@ -75,8 +75,33 @@ internal fun AskAiSettingsPage(
  var syncStatus by remember { mutableStateOf(context.getString(R.string.assistant_sync_pending)) }
  val preferenceLock = remember(userId) { Mutex() }
  var prompts by remember(userId) { mutableStateOf<List<String>>(emptyList()) }
+ var promptNotice by remember(userId) { mutableStateOf("") }
+ var usageNotice by remember(userId) { mutableStateOf("") }
  var refreshedOnEntry by remember(userId) { mutableStateOf(false) }
  var usage by remember { mutableStateOf<AiUsageSummary?>(null) }
+ var resetCards by remember(userId) { mutableStateOf<List<AiResetCard>>(emptyList()) }
+ var resetting by remember { mutableStateOf(false) }
+ var resetStatus by remember { mutableStateOf("") }
+ var resetCelebration by remember { mutableIntStateOf(0) }
+
+ suspend fun loadResetUsage(token: String) {
+  client.usage(token).onSuccess { usage = it }.onFailure { status = it.message.orEmpty() }
+  client.resetCards(token).onSuccess { resetCards = it }.onFailure { resetStatus = it.message.orEmpty() }
+ }
+ fun useResetCard(cardId: String, code: String) {
+  if (resetting) return
+  resetting = true; resetStatus = ""
+  scope.launch {
+   try {
+    val token = AccountSessionManager.ensureAccessToken(context) ?: error("Please sign in again")
+    client.useResetCard(token, cardId, code).onSuccess {
+     usage = it; resetCelebration++; resetStatus = context.getString(R.string.assistant_reset_success)
+    }.onFailure { resetStatus = it.message.orEmpty() }
+    loadResetUsage(token)
+   } catch (e: CancellationException) { throw e } catch (e: Exception) { resetStatus = e.message.orEmpty() }
+   finally { resetting = false }
+  }
+ }
  var proposal by remember { mutableStateOf<JSONObject?>(null) }
  var proposalFingerprint by remember { mutableStateOf("") }
 
@@ -124,13 +149,15 @@ internal fun AskAiSettingsPage(
    settingsReady = true
   }
  }
- LaunchedEffect(settingsReady, fingerprint) {
+ LaunchedEffect(settingsReady, fingerprint, preferences.showPromptSuggestions) {
   if (!settingsReady) return@LaunchedEffect
+  if (!preferences.showPromptSuggestions) { prompts = emptyList(); promptNotice = ""; return@LaunchedEffect }
   val token = AccountSessionManager.ensureAccessToken(context) ?: return@LaunchedEffect
   val force = !refreshedOnEntry && preferences.autoRefreshPrompts
   refreshedOnEntry = true
-  client.prompts(token, snapshot, force).onSuccess { prompts = it.prompts; cache.edit().putString("promptHash:$userId", fingerprint).putString("prompts:$userId", JSONArray(it.prompts).toString()).apply() }
-   .onFailure { prompts = emptyList(); status = it.message.orEmpty() }
+  promptNotice = context.getString(R.string.assistant_prompts_loading)
+  client.prompts(token, snapshot, force).onSuccess { prompts = it.prompts; promptNotice = ""; cache.edit().putString("promptHash:v2:$userId", fingerprint).putString("prompts:v2:$userId", JSONArray(it.prompts).toString()).apply() }
+   .onFailure { prompts = emptyList(); promptNotice = context.getString(R.string.assistant_prompts_unavailable) }
  }
  suspend fun loadThumbnails(token: String, items: List<AiAttachment>) {
   if (!preferences.imagePreviews) return
@@ -146,7 +173,7 @@ internal fun AskAiSettingsPage(
   scope.launch {
    val token = AccountSessionManager.ensureAccessToken(context)
    if (token == null) { status = "登录状态已失效，请重新登录"; return@launch }
-   sending = true; status = ""; proposal = null
+   sending = true; status = ""; usageNotice = ""; proposal = null
    val sentQuestion = question.trim(); val sentAttachments = attachments; val sentSnapshot = latestSnapshot; val sentFingerprint = latestFingerprint
    val userMessage = AiMessageSummary("local-user-${System.nanoTime()}", "USER", sentQuestion, System.currentTimeMillis(), sentAttachments)
    val assistantId = "local-ai-${System.nanoTime()}"
@@ -160,8 +187,9 @@ internal fun AskAiSettingsPage(
      conversationId = result.conversationId
      messages = messages.map { if (it.messageId == assistantId) it.copy(content = result.reply) else it }
      proposal = result.courseProposal; proposalFingerprint = sentFingerprint
-     if (result.truncated) { question = "请从刚才中断的位置继续，不要重复已有内容。"; status = "回答达到长度上限，已准备好继续生成。 · " } else status = ""
-     status += context.getString(R.string.ai_cost_points, result.costPoints)
+     if (result.truncated) question = "请从刚才中断的位置继续，不要重复已有内容。"
+     status = ""
+     usageNotice = (if (result.truncated) "回答达到长度上限，已准备好继续生成。 · " else "") + context.getString(R.string.ai_cost_points, result.costPoints)
      client.conversations(token).onSuccess { conversations = it }
     }.onFailure { status = it.message ?: "Ask Classing 暂时不可用"; question = sentQuestion; attachments = sentAttachments }
    } finally { sending = false }
@@ -175,7 +203,7 @@ internal fun AskAiSettingsPage(
      try {
       val token = AccountSessionManager.ensureAccessToken(context) ?: error("Please sign in again")
       client.transcribe(token, file).onSuccess { result ->
-       question = listOf(question.trimEnd(), result.text.trim()).filter { it.isNotBlank() }.joinToString("\n"); transcribing = false; status = context.getString(R.string.ai_cost_points, result.costPoints)
+       question = listOf(question.trimEnd(), result.text.trim()).filter { it.isNotBlank() }.joinToString("\n"); transcribing = false; status = ""; usageNotice = context.getString(R.string.ai_cost_points, result.costPoints)
       }.onFailure { status = it.message.orEmpty() }
      } catch (e: CancellationException) { throw e } catch (e: Exception) { status = e.message.orEmpty() }
      finally { file.delete(); transcribing = false; transcriptionJob = null }
@@ -229,24 +257,26 @@ internal fun AskAiSettingsPage(
   AnnouncementLaunches.externalFinished()
   val file = pendingCameraPath.takeIf { it.isNotBlank() }?.let(::File)
   pendingCameraPath = ""
-  if (success && file != null) uploadUris(listOf(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)), file)
+  if (success && file != null) runCatching { uploadUris(listOf(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)), file) }
+   .onFailure { file.delete(); status = context.getString(R.string.assistant_camera_unavailable) }
   else file?.delete()
  }
  fun takePhoto() {
   runCatching {
-   val file = File.createTempFile("ask-camera-", ".jpg", context.cacheDir)
+   val file = createAskAiCameraFile(context)
    pendingCameraPath = file.absolutePath
    AnnouncementLaunches.externalStarted(); cameraLauncher.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file))
-  }.onFailure { AnnouncementLaunches.externalFinished(); pendingCameraPath.takeIf { it.isNotBlank() }?.let { File(it).delete() }; pendingCameraPath = ""; status = it.message.orEmpty() }
+  }.onFailure { AnnouncementLaunches.externalFinished(); pendingCameraPath.takeIf { it.isNotBlank() }?.let { File(it).delete() }; pendingCameraPath = ""; status = context.getString(R.string.assistant_camera_unavailable) }
  }
  BackHandler(subpage.isNotBlank()) { subpage = "" }
  LaunchedEffect(subpage) {
-  if (subpage == "usage") AccountSessionManager.ensureAccessToken(context)?.let { client.usage(it).onSuccess { usage = it }.onFailure { status = it.message.orEmpty() } }
+  if (subpage == "usage") AccountSessionManager.ensureAccessToken(context)?.let { resetStatus = ""; loadResetUsage(it) }
   if (subpage == "settings") AccountSessionManager.ensureAccessToken(context)?.let { loadPreferences(it) }
  }
+ CelebrationOverlay(resetCelebration)
  when (subpage) {
   "settings" -> AskAiPreferencesPage(contentPadding, preferences, models, preferencesSaving, syncStatus, { subpage = "" }, ::patchPreferences)
-  "usage" -> AskAiUsagePage(contentPadding, usage, status, { subpage = "" })
+  "usage" -> AskAiUsagePage(contentPadding, usage, status, { subpage = "" }, resetCards, resetting, resetStatus, ::useResetCard)
   else -> {
    val today = lessons.filter { it.dayOfWeek == currentDate.dayOfWeek }
    val uiState = AssistantUiState(loggedIn = loggedIn, member = member, hasSchedule = lessons.isNotEmpty(), contextLabel = "$currentDate · ${today.size}",
@@ -255,17 +285,19 @@ internal fun AskAiSettingsPage(
     attachments = attachments.map { AssistantAttachmentUiModel(it.attachmentId, it.name, thumbnails[it.attachmentId]) },
     uploading = uploading, recording = recording, transcribing = transcribing,
     prompts = prompts, showImagePreviews = preferences.imagePreviews, showReasoning = preferences.showReasoning, showTimestamps = preferences.showTimestamps,
+    showPromptSuggestions = preferences.showPromptSuggestions, preferencesSaving = preferencesSaving, usageNotice = usageNotice, promptNotice = promptNotice,
     conversations = conversations.map { AssistantConversationUiModel(it.conversationId, it.title) },
     messages = messages.map { AssistantMessageUiModel(it.messageId, if (it.role == "USER") AssistantMessageRole.User else AssistantMessageRole.Assistant, it.content,
      it.attachments.map { a -> AssistantAttachmentUiModel(a.attachmentId, a.name, thumbnails[a.attachmentId]) }, it.createdAt, it.reasoning) })
    AssistantContent(state = uiState, contentPadding = contentPadding, onBack = onBack, onOpenAccount = onOpenAccount,
     onQuestionChange = { question = it }, onSubmit = ::submitQuestion, onSelectModel = { selectedModel = it },
     onOpenSettings = { subpage = "settings" }, onOpenUsage = { subpage = "usage" },
-    onNewConversation = { conversationId = ""; messages = emptyList(); status = ""; proposal = null; selectedModel = preferences.defaultModel.takeIf { id -> models.any { it.id == id } } ?: serverDefaultModel },
+    onNewConversation = { conversationId = ""; messages = emptyList(); status = ""; usageNotice = ""; proposal = null; selectedModel = preferences.defaultModel.takeIf { id -> models.any { it.id == id } } ?: serverDefaultModel },
+    onTogglePrompts = { if (!preferencesSaving) patchPreferences(JSONObject().put("showPromptSuggestions", !preferences.showPromptSuggestions)) },
     onOpenConversation = { id -> scope.launch {
      val token = AccountSessionManager.ensureAccessToken(context) ?: return@launch
      status = "正在读取对话…"
-     client.messages(token, id).onSuccess { conversationId = id; messages = it; proposal = null; status = ""; loadThumbnails(token, it.flatMap { m -> m.attachments }) }.onFailure { status = it.message.orEmpty() }
+     client.messages(token, id).onSuccess { conversationId = id; messages = it; proposal = null; status = ""; usageNotice = ""; loadThumbnails(token, it.flatMap { m -> m.attachments }) }.onFailure { status = it.message.orEmpty() }
     } },
     onToggleStar = { id -> if (!preferencesSaving) patchPreferences(JSONObject().put(if (id in preferences.favoriteModels) "favoriteRemove" else "favoriteAdd", id)) },
     onAttach = { AnnouncementLaunches.externalStarted(); filePicker.launch(arrayOf("*/*")) },

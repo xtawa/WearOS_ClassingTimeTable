@@ -1,0 +1,11 @@
+<resources>
+ <string name="assistant_reset_cards">AI 重設卡</string>
+ <string name="assistant_reset_hint">使用一張一次性重設卡恢復本週額度，原定重設日期和永久餘額不變。</string>
+ <string name="assistant_reset_code">重設卡兌換碼</string>
+ <string name="assistant_reset_redeem">兌換並重設</string>
+ <string name="assistant_reset_owned">帳戶內重設卡：%1$d 張</string>
+ <string name="assistant_reset_use">使用重設卡</string>
+ <string name="assistant_reset_confirm">確認恢復目前本週額度？將消耗一張重設卡，下次定期重設日期保持不變。</string>
+ <string name="assistant_reset_success">本週額度已恢復，原定重設日期不變。</string>
+ <string name="assistant_reset_busy">請等待進行中的 AI 請求完成後再使用重設卡。</string>
+</resources>

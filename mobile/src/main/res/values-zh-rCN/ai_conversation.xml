@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_show_prompts">显示推荐提示词</string>
+    <string name="assistant_show_prompts_hint">隐藏后停止自动生成，不消耗推荐词额度；此设置随账号同步。</string>
+    <string name="assistant_recommended_prompts">推荐提示词</string>
+    <string name="assistant_prompt_draft_hint">点击填入草稿，确认后发送</string>
+    <string name="assistant_hide_prompts">隐藏推荐提示词</string>
+    <string name="assistant_prompts_loading">正在生成推荐…</string>
+    <string name="assistant_prompts_unavailable">推荐暂时不可用，你仍可直接提问。</string>
+    <string name="assistant_message_placeholder">发送消息…</string>
+    <string name="assistant_latest_message">查看最新消息</string>
+    <string name="assistant_camera_unavailable">无法打开相机，请重试或选择图片。</string>
+</resources>

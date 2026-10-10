@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.ExpandMore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
@@ -120,6 +121,7 @@ internal fun AssistantContent(
     onVoiceFinish: (Boolean) -> Unit = {},
     onOpenUsage: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onTogglePrompts: () -> Unit = {},
 ) {
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -154,15 +156,24 @@ internal fun AssistantContent(
     ) {
         AssistantHeader(onMenu = { scope.launch { drawer.open() } }, onNewConversation = onNewConversation, enabled = !busy)
         val listState = rememberLazyListState()
-        LaunchedEffect(state.messages.size, state.sending, state.transcribing) {
-            val last = listState.layoutInfo.totalItemsCount - 1
-            if (last >= 0) listState.animateScrollToItem(last)
+        var followLatest by remember { mutableStateOf(true) }
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }.collect { (scrolling, canForward) ->
+                if (!canForward) followLatest = true else if (scrolling) followLatest = false
+            }
         }
+        LaunchedEffect(state.messages.firstOrNull()?.id) { followLatest = true }
+        LaunchedEffect(state.messages.size, state.messages.lastOrNull()?.content?.length, state.messages.lastOrNull()?.reasoning?.length, state.sending) {
+            if (followLatest && !listState.isScrollInProgress) {
+                val last = listState.layoutInfo.totalItemsCount - 1
+                if (last >= 0) listState.scrollToItem(last)
+            }
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             state = listState,
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxSize(),
             contentPadding = PaddingValues(
                 start = ClassingSpacing.referenceScreenInset,
                 end = ClassingSpacing.referenceScreenInset,
@@ -204,7 +215,7 @@ internal fun AssistantContent(
                                     var expanded by remember(message.id) { mutableStateOf(state.sending) }
                                     LaunchedEffect(state.sending) { if (!state.sending) expanded = false }
                                     TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.ai_photo_reasoning) + if (expanded) " ▴" else " ▾") }
-                                    AnimatedVisibility(expanded) { assistantMessage(message.reasoning) }
+                                    androidx.compose.animation.AnimatedVisibility(expanded) { assistantMessage(message.reasoning) }
                                 }
                                 assistantMessage(message.content)
                             }
@@ -213,21 +224,43 @@ internal fun AssistantContent(
                     item { courseProposal() }
                     if (state.sending) item { ProcessingIsland() }
                     if (state.status.isNotBlank()) item { StatusIsland(state.status) }
+                    if (state.usageNotice.isNotBlank()) item {
+                        Text(state.usageNotice, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
 
                 }
             }
         }
+        if (!followLatest && state.messages.isNotEmpty()) {
+            FilledTonalButton(onClick = {
+                followLatest = true
+                scope.launch { val last = listState.layoutInfo.totalItemsCount - 1; if (last >= 0) listState.scrollToItem(last) }
+            }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Text(stringResource(R.string.assistant_latest_message)) }
+        }
+        }
         if (state.loggedIn) {
-            if (state.models.isNotEmpty()) ModelSelector(state.models, state.selectedModelId, onSelectModel, onToggleStar, !busy)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth().padding(horizontal = ClassingSpacing.referenceScreenInset), verticalAlignment = Alignment.CenterVertically) {
+                if (state.models.isNotEmpty()) ModelSelector(state.models, state.selectedModelId, onSelectModel, onToggleStar, !busy, Modifier.weight(1f))
+                if (!state.showPromptSuggestions) TextButton(onClick = onTogglePrompts, enabled = !state.preferencesSaving) {
+                    Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.assistant_show_prompts))
+                }
+            }
             AssistantComposer(
                 question = state.question,
                 enabled = !state.sending && !state.uploading && !state.transcribing,
                 canSubmit = !busy && state.question.isNotBlank() &&
                     state.selectedModelId.isNotBlank(),
                 onQuestionChange = onQuestionChange,
-                onSubmit = onSubmit,
+                onSubmit = { followLatest = true; onSubmit() },
                 attachments = state.attachments,
                 prompts = state.prompts,
+                showPromptSuggestions = state.showPromptSuggestions,
+                promptNotice = state.promptNotice,
+                preferencesSaving = state.preferencesSaving,
+                onTogglePrompts = onTogglePrompts,
                 showImagePreviews = state.showImagePreviews,
                 recording = state.recording,
                 uploading = state.uploading,
@@ -401,6 +434,10 @@ private fun AssistantComposer(
     onSubmit: () -> Unit,
     attachments: List<AssistantAttachmentUiModel>,
     prompts: List<String>,
+    showPromptSuggestions: Boolean,
+    promptNotice: String,
+    preferencesSaving: Boolean,
+    onTogglePrompts: () -> Unit,
     showImagePreviews: Boolean,
     recording: Boolean,
     uploading: Boolean,
@@ -415,7 +452,6 @@ private fun AssistantComposer(
     var attachmentMenuOpen by remember { mutableStateOf(false) }
     val attachmentEnabled = enabled && !recording && attachments.size < 4
     LaunchedEffect(attachmentEnabled) { if (!attachmentEnabled) attachmentMenuOpen = false }
-    val largeText = LocalDensity.current.fontScale >= 1.5f
     val composerContentDescription = stringResource(R.string.home_ask_schedule)
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -449,17 +485,25 @@ private fun AssistantComposer(
                 Text(stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { onVoiceFinish(true) }) { Text(stringResource(R.string.assistant_cancel_voice)) }
             }
-            if (question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-                    verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-                ) {
-                    prompts.take(if (largeText) 2 else 3).forEach { prompt ->
-                        FilterChip(
-                            selected = false,
-                            onClick = { onQuestionChange(prompt) },
-                            label = { Text(prompt) },
-                        )
+            AnimatedVisibility(showPromptSuggestions && question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0 && (prompts.isNotEmpty() || promptNotice.isNotBlank())) {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.assistant_recommended_prompts), style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.assistant_prompt_draft_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = onTogglePrompts, enabled = !preferencesSaving) {
+                                Icon(Icons.Rounded.Close, stringResource(R.string.assistant_hide_prompts), Modifier.size(20.dp))
+                            }
+                        }
+                        if (promptNotice.isNotBlank()) Text(promptNotice, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(prompts, key = { it }) { prompt ->
+                                SuggestionChip(onClick = { onQuestionChange(prompt) }, modifier = Modifier.widthIn(max = 260.dp),
+                                    label = { Text(prompt, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) })
+                            }
+                        }
                     }
                 }
             }
@@ -508,7 +552,7 @@ private fun AssistantComposer(
                             Box {
                                 if (question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0) {
                                     Text(
-                                        text = stringResource(R.string.home_ask_schedule_placeholder),
+                                        text = stringResource(R.string.assistant_message_placeholder),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -595,18 +639,19 @@ private fun ModelSelector(
     onSelectModel: (String) -> Unit,
     onToggleStar: (String) -> Unit,
     enabled: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val sorted = models.sortedByDescending { it.starred }
-    Column {
+    Column(modifier) {
         Box {
-            OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().padding(horizontal = ClassingSpacing.referenceScreenInset)) {
-                Text(models.firstOrNull { it.id == selectedModelId }?.name ?: stringResource(R.string.assistant_answer_model), Modifier.weight(1f))
+            TextButton(onClick = { expanded = true }, enabled = enabled) {
+                Text(models.firstOrNull { it.id == selectedModelId }?.name ?: stringResource(R.string.assistant_answer_model), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Icon(Icons.Rounded.ExpandMore, null)
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.heightIn(max = 360.dp)) {
                 sorted.forEach { model ->
-                    DropdownMenuItem(text = { Text(model.name) }, onClick = { onSelectModel(model.id); expanded = false },
+                    DropdownMenuItem(text = { Column { Text(model.name); if (model.description.isNotBlank()) Text(model.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) } }, onClick = { onSelectModel(model.id); expanded = false },
                         trailingIcon = { IconButton(onClick = { onToggleStar(model.id) }) {
                             Icon(if (model.starred) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                                 stringResource(if (model.starred) R.string.assistant_unstar else R.string.assistant_star), tint = MaterialTheme.colorScheme.primary)

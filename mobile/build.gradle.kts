@@ -62,8 +62,8 @@ android {
         applicationId = "com.xtawa.classingtime"
         minSdk = 26
         targetSdk = 35
-        versionCode = 113
-        versionName = "1.1.3"
+        versionCode = 114
+        versionName = "1.1.4"
         buildConfigField("String", "DRIVE_OAUTH_CLIENT_ID", "\"$driveOauthClientId\"")
         buildConfigField("String", "DRIVE_OAUTH_REDIRECT_SCHEME", "\"$driveOauthRedirectScheme\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
@@ -129,6 +129,12 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+}
+
+// Robolectric ParcelFileDescriptor needs this JDK 17 module access to test
+// camera output streams. This affects unit-test JVMs only.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED")
 }
 
 dependencies {
