@@ -20,7 +20,6 @@ const REPO_URL = "https://github.com/xtawa/WearOS_ClassingTimeTable";
 const importMethods = [
   { icon: CalendarBlank, label: "从教务系统导入", meta: ".ics" },
   { icon: BracketsCurly, label: "从文件导入", meta: ".json" },
-  { icon: CloudArrowUp, label: "云端同步与备份", meta: "Google Drive / WebDAV" },
   { icon: PencilSimple, label: "手动创建", meta: "自由安排课程与时间" },
 ];
 
