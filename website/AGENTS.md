@@ -14,3 +14,4 @@ When implementing from a selected generated mock, treat that image as the source
 - Use the real app icon, product UI references, generated device assets, and Phosphor Icons. Do not replace them with CSS silhouettes, handcrafted SVG, emoji, or generic placeholders.
 
 - 2026-10-10：品牌图标采用用户选定的 F 时间页：暖白/炭黑双主题，两个课程槽与陶土色时间点。所有图标使用 doc/brand 的位图资产，不重绘。
+- 图标按 `@phosphor-icons/react/dist/csr/<Icon>` 单独导入，避免打包工具扫描整个图标库；本机前端构建保持 256 MB 内存上限。

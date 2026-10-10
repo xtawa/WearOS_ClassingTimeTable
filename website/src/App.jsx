@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  ArrowsClockwise,
-  BellRinging,
-  BracketsCurly,
-  CalendarBlank,
-  CalendarDots,
-  CheckCircle,
-  CloudArrowUp,
-  DeviceMobile,
-  GithubLogo,
-  List,
-  MapPin,
-  PencilSimple,
-  Watch,
-  X,
-} from "@phosphor-icons/react";
+import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
+import { BellRinging } from "@phosphor-icons/react/dist/csr/BellRinging";
+import { BracketsCurly } from "@phosphor-icons/react/dist/csr/BracketsCurly";
+import { CalendarBlank } from "@phosphor-icons/react/dist/csr/CalendarBlank";
+import { CalendarDots } from "@phosphor-icons/react/dist/csr/CalendarDots";
+import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { CloudArrowUp } from "@phosphor-icons/react/dist/csr/CloudArrowUp";
+import { DeviceMobile } from "@phosphor-icons/react/dist/csr/DeviceMobile";
+import { GithubLogo } from "@phosphor-icons/react/dist/csr/GithubLogo";
+import { List } from "@phosphor-icons/react/dist/csr/List";
+import { MapPin } from "@phosphor-icons/react/dist/csr/MapPin";
+import { PencilSimple } from "@phosphor-icons/react/dist/csr/PencilSimple";
+import { Watch } from "@phosphor-icons/react/dist/csr/Watch";
+import { X } from "@phosphor-icons/react/dist/csr/X";
 
 const REPO_URL = "https://github.com/xtawa/WearOS_ClassingTimeTable";
 
