@@ -33,6 +33,9 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.classing.shared.announcements.AnnouncementPolicy
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -55,6 +58,7 @@ object AnnouncementLaunches {
   if(ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && session.value==0L)session.value=1
  }
 }
+private val imageRequests=Semaphore(2)
 private data class Notice(val id:String,val title:String,val content:String,val html:String,val revision:Long,val publish:Long,val expires:Long,val policy:AnnouncementPolicy)
 private fun parseNotices(raw:String):List<Notice>{
  val items=JSONObject(raw).optJSONArray("announcements")?:return emptyList()
@@ -146,17 +150,20 @@ private fun NoticeBody(html:String,plain:String,baseUrl:String,compact:Boolean){
   if(position<text.length)result.add(BodyPart.Text(text.subSequence(position,text.length) as Spanned));result
  }
  val color=MaterialTheme.colorScheme.onSurface.toArgb();val link=MaterialTheme.colorScheme.primary.toArgb()
+ var images=0
  parts.forEach{part->when(part){
   is BodyPart.Text->AndroidView(factory={TextView(it).apply{movementMethod=LinkMovementMethod.getInstance();textSize=if(compact)13f else 16f}},update={it.text=part.value;it.setTextColor(color);it.setLinkTextColor(link)},modifier=Modifier.fillMaxWidth())
   is BodyPart.Picture->{
+   images++
+   if(images > (if(compact)3 else 8)) {Text(if(Locale.getDefault().language=="zh")"更多图片请在大屏设备查看" else "View additional images on a larger device");return@forEach}
    val uri=remember(part.source,baseUrl){runCatching{URL(URL(baseUrl),part.source)}.getOrNull()?.takeIf{it.protocol=="https"}}
    var bitmap by remember(uri){mutableStateOf<Bitmap?>(null)}
-   LaunchedEffect(uri){if(uri!=null)bitmap=withContext(Dispatchers.IO){runCatching{
+   LaunchedEffect(uri){if(uri!=null)bitmap=imageRequests.withPermit { withContext(Dispatchers.IO){runCatching{
     val bytes=readURL(uri.toString(),8*1024*1024);val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true};BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
     require(bounds.outWidth>0&&bounds.outHeight>0&&bounds.outWidth.toLong()*bounds.outHeight<=24000000)
     val options=BitmapFactory.Options();val max=if(compact)512 else 1024;while(bounds.outWidth/options.inSampleSize.coerceAtLeast(1)>max||bounds.outHeight/options.inSampleSize.coerceAtLeast(1)>max)options.inSampleSize=options.inSampleSize.coerceAtLeast(1)*2
     BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)
-   }.getOrNull()}}
+   }.getOrNull()}}}
    bitmap?.let{Image(it.asImageBitmap(),null,modifier=Modifier.fillMaxWidth().heightIn(max=if(compact)180.dp else 360.dp))}
    if(bitmap==null)Text(if(Locale.getDefault().language=="zh")"图片加载中或暂时不可用" else "Image loading or unavailable",style=MaterialTheme.typography.bodySmall)
   }

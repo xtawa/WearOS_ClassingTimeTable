@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.screen
 
+import androidx.compose.ui.graphics.luminance
 import android.app.DatePickerDialog
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -2313,7 +2314,7 @@ internal fun AboutLayer(
                         contentAlignment = Alignment.Center,
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                            painter = painterResource(id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) R.drawable.classing_icon_dark else R.drawable.ic_launcher_foreground),
                             contentDescription = stringResource(R.string.app_name),
                             modifier = Modifier.size(54.dp),
                         )

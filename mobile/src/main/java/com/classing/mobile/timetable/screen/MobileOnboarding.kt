@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.screen
 
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import com.xtawa.classingtime.ui.components.ClassingAmbientBackdrop
 import android.app.DatePickerDialog
@@ -309,7 +310,7 @@ internal fun MobileOnboardingFlow(
                         contentAlignment = Alignment.Center,
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                            painter = painterResource(id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) R.drawable.classing_icon_dark else R.drawable.ic_launcher_foreground),
                             contentDescription = null,
                             modifier = Modifier.size(52.dp),
                         )
