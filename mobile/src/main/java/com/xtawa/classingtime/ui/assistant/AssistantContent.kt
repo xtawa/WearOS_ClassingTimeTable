@@ -215,7 +215,7 @@ internal fun AssistantContent(
                                     var expanded by remember(message.id) { mutableStateOf(state.sending) }
                                     LaunchedEffect(state.sending) { if (!state.sending) expanded = false }
                                     TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.ai_photo_reasoning) + if (expanded) " ▴" else " ▾") }
-                                    AnimatedVisibility(expanded) { assistantMessage(message.reasoning) }
+                                    androidx.compose.animation.AnimatedVisibility(expanded) { assistantMessage(message.reasoning) }
                                 }
                                 assistantMessage(message.content)
                             }

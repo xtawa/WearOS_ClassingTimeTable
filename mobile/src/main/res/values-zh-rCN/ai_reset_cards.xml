@@ -1,0 +1,11 @@
+<resources>
+ <string name="assistant_reset_cards">AI 重置卡</string>
+ <string name="assistant_reset_hint">使用一张一次性重置卡恢复本周额度，原定重置日期和永久余额不变。</string>
+ <string name="assistant_reset_code">重置卡兑换码</string>
+ <string name="assistant_reset_redeem">兑换并重置</string>
+ <string name="assistant_reset_owned">账户内重置卡：%1$d 张</string>
+ <string name="assistant_reset_use">使用重置卡</string>
+ <string name="assistant_reset_confirm">确认恢复当前本周额度？将消耗一张重置卡，下次定期重置日期保持不变。</string>
+ <string name="assistant_reset_success">本周额度已恢复，原定重置日期不变。</string>
+ <string name="assistant_reset_busy">请等待正在进行的 AI 请求完成后再使用重置卡。</string>
+</resources>

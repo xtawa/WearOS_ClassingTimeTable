@@ -79,6 +79,29 @@ internal fun AskAiSettingsPage(
  var usageNotice by remember(userId) { mutableStateOf("") }
  var refreshedOnEntry by remember(userId) { mutableStateOf(false) }
  var usage by remember { mutableStateOf<AiUsageSummary?>(null) }
+ var resetCards by remember(userId) { mutableStateOf<List<AiResetCard>>(emptyList()) }
+ var resetting by remember { mutableStateOf(false) }
+ var resetStatus by remember { mutableStateOf("") }
+ var resetCelebration by remember { mutableIntStateOf(0) }
+
+ suspend fun loadResetUsage(token: String) {
+  client.usage(token).onSuccess { usage = it }.onFailure { status = it.message.orEmpty() }
+  client.resetCards(token).onSuccess { resetCards = it }.onFailure { resetStatus = it.message.orEmpty() }
+ }
+ fun useResetCard(cardId: String, code: String) {
+  if (resetting) return
+  resetting = true; resetStatus = ""
+  scope.launch {
+   try {
+    val token = AccountSessionManager.ensureAccessToken(context) ?: error("Please sign in again")
+    client.useResetCard(token, cardId, code).onSuccess {
+     usage = it; resetCelebration++; resetStatus = context.getString(R.string.assistant_reset_success)
+    }.onFailure { resetStatus = it.message.orEmpty() }
+    loadResetUsage(token)
+   } catch (e: CancellationException) { throw e } catch (e: Exception) { resetStatus = e.message.orEmpty() }
+   finally { resetting = false }
+  }
+ }
  var proposal by remember { mutableStateOf<JSONObject?>(null) }
  var proposalFingerprint by remember { mutableStateOf("") }
 
@@ -247,12 +270,13 @@ internal fun AskAiSettingsPage(
  }
  BackHandler(subpage.isNotBlank()) { subpage = "" }
  LaunchedEffect(subpage) {
-  if (subpage == "usage") AccountSessionManager.ensureAccessToken(context)?.let { client.usage(it).onSuccess { usage = it }.onFailure { status = it.message.orEmpty() } }
+  if (subpage == "usage") AccountSessionManager.ensureAccessToken(context)?.let { resetStatus = ""; loadResetUsage(it) }
   if (subpage == "settings") AccountSessionManager.ensureAccessToken(context)?.let { loadPreferences(it) }
  }
+ CelebrationOverlay(resetCelebration)
  when (subpage) {
   "settings" -> AskAiPreferencesPage(contentPadding, preferences, models, preferencesSaving, syncStatus, { subpage = "" }, ::patchPreferences)
-  "usage" -> AskAiUsagePage(contentPadding, usage, status, { subpage = "" })
+  "usage" -> AskAiUsagePage(contentPadding, usage, status, { subpage = "" }, resetCards, resetting, resetStatus, ::useResetCard)
   else -> {
    val today = lessons.filter { it.dayOfWeek == currentDate.dayOfWeek }
    val uiState = AssistantUiState(loggedIn = loggedIn, member = member, hasSchedule = lessons.isNotEmpty(), contextLabel = "$currentDate · ${today.size}",
