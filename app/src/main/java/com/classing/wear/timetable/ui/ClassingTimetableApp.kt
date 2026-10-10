@@ -1,5 +1,7 @@
 package com.classing.wear.timetable.ui
 
+import com.classing.client.announcements.StartupAnnouncements
+import com.classing.wear.timetable.BuildConfig
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -79,6 +81,7 @@ fun ClassingTimetableApp(appContainer: AppContainer) {
             color = MaterialTheme.colorScheme.background,
         ) {
             AppNavGraph(appContainer)
+            StartupAnnouncements(com.classing.wear.timetable.account.WearQrAuthApiClient.BASE_URL, "ANDROID_WEAR", BuildConfig.VERSION_CODE.toLong(), BuildConfig.VERSION_NAME, BuildConfig.CLIENT_MARKET, compact = true)
         }
     }
 }

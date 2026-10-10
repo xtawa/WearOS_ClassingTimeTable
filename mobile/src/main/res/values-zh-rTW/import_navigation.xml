@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="import_entry_ics_desc">選擇 ICS 檔案或貼上日曆內容。</string>
+    <string name="import_entry_json_desc">匯入 JSON，或用 AI 拍照辨識課表。</string>
+    <string name="import_entry_manual_desc">手動填寫課程名稱、時間與教學週。</string>
+</resources>

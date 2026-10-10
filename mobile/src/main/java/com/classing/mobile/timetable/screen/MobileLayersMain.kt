@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.FileProvider
 import java.io.File
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -62,6 +63,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -387,10 +390,7 @@ internal fun ImportLayer(
     val previewCollapseThreshold = 8
     var expandIcsPreview by remember(preview.size) { mutableStateOf(preview.size <= previewCollapseThreshold) }
     var expandJsonPreview by remember(jsonPreview.size) { mutableStateOf(jsonPreview.size <= previewCollapseThreshold) }
-    var expandedImportMethod by remember { mutableStateOf<ImportFocusMethod?>(initialFocusMethod ?: ImportFocusMethod.ICS) }
-    val icsSectionRequester = remember { BringIntoViewRequester() }
-    val jsonSectionRequester = remember { BringIntoViewRequester() }
-    val manualSectionRequester = remember { BringIntoViewRequester() }
+    var selectedImportMethod by rememberSaveable { mutableStateOf<ImportFocusMethod?>(initialFocusMethod) }
     val hasPendingJsonImport = importFeedback.canConfirm(ImportFocusMethod.JSON) && jsonPreview.isNotEmpty()
     val icsFeedback = importFeedback.forMethod(ImportFocusMethod.ICS)
 
@@ -417,14 +417,11 @@ internal fun ImportLayer(
     LaunchedEffect(initialFocusMethod, showJsonPromptPage) {
         val focusMethod = initialFocusMethod ?: return@LaunchedEffect
         if (showJsonPromptPage) return@LaunchedEffect
-        expandedImportMethod = focusMethod
-        when (focusMethod) {
-            ImportFocusMethod.ICS -> icsSectionRequester.bringIntoView()
-            ImportFocusMethod.JSON -> jsonSectionRequester.bringIntoView()
-            ImportFocusMethod.MANUAL -> manualSectionRequester.bringIntoView()
-        }
+        selectedImportMethod = focusMethod
         onInitialFocusConsumed?.invoke(focusMethod)
     }
+
+    BackHandler(selectedImportMethod != null && !showJsonPromptPage) { selectedImportMethod = null }
 
     if (showJsonPromptPage) {
         JsonPromptPage(
@@ -440,24 +437,41 @@ internal fun ImportLayer(
             .padding(contentPadding)
             .padding(horizontal = ClassingSpacing.referenceScreenInset)
             .navigationBarsPadding()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(key(selectedImportMethod) { rememberScrollState() }),
         verticalArrangement = Arrangement.spacedBy(ClassingSpacing.lg),
     ) {
         if (onBackToSettings != null) {
             SecondaryPageHeader(
-                title = stringResource(R.string.import_page_title),
-                onBack = onBackToSettings,
+                title = stringResource(when (selectedImportMethod) {
+                    ImportFocusMethod.ICS -> R.string.import_method_ics
+                    ImportFocusMethod.JSON -> R.string.import_method_json
+                    ImportFocusMethod.MANUAL -> R.string.import_method_manual
+                    null -> R.string.import_page_title
+                }),
+                onBack = { if (selectedImportMethod != null) selectedImportMethod = null else onBackToSettings() },
                 backLabel = stringResource(R.string.settings_about_back_button),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Text(
-            text = stringResource(R.string.import_page_desc),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = ClassingSpacing.xxs),
-        )
-        ClassingInformationIsland {
+        if (selectedImportMethod == null) {
+            Text(stringResource(R.string.import_page_desc), style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            listOf(ImportFocusMethod.ICS, ImportFocusMethod.JSON, ImportFocusMethod.MANUAL).forEach { method ->
+                ClassingInformationIsland(onClick = { selectedImportMethod = method }) {
+                    Text(stringResource(when (method) {
+                        ImportFocusMethod.ICS -> R.string.import_method_ics
+                        ImportFocusMethod.JSON -> R.string.import_method_json
+                        ImportFocusMethod.MANUAL -> R.string.import_method_manual
+                    }), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(when (method) {
+                        ImportFocusMethod.ICS -> R.string.import_entry_ics_desc
+                        ImportFocusMethod.JSON -> R.string.import_entry_json_desc
+                        ImportFocusMethod.MANUAL -> R.string.import_entry_manual_desc
+                    }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        if (selectedImportMethod == ImportFocusMethod.JSON) ClassingInformationIsland {
             Text(stringResource(R.string.ai_photo_title), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.ai_photo_description), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -499,33 +513,12 @@ internal fun ImportLayer(
                     style = MaterialTheme.typography.bodySmall)
             }
         }
-        Column(
+        if (selectedImportMethod == ImportFocusMethod.ICS) Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(icsSectionRequester),
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            ClassingInformationIsland(
-                onClick = {
-                    expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.ICS) null else ImportFocusMethod.ICS
-                },
-                contentPadding = PaddingValues(ClassingSpacing.sm),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.import_method_ics),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(stringResource(if (expandedImportMethod == ImportFocusMethod.ICS) R.string.import_section_collapse else R.string.import_section_expand))
-                }
-            }
-            if (expandedImportMethod == ImportFocusMethod.ICS) {
+            if (selectedImportMethod == ImportFocusMethod.ICS) {
             OutlinedTextField(
                 value = rawIcs,
                 onValueChange = onRawChange,
@@ -623,33 +616,12 @@ internal fun ImportLayer(
         }
 
         HorizontalDivider()
-        Column(
+        if (selectedImportMethod == ImportFocusMethod.JSON) Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(jsonSectionRequester),
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            ClassingInformationIsland(
-                onClick = {
-                    expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.JSON) null else ImportFocusMethod.JSON
-                },
-                contentPadding = PaddingValues(ClassingSpacing.sm),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.import_method_json),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(stringResource(if (expandedImportMethod == ImportFocusMethod.JSON) R.string.import_section_collapse else R.string.import_section_expand))
-                }
-            }
-            if (expandedImportMethod == ImportFocusMethod.JSON) {
+            if (selectedImportMethod == ImportFocusMethod.JSON) {
             Text(stringResource(R.string.json_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Text(
                 text = stringResource(R.string.json_import_desc),
@@ -795,33 +767,12 @@ internal fun ImportLayer(
         }
 
         HorizontalDivider()
-        Column(
+        if (selectedImportMethod == ImportFocusMethod.MANUAL) Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(manualSectionRequester),
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            ClassingInformationIsland(
-                onClick = {
-                    expandedImportMethod = if (expandedImportMethod == ImportFocusMethod.MANUAL) null else ImportFocusMethod.MANUAL
-                },
-                contentPadding = PaddingValues(ClassingSpacing.sm),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.import_method_manual),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(stringResource(if (expandedImportMethod == ImportFocusMethod.MANUAL) R.string.import_section_collapse else R.string.import_section_expand))
-                }
-            }
-            if (expandedImportMethod == ImportFocusMethod.MANUAL) {
+            if (selectedImportMethod == ImportFocusMethod.MANUAL) {
             Text(stringResource(R.string.manual_import_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Text(
                 text = stringResource(R.string.manual_import_desc),

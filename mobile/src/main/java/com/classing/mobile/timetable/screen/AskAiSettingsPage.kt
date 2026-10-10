@@ -1,9 +1,14 @@
 package com.xtawa.classingtime.screen
 
+import com.classing.client.announcements.AnnouncementLaunches
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.provider.OpenableColumns
+import android.net.Uri
+import androidx.core.content.FileProvider
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.classing.shared.files.AttachmentPolicy
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -162,8 +167,6 @@ internal fun AskAiSettingsPage(
    } finally { sending = false }
   }
  }
- val submitLatest by rememberUpdatedState(::submitQuestion)
- val voiceAutoSend by rememberUpdatedState(preferences.voiceAutoSend)
  val voice = remember(context, userId) {
   AskAiVoiceInput(context, scope, onRecording = { recording = it }, onProcessing = { transcribing = it },
    onCloudAudio = { file ->
@@ -172,8 +175,7 @@ internal fun AskAiSettingsPage(
      try {
       val token = AccountSessionManager.ensureAccessToken(context) ?: error("Please sign in again")
       client.transcribe(token, file).onSuccess { result ->
-       question = result.text; transcribing = false; status = context.getString(R.string.ai_cost_points, result.costPoints)
-       if (voiceAutoSend) submitLatest()
+       question = listOf(question.trimEnd(), result.text.trim()).filter { it.isNotBlank() }.joinToString("\n"); transcribing = false; status = context.getString(R.string.ai_cost_points, result.costPoints)
       }.onFailure { status = it.message.orEmpty() }
      } catch (e: CancellationException) { throw e } catch (e: Exception) { status = e.message.orEmpty() }
      finally { file.delete(); transcribing = false; transcriptionJob = null }
@@ -191,7 +193,7 @@ internal fun AskAiSettingsPage(
   onDispose { lifecycle.removeObserver(observer); voice.cancel(); transcriptionJob?.cancel() }
  }
  val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> status = context.getString(if (granted) R.string.assistant_voice_hold else R.string.assistant_mic_denied) }
- val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+ fun uploadUris(uris: List<Uri>, cameraFile: File? = null) {
   if (uris.isNotEmpty()) scope.launch {
    uploading = true
    try {
@@ -199,23 +201,43 @@ internal fun AskAiSettingsPage(
     for (uri in uris.take((4 - attachments.size).coerceAtLeast(0))) {
      val mime = context.contentResolver.getType(uri).orEmpty(); var name = "attachment"
      context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor -> if (cursor.moveToFirst()) name = cursor.getString(0).orEmpty().ifBlank { name } }
+     if (!AttachmentPolicy.isAllowed(name, mime)) { status = context.getString(R.string.assistant_file_excluded); continue }
+     val header = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use { input -> ByteArray(512).let { bytes -> val count = input.read(bytes); bytes.copyOf(count.coerceAtLeast(0)) } } ?: error("Could not open file") }
+     if (!AttachmentPolicy.isAllowed(name, mime, header)) { status = context.getString(R.string.assistant_file_excluded); continue }
      val temp = File.createTempFile("ask-upload-", ".tmp", context.cacheDir)
      try {
       var preview: Bitmap? = null
       withContext(Dispatchers.IO) {
-       if (mime.startsWith("image/")) { val bytes = prepareTimetablePhoto(context, uri); temp.writeBytes(bytes); preview = client.thumbnail(bytes); name = name.substringBeforeLast('.', name) + ".jpg" }
+       if (mime.startsWith("image/") && mime != "image/svg+xml") { val bytes = prepareTimetablePhoto(context, uri); temp.writeBytes(bytes); preview = client.thumbnail(bytes); name = name.substringBeforeLast('.', name) + ".jpg" }
        else context.contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { out ->
         val buffer = ByteArray(8192); var total = 0
         while (true) { val n = input.read(buffer); if (n < 0) break; total += n; require(total <= 20 * 1024 * 1024) { "Maximum file size is 20 MB" }; out.write(buffer, 0, n) }
        } } ?: error("Could not open file")
       }
-      client.uploadAttachment(token, temp, name, if (mime.startsWith("image/")) "image/jpeg" else mime.ifBlank { "application/octet-stream" }).onSuccess {
+      client.uploadAttachment(token, temp, name, if (mime.startsWith("image/") && mime != "image/svg+xml") "image/jpeg" else mime.ifBlank { "application/octet-stream" }).onSuccess {
        attachments = attachments + it; preview?.let { image -> if (thumbnails.size >= 32) thumbnails.keys.firstOrNull()?.let { key -> thumbnails.remove(key) }; thumbnails[it.attachmentId] = image }; status = context.getString(R.string.assistant_file_retention)
       }.onFailure { status = it.message.orEmpty() }
      } finally { temp.delete() }
     }
-   } catch (e: CancellationException) { throw e } catch (e: Exception) { status = e.message.orEmpty() } finally { uploading = false }
+   } catch (e: CancellationException) { throw e } catch (e: Exception) { status = e.message.orEmpty() } finally { uploading = false; cameraFile?.delete() }
   }
+ }
+ val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { AnnouncementLaunches.externalFinished(); uploadUris(it) }
+ val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { AnnouncementLaunches.externalFinished(); uploadUris(it) }
+ var pendingCameraPath by rememberSaveable { mutableStateOf("") }
+ val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+  AnnouncementLaunches.externalFinished()
+  val file = pendingCameraPath.takeIf { it.isNotBlank() }?.let(::File)
+  pendingCameraPath = ""
+  if (success && file != null) uploadUris(listOf(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)), file)
+  else file?.delete()
+ }
+ fun takePhoto() {
+  runCatching {
+   val file = File.createTempFile("ask-camera-", ".jpg", context.cacheDir)
+   pendingCameraPath = file.absolutePath
+   AnnouncementLaunches.externalStarted(); cameraLauncher.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file))
+  }.onFailure { AnnouncementLaunches.externalFinished(); pendingCameraPath.takeIf { it.isNotBlank() }?.let { File(it).delete() }; pendingCameraPath = ""; status = it.message.orEmpty() }
  }
  BackHandler(subpage.isNotBlank()) { subpage = "" }
  LaunchedEffect(subpage) {
@@ -246,7 +268,8 @@ internal fun AskAiSettingsPage(
      client.messages(token, id).onSuccess { conversationId = id; messages = it; proposal = null; status = ""; loadThumbnails(token, it.flatMap { m -> m.attachments }) }.onFailure { status = it.message.orEmpty() }
     } },
     onToggleStar = { id -> if (!preferencesSaving) patchPreferences(JSONObject().put(if (id in preferences.favoriteModels) "favoriteRemove" else "favoriteAdd", id)) },
-    onAttach = { filePicker.launch(arrayOf("application/pdf", "image/*", "audio/*", "text/*", "application/json", "application/ogg")) },
+    onAttach = { AnnouncementLaunches.externalStarted(); filePicker.launch(arrayOf("*/*")) },
+    onTakePhoto = ::takePhoto, onChooseImage = { AnnouncementLaunches.externalStarted(); imagePicker.launch(arrayOf("image/*")) },
     onRemoveAttachment = { id -> scope.launch { AccountSessionManager.ensureAccessToken(context)?.let { token -> client.deleteAttachment(token, id).onSuccess { attachments = attachments.filterNot { it.attachmentId == id }; thumbnails.remove(id) }.onFailure { status = it.message.orEmpty() } } } },
     onVoiceStart = { if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) voice.start() else micPermission.launch(Manifest.permission.RECORD_AUDIO) },
     onVoiceFinish = { cancelled -> if (cancelled) { transcriptionJob?.cancel(); transcribing = false }; voice.finish(cancelled) },

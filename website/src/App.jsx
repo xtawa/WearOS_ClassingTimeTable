@@ -1,28 +1,25 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  ArrowsClockwise,
-  BellRinging,
-  BracketsCurly,
-  CalendarBlank,
-  CalendarDots,
-  CheckCircle,
-  CloudArrowUp,
-  DeviceMobile,
-  GithubLogo,
-  List,
-  MapPin,
-  PencilSimple,
-  Watch,
-  X,
-} from "@phosphor-icons/react";
+import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
+import { BellRinging } from "@phosphor-icons/react/dist/csr/BellRinging";
+import { BracketsCurly } from "@phosphor-icons/react/dist/csr/BracketsCurly";
+import { CalendarBlank } from "@phosphor-icons/react/dist/csr/CalendarBlank";
+import { CalendarDots } from "@phosphor-icons/react/dist/csr/CalendarDots";
+import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { CloudArrowUp } from "@phosphor-icons/react/dist/csr/CloudArrowUp";
+import { DeviceMobile } from "@phosphor-icons/react/dist/csr/DeviceMobile";
+import { GithubLogo } from "@phosphor-icons/react/dist/csr/GithubLogo";
+import { List } from "@phosphor-icons/react/dist/csr/List";
+import { MapPin } from "@phosphor-icons/react/dist/csr/MapPin";
+import { PencilSimple } from "@phosphor-icons/react/dist/csr/PencilSimple";
+import { Watch } from "@phosphor-icons/react/dist/csr/Watch";
+import { X } from "@phosphor-icons/react/dist/csr/X";
 
 const REPO_URL = "https://github.com/xtawa/WearOS_ClassingTimeTable";
 
 const importMethods = [
   { icon: CalendarBlank, label: "从教务系统导入", meta: ".ics" },
   { icon: BracketsCurly, label: "从文件导入", meta: ".json" },
-  { icon: CloudArrowUp, label: "云端同步与备份", meta: "Google Drive / WebDAV" },
   { icon: PencilSimple, label: "手动创建", meta: "自由安排课程与时间" },
 ];
 
@@ -35,7 +32,7 @@ const reminderFeatures = [
 function Brand({ compact = false }) {
   return (
     <a className="brand" href="#top" aria-label="Classing 首页">
-      <img src="/assets/classing-brand/classing-app-icon.png" alt="" />
+      <picture><source media="(prefers-color-scheme: dark)" srcSet="/assets/classing-brand/classing-app-icon-dark.png" /><img src="/assets/classing-brand/classing-app-icon.png" alt="" /></picture>
       <span>Classing</span>
       {!compact && <small>TIMETABLE</small>}
     </a>

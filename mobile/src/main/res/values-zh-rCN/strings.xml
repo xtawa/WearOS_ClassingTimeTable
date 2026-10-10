@@ -852,9 +852,9 @@
     <string name="assistant_file_retention">附件保存 14 天后自动删除。</string>
     <string name="assistant_uploading">正在上传附件…</string>
     <string name="assistant_transcribing">正在转写语音…</string>
-    <string name="assistant_recording_hint">松手发送 · 上滑取消</string>
+    <string name="assistant_recording_hint">正在录音 · 再次点击转写 · 可取消</string>
     <string name="assistant_cancel_voice">取消</string>
-    <string name="assistant_voice_hold">按住说话，松手发送，上滑取消。</string>
+    <string name="assistant_voice_hold">点击开始录音，再次点击转写，确认文字后手动发送。</string>
     <string name="assistant_mic_denied">需要麦克风权限才能使用语音输入。</string>
     <string name="assistant_star">星标此模型</string>
     <string name="assistant_unstar">取消模型星标</string>

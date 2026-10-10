@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="import_entry_ics_desc">Import an ICS file or paste calendar data.</string>
+    <string name="import_entry_json_desc">Import JSON or recognize a timetable photo with AI.</string>
+    <string name="import_entry_manual_desc">Enter course names, times and teaching weeks.</string>
+</resources>

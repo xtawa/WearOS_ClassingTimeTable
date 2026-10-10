@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_take_photo">拍照</string>
+    <string name="assistant_choose_image">上传图片</string>
+    <string name="assistant_choose_file">选择文件</string>
+    <string name="assistant_file_excluded">附件不支持可执行文件、音频和视频。</string>
+</resources>
