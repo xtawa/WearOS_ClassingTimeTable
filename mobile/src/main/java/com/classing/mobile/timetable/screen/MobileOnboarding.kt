@@ -310,7 +310,7 @@ internal fun MobileOnboardingFlow(
                         contentAlignment = Alignment.Center,
                     ) {
                         Image(
-                            painter = painterResource(id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) R.drawable.classing_icon_dark else R.drawable.ic_launcher_foreground),
+                            painter = painterResource(id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) R.drawable.classing_icon_dark else R.drawable.classing_icon_light),
                             contentDescription = null,
                             modifier = Modifier.size(52.dp),
                         )
