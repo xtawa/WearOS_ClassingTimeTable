@@ -56,12 +56,14 @@ android {
     namespace = "com.xtawa.classingtime"
     compileSdk = 35
 
+    sourceSets["main"].java.srcDir("../client-common/src/main/java")
+
     defaultConfig {
         applicationId = "com.xtawa.classingtime"
         minSdk = 26
         targetSdk = 35
-        versionCode = 112
-        versionName = "1.1.2"
+        versionCode = 113
+        versionName = "1.1.3"
         buildConfigField("String", "DRIVE_OAUTH_CLIENT_ID", "\"$driveOauthClientId\"")
         buildConfigField("String", "DRIVE_OAUTH_REDIRECT_SCHEME", "\"$driveOauthRedirectScheme\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
@@ -130,6 +132,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
 
     implementation(project(":shared"))

@@ -42,13 +42,15 @@ android {
     namespace = "com.classing.wear.timetable"
     compileSdk = 35
 
+    sourceSets["main"].java.srcDir("../client-common/src/main/java")
+
     defaultConfig {
         // Data Layer routes messages only between handheld and watch APKs that share an app id.
         applicationId = "com.xtawa.classingtime"
         minSdk = 30
         targetSdk = 35
-        versionCode = 112
-        versionName = "1.1.2"
+        versionCode = 113
+        versionName = "1.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -129,6 +131,7 @@ ksp {
 }
 
 dependencies {
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation(project(":shared"))
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
 

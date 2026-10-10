@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_take_photo">Take photo</string>
+    <string name="assistant_choose_image">Upload images</string>
+    <string name="assistant_choose_file">Choose files</string>
+    <string name="assistant_file_excluded">Executable, audio and video files cannot be attached.</string>
+</resources>

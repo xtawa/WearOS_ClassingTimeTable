@@ -852,9 +852,9 @@
     <string name="assistant_file_retention">Attachments are stored for 14 days, then deleted.</string>
     <string name="assistant_uploading">Uploading file…</string>
     <string name="assistant_transcribing">Transcribing voice…</string>
-    <string name="assistant_recording_hint">Release to send · Slide up to cancel</string>
+    <string name="assistant_recording_hint">Recording · Tap again to transcribe · Cancel to discard</string>
     <string name="assistant_cancel_voice">Cancel</string>
-    <string name="assistant_voice_hold">Hold to speak, release to send. Slide up to cancel.</string>
+    <string name="assistant_voice_hold">Tap to record. Tap again to transcribe; review and send manually.</string>
     <string name="assistant_mic_denied">Allow microphone access to use voice input.</string>
     <string name="assistant_star">Star this model</string>
     <string name="assistant_unstar">Unstar this model</string>

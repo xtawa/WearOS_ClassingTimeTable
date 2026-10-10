@@ -1,5 +1,7 @@
 package com.xtawa.classingtime
 
+import com.classing.client.announcements.StartupAnnouncements
+import com.xtawa.classingtime.account.AccountEdition
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -107,6 +109,7 @@ private fun MobileApp() {
                 appearanceState = appearance,
                 onAppearanceStateChange = ::updateAppearance,
             )
+            StartupAnnouncements(BuildConfig.API_BASE_URL, "ANDROID_MOBILE", BuildConfig.VERSION_CODE.toLong(), BuildConfig.VERSION_NAME, AccountEdition.selected(context))
         }
     }
 }

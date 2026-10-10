@@ -45,7 +45,7 @@ internal fun AskAiPreferencesPage(padding: PaddingValues, preferences: AiPrefere
    }
   }
   PreferenceSwitch(stringResource(R.string.assistant_auto_prompts), stringResource(R.string.assistant_auto_prompts_warning), preferences.autoRefreshPrompts, !saving) { onPatch(JSONObject().put("autoRefreshPrompts", it)) }
-  PreferenceSwitch(stringResource(R.string.assistant_voice_autosend), stringResource(R.string.assistant_voice_cloud), preferences.voiceAutoSend, !saving) { onPatch(JSONObject().put("voiceAutoSend", it)) }
+  Text(stringResource(R.string.assistant_voice_cloud), style = MaterialTheme.typography.bodySmall)
   PreferenceSwitch(stringResource(R.string.assistant_image_previews), "", preferences.imagePreviews, !saving) { onPatch(JSONObject().put("imagePreviews", it)) }
   PreferenceSwitch(stringResource(R.string.assistant_show_reasoning), "", preferences.showReasoning, !saving) { onPatch(JSONObject().put("showReasoning", it)) }
   PreferenceSwitch(stringResource(R.string.assistant_timestamps), "", preferences.showTimestamps, !saving) { onPatch(JSONObject().put("showTimestamps", it)) }

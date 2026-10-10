@@ -26,6 +26,9 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Star
@@ -110,6 +113,8 @@ internal fun AssistantContent(
     modifier: Modifier = Modifier,
     onToggleStar: (String) -> Unit = {},
     onAttach: () -> Unit = {},
+    onTakePhoto: () -> Unit = {},
+    onChooseImage: () -> Unit = {},
     onRemoveAttachment: (String) -> Unit = {},
     onVoiceStart: () -> Unit = {},
     onVoiceFinish: (Boolean) -> Unit = {},
@@ -228,6 +233,8 @@ internal fun AssistantContent(
                 uploading = state.uploading,
                 transcribing = state.transcribing,
                 onAttach = onAttach,
+                onTakePhoto = onTakePhoto,
+                onChooseImage = onChooseImage,
                 onRemoveAttachment = onRemoveAttachment,
                 onVoiceStart = onVoiceStart,
                 onVoiceFinish = onVoiceFinish,
@@ -248,7 +255,6 @@ private fun AssistantHeader(onMenu: () -> Unit, onNewConversation: () -> Unit, e
 
 @Composable
 private fun ContextAnchor(label: String) {
-    val largeText = LocalDensity.current.fontScale >= 1.5f
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(ClassingRadii.pill),
@@ -399,10 +405,15 @@ private fun AssistantComposer(
     uploading: Boolean,
     transcribing: Boolean,
     onAttach: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onChooseImage: () -> Unit,
     onRemoveAttachment: (String) -> Unit,
     onVoiceStart: () -> Unit,
     onVoiceFinish: (Boolean) -> Unit,
 ) {
+    var attachmentMenuOpen by remember { mutableStateOf(false) }
+    val attachmentEnabled = enabled && !recording && attachments.size < 4
+    LaunchedEffect(attachmentEnabled) { if (!attachmentEnabled) attachmentMenuOpen = false }
     val largeText = LocalDensity.current.fontScale >= 1.5f
     val composerContentDescription = stringResource(R.string.home_ask_schedule)
     Surface(
@@ -432,8 +443,7 @@ private fun AssistantComposer(
                     }
                 }
             }
-            if (transcribing) ThinkingIndicator()
-            else if (uploading) Text(stringResource(R.string.assistant_uploading), style = MaterialTheme.typography.bodySmall)
+            if (uploading) Text(stringResource(R.string.assistant_uploading), style = MaterialTheme.typography.bodySmall)
             if (recording || transcribing) Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { onVoiceFinish(true) }) { Text(stringResource(R.string.assistant_cancel_voice)) }
@@ -463,8 +473,24 @@ private fun AssistantComposer(
                         .padding(start = ClassingSpacing.md, end = ClassingSpacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = onAttach, enabled = enabled && !recording && attachments.size < 4) { Icon(Icons.Rounded.AttachFile, stringResource(R.string.assistant_attach)) }
-                    BasicTextField(
+                    Box {
+                        IconButton(onClick = { attachmentMenuOpen = true }, enabled = attachmentEnabled) {
+                            Icon(Icons.Rounded.Add, stringResource(R.string.assistant_attach))
+                        }
+                        DropdownMenu(expanded = attachmentMenuOpen, onDismissRequest = { attachmentMenuOpen = false }) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.assistant_take_photo)) },
+                                leadingIcon = { Icon(Icons.Rounded.PhotoCamera, null) },
+                                onClick = { attachmentMenuOpen = false; onTakePhoto() })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.assistant_choose_image)) },
+                                leadingIcon = { Icon(Icons.Rounded.Image, null) },
+                                onClick = { attachmentMenuOpen = false; onChooseImage() })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.assistant_choose_file)) },
+                                leadingIcon = { Icon(Icons.Rounded.AttachFile, null) },
+                                onClick = { attachmentMenuOpen = false; onAttach() })
+                        }
+                    }
+                    if (transcribing) Box(Modifier.weight(1f).padding(vertical = ClassingSpacing.md)) { ThinkingIndicator() }
+                    else BasicTextField(
                         value = question,
                         onValueChange = onQuestionChange,
                         maxLines = 4,
@@ -474,7 +500,7 @@ private fun AssistantComposer(
                             .semantics {
                                 contentDescription = composerContentDescription
                             },
-                        enabled = enabled && !recording,
+                        enabled = enabled,
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         decorationBox = { inner ->
@@ -593,29 +619,11 @@ private fun ModelSelector(
 
 @Composable
 private fun VoiceInputButton(enabled: Boolean, recording: Boolean, onStart: () -> Unit, onFinish: (Boolean) -> Unit) {
-    val start by rememberUpdatedState(onStart)
-    val finish by rememberUpdatedState(onFinish)
-    val cancelDistance = with(LocalDensity.current) { 56.dp.toPx() }
-    val label = stringResource(R.string.assistant_voice_hold)
-    Box(Modifier.size(48.dp).semantics {
-        contentDescription = label
-        onClick { if (enabled) { if (recording) finish(false) else start() }; true }
-    }.pointerInput(enabled) {
-        if (!enabled) return@pointerInput
-        awaitEachGesture {
-            val down = awaitFirstDown(); down.consume(); start()
-            var cancelled = false
-            var completed = false
-            try {
-                while (true) {
-                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                    if (down.position.y - change.position.y > cancelDistance) cancelled = true
-                    change.consume()
-                    if (!change.pressed) { finish(cancelled); completed = true; break }
-                }
-            } finally { if (!completed) finish(true) }
-        }
-    }, contentAlignment = Alignment.Center) {
-        Icon(Icons.Rounded.Mic, null, tint = if (recording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+    IconButton(onClick = { if (recording) onFinish(false) else onStart() }, enabled = enabled) {
+        Icon(
+            if (recording) Icons.Rounded.StopCircle else Icons.Rounded.Mic,
+            stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_voice_hold),
+            tint = if (recording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        )
     }
 }

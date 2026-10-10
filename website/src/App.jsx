@@ -35,7 +35,7 @@ const reminderFeatures = [
 function Brand({ compact = false }) {
   return (
     <a className="brand" href="#top" aria-label="Classing 首页">
-      <img src="/assets/classing-brand/classing-app-icon.png" alt="" />
+      <picture><source media="(prefers-color-scheme: dark)" srcSet="/assets/classing-brand/classing-app-icon-dark.png" /><img src="/assets/classing-brand/classing-app-icon.png" alt="" /></picture>
       <span>Classing</span>
       {!compact && <small>TIMETABLE</small>}
     </a>

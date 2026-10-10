@@ -12,3 +12,5 @@ When implementing from a selected generated mock, treat that image as the source
 - Preserve the warm paper, Classing cobalt, ink black, and minimal signal-orange palette documented in `brand-spec.md`.
 - Keep the visible structure focused on phone import, Wear OS sync, and timely class reminders. Do not add fabricated metrics, testimonials, pricing, university logos, or awards.
 - Use the real app icon, product UI references, generated device assets, and Phosphor Icons. Do not replace them with CSS silhouettes, handcrafted SVG, emoji, or generic placeholders.
+
+- 2026-10-10：品牌图标采用用户选定的 F 时间页：暖白/炭黑双主题，两个课程槽与陶土色时间点。所有图标使用 doc/brand 的位图资产，不重绘。
