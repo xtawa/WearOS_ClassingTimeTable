@@ -468,7 +468,8 @@ private fun AssistantComposer(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 1.dp,
             ) {
-                Row(
+                if (transcribing) Box(Modifier.fillMaxWidth().padding(ClassingSpacing.md)) { ThinkingIndicator() }
+                else Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = ClassingSpacing.md, end = ClassingSpacing.xs),
@@ -490,8 +491,7 @@ private fun AssistantComposer(
                                 onClick = { attachmentMenuOpen = false; onAttach() })
                         }
                     }
-                    if (transcribing) Box(Modifier.weight(1f).padding(vertical = ClassingSpacing.md)) { ThinkingIndicator() }
-                    else BasicTextField(
+                    BasicTextField(
                         value = question,
                         onValueChange = onQuestionChange,
                         maxLines = 4,
