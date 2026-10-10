@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_show_prompts">顯示推薦提示詞</string>
+    <string name="assistant_show_prompts_hint">隱藏後停止自動產生，不消耗推薦詞額度；此設定隨帳號同步。</string>
+    <string name="assistant_recommended_prompts">推薦提示詞</string>
+    <string name="assistant_prompt_draft_hint">點擊填入草稿，確認後傳送</string>
+    <string name="assistant_hide_prompts">隱藏推薦提示詞</string>
+    <string name="assistant_prompts_loading">正在產生推薦…</string>
+    <string name="assistant_prompts_unavailable">推薦暫時無法使用，你仍可直接提問。</string>
+    <string name="assistant_message_placeholder">傳送訊息…</string>
+    <string name="assistant_latest_message">查看最新訊息</string>
+    <string name="assistant_camera_unavailable">無法開啟相機，請重試或選擇圖片。</string>
+</resources>

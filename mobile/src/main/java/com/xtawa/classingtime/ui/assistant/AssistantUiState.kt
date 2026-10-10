@@ -52,6 +52,10 @@ internal data class AssistantUiState(
     val showImagePreviews: Boolean = true,
     val showReasoning: Boolean = true,
     val showTimestamps: Boolean = false,
+    val showPromptSuggestions: Boolean = true,
+    val preferencesSaving: Boolean = false,
+    val usageNotice: String = "",
+    val promptNotice: String = "",
 )
 
 @Immutable

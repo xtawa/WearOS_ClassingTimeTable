@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_show_prompts">Show suggestions</string>
+    <string name="assistant_show_prompts_hint">Hiding suggestions stops automatic generation and its quota use. This setting syncs with your account.</string>
+    <string name="assistant_recommended_prompts">Suggested questions</string>
+    <string name="assistant_prompt_draft_hint">Tap to draft, then send</string>
+    <string name="assistant_hide_prompts">Hide suggestions</string>
+    <string name="assistant_prompts_loading">Preparing suggestions…</string>
+    <string name="assistant_prompts_unavailable">Suggestions are unavailable. You can still ask a question.</string>
+    <string name="assistant_message_placeholder">Message…</string>
+    <string name="assistant_latest_message">Latest messages</string>
+    <string name="assistant_camera_unavailable">Could not open the camera. Try again or choose an image.</string>
+</resources>
