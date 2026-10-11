@@ -1,0 +1,42 @@
+[
+  {
+    "case": "weekly",
+    "image": "1-weekly.png",
+    "pdf": "1-weekly.pdf",
+    "expected": "1-weekly-expected.json",
+    "synthetic": true,
+    "aiAccuracyTested": false
+  },
+  {
+    "case": "ab-weeks",
+    "image": "2-ab-weeks.png",
+    "pdf": "2-ab-weeks.pdf",
+    "expected": "2-ab-weeks-expected.json",
+    "synthetic": true,
+    "aiAccuracyTested": false
+  },
+  {
+    "case": "lecture-lab",
+    "image": "3-lecture-lab.png",
+    "pdf": "3-lecture-lab.pdf",
+    "expected": "3-lecture-lab-expected.json",
+    "synthetic": true,
+    "aiAccuracyTested": false
+  },
+  {
+    "case": "conflict",
+    "image": "4-conflict.png",
+    "pdf": "4-conflict.pdf",
+    "expected": "4-conflict-expected.json",
+    "synthetic": true,
+    "aiAccuracyTested": false
+  },
+  {
+    "case": "missing-time",
+    "image": "5-missing-time.png",
+    "pdf": "5-missing-time.pdf",
+    "expected": "5-missing-time-expected.json",
+    "synthetic": true,
+    "aiAccuracyTested": false
+  }
+]

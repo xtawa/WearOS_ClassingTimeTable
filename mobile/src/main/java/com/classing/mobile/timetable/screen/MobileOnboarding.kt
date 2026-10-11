@@ -8,6 +8,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +76,9 @@ internal enum class OnboardingImportTarget {
     CLOUD_SYNC,
     BACKUP_RESTORE,
     MANUAL_ENTRY,
+    AI_DOCUMENT,
+    AI_TEXT,
+    CANVAS,
 }
 
 internal data class OnboardingCompletion(
@@ -92,6 +97,8 @@ internal data class OnboardingCompletion(
     val semesterWeekStartDate: LocalDate,
     val openSettingsHomeAfterFinish: Boolean,
     val importedData: BackupRestorePayload? = null,
+    val creationElapsedMs: Long = 0,
+    val creationSessionId: String = "",
 )
 
 @Composable
@@ -112,7 +119,12 @@ internal fun MobileOnboardingFlow(
 ) {
     var stagedImport by remember { mutableStateOf<BackupRestorePayload?>(null) }
     val context = LocalContext.current
+    val startedAt = remember { android.os.SystemClock.elapsedRealtime() }
+    val sessionId = remember { java.util.UUID.randomUUID().toString() }
+    androidx.compose.runtime.LaunchedEffect(Unit) { com.xtawa.classingtime.metrics.ProductMetrics.record(context, com.xtawa.classingtime.metrics.ProductEvent.CREATION_STARTED, sessionId = sessionId) }
     var stepIndex by remember { mutableIntStateOf(0) }
+    val contentScroll = rememberScrollState()
+    androidx.compose.runtime.LaunchedEffect(stepIndex) { contentScroll.scrollTo(0) }
     var importTarget by remember { mutableStateOf(OnboardingImportTarget.NONE) }
     var wearSyncMode by remember {
         mutableStateOf(
@@ -147,6 +159,8 @@ internal fun MobileOnboardingFlow(
             OnboardingCompletion(
                 importTarget = if (stagedImport != null) OnboardingImportTarget.NONE else importTarget,
                 importedData = stagedImport,
+                creationElapsedMs = android.os.SystemClock.elapsedRealtime() - startedAt,
+                creationSessionId = sessionId,
                 wearSyncMode = wearSyncMode,
                 openCloudSyncSettingsAfterFinish = openCloudSyncSettingsAfterFinish,
                 cloudProvider = cloudProvider,
@@ -212,6 +226,10 @@ internal fun MobileOnboardingFlow(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    com.xtawa.classingtime.metrics.MetricsSettingsCard(onEnabled = {
+                        com.xtawa.classingtime.metrics.ProductMetrics.record(context,
+                            com.xtawa.classingtime.metrics.ProductEvent.CREATION_STARTED, sessionId = sessionId)
+                    })
                 }
             }
         },
@@ -293,6 +311,7 @@ internal fun MobileOnboardingFlow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(contentScroll)
                 .padding(horizontal = ClassingSpacing.referenceScreenInset)
                 .padding(top = ClassingSpacing.xs, bottom = ClassingSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
@@ -347,6 +366,17 @@ internal fun MobileOnboardingFlow(
                         onClick = { importTarget = OnboardingImportTarget.ICS },
                     )
                     OnboardingOptionCard(
+                        title = stringResource(R.string.ai_import_document),
+                        desc = stringResource(R.string.ai_import_notice),
+                        selected = importTarget == OnboardingImportTarget.AI_DOCUMENT,
+                        icon = Icons.Filled.Event,
+                        onClick = { importTarget = OnboardingImportTarget.AI_DOCUMENT },
+                    )
+                    OnboardingOptionCard(title = stringResource(R.string.ai_text_title), desc = stringResource(R.string.ai_text_notice),
+                        selected = importTarget == OnboardingImportTarget.AI_TEXT, icon = Icons.Filled.Edit, onClick = { importTarget = OnboardingImportTarget.AI_TEXT })
+                    OnboardingOptionCard(title = stringResource(R.string.lms_title), desc = stringResource(R.string.lms_notice),
+                        selected = importTarget == OnboardingImportTarget.CANVAS, icon = Icons.Filled.CloudSync, onClick = { importTarget = OnboardingImportTarget.CANVAS })
+                    OnboardingOptionCard(
                         title = stringResource(R.string.onboarding_import_option_json),
                         desc = stringResource(R.string.onboarding_import_option_json_desc),
                         selected = importTarget == OnboardingImportTarget.JSON,
@@ -392,10 +422,13 @@ internal fun MobileOnboardingFlow(
                     Text(
                         text = stringResource(R.string.onboarding_import_configure_subtitle) + "\n" + when (importTarget) {
                             OnboardingImportTarget.CLOUD_SYNC -> stringResource(R.string.onboarding_import_option_cloud_desc)
+                            OnboardingImportTarget.AI_DOCUMENT -> stringResource(R.string.ai_import_notice)
                             OnboardingImportTarget.ICS -> stringResource(R.string.onboarding_import_option_ics_desc)
                             OnboardingImportTarget.JSON -> stringResource(R.string.onboarding_import_option_json_desc)
                             OnboardingImportTarget.BACKUP_RESTORE -> stringResource(R.string.onboarding_import_option_backup_desc)
                             OnboardingImportTarget.MANUAL_ENTRY -> stringResource(R.string.onboarding_import_option_manual_desc)
+                            OnboardingImportTarget.AI_TEXT -> stringResource(R.string.ai_text_notice)
+                            OnboardingImportTarget.CANVAS -> stringResource(R.string.lms_notice)
                             OnboardingImportTarget.NONE -> stringResource(R.string.onboarding_import_option_later_desc)
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -492,7 +525,7 @@ internal fun MobileOnboardingFlow(
                                 }
 
                                 else -> {
-                                    OnboardingImportEditor(importTarget, stagedImport, { stagedImport = it; it.semesterWeekStartDate?.let { date -> semesterWeekStartDate = date } }, onParseFile)
+                            OnboardingImportEditor(importTarget, stagedImport, { stagedImport = it; it.semesterWeekStartDate?.let { date -> semesterWeekStartDate = date } }, onParseFile, sessionId, semesterWeekStartDate)
                                 }
                             }
                     }

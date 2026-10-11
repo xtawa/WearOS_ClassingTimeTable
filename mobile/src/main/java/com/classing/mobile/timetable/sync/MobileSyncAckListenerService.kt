@@ -34,6 +34,9 @@ class MobileSyncAckListenerService : WearableListenerService() {
                 source = map.getString(WearDataLayerContracts.KEY_SOURCE).orEmpty(),
                 errorMessage = map.getString(WearDataLayerContracts.KEY_ERROR).orEmpty(),
             )
+            val status = map.getString(WearDataLayerContracts.KEY_ACK_STATUS).orEmpty()
+            if (ack.success && !status.equals("applied", true)) return@forEach
+            if (ack.syncedAtMillis < (WearSyncAckStore.load(applicationContext)?.syncedAtMillis ?: 0)) return@forEach
             WearSyncAckStore.save(applicationContext, ack)
             confirmBaselineIfApplied(
                 requestId = map.getString(WearDataLayerContracts.KEY_REQUEST_ID).orEmpty(),
@@ -48,8 +51,11 @@ class MobileSyncAckListenerService : WearableListenerService() {
     private fun handleAck(bytes: ByteArray, sourceNodeId: String) {
         val raw = runCatching { String(bytes, StandardCharsets.UTF_8) }.getOrNull().orEmpty()
         val ack = WearSyncAckStore.parse(raw) ?: return
-        WearSyncAckStore.save(applicationContext, ack)
         val json = runCatching { JSONObject(raw) }.getOrNull()
+        val status = json?.optString(WearDataLayerContracts.KEY_ACK_STATUS).orEmpty()
+        if (ack.success && !status.equals("applied", true)) return
+        if (ack.syncedAtMillis < (WearSyncAckStore.load(applicationContext)?.syncedAtMillis ?: 0)) return
+        WearSyncAckStore.save(applicationContext, ack)
         confirmBaselineIfApplied(
             requestId = json?.optString(WearDataLayerContracts.KEY_REQUEST_ID).orEmpty(),
             nodeId = sourceNodeId,

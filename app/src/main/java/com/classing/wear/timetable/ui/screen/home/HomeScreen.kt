@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -69,7 +73,24 @@ import java.time.Duration
 import java.time.Instant
 
 @Composable
-fun HomeScreen(
+fun HomeScreen(state: HomeUiState, onOpenWeek: () -> Unit, onOpenSearch: () -> Unit,
+    onOpenAskAi: () -> Unit, onOpenSettings: () -> Unit, onLessonClick: (Long) -> Unit, onRetrySync: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val app = context.applicationContext as com.classing.wear.timetable.ClassingTimetableApplication
+    var mode by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.classing.client.exam.ExamStore.mode(context)) }
+    val entities by app.appContainer.database.examDao().observeAll().collectAsState(initial = emptyList())
+    Column(Modifier.fillMaxSize().padding(top = 32.dp)) {
+        com.classing.client.exam.AcademicModeSwitch(mode, { mode = it; com.classing.client.exam.ExamStore.setMode(context, it); com.classing.wear.timetable.widget.WearSurfaceUpdateRequester.requestAll(context) }, Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally), compact = true)
+        Box(Modifier.weight(1f)) {
+            if (mode == com.classing.shared.exam.AcademicMode.EXAM) com.classing.client.exam.ExamPanel(
+                entities.map { it.toExam() }, onAsk = onOpenAskAi, round = true)
+            else ScheduleHomeScreen(state, onOpenWeek, onOpenSearch, onOpenAskAi, onOpenSettings, onLessonClick, onRetrySync)
+        }
+    }
+}
+
+@Composable
+private fun ScheduleHomeScreen(
     state: HomeUiState,
     onOpenWeek: () -> Unit,
     onOpenSearch: () -> Unit,

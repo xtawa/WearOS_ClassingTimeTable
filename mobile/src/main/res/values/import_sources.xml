@@ -1,0 +1,14 @@
+<resources>
+    <string name="ai_text_title">Describe your timetable</string>
+    <string name="ai_text_input">Courses, days, dates, times and rooms</string>
+    <string name="ai_text_notice">AI requires an account and may use points. Review every meeting before saving.</string>
+    <string name="ai_text_review">AI may infer missing week ranges. Confirm all dates, weekdays and times; nothing has been saved yet.</string>
+    <string name="lms_title">Canvas (read-only preview)</string>
+    <string name="lms_notice">Use a school-authorized read-only token. It stays in memory for this request. If access is unavailable, choose ICS or manual entry.</string>
+    <string name="lms_origin">Canvas school URL (https://…)</string>
+    <string name="lms_token">Temporary authorized token</string>
+    <string name="lms_read">Read courses, calendar and homework</string>
+    <string name="lms_select_meetings">Select calendar events that are classes</string>
+    <string name="lms_assignments">Homework preview (%1$d)</string>
+    <string name="lms_review_notice">Canvas calendar events are specific dates, not weekly classes. Homework was previewed separately and was not added as classes.</string>
+</resources>

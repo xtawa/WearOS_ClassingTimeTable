@@ -102,14 +102,16 @@ internal fun AskAiSettingsPage(
    finally { resetting = false }
   }
  }
+ val exams by remember { com.classing.client.exam.ExamStore.observe(context) }.collectAsState(initial = com.classing.client.exam.ExamStore.load(context))
+ var examProposal by remember { mutableStateOf<JSONObject?>(null) }
  var proposal by remember { mutableStateOf<JSONObject?>(null) }
  var proposalFingerprint by remember { mutableStateOf("") }
 
- val snapshot = remember(lessons, editableLessons, exceptions, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
-  timetableSnapshot(lessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).put("editableLessons", timetableSnapshot(editableLessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).getJSONArray("lessons")).put("exceptions", JSONObject(buildScheduleBackupJson(editableLessons, exceptions, java.time.ZoneId.of(timezone), weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
+ val snapshot = remember(exams, lessons, editableLessons, exceptions, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+  timetableSnapshot(lessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).put("exams", com.classing.client.exam.ExamJson.array(exams)).put("editableLessons", timetableSnapshot(editableLessons, currentDate, currentWeek, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay).getJSONArray("lessons")).put("exceptions", JSONObject(buildScheduleBackupJson(editableLessons, exceptions, java.time.ZoneId.of(timezone), weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
  }
- val fingerprint = remember(editableLessons, exceptions, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
-  timetableFingerprint(editableLessons, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay, exceptions)
+ val fingerprint = remember(exams, editableLessons, exceptions, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+  timetableFingerprint(editableLessons, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay, exceptions, exams)
  }
  val latestSnapshot by rememberUpdatedState(snapshot)
  val latestFingerprint by rememberUpdatedState(fingerprint)
@@ -173,7 +175,7 @@ internal fun AskAiSettingsPage(
   scope.launch {
    val token = AccountSessionManager.ensureAccessToken(context)
    if (token == null) { status = "登录状态已失效，请重新登录"; return@launch }
-   sending = true; status = ""; usageNotice = ""; proposal = null
+   sending = true; status = ""; usageNotice = ""; proposal = null; examProposal = null
    val sentQuestion = question.trim(); val sentAttachments = attachments; val sentSnapshot = latestSnapshot; val sentFingerprint = latestFingerprint
    val userMessage = AiMessageSummary("local-user-${System.nanoTime()}", "USER", sentQuestion, System.currentTimeMillis(), sentAttachments)
    val assistantId = "local-ai-${System.nanoTime()}"
@@ -186,7 +188,7 @@ internal fun AskAiSettingsPage(
     ).onSuccess { result ->
      conversationId = result.conversationId
      messages = messages.map { if (it.messageId == assistantId) it.copy(content = result.reply) else it }
-     proposal = result.courseProposal; proposalFingerprint = sentFingerprint
+     examProposal = result.examProposal; proposal = result.courseProposal; proposalFingerprint = sentFingerprint
      if (result.truncated) question = "请从刚才中断的位置继续，不要重复已有内容。"
      status = ""
      usageNotice = (if (result.truncated) "回答达到长度上限，已准备好继续生成。 · " else "") + context.getString(R.string.ai_cost_points, result.costPoints)
@@ -279,7 +281,7 @@ internal fun AskAiSettingsPage(
   "usage" -> AskAiUsagePage(contentPadding, usage, status, { subpage = "" }, resetCards, resetting, resetStatus, ::useResetCard)
   else -> {
    val today = lessons.filter { it.dayOfWeek == currentDate.dayOfWeek }
-   val uiState = AssistantUiState(loggedIn = loggedIn, member = member, hasSchedule = lessons.isNotEmpty(), contextLabel = "$currentDate · ${today.size}",
+   val uiState = AssistantUiState(loggedIn = loggedIn, member = member, hasSchedule = lessons.isNotEmpty() || exams.isNotEmpty(), contextLabel = "$currentDate · ${today.size}",
     question = question, sending = sending, status = status, selectedModelId = selectedModel,
     models = models.map { AssistantModelUiModel(it.id, it.name, it.description, it.id in preferences.favoriteModels) },
     attachments = attachments.map { AssistantAttachmentUiModel(it.attachmentId, it.name, thumbnails[it.attachmentId]) },
@@ -292,12 +294,12 @@ internal fun AskAiSettingsPage(
    AssistantContent(state = uiState, contentPadding = contentPadding, onBack = onBack, onOpenAccount = onOpenAccount,
     onQuestionChange = { question = it }, onSubmit = ::submitQuestion, onSelectModel = { selectedModel = it },
     onOpenSettings = { subpage = "settings" }, onOpenUsage = { subpage = "usage" },
-    onNewConversation = { conversationId = ""; messages = emptyList(); status = ""; usageNotice = ""; proposal = null; selectedModel = preferences.defaultModel.takeIf { id -> models.any { it.id == id } } ?: serverDefaultModel },
+    onNewConversation = { conversationId = ""; messages = emptyList(); status = ""; usageNotice = ""; proposal = null; examProposal = null; selectedModel = preferences.defaultModel.takeIf { id -> models.any { it.id == id } } ?: serverDefaultModel },
     onTogglePrompts = { if (!preferencesSaving) patchPreferences(JSONObject().put("showPromptSuggestions", !preferences.showPromptSuggestions)) },
     onOpenConversation = { id -> scope.launch {
      val token = AccountSessionManager.ensureAccessToken(context) ?: return@launch
      status = "正在读取对话…"
-     client.messages(token, id).onSuccess { conversationId = id; messages = it; proposal = null; status = ""; usageNotice = ""; loadThumbnails(token, it.flatMap { m -> m.attachments }) }.onFailure { status = it.message.orEmpty() }
+     client.messages(token, id).onSuccess { conversationId = id; messages = it; proposal = null; examProposal = null; status = ""; usageNotice = ""; loadThumbnails(token, it.flatMap { m -> m.attachments }) }.onFailure { status = it.message.orEmpty() }
     } },
     onToggleStar = { id -> if (!preferencesSaving) patchPreferences(JSONObject().put(if (id in preferences.favoriteModels) "favoriteRemove" else "favoriteAdd", id)) },
     onAttach = { AnnouncementLaunches.externalStarted(); filePicker.launch(arrayOf("*/*")) },
@@ -305,8 +307,33 @@ internal fun AskAiSettingsPage(
     onRemoveAttachment = { id -> scope.launch { AccountSessionManager.ensureAccessToken(context)?.let { token -> client.deleteAttachment(token, id).onSuccess { attachments = attachments.filterNot { it.attachmentId == id }; thumbnails.remove(id) }.onFailure { status = it.message.orEmpty() } } } },
     onVoiceStart = { if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) voice.start() else micPermission.launch(Manifest.permission.RECORD_AUDIO) },
     onVoiceFinish = { cancelled -> if (cancelled) { transcriptionJob?.cancel(); transcribing = false }; voice.finish(cancelled) },
-    assistantMessage = { MarkdownText(it.substringBefore("```classing-course-actions")) },
+    assistantMessage = { MarkdownText(it.substringBefore("```classing-course-actions").substringBefore("```classing-exam-actions")) },
     courseProposal = {
+     examProposal?.let { proposed ->
+      Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+       Text(if (java.util.Locale.getDefault().language == "zh") "考试修改预览" else "Exam changes", style = MaterialTheme.typography.titleMedium)
+       val actions = proposed.getJSONArray("actions")
+       for (i in 0 until actions.length()) {
+        val action = actions.getJSONObject(i)
+        val item = action.optJSONObject("exam")
+        if (item != null) {
+         Text((if (action.getString("operation") == "create") (if (java.util.Locale.getDefault().language == "zh") "添加" else "Add") else (if (java.util.Locale.getDefault().language == "zh") "修改" else "Edit")) + " · " + item.optString("title"))
+         Text(java.time.Instant.ofEpochMilli(item.getLong("startAt")).atZone(java.time.ZoneId.of(item.getString("timezone"))).toString())
+         Text(item.optString("location"))
+        } else Text((if (java.util.Locale.getDefault().language == "zh") "删除 · " else "Delete · ") + exams.firstOrNull { it.id == action.optString("examId") }?.title.orEmpty())
+       }
+       Button(onClick = {
+        val current = com.classing.client.exam.ExamStore.load(context)
+        if (proposalFingerprint != timetableFingerprint(editableLessons, timezone, weekNumberMode, semesterWeekStartDate, weekStartDay, exceptions, current))
+         status = context.getString(R.string.assistant_proposal_stale)
+        else runCatching { com.classing.client.exam.ExamStore.save(context, com.classing.client.exam.ExamJson.applyProposal(current, proposed)) }
+         .onSuccess { status = context.getString(R.string.assistant_proposal_applied); examProposal = null }
+         .onFailure { status = it.message.orEmpty() }
+       }, enabled = !sending) { Text(stringResource(R.string.assistant_proposal_apply)) }
+       TextButton(onClick = { examProposal = null }) { Text(if (java.util.Locale.getDefault().language == "zh") "取消" else "Cancel") }
+      } }
+     }
+
      proposal?.let { proposed ->
       Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
        Text(stringResource(R.string.assistant_proposal_title), style = MaterialTheme.typography.titleMedium)
@@ -317,7 +344,7 @@ internal fun AskAiSettingsPage(
        }
        Button(onClick = {
         if (proposalFingerprint != latestFingerprint) status = context.getString(R.string.assistant_proposal_stale)
-        else applyProposal(proposed).onSuccess { status = context.getString(R.string.assistant_proposal_applied); proposal = null }.onFailure { status = it.message.orEmpty() }
+        else applyProposal(proposed).onSuccess { status = context.getString(R.string.assistant_proposal_applied); proposal = null; examProposal = null }.onFailure { status = it.message.orEmpty() }
        }, enabled = !sending) { Text(stringResource(R.string.assistant_proposal_apply)) }
       } }
      }
@@ -326,8 +353,8 @@ internal fun AskAiSettingsPage(
  }
 }
 
-internal fun timetableFingerprint(lessons: List<LessonUi>, timezone: String, mode: WeekNumberMode, startDate: LocalDate, startDay: java.time.DayOfWeek, exceptions: List<ScheduleExceptionUi> = emptyList()): String {
- val data = lessons.sortedBy { it.id }.joinToString("\n") { it.toString() } + "|$timezone|$mode|$startDate|$startDay|" + exceptions.sortedBy { it.id }.joinToString("\n") { it.toString() }
+internal fun timetableFingerprint(lessons: List<LessonUi>, timezone: String, mode: WeekNumberMode, startDate: LocalDate, startDay: java.time.DayOfWeek, exceptions: List<ScheduleExceptionUi> = emptyList(), exams: List<com.classing.shared.exam.Exam> = emptyList()): String {
+ val data = lessons.sortedBy { it.id }.joinToString("\n") { it.toString() } + "|$timezone|$mode|$startDate|$startDay|" + exceptions.sortedBy { it.id }.joinToString("\n") { it.toString() } + "|" + exams.sortedBy { it.id }.joinToString("\n") { it.toString() }
  return MessageDigest.getInstance("SHA-256").digest(data.toByteArray()).joinToString("") { "%02x".format(it) }
 }
 
@@ -397,6 +424,7 @@ internal fun timetableSnapshot(
                         .put("endTime", lesson.endTime.toString())
                         .put("startWeek", lesson.startWeek)
                         .put("endWeek", lesson.endWeek)
+                        .put("scheduleRuleJson", lesson.scheduleRuleJson)
                         .put("weekParity", lesson.weekParity.name),
                 )
             }

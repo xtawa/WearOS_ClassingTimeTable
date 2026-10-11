@@ -1,0 +1,17 @@
+<resources>
+    <string name="ai_import_document">Screenshot / PDF</string>
+    <string name="ai_import_notice">AI reads your screenshot or PDF into an editable draft. Requires sign-in and uses AI points per page. You can create a timetable manually or import ICS for free.</string>
+    <string name="ai_import_login">Sign in before using AI import. Manual and ICS import remain available.</string>
+    <string name="ai_import_pdf_pages">Choose a PDF with 1–5 pages.</string>
+    <string name="import_rule_invalid">Row %1$d has an unsupported or invalid repeat rule. Review it before importing.</string>
+    <string name="widget_name">Next class</string>
+    <string name="widget_description">Your next class, classroom, and time. Available offline.</string>
+    <string name="widget_no_schedule">Create your first timetable</string>
+    <string name="widget_no_class">No upcoming classes</string>
+    <string name="widget_in_class">In class · until %1$s</string>
+    <string name="widget_upcoming">%1$s · %2$s</string>
+    <string name="schedule_local">Local timetable</string>
+    <string name="schedule_last_sync">Last successful sync: %1$s</string>
+    <string name="schedule_stale">Sync may be out of date</string>
+    <string name="schedule_never_synced">No successful cloud sync yet</string>
+</resources>

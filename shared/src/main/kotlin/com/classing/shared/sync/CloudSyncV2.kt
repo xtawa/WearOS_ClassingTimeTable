@@ -167,6 +167,7 @@ object CloudSyncV2 {
     /** Upper bound of device metadata entries kept in a synced document. */
     const val MAX_DEVICES = 64
 
+    const val DOMAIN_TIMETABLE_EXAMS = "timetable.exams"
     const val DOMAIN_TIMETABLE_LESSONS = "timetable.lessons"
     const val DOMAIN_TIMETABLE_EXCEPTIONS = "timetable.exceptions"
     const val DOMAIN_MOBILE_SETTINGS = "mobile.settings"

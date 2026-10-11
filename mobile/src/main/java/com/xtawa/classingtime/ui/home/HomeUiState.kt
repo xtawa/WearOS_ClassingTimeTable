@@ -40,6 +40,7 @@ internal data class HomeUiState(
     val breakMinutes: Long? = null,
     val classProgress: Float = 0f,
     val hasImportedSchedule: Boolean = true,
+    val freshnessText: String = "",
 )
 
 @Immutable

@@ -40,4 +40,5 @@ data class CourseSessionEntity(
     val endWeek: Int,
     val weekParity: String,
     val version: Long,
+    val scheduleRuleJson: String? = null,
 )

@@ -195,6 +195,7 @@ internal data class LessonUi(
     val startWeek: Int = DEFAULT_START_WEEK,
     val endWeek: Int = DEFAULT_END_WEEK,
     val weekParity: LessonWeekParity = LessonWeekParity.ALL,
+    val scheduleRuleJson: String? = null,
 )
 
 internal data class ParseOutcome(

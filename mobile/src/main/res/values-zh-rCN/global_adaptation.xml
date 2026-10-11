@@ -1,0 +1,17 @@
+<resources>
+    <string name="ai_import_document">截图 / PDF</string>
+    <string name="ai_import_notice">AI 将截图或 PDF 识别为可编辑草稿。需要登录，按页消耗 AI 点数；也可免费手工建表或导入 ICS。</string>
+    <string name="ai_import_login">请先登录再使用 AI 导入，也可继续手工建表或导入 ICS。</string>
+    <string name="ai_import_pdf_pages">请选择 1–5 页的 PDF。</string>
+    <string name="import_rule_invalid">第 %1$d 行的重复规则无效或暂不支持，请修正后导入。</string>
+    <string name="widget_name">下一节课</string>
+    <string name="widget_description">下一节课、教室和时间，支持离线查看。</string>
+    <string name="widget_no_schedule">创建第一份课表</string>
+    <string name="widget_no_class">暂无后续课程</string>
+    <string name="widget_in_class">上课中 · %1$s 结束</string>
+    <string name="widget_upcoming">%1$s · %2$s</string>
+    <string name="schedule_local">本地课表</string>
+    <string name="schedule_last_sync">最后成功同步：%1$s</string>
+    <string name="schedule_stale">同步数据可能已过期</string>
+    <string name="schedule_never_synced">尚未成功云同步</string>
+</resources>

@@ -40,6 +40,8 @@ class DefaultAppContainer(
     )
         .addMigrations(AppDatabaseMigrations.MIGRATION_1_2)
         .addMigrations(AppDatabaseMigrations.MIGRATION_2_3)
+        .addMigrations(AppDatabaseMigrations.MIGRATION_3_4)
+        .addMigrations(AppDatabaseMigrations.MIGRATION_4_5)
         .build()
 
     override val timeProvider: TimeProvider = SystemTimeProvider()

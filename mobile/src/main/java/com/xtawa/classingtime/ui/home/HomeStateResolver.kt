@@ -120,15 +120,16 @@ private fun findNextAcademicCourse(
     now: LocalDateTime,
     lessonsForDate: (LocalDate) -> List<LessonUi>,
 ): HomeCourseUiModel? {
-    return (0L..7L).asSequence()
+    return (0L..366L).asSequence()
         .flatMap { offset ->
             val date = now.toLocalDate().plusDays(offset)
             lessonsForDate(date)
+                .sortedBy { it.startTime }
                 .asSequence()
                 .map { it.toHomeCourse(date) }
         }
         .filter { course -> now.isBefore(LocalDateTime.of(course.date, course.startTime)) }
-        .minByOrNull { LocalDateTime.of(it.date, it.startTime) }
+        .firstOrNull()
 }
 
 private fun LessonUi.toHomeCourse(date: LocalDate): HomeCourseUiModel = HomeCourseUiModel(

@@ -13,6 +13,9 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class AskAiCameraFileTest {
     @Test fun cameraOutputIsWritableThroughTheConfiguredFileProvider() {
+        // AndroidX 1.15 FileProvider.belongsToRoot appends '/' while Windows
+        // canonical paths contain '\\'. Keep the real provider test in Linux CI.
+        org.junit.Assume.assumeTrue("Android FileProvider requires POSIX paths", java.io.File.separatorChar == '/')
         val context = ApplicationProvider.getApplicationContext<Context>()
         val photo = createAskAiCameraFile(context)
         try {

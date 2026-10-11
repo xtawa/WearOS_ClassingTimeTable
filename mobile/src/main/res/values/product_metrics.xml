@@ -1,0 +1,7 @@
+<resources>
+    <string name="metrics_title">Local usability metrics</string>
+    <string name="metrics_description">Off by default. Keeps anonymous event types and counts for 28 days on this device. No course content or credentials. No upload. Turning off deletes the data.</string>
+    <string name="metrics_export">Export anonymous metrics</string>
+    <string name="metrics_export_done">Export saved</string>
+    <string name="metrics_export_failed">Could not save export</string>
+</resources>

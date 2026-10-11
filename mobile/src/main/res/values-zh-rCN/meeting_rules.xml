@@ -1,0 +1,21 @@
+<resources>
+    <string name="rule_advanced">复杂课表规则</string>
+    <string name="rule_legacy_ignored">启用后以下规则替代上面的星期、周数和单双周设置。</string>
+    <string name="rule_weekly">每周</string>
+    <string name="rule_rotation">轮转日</string>
+    <string name="rule_dates">指定日期</string>
+    <string name="rule_anchor">锚点／第一教学日（YYYY-MM-DD）</string>
+    <string name="rule_end">学期结束（YYYY-MM-DD）</string>
+    <string name="rule_interval">每 N 周（AB 周填 2）</string>
+    <string name="rule_cycle_length">周期天数（AB 填 2；5／6／8）</string>
+    <string name="rule_cycle_days">周期中的第几日（如 1,3）</string>
+    <string name="rule_school_days">教学日</string>
+    <string name="rule_holiday_advance">节假日继续推进轮转指针</string>
+    <string name="rule_meeting_dates">上课日期（YYYY-MM-DD，英文逗号分隔）</string>
+    <string name="rule_holidays">节假日（YYYY-MM-DD，英文逗号分隔）</string>
+    <string name="rule_term">学期／学季名称</string>
+    <string name="rule_group">课程组（讲座与实验填相同名称）</string>
+    <string name="rule_lecture">讲座</string>
+    <string name="rule_lab">实验／辅导</string>
+    <string name="rule_block">集中教学</string>
+</resources>

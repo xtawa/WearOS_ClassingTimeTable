@@ -25,6 +25,9 @@ internal class AskAiVoiceInput(
  fun start() {
   cancel(); val current = generation; active = true; onRecording(true)
   try {
+   if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+    throw SecurityException(context.getString(com.xtawa.classingtime.R.string.assistant_mic_denied))
+   }
    val bufferSize = maxOf(8192, AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT))
    val audio = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
    recorder = audio; check(audio.state == AudioRecord.STATE_INITIALIZED) { "Microphone unavailable" }

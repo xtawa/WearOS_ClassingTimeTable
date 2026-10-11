@@ -28,6 +28,8 @@ object ReminderScheduler {
         keepAliveLevel: KeepAliveLevel,
         reminderMinutes: Int,
     ) {
+        com.classing.client.exam.ExamReminderScheduler.sync(context, com.classing.client.exam.ExamStore.load(context),
+            enabled, MobileExamReminderReceiver::class.java)
         val manager = WorkManager.getInstance(context)
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (!enabled) {

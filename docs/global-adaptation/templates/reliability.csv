@@ -1,0 +1,1 @@
+scenario,round,phone_build,watch_build,market,initial_count,expected_count,actual_phone_count,actual_watch_count,queued_at_utc,applied_at_utc,applied_latency_ms,final_ids_match,ghost_course_count,duplicate_reminder_count,result,evidence_path,notes_redacted

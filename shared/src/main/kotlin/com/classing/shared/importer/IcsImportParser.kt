@@ -87,14 +87,15 @@ class IcsImportParser : ImportParser {
         val title = fields["SUMMARY"].orEmpty().ifBlank { "未命名课程" }
         val warnings = mutableListOf<ImportWarning>()
 
-        val dtStart = when (val result = parseInstant(fields["DTSTART"], fields["DTSTART_TZID"], "DTSTART", required = true)) {
+        val cancelled = fields["STATUS"]?.uppercase() == "CANCELLED" && fields.containsKey("RECURRENCE-ID")
+        val dtStart = when (val result = parseInstant(fields["DTSTART"] ?: fields["RECURRENCE-ID"].takeIf { cancelled }, fields["DTSTART_TZID"] ?: fields["RECURRENCE-ID_TZID"].takeIf { cancelled }, "DTSTART", required = true)) {
             is FieldParseResult.Success -> result.value
             is FieldParseResult.Failure -> {
                 warnings += result.toWarning(title)
                 return EventParseOutcome(event = null, warnings = warnings)
             }
         }
-        val dtEnd = when (val result = parseInstant(fields["DTEND"], fields["DTEND_TZID"], "DTEND", required = true)) {
+        val dtEnd = if (cancelled && fields["DTEND"] == null) dtStart else when (val result = parseInstant(fields["DTEND"], fields["DTEND_TZID"], "DTEND", required = true)) {
             is FieldParseResult.Success -> result.value
             is FieldParseResult.Failure -> {
                 warnings += result.toWarning(title)
@@ -119,7 +120,8 @@ class IcsImportParser : ImportParser {
             is FieldParseResult.Success -> result.value
             is FieldParseResult.Failure -> {
                 warnings += result.toWarning(title)
-                null
+                // A broken exception must never become a standalone master course.
+                return EventParseOutcome(event = null, warnings = warnings)
             }
         }
 

@@ -1,0 +1,4 @@
+<resources>
+    <string name="ai_import_empty">No complete timetable was recognized. Use manual entry or try another source.</string>
+    <string name="rule_validation_failed">Check the term dates, cycle days and comma-separated dates.</string>
+</resources>

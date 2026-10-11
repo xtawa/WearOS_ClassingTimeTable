@@ -23,6 +23,7 @@ data class CourseRule(
     val teacher: String? = null,
     val location: String? = null,
     val note: String? = null,
+    val scheduleRule: ScheduleRule? = null,
 )
 
 enum class WeekParity {
@@ -110,14 +111,20 @@ class ScheduleProjector {
             .groupBy { it.date to it.courseId }
         val makeUps = input.exceptions.filterIsInstance<ScheduleExceptionRule.MakeUp>()
 
-        val regular = generateSequence(startDate) { date ->
+        val queryDates = generateSequence(startDate) { date ->
             date.plusDays(1).takeUnless { it.isAfter(endDate) }
-        }.flatMap { date ->
+        }
+        // A moved occurrence is selected by its destination, but must still be
+        // validated against the source course's rule on the original date.
+        val movedSourceDates = input.exceptions.asSequence()
+            .filterIsInstance<ScheduleExceptionRule.Reschedule>()
+            .filter { it.newDate in startDate..endDate }
+            .map { it.date }
+        val regular = (queryDates + movedSourceDates).distinct().flatMap { date ->
             val weekIndex = weekIndexFor(date, input.semesterWeekStartDate, input.weekStartDay)
             input.courses.asSequence()
-                .filter { course -> course.dayOfWeek == date.dayOfWeek }
-                .filter { course -> weekIndex in course.startWeek..course.endWeek }
-                .filter { course -> course.weekParity.matches(weekIndex) }
+                .filter { course -> course.scheduleRule?.matches(date, course.dayOfWeek)
+                    ?: (course.dayOfWeek == date.dayOfWeek && weekIndex in course.startWeek..course.endWeek && course.weekParity.matches(weekIndex)) }
                 .filter { course -> cancellations[date to course.id].isNullOrEmpty() }
                 .flatMap { course ->
                     val moved = reschedules[date to course.id].orEmpty()

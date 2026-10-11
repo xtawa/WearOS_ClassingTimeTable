@@ -1,0 +1,18 @@
+{
+  "lessons": [
+    {
+      "id": "sample-5-0",
+      "title": "Art",
+      "dayOfWeek": 5,
+      "startTime": "13:00",
+      "endTime": "14:00",
+      "location": "Studio",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    }
+  ],
+  "warnings": [
+    "Biology end time unknown; do not invent it"
+  ]
+}

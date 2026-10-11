@@ -1,0 +1,163 @@
+{
+  "generatedAtUtc": "2026-10-11T02:18:39.612934+00:00",
+  "baseline": {
+    "android": "d8a1586",
+    "backend": "631a706"
+  },
+  "androidBuild": {
+    "result": "passed",
+    "summary": "BUILD SUCCESSFUL in 14m 39s",
+    "log": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-11\\wearos\\android-release-final.log"
+  },
+  "testSuites": [
+    {
+      "path": "shared/build/test-results/test",
+      "tests": 57,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skippedCases": []
+    },
+    {
+      "path": "mobile/build/test-results/testCnDebugUnitTest",
+      "tests": 173,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skippedCases": [
+        "com.xtawa.classingtime.screen.AskAiCameraFileTest.cameraOutputIsWritableThroughTheConfiguredFileProvider"
+      ]
+    },
+    {
+      "path": "mobile/build/test-results/testGlobalDebugUnitTest",
+      "tests": 173,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skippedCases": [
+        "com.xtawa.classingtime.screen.AskAiCameraFileTest.cameraOutputIsWritableThroughTheConfiguredFileProvider"
+      ]
+    },
+    {
+      "path": "app/build/test-results/testCnDebugUnitTest",
+      "tests": 65,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skippedCases": []
+    },
+    {
+      "path": "app/build/test-results/testGlobalDebugUnitTest",
+      "tests": 65,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skippedCases": []
+    }
+  ],
+  "lint": [
+    {
+      "path": "mobile/build/reports/lint-results-cnRelease.xml",
+      "severityCounts": {
+        "Warning": 273,
+        "Information": 9
+      }
+    },
+    {
+      "path": "mobile/build/reports/lint-results-globalRelease.xml",
+      "severityCounts": {
+        "Warning": 273,
+        "Information": 9
+      }
+    },
+    {
+      "path": "app/build/reports/lint-results-cnRelease.xml",
+      "severityCounts": {
+        "Warning": 92,
+        "Information": 1
+      }
+    },
+    {
+      "path": "app/build/reports/lint-results-globalRelease.xml",
+      "severityCounts": {
+        "Warning": 92,
+        "Information": 1
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "mobile/build/outputs/apk/cn/release/mobile-cn-release.apk",
+      "bytes": 5559805,
+      "sha256": "d13db9a51dfb1ab3c63251aa081c8156483c079098a7a2680fae6185399060f5",
+      "applicationId": "com.xtawa.classingtime",
+      "versionCode": 114,
+      "versionName": "1.1.4",
+      "signatureVerified": true
+    },
+    {
+      "path": "mobile/build/outputs/apk/global/release/mobile-global-release.apk",
+      "bytes": 5559857,
+      "sha256": "d16a9abea3a43c354c382066365498866ebcd060bffb8db08f4d925d47da6224",
+      "applicationId": "com.xtawa.classingtime.global",
+      "versionCode": 114,
+      "versionName": "1.1.4-global-preview",
+      "signatureVerified": true
+    },
+    {
+      "path": "mobile/build/outputs/bundle/globalRelease/mobile-global-release.aab",
+      "bytes": 9239612,
+      "sha256": "c58032fe1d52e39e582c31b5e0e9cfb7823a187f30b4ca89b0812d80359441fe",
+      "signatureVerified": true
+    },
+    {
+      "path": "app/build/outputs/apk/cn/release/app-cn-release.apk",
+      "bytes": 6902968,
+      "sha256": "07e0efa32ac94f3179a885cc7a8febc684fb1f882406c071ac345f23245960b1",
+      "applicationId": "com.xtawa.classingtime",
+      "versionCode": 114,
+      "versionName": "1.1.4",
+      "signatureVerified": true
+    },
+    {
+      "path": "app/build/outputs/apk/global/release/app-global-release.apk",
+      "bytes": 6903008,
+      "sha256": "2767bfb827f1c76b9ffa7a5cfda2f49f6445c1903bd42c6688796221ac698d37",
+      "applicationId": "com.xtawa.classingtime.global",
+      "versionCode": 114,
+      "versionName": "1.1.4-global-preview",
+      "signatureVerified": true
+    },
+    {
+      "path": "app/build/outputs/bundle/globalRelease/app-global-release.aab",
+      "bytes": 7494430,
+      "sha256": "579993308400cfc9cbf020d4df675d347fe8d3ff85c72bf738367ae729d2a7cc",
+      "signatureVerified": true
+    }
+  ],
+  "otherChecks": {
+    "backendGoTests": "passed",
+    "backendGoVet": "passed",
+    "backendWindowsBuild": "passed",
+    "backendLinuxAmd64CrossCompile": "passed",
+    "backendDomScripts": {
+      "passed": 5
+    },
+    "sqliteRoomMigration3To4": "passed",
+    "localMetricsDomTests": "passed",
+    "browserPrototype": "passed"
+  },
+  "limits": [
+    "No emulator, connected device, Play test purchase, live AI recognition, real LMS data, or human study was run.",
+    "Windows skips the existing AndroidX FileProvider POSIX path test once in each mobile market suite.",
+    "Linux media resource limit test skips on Windows; cross compilation does not execute Linux tests.",
+    "Release signing verification does not establish Play App Signing or purchase readiness."
+  ],
+  "testTotal": {
+    "tests": 533,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "passed": 531
+  }
+}

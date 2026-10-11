@@ -44,6 +44,7 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name="com.classing.wear.timetable.reminder.WearExamReminderReceiver" android:exported="false" />
         <receiver
             android:name=".reminder.ReminderAlarmReceiver"
             android:exported="false" />

@@ -1,0 +1,21 @@
+<resources>
+    <string name="rule_advanced">Complex schedule</string>
+    <string name="rule_legacy_ignored">These rules replace weekday, week range and odd/even settings above.</string>
+    <string name="rule_weekly">Weekly</string>
+    <string name="rule_rotation">Rotation</string>
+    <string name="rule_dates">Specific dates</string>
+    <string name="rule_anchor">Anchor / first school day (YYYY-MM-DD)</string>
+    <string name="rule_end">Term end (YYYY-MM-DD)</string>
+    <string name="rule_interval">Every N weeks (AB weeks: 2)</string>
+    <string name="rule_cycle_length">Cycle length (AB: 2; 5 / 6 / 8)</string>
+    <string name="rule_cycle_days">Days in cycle (e.g. 1,3)</string>
+    <string name="rule_school_days">School weekdays</string>
+    <string name="rule_holiday_advance">Advance cycle pointer on holidays</string>
+    <string name="rule_meeting_dates">Meeting dates (YYYY-MM-DD, comma separated)</string>
+    <string name="rule_holidays">Holidays (YYYY-MM-DD, comma separated)</string>
+    <string name="rule_term">Semester / quarter / trimester name</string>
+    <string name="rule_group">Course group (same value links lecture/lab)</string>
+    <string name="rule_lecture">Lecture</string>
+    <string name="rule_lab">Lab / tutorial</string>
+    <string name="rule_block">Block</string>
+</resources>

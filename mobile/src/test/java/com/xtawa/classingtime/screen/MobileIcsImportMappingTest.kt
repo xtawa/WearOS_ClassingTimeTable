@@ -45,10 +45,13 @@ class MobileIcsImportMappingTest {
         )
 
         assertEquals(setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY), result.lessons.map { it.dayOfWeek }.toSet())
-        assertEquals(2, result.exceptions.size)
-        assertTrue(result.exceptions.any { it.type == ScheduleExceptionKind.CANCEL && it.date == LocalDate.of(2026, 3, 9) })
-        val moved = result.exceptions.single { it.type == ScheduleExceptionKind.RESCHEDULE }
-        assertEquals(LocalTime.of(10, 0), moved.startTime)
-        assertEquals("Math moved", moved.title)
+        val occurrences = buildEffectiveOccurrencesForDateRange(result.lessons, result.exceptions,
+            LocalDate.of(2026,3,2), LocalDate.of(2026,3,25), WeekNumberMode.SEMESTER, LocalDate.of(2026,3,2))
+        assertEquals(7, occurrences.size)
+        assertTrue(occurrences.none { it.date == LocalDate.of(2026,3,9) })
+        val moved = occurrences.single { it.date == LocalDate.of(2026,3,11) }
+        assertEquals(LocalTime.of(10, 0), moved.lesson.startTime)
+        assertEquals("Math moved", moved.lesson.title)
+        assertTrue(occurrences.none { it.date == LocalDate.of(2026,3,11) && it.lesson.startTime == LocalTime.of(8,0) })
     }
 }

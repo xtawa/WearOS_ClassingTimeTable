@@ -4,6 +4,16 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object AppDatabaseMigrations {
+    val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS exams (id TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(id))")
+        }
+    }
+    val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE course_sessions ADD COLUMN scheduleRuleJson TEXT")
+        }
+    }
     val MIGRATION_1_2: Migration = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Legacy sync repository metadata table is no longer used.

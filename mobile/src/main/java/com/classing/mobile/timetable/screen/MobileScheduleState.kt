@@ -253,7 +253,10 @@ internal fun buildEffectiveOccurrencesForDateRange(
             weekStartDay = weekStartDay,
         )
         val dayLessons = baseLessons
-            .filter { it.dayOfWeek == date.dayOfWeek && it.matchesWeek(weekIndex) }
+            .filter { lesson ->
+                if (lesson.scheduleRuleJson.isNullOrBlank()) lesson.dayOfWeek == date.dayOfWeek && lesson.matchesWeek(weekIndex)
+                else runCatching { com.classing.client.schedule.ScheduleRuleJson.decode(lesson.scheduleRuleJson)?.matches(date, lesson.dayOfWeek) == true }.getOrDefault(false)
+            }
             .sortedBy { it.startTime }
             .map { lesson ->
                 EffectiveLessonOccurrence(

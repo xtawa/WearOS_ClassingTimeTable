@@ -72,6 +72,7 @@ private fun PersistedLesson.syncFingerprint(): String = listOf(
     startWeek,
     endWeek,
     weekParity,
+    scheduleRuleJson.orEmpty(),
 ).joinToString("\u001f")
 
 private fun PersistedScheduleException.syncFingerprint(): String = listOf(

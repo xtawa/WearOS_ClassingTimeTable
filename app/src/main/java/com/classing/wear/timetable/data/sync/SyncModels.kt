@@ -5,6 +5,9 @@ import java.time.LocalTime
 
 data class RemoteSchedulePayload(
     val dataVersion: Long,
+    // Null is a legacy packet; an explicit empty list removes all exams.
+    val exams: List<com.classing.shared.exam.Exam>? = null,
+    val applyTimetable: Boolean = true,
     val semesters: List<RemoteSemester>,
     val timeSlots: List<RemoteTimeSlot>,
     val courses: List<RemoteCourse>,
@@ -57,6 +60,7 @@ data class RemoteSession(
     val endWeek: Int,
     val weekParity: String,
     val version: Long,
+    val scheduleRuleJson: String? = null,
 )
 
 data class RemoteException(

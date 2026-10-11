@@ -1,0 +1,29 @@
+{
+  "lessons": [
+    {
+      "id": "sample-4-0",
+      "title": "Math",
+      "dayOfWeek": 1,
+      "startTime": "09:00",
+      "endTime": "10:30",
+      "location": "A1",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    },
+    {
+      "id": "sample-4-1",
+      "title": "English",
+      "dayOfWeek": 1,
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "location": "A2",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    }
+  ],
+  "warnings": [
+    "Time conflict must be visible"
+  ]
+}

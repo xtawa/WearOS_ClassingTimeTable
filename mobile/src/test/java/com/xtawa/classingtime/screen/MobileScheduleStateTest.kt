@@ -8,7 +8,54 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [34])
 class MobileScheduleStateTest {
+
+    @Test
+    fun datedMeetingsAreNotMergedAndConflictsUseTheirActualWeekday() {
+        val rule = com.classing.shared.schedule.ScheduleRule(
+            com.classing.shared.schedule.RepeatKind.DATES, semesterStart, semesterStart.plusDays(30),
+            dates = setOf(semesterStart.plusDays(1)))
+        val first = baseLesson.copy(scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(rule))
+        val nextWeek = first.copy(id = "next-date", scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(
+            rule.copy(dates = setOf(semesterStart.plusDays(8)))))
+        val imported = appendImportedLessons(listOf(first), emptyList(), listOf(nextWeek, first.copy(id = "duplicate")))
+        assertEquals(2, imported.baseLessons.size)
+        assertEquals(1, imported.skippedDuplicateCount)
+        val tuesday = baseLesson.copy(id = "tuesday", dayOfWeek = DayOfWeek.TUESDAY)
+        assertEquals(1, detectLessonConflicts(listOf(first, tuesday), WeekNumberMode.SEMESTER, semesterStart).size)
+        assertTrue(detectLessonConflicts(listOf(first, nextWeek), WeekNumberMode.SEMESTER, semesterStart).isEmpty())
+        val a = rule.copy(kind = com.classing.shared.schedule.RepeatKind.ROTATION, dates = emptySet(), cycleLength = 2, cycleDays = setOf(1))
+        val b = a.copy(cycleDays = setOf(2))
+        assertTrue(detectLessonConflicts(listOf(
+            first.copy(scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(a)),
+            nextWeek.copy(scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(b)))).isEmpty())
+    }
+
+    @Test
+    fun rotationSplitPreservesPointerAndConvertingToWeeklyDoesNotRewritePast() {
+        val rule = com.classing.shared.schedule.ScheduleRule(
+            kind = com.classing.shared.schedule.RepeatKind.ROTATION,
+            anchorDate = LocalDate.of(2026, 3, 2), endDate = LocalDate.of(2026, 4, 24),
+            cycleLength = 6, cycleDays = setOf(1, 4))
+        val original = baseLesson.copy(scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(rule))
+        val splitDate = LocalDate.of(2026, 3, 23)
+        val clipped = clipMeetingDates(original, splitDate, null)!!
+        val preserved = com.classing.client.schedule.ScheduleRuleJson.decode(clipped.scheduleRuleJson)!!
+        for (day in 0L..25L) {
+            val date = splitDate.plusDays(day)
+            assertEquals(rule.matches(date, original.dayOfWeek), preserved.matches(date, original.dayOfWeek))
+        }
+        val result = applyLessonEdit(listOf(original), emptyList(),
+            LessonEditContext(original, anchorDate = splitDate, allowedScopes = setOf(LessonEditScope.FromThisWeek)),
+            original.copy(title = "Weekly Math", scheduleRuleJson = null), LessonEditScope.FromThisWeek,
+            WeekNumberMode.SEMESTER, semesterStart)
+        assertEquals(4, result.baseLessons.single { it.title == "Weekly Math" }.startWeek)
+        val before = buildEffectiveOccurrencesForDateRange(result.baseLessons, result.exceptions,
+            semesterStart, splitDate.minusDays(1), WeekNumberMode.SEMESTER, semesterStart)
+        assertTrue(before.none { it.lesson.title == "Weekly Math" })
+    }
 
     private val semesterStart = LocalDate.of(2026, 3, 2)
     private val baseLesson = LessonUi(

@@ -43,7 +43,7 @@ data class AiResetCard(val cardId: String, val expiresAt: Long, val note: String
 data class AiConversationSummary(val conversationId: String, val title: String, val updatedAt: Long)
 data class AiAttachment(val attachmentId: String, val name: String, val mimeType: String, val sizeBytes: Long, val expiresAt: Long)
 data class AiMessageSummary(val messageId: String, val role: String, val content: String, val createdAt: Long, val attachments: List<AiAttachment> = emptyList(), val reasoning: String = "")
-data class AiChatResult(val conversationId: String, val reply: String, val truncated: Boolean, val costPoints: Int, val courseProposal: JSONObject? = null)
+data class AiChatResult(val conversationId: String, val reply: String, val truncated: Boolean, val costPoints: Int, val courseProposal: JSONObject? = null, val examProposal: JSONObject? = null)
 data class AiPhotoImportResult(val timetable: JSONObject, val costPoints: Int, val response: String = "", val reasoning: String = "")
 
 class AiApiClient(
@@ -112,7 +112,7 @@ class AiApiClient(
         val body = JSONObject().put("clientRequestId", java.util.UUID.randomUUID().toString()).put("message", message).put("model", model).put("attachmentIds", JSONArray(attachmentIds))
         if (!conversationId.isNullOrBlank()) body.put("conversationId", conversationId)
         if (conversationId.isNullOrBlank()) body.put("timetableSnapshot", timetableSnapshot ?: error("Timetable required"))
-        if (currentTimetable != null) body.put("supportsTimetableActions", true).put("currentTimetableSnapshot", currentTimetable)
+        if (currentTimetable != null) body.put("supportsTimetableActions", true).put("supportsExamActions", true).put("currentTimetableSnapshot", currentTimetable)
         var currentId = conversationId.orEmpty()
         val reply = StringBuilder()
         val done = executeEvents(jsonRequest("POST", "/api/v1/ai/chat", accessToken, body)) { event, data ->
@@ -122,7 +122,7 @@ class AiApiClient(
                 "reasoning" -> onReasoning(data.optString("text"))
             }
         }
-        AiChatResult(currentId, done.optString("reply", reply.toString()), done.optBoolean("truncated"), done.optInt("costPoints"), done.optJSONObject("courseProposal"))
+        AiChatResult(currentId, done.optString("reply", reply.toString()), done.optBoolean("truncated"), done.optInt("costPoints"), done.optJSONObject("courseProposal"), done.optJSONObject("examProposal"))
     }
 
     suspend fun preferences(token: String): Result<AiPreferences> = request("GET", "/api/v1/ai/preferences", token).map { AiPreferences.fromJson(it.getJSONObject("preferences")) }

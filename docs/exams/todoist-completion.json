@@ -1,0 +1,55 @@
+{
+  "verifiedAt": "2026-10-11 03:02:52 UTC",
+  "completedCount": 8,
+  "tasks": [
+    {
+      "id": "6hjCMVFvp4vJJJPG",
+      "checked": true,
+      "content": "mcp异常：**OAuth failed: invalid_scope - administrator scope classing.admin.config.rollback is not available for this account**",
+      "error": false
+    },
+    {
+      "id": "6hjCP8fHCxchmCgp",
+      "checked": true,
+      "content": "确定国际版 MVP 免费功能与订阅墙位置",
+      "error": false
+    },
+    {
+      "id": "6hjCP8gHxVgcfwHp",
+      "checked": true,
+      "content": "扩展 A/B 日与 5/6/8 日轮换数据模型",
+      "error": false
+    },
+    {
+      "id": "6hjCP8g4mPFhPqHp",
+      "checked": true,
+      "content": "建模 Lecture/Lab 与不同学段重复周期",
+      "error": false
+    },
+    {
+      "id": "6hjCP8cfWfH9M6jG",
+      "checked": true,
+      "content": "为跨查询窗口调课添加回归测试并修复（如复现）",
+      "error": false
+    },
+    {
+      "id": "6hjCP8jcc53xrXvG",
+      "checked": true,
+      "content": "建立至少 30 组排课金标准测试",
+      "error": false
+    },
+    {
+      "id": "6hjCP8hP5PgGj82p",
+      "checked": true,
+      "content": "埋点记录建表耗时、课时修正、同步失败与下一节访问",
+      "error": false
+    },
+    {
+      "id": "6hhVqJFJcWv9m2qG",
+      "checked": true,
+      "content": "扩展课表数据模型以支持海外复杂排课",
+      "error": false
+    }
+  ]
+}
+

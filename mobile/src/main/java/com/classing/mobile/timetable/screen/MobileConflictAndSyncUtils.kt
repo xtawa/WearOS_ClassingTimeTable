@@ -94,18 +94,18 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 
-internal fun detectLessonConflicts(lessons: List<LessonUi>): List<LessonConflict> {
+internal fun detectLessonConflicts(lessons: List<LessonUi>, weekNumberMode: WeekNumberMode = WeekNumberMode.NATURAL,
+    semesterWeekStartDate: LocalDate = LocalDate.now(), weekStartDay: DayOfWeek = DayOfWeek.MONDAY): List<LessonConflict> {
     if (lessons.size < 2) return emptyList()
     val conflicts = mutableListOf<LessonConflict>()
-    val grouped = lessons.groupBy { it.dayOfWeek }
-    grouped.values.forEach { dayLessons ->
-        val sorted = dayLessons.sortedBy { it.startTime }
+    run {
+        val sorted = lessons.sortedBy { it.startTime }
         for (i in 0 until sorted.lastIndex) {
             val current = sorted[i]
             for (j in i + 1 until sorted.size) {
                 val next = sorted[j]
                 if (next.startTime >= current.endTime) break
-                if (lessonsOverlap(current, next)) conflicts += LessonConflict(current, next)
+                if (lessonsOverlap(current, next, weekNumberMode, semesterWeekStartDate, weekStartDay)) conflicts += LessonConflict(current, next)
             }
         }
     }
@@ -115,28 +115,40 @@ internal fun detectLessonConflicts(lessons: List<LessonUi>): List<LessonConflict
 internal fun detectImportConflicts(
     imported: List<LessonUi>,
     existing: List<LessonUi>,
+    weekNumberMode: WeekNumberMode = WeekNumberMode.NATURAL,
+    semesterWeekStartDate: LocalDate = LocalDate.now(), weekStartDay: DayOfWeek = DayOfWeek.MONDAY,
 ): List<LessonConflict> {
-    val withinImport = detectLessonConflicts(imported)
+    val withinImport = detectLessonConflicts(imported, weekNumberMode, semesterWeekStartDate, weekStartDay)
     val withExisting = imported.flatMap { candidate ->
-        findConflictsWithExisting(candidate, existing).map { current ->
+        findConflictsWithExisting(candidate, existing, weekNumberMode, semesterWeekStartDate, weekStartDay).map { current ->
             LessonConflict(first = candidate, second = current)
         }
     }
     return withinImport + withExisting
 }
 
-internal fun findConflictsWithExisting(candidate: LessonUi, existing: List<LessonUi>): List<LessonUi> {
+internal fun findConflictsWithExisting(candidate: LessonUi, existing: List<LessonUi>, weekNumberMode: WeekNumberMode = WeekNumberMode.NATURAL,
+    semesterWeekStartDate: LocalDate = LocalDate.now(), weekStartDay: DayOfWeek = DayOfWeek.MONDAY): List<LessonUi> {
     return existing
         .asSequence()
-        .filter { it.dayOfWeek == candidate.dayOfWeek && lessonsOverlap(it, candidate) }
+        .filter { lessonsOverlap(it, candidate, weekNumberMode, semesterWeekStartDate, weekStartDay) }
         .sortedBy { it.startTime }
         .toList()
 }
 
-internal fun lessonsOverlap(first: LessonUi, second: LessonUi): Boolean {
-    if (first.dayOfWeek != second.dayOfWeek) return false
+internal fun lessonsOverlap(first: LessonUi, second: LessonUi, weekNumberMode: WeekNumberMode = WeekNumberMode.NATURAL,
+    semesterWeekStartDate: LocalDate = LocalDate.now(), weekStartDay: DayOfWeek = DayOfWeek.MONDAY): Boolean {
     if (!(first.startTime < second.endTime && second.startTime < first.endTime)) return false
-    return weekRulesOverlap(first, second)
+    if (first.scheduleRuleJson.isNullOrBlank() && second.scheduleRuleJson.isNullOrBlank())
+        return first.dayOfWeek == second.dayOfWeek && weekRulesOverlap(first, second)
+    val rules = runCatching { listOfNotNull(com.classing.client.schedule.ScheduleRuleJson.decode(first.scheduleRuleJson),
+        com.classing.client.schedule.ScheduleRuleJson.decode(second.scheduleRuleJson)) }.getOrElse { return false }
+    val from = rules.maxOf { it.anchorDate }; val through = rules.minOf { it.endDate }
+    if (through < from) return false
+    fun dates(lesson: LessonUi) = buildEffectiveOccurrencesForDateRange(listOf(lesson), emptyList(), from, through,
+        weekNumberMode, semesterWeekStartDate, weekStartDay).map { it.date }.toSet()
+    val firstDates = dates(first)
+    return dates(second).any { it in firstDates }
 }
 
 internal fun formatLessonConflict(conflict: LessonConflict, context: Context): String {
@@ -150,10 +162,12 @@ internal fun formatLessonConflict(conflict: LessonConflict, context: Context): S
 internal fun buildImportItemStates(
     pendingLessons: List<LessonUi>,
     existingLessons: List<LessonUi>,
+    weekNumberMode: WeekNumberMode = WeekNumberMode.NATURAL,
+    semesterWeekStartDate: LocalDate = LocalDate.now(), weekStartDay: DayOfWeek = DayOfWeek.MONDAY,
 ): List<ImportItemState> {
     return pendingLessons.map { lesson ->
         val anomalies = detectLessonAnomalies(lesson)
-        val conflictsWithExisting = findConflictsWithExisting(lesson, existingLessons)
+        val conflictsWithExisting = findConflictsWithExisting(lesson, existingLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
         val hasConflict = conflictsWithExisting.isNotEmpty()
         ImportItemState(
             lesson = lesson,
@@ -204,6 +218,7 @@ internal data class BackupRestorePayload(
     val weekNumberMode: WeekNumberMode?,
     val semesterWeekStartDate: LocalDate?,
     val warnings: List<String>,
+    val exams: List<com.classing.shared.exam.Exam>? = null,
 )
 
 internal fun buildScheduleBackupJson(
@@ -212,6 +227,7 @@ internal fun buildScheduleBackupJson(
     zoneId: ZoneId,
     weekNumberMode: WeekNumberMode,
     semesterWeekStartDate: LocalDate,
+    exams: List<com.classing.shared.exam.Exam> = emptyList(),
 ): String {
     val courses = JSONArray()
     baseLessons.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }).forEach { lesson ->
@@ -227,7 +243,8 @@ internal fun buildScheduleBackupJson(
                 .put("note", lesson.note ?: "")
                 .put("startWeek", lesson.startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK))
                 .put("endWeek", lesson.endWeek.coerceIn(lesson.startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK), DEFAULT_END_WEEK))
-                .put("weekParity", lesson.weekParity.name),
+                .put("weekParity", lesson.weekParity.name)
+                .put("scheduleRuleJson", lesson.scheduleRuleJson ?: JSONObject.NULL),
         )
     }
     val exceptionArray = JSONArray()
@@ -256,6 +273,7 @@ internal fun buildScheduleBackupJson(
         .put("semesterWeekStartDate", semesterWeekStartDate.toString())
         .put("courses", courses)
         .put("exceptions", exceptionArray)
+        .put("exams", com.classing.client.exam.ExamJson.array(exams))
         .toString(2)
 }
 
@@ -280,22 +298,24 @@ internal fun parseScheduleBackupJson(raw: String, context: Context): BackupResto
     if (format == "classingtime_backup_v2") {
         // v2 exceptions reference base lessons by id (CANCEL / RESCHEDULE), so the exported ids
         // must survive the round trip; otherwise those exceptions silently stop matching.
-        val baseLessons = parseJsonToLessons(
+        val parsed = parseJsonToLessons(
             raw = root.optJSONArray("courses")?.toString().orEmpty(),
             context = context,
             preserveIds = true,
-        ).lessons
+        )
+        val exams = if (root.has("exams")) runCatching { com.classing.client.exam.ExamJson.list(root.getJSONArray("exams")) }.getOrElse { return null } else null
         val exceptions = parseBackupExceptions(root.optJSONArray("exceptions"))
         return BackupRestorePayload(
-            baseLessons = baseLessons,
+            baseLessons = parsed.lessons,
             exceptions = exceptions,
+            exams = exams,
             weekNumberMode = WeekNumberMode.entries.firstOrNull {
                 it.name == root.optString("weekNumberMode").trim().uppercase()
             },
             semesterWeekStartDate = runCatching {
                 LocalDate.parse(root.optString("semesterWeekStartDate"))
             }.getOrNull(),
-            warnings = emptyList(),
+            warnings = parsed.warnings,
         )
     }
 
@@ -620,6 +640,11 @@ internal fun parseJsonToLessons(
             val parsedEndWeek = parseWeekNumber(item.opt("endWeek") ?: item.opt("weekEnd") ?: item.opt("toWeek"))
             val rawParity = item.opt("weekParity") ?: item.opt("parity") ?: item.opt("oddEven")
             val weekParity = parseWeekParity(rawParity)
+            val scheduleRuleJson = item.optString("scheduleRuleJson").takeIf { it.isNotBlank() && it != "null" }
+            if (runCatching { com.classing.client.schedule.ScheduleRuleJson.decode(scheduleRuleJson) }.isFailure) {
+                warnings += context.getString(R.string.import_rule_invalid, index + 1)
+                continue
+            }
 
             if (title.isBlank()) {
                 warnings += context.getString(R.string.json_warning_missing_title, index + 1)
@@ -666,6 +691,7 @@ internal fun parseJsonToLessons(
                     startWeek = safeStartWeek,
                     endWeek = safeEndWeek,
                     weekParity = weekParity ?: LessonWeekParity.ALL,
+                    scheduleRuleJson = scheduleRuleJson,
                 ),
             )
         }

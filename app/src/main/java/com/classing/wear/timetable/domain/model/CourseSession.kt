@@ -11,4 +11,5 @@ data class CourseSession(
     val timeSlotId: Long,
     val weekRule: WeekRule,
     val version: Long,
+    val scheduleRuleJson: String? = null,
 )

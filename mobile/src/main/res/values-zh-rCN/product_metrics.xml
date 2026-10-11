@@ -1,0 +1,7 @@
+<resources>
+    <string name="metrics_title">本地使用指标</string>
+    <string name="metrics_description">默认关闭。仅在本机保留 28 天的匿名事件类型与数量，不记录课程内容或凭据，不上传；关闭即删除。</string>
+    <string name="metrics_export">导出匿名指标</string>
+    <string name="metrics_export_done">已保存导出文件</string>
+    <string name="metrics_export_failed">无法保存导出文件</string>
+</resources>

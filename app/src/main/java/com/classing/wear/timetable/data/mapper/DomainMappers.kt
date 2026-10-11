@@ -69,6 +69,7 @@ fun CourseSessionEntity.asDomainOrNull(): CourseSession? {
         dayOfWeek = safeDayOfWeek,
         timeSlotId = timeSlotId,
         weekRule = safeWeekRule,
+        scheduleRuleJson = scheduleRuleJson,
         version = version,
     )
 }

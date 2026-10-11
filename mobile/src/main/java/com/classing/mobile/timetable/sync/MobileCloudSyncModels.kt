@@ -133,7 +133,8 @@ data class CloudDocument(
                                 MAX_SCHEDULE_WEEK,
                             ),
                         )
-                        .put("weekParity", lesson.weekParity),
+                        .put("weekParity", lesson.weekParity)
+                        .put("scheduleRuleJson", lesson.scheduleRuleJson ?: JSONObject.NULL),
                 )
             }
             root.put(
@@ -167,7 +168,8 @@ data class CloudDocument(
                                     MAX_SCHEDULE_WEEK,
                                 ),
                             )
-                            .put("weekParity", lesson.weekParity),
+                            .put("weekParity", lesson.weekParity)
+                            .put("scheduleRuleJson", lesson.scheduleRuleJson ?: JSONObject.NULL),
                     )
                 }
                 root.getJSONObject(CloudSyncContracts.KEY_TIMETABLE)
@@ -310,6 +312,7 @@ private fun parsePersistedLesson(item: JSONObject?): PersistedLesson? {
         teacher = item.optString("teacher").ifBlank { null },
         location = item.optString("location").ifBlank { null },
         note = item.optString("note").ifBlank { null },
+        scheduleRuleJson = item.optString("scheduleRuleJson").takeIf { it.isNotBlank() && it != "null" },
         dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
         startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
         endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),

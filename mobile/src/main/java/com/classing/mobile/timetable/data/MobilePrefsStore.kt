@@ -18,6 +18,7 @@ data class PersistedLesson(
     val startWeek: Int,
     val endWeek: Int,
     val weekParity: String,
+    val scheduleRuleJson: String? = null,
 )
 
 data class PersistedScheduleException(
@@ -272,12 +273,15 @@ object MobilePrefsStore {
         )
     }
 
+    fun hasTimetableState(context: Context): Boolean = prefs(context).contains(KEY_BASE_LESSONS_JSON) || prefs(context).contains(KEY_LESSONS_JSON)
+
     fun saveTimetableState(
         context: Context,
         baseLessons: List<PersistedLesson>,
         exceptions: List<PersistedScheduleException>,
         snapshots: List<PersistedScheduleSnapshot>,
     ) {
+        baseLessons.forEach { com.classing.client.schedule.ScheduleRuleJson.decode(it.scheduleRuleJson) }
         prefs(context).edit()
             .putString(KEY_BASE_LESSONS_JSON, buildLessonArray(baseLessons).toString())
             .putString(KEY_SCHEDULE_EXCEPTIONS_JSON, buildExceptionArray(exceptions).toString())
@@ -285,6 +289,7 @@ object MobilePrefsStore {
             .putString(KEY_LESSONS_JSON, buildLessonArray(baseLessons).toString())
             .putLong(KEY_LAST_SNAPSHOT_AT, snapshots.maxOfOrNull { it.createdAt } ?: 0L)
             .apply()
+        com.xtawa.classingtime.widget.NextClassWidget.refresh(context)
     }
 
     fun saveScheduleSnapshots(context: Context, snapshots: List<PersistedScheduleSnapshot>) {
@@ -368,6 +373,7 @@ object MobilePrefsStore {
                             teacher = item.optString("teacher").ifBlank { null },
                             location = item.optString("location").ifBlank { null },
                             note = item.optString("note").ifBlank { null },
+                            scheduleRuleJson = item.optString("scheduleRuleJson").takeIf { it.isNotBlank() && it != "null" },
                             dayOfWeek = item.optInt("dayOfWeek", 1).coerceIn(1, 7),
                             startMinute = item.optInt("startMinute", 8 * 60).coerceIn(0, 24 * 60 - 1),
                             endMinute = item.optInt("endMinute", 9 * 60).coerceIn(1, 24 * 60 - 1),
@@ -405,7 +411,8 @@ object MobilePrefsStore {
                             MAX_SCHEDULE_WEEK,
                         ),
                     )
-                    .put("weekParity", lesson.weekParity),
+                    .put("weekParity", lesson.weekParity)
+                    .put("scheduleRuleJson", lesson.scheduleRuleJson ?: JSONObject.NULL),
             )
         }
         return arr

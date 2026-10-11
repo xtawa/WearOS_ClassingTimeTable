@@ -61,6 +61,9 @@ fun AskAiScreen(
     onOpenAccount: () -> Unit,
 ) {
     val context = LocalContext.current
+    val database = (context.applicationContext as com.classing.wear.timetable.ClassingTimetableApplication).appContainer.database
+    val examEntities by database.examDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val exams = remember(examEntities) { examEntities.map { it.toExam() } }
     val scope = rememberCoroutineScope()
     val client = remember(context) { WearAiApiClient(context) }
     val today = timeProvider.today()
@@ -114,7 +117,7 @@ fun AskAiScreen(
             todayLessons.first().course.name,
         )
     }
-    val quickPrompts = listOf(
+    val quickPrompts = (if (exams.isNotEmpty()) listOf(if (java.util.Locale.getDefault().language == "zh") "我的下一场考试是什么？" else "What is my next exam?") else emptyList()) + listOf(
         stringResource(R.string.ask_ai_prompt_next),
         stringResource(R.string.ask_ai_prompt_today),
         stringResource(R.string.ask_ai_prompt_free),
@@ -122,7 +125,7 @@ fun AskAiScreen(
 
     fun submit() {
         val submitted = question.trim()
-        if (submitted.isBlank() || sending || lessons.isEmpty()) return
+        if (submitted.isBlank() || sending || (lessons.isEmpty() && exams.isEmpty())) return
         scope.launch {
             val token = accessToken()
             if (token == null) {
@@ -131,11 +134,8 @@ fun AskAiScreen(
             }
             sending = true
             status = ""
-            val snapshot = if (conversationId.isBlank()) {
-                buildWearTimetableSnapshot(today.toString(), weekSchedule.weekIndex, lessons)
-            } else {
-                null
-            }
+            val snapshot = buildWearTimetableSnapshot(today.toString(), weekSchedule.weekIndex, lessons)
+                .put("exams", com.classing.client.exam.ExamJson.array(exams))
             client.chat(
                 accessToken = token,
                 conversationId = conversationId.takeIf { it.isNotBlank() },
@@ -195,7 +195,7 @@ fun AskAiScreen(
                     }
                 }
             }
-        } else if (lessons.isEmpty()) {
+        } else if (lessons.isEmpty() && exams.isEmpty()) {
             item {
                 AssistantCard {
                     Text(stringResource(R.string.ask_ai_no_schedule_title), fontWeight = FontWeight.SemiBold)

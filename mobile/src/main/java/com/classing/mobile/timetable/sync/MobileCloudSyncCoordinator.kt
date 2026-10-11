@@ -63,6 +63,7 @@ object MobileCloudSyncCoordinator {
         force: Boolean = false,
         alsoPushConfigToWear: Boolean = true,
     ): Result<CloudSyncOutcome> = mutex.withLock {
+        var attempted = false
         runCatching {
             @Suppress("UNUSED_VARIABLE") val compatibilityFlags = force to alsoPushConfigToWear
             val startedAt = System.currentTimeMillis()
@@ -77,13 +78,15 @@ object MobileCloudSyncCoordinator {
                     CloudProvider.GOOGLE_DRIVE -> "Cloud sync disabled or Google Drive auth missing/expired"
                     CloudProvider.OFFICIAL -> "Official cloud requires login"
                 }
-                saveCloudStatus(context, current, message, startedAt)
+                saveCloudStatus(context, current, message, current.cloudLastSyncedAt)
                 return@runCatching CloudSyncOutcome(false, message, startedAt, 0)
             }
 
             var runtimeConfig = config
             val syncScopes = effectiveSyncScopes(current, runtimeConfig)
             val client = storageClient(config.provider)
+            attempted = true
+            com.xtawa.classingtime.metrics.ProductMetrics.record(context, com.xtawa.classingtime.metrics.ProductEvent.SYNC_ATTEMPT)
             var conflicts = 0
             var wrote = false
             retryConditionalCloudUpdate(MAX_CAS_ATTEMPTS) { _ ->
@@ -129,6 +132,7 @@ object MobileCloudSyncCoordinator {
                 append(if (wrote) ", uploaded)" else ", unchanged)")
             }
             saveCloudStatus(context, MobilePrefsStore.loadSettings(context), message, finishedAt)
+            com.xtawa.classingtime.metrics.ProductMetrics.record(context, com.xtawa.classingtime.metrics.ProductEvent.SYNC_APPLIED, finishedAt - startedAt)
             CloudSyncOutcome(true, message, finishedAt, 0)
         }.recoverCatching { error ->
             val now = System.currentTimeMillis()
@@ -153,8 +157,9 @@ object MobileCloudSyncCoordinator {
                 context,
                 MobilePrefsStore.loadSettings(context),
                 "$prefix: ${error.message ?: "unknown"}",
-                now,
+                settings.cloudLastSyncedAt,
             )
+            if (attempted) com.xtawa.classingtime.metrics.ProductMetrics.record(context, com.xtawa.classingtime.metrics.ProductEvent.SYNC_FAILED)
             throw error
         }
     }

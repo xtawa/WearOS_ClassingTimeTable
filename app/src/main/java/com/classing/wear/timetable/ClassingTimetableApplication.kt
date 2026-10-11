@@ -10,6 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -22,6 +23,15 @@ class ClassingTimetableApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         appContainer = DefaultAppContainer(this)
+        appScope.launch {
+            combine(appContainer.database.examDao().observeAll(), appContainer.settingsRepository.observePreferences()) { records, preferences ->
+                records.map { it.toExam() } to preferences.remindersEnabled
+            }.distinctUntilChanged().collect { (exams, enabled) ->
+                com.classing.client.exam.ExamReminderScheduler.sync(this@ClassingTimetableApplication,
+                    exams, enabled, com.classing.wear.timetable.reminder.WearExamReminderReceiver::class.java)
+                com.classing.wear.timetable.widget.WearSurfaceUpdateRequester.requestAll(this@ClassingTimetableApplication)
+            }
+        }
         appScope.launch {
             // Preferences can change from the settings UI, from a phone-pushed settings snapshot or
             // from the official cloud. Re-apply the background policy whenever the relevant fields

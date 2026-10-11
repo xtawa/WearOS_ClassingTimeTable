@@ -1,5 +1,7 @@
 package com.xtawa.classingtime.sync
 
+import com.classing.client.exam.ExamJson
+import com.classing.client.exam.ExamStore
 import android.content.Context
 import com.classing.shared.model.MAX_SCHEDULE_WEEK
 import com.classing.shared.model.MIN_SCHEDULE_WEEK
@@ -66,6 +68,11 @@ object MobileCloudSyncV2Store {
         val domains = cached.records.toMutableMap()
         val changes = cached.changes.toMutableList()
         if (effectiveScopes.contains(SyncScope.TIMETABLE)) {
+            domains[CloudSyncV2.DOMAIN_TIMETABLE_EXAMS] = reconcileDomain(
+                context, CloudSyncV2.DOMAIN_TIMETABLE_EXAMS,
+                ExamStore.load(context).associate { it.id to ExamJson.encode(it).toString() },
+                cached.records[CloudSyncV2.DOMAIN_TIMETABLE_EXAMS].orEmpty(), now, changes,
+            )
             domains[CloudSyncV2.DOMAIN_TIMETABLE_LESSONS] = reconcileDomain(
                 context, CloudSyncV2.DOMAIN_TIMETABLE_LESSONS,
                 state.baseLessons.associate { it.id to lessonToJson(it).toString() },
@@ -151,6 +158,13 @@ object MobileCloudSyncV2Store {
         document: CloudSyncDocumentV2,
         syncScopes: Set<SyncScope>? = null,
     ) {
+        val incomingExams = document.records[CloudSyncV2.DOMAIN_TIMETABLE_EXAMS]?.let { records ->
+            val exams = records.values.filterNot { it.isDeleted }.map { record ->
+                val exam = ExamJson.decode(JSONObject(requireNotNull(record.payload)))
+                require(record.id == exam.id) { "Exam record ID mismatch" }; exam
+            }
+            com.classing.shared.exam.validateExams(exams); exams
+        }
         // Save first so persistence callbacks cannot reinterpret remote data as a new local edit.
         saveDocument(context, document)
         consumeAppCommands(context, document)
@@ -158,11 +172,12 @@ object MobileCloudSyncV2Store {
         var settings = MobilePrefsStore.loadSettings(context)
         val effectiveScopes = syncScopes ?: settings.syncScopes
         if (effectiveScopes.contains(SyncScope.TIMETABLE)) {
-            val lessons = livePayloads(document, CloudSyncV2.DOMAIN_TIMETABLE_LESSONS)
-                .mapNotNull { runCatching { lessonFromJson(JSONObject(it)) }.getOrNull() }
-            val exceptions = livePayloads(document, CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS)
-                .mapNotNull { runCatching { exceptionFromJson(JSONObject(it)) }.getOrNull() }
+            val lessons = if (document.records.containsKey(CloudSyncV2.DOMAIN_TIMETABLE_LESSONS)) livePayloads(document, CloudSyncV2.DOMAIN_TIMETABLE_LESSONS)
+                .mapNotNull { runCatching { lessonFromJson(JSONObject(it)) }.getOrNull() } else currentState.baseLessons
+            val exceptions = if (document.records.containsKey(CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS)) livePayloads(document, CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS)
+                .mapNotNull { runCatching { exceptionFromJson(JSONObject(it)) }.getOrNull() } else currentState.exceptions
             MobilePrefsStore.saveTimetableState(context, lessons, exceptions, currentState.snapshots)
+            incomingExams?.let { ExamStore.save(context, it) }
         }
         if (effectiveScopes.contains(SyncScope.MOBILE_SETTINGS)) {
             val mobile = liveSettingValues(document, CloudSyncV2.DOMAIN_MOBILE_SETTINGS)
@@ -411,6 +426,7 @@ private fun lessonToJson(item: PersistedLesson) = JSONObject()
     .put("location", item.location ?: JSONObject.NULL).put("note", item.note ?: JSONObject.NULL)
     .put("dayOfWeek", item.dayOfWeek).put("startMinute", item.startMinute).put("endMinute", item.endMinute)
     .put("startWeek", item.startWeek).put("endWeek", item.endWeek).put("weekParity", item.weekParity)
+    .put("scheduleRuleJson", item.scheduleRuleJson ?: JSONObject.NULL)
 
 private fun lessonFromJson(item: JSONObject): PersistedLesson? {
     val id = item.optString("id"); val title = item.optString("title")
@@ -423,6 +439,7 @@ private fun lessonFromJson(item: JSONObject): PersistedLesson? {
         startWeek,
         item.optInt("endWeek", MAX_SCHEDULE_WEEK).coerceIn(startWeek, MAX_SCHEDULE_WEEK),
         item.optString("weekParity", "ALL"),
+        item.optStringOrNull("scheduleRuleJson"),
     )
 }
 

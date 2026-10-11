@@ -66,6 +66,7 @@ private data class LessonDuplicateFingerprint(
     val startWeek: Int,
     val endWeek: Int,
     val weekParity: LessonWeekParity,
+    val scheduleRule: com.classing.shared.schedule.ScheduleRule?,
 )
 
 private val lessonSortComparator = compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime }
@@ -274,6 +275,14 @@ internal fun applyLessonEdit(
             val anchorWeek = resolveAnchorWeek(anchorDate, weekNumberMode, semesterWeekStartDate)
             val original = baseLessons.firstOrNull { it.id == targetLesson.id }
                 ?: return ScheduleMutationResult(baseLessons, exceptions)
+            if (!original.scheduleRuleJson.isNullOrBlank()) {
+                val before = clipMeetingDates(original, null, anchorDate.minusDays(1))
+                val afterLesson = updatedLesson.copy(id = "${original.id}-from-$anchorDate",
+                    startWeek = maxOf(updatedLesson.startWeek, anchorWeek))
+                val after = clipMeetingDates(afterLesson, anchorDate, null)
+                return ScheduleMutationResult(sortLessons(baseLessons.filterNot { it.id == original.id } + listOfNotNull(before, after)),
+                    exceptions.filterNot { it.lessonId == original.id && !it.date.isBefore(anchorDate) })
+            }
             val keptLessons = mutableListOf<LessonUi>()
             baseLessons.forEach { lesson ->
                 if (lesson.id != original.id) {
@@ -341,6 +350,11 @@ internal fun removeLesson(
         LessonEditScope.FromThisWeek -> {
             val anchorDate = editContext.anchorDate ?: return ScheduleMutationResult(baseLessons, exceptions)
             val anchorWeek = resolveAnchorWeek(anchorDate, weekNumberMode, semesterWeekStartDate)
+            if (!targetLesson.scheduleRuleJson.isNullOrBlank()) {
+                val before = clipMeetingDates(targetLesson, null, anchorDate.minusDays(1))
+                return ScheduleMutationResult(sortLessons(baseLessons.filterNot { it.id == targetLesson.id } + listOfNotNull(before)),
+                    exceptions.filterNot { it.lessonId == targetLesson.id && !it.date.isBefore(anchorDate) })
+            }
             val updatedBase = baseLessons.mapNotNull { lesson ->
                 if (lesson.id != targetLesson.id) return@mapNotNull lesson
                 if (anchorWeek <= lesson.startWeek) return@mapNotNull null
@@ -381,6 +395,18 @@ private fun sortLessons(lessons: List<LessonUi>): List<LessonUi> {
     return lessons.sortedWith(lessonSortComparator)
 }
 
+/** Preserve the original rotation pointer when splitting a meeting. */
+internal fun clipMeetingDates(lesson: LessonUi, from: LocalDate?, through: LocalDate?): LessonUi? {
+    val rule = com.classing.client.schedule.ScheduleRuleJson.decode(lesson.scheduleRuleJson) ?: return lesson
+    val start = maxOf(rule.anchorDate, from ?: rule.anchorDate)
+    val end = minOf(rule.endDate, through ?: rule.endDate)
+    if (end.isBefore(start)) return null
+    val dates = generateSequence(start) { it.plusDays(1).takeUnless { day -> day > end } }.filter { rule.matches(it, lesson.dayOfWeek) }.toSet()
+    if (dates.isEmpty()) return null
+    return lesson.copy(scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(rule.copy(
+        kind = com.classing.shared.schedule.RepeatKind.DATES, anchorDate = start, endDate = end, dates = dates)))
+}
+
 private fun LessonUi.toScheduleException(
     type: ScheduleExceptionKind,
     anchorDate: LocalDate,
@@ -413,6 +439,7 @@ private fun buildLessonDuplicateFingerprint(lesson: LessonUi): LessonDuplicateFi
         startWeek = lesson.startWeek,
         endWeek = lesson.endWeek,
         weekParity = lesson.weekParity,
+        scheduleRule = com.classing.client.schedule.ScheduleRuleJson.decode(lesson.scheduleRuleJson),
     )
 }
 

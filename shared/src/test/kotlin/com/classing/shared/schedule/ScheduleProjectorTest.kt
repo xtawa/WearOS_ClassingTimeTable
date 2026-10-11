@@ -10,6 +10,33 @@ class ScheduleProjectorTest {
     private val projector = ScheduleProjector()
 
     @Test
+    fun project_includesRescheduleWhoseOriginalDateIsOutsideWindow() {
+        val monday = LocalDate.of(2026, 2, 23)
+        val target = monday.plusWeeks(1).plusDays(2)
+        val course = CourseRule("math", "Math", DayOfWeek.MONDAY,
+            LocalTime.of(8, 0), LocalTime.of(9, 0), 1, 4)
+        val input = ScheduleInput(monday, courses = listOf(course), exceptions = listOf(
+            ScheduleExceptionRule.Reschedule("move", "math", monday, target,
+                LocalTime.of(10, 0), LocalTime.of(11, 0)),
+        ))
+        assertEquals(listOf("move"), projector.project(input, target, target).map { it.id })
+        assertEquals(emptyList(), projector.project(input, monday, monday))
+    }
+
+    @Test
+    fun project_includesRescheduleFromFutureAndCancellationWins() {
+        val monday = LocalDate.of(2026, 2, 23)
+        val course = CourseRule("math", "Math", DayOfWeek.MONDAY,
+            LocalTime.of(8, 0), LocalTime.of(9, 0), 1, 4)
+        val moved = ScheduleExceptionRule.Reschedule("move", "math", monday.plusWeeks(1),
+            monday.plusDays(1), LocalTime.of(10, 0), LocalTime.of(11, 0))
+        val input = ScheduleInput(monday, courses = listOf(course), exceptions = listOf(moved))
+        assertEquals(listOf("move"), projector.project(input, monday.plusDays(1), monday.plusDays(1)).map { it.id })
+        assertEquals(emptyList(), projector.project(input.copy(exceptions = listOf(moved,
+            ScheduleExceptionRule.Cancel("cancel", "math", moved.date))), moved.newDate, moved.newDate))
+    }
+
+    @Test
     fun project_appliesWeekParityAndDateRange() {
         val input = ScheduleInput(
             semesterWeekStartDate = LocalDate.of(2026, 2, 23),

@@ -1,0 +1,29 @@
+{
+  "lessons": [
+    {
+      "id": "sample-3-0",
+      "title": "Chemistry lecture",
+      "dayOfWeek": 2,
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "location": "Hall",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    },
+    {
+      "id": "sample-3-1",
+      "title": "Chemistry lab",
+      "dayOfWeek": 4,
+      "startTime": "14:00",
+      "endTime": "16:00",
+      "location": "Lab 3",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    }
+  ],
+  "warnings": [
+    "Lecture and lab are separate meetings of one course"
+  ]
+}

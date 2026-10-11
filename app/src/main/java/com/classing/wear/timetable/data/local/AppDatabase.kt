@@ -25,12 +25,14 @@ import com.classing.wear.timetable.data.local.entity.TimeSlotEntity
         CourseSessionEntity::class,
         ScheduleExceptionEntity::class,
         ReminderEntity::class,
+        com.classing.wear.timetable.data.local.entity.ExamEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(AppTypeConverters::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun examDao(): com.classing.wear.timetable.data.local.dao.ExamDao
     abstract fun semesterDao(): SemesterDao
     abstract fun timeSlotDao(): TimeSlotDao
     abstract fun courseDao(): CourseDao

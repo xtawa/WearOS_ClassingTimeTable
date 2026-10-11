@@ -78,6 +78,7 @@ class WearAiApiClient(
             } else {
                 body.put("conversationId", conversationId)
             }
+            timetableSnapshot?.let { body.put("currentTimetableSnapshot", it) }
             val connection = open("POST", "/api/v1/ai/chat", accessToken, body)
             try {
                 val status = connection.responseCode

@@ -1,0 +1,8 @@
+id,scenario,device_or_environment,status,result,evidence
+E01,Create edit cancel delete restart with exams only,Android phone,NOT_RUN,,
+E02,Midnight DST gap overlap and source timezone,Android phone,NOT_RUN,,
+E03,Data Layer FULL DELTA reconnect deletion legacy packet,Phone and Wear OS,NOT_RUN,,
+E04,Cloud exam domain conflicts deletion restoration account switch,Phone and Wear OS with cloud,NOT_RUN,,
+E05,Notifications permissions reboot clock changes no duplicates,Phone and Wear OS,NOT_RUN,,
+E06,Widget Tile complication rotary round screen TalkBack large font,Phone and Wear OS,NOT_RUN,,
+E07,AskAI current snapshot preview confirm stale and atomic rejection,Updated backend with provider,NOT_RUN,,

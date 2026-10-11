@@ -179,90 +179,41 @@ internal fun parseToLessons(
 
     val result = parser.parse(raw)
     val drafts = adapter.toDrafts(result)
-    val baseDrafts = drafts.filter { it.recurrenceId == null }
-    val lessons = baseDrafts.flatMapIndexed { index, draft ->
-        val base = draft.toLessonUi(
-            index = index,
-            zoneId = zoneId,
-            untitled = untitled,
-            weekNumberMode = weekNumberMode,
-            semesterWeekStartDate = semesterWeekStartDate,
-        ) ?: return@flatMapIndexed emptyList()
-        val byDays = parseRRuleByDays(draft.recurrence).ifEmpty { listOf(base.dayOfWeek) }
-        byDays.map { day -> base.copy(id = "${base.id}-${day.name}", dayOfWeek = day) }
+    val payload = when (result) {
+        is ImportResult.Success -> result.payload
+        is ImportResult.PartialSuccess -> result.payload
+        is ImportResult.Failure -> null
     }
-        .sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
-    val lessonsByUid = lessons.groupBy { lesson ->
-        baseDrafts.firstOrNull { draft -> lesson.id.startsWith(baseDrafts.indexOf(draft).toString() + "-") }
-            ?.sourceRaw?.get("UID").orEmpty()
-    }
-    val exceptions = buildList {
-        baseDrafts.forEachIndexed { index, draft ->
-            val matchingLessons = lessons.filter { it.id.startsWith("$index-") }
-            draft.excludes.forEach { excluded ->
-                val date = excluded.atZone(zoneId).toLocalDate()
-                matchingLessons.firstOrNull { it.dayOfWeek == date.dayOfWeek }?.let { lesson ->
-                    add(ScheduleExceptionUi("ics-exdate-${lesson.id}-$date", lesson.id, ScheduleExceptionKind.CANCEL, date))
-                }
-            }
+    if (payload != null) {
+        val firstDate = payload.events.mapNotNull { it.dtStart?.atZone(zoneId)?.toLocalDate() }.minOrNull() ?: semesterWeekStartDate
+        val expanded = com.classing.shared.importer.IcsOccurrenceExpander().expand(payload.events, firstDate, firstDate.plusDays(366), zoneId)
+        val warnings = (payload.warnings + expanded.warnings).toMutableList()
+        val groups = expanded.occurrences.filter { occurrence ->
+            val start = occurrence.start.atZone(zoneId); val end = occurrence.end.atZone(zoneId)
+            val valid = start.toLocalDate() == end.toLocalDate() && end.toLocalTime() > start.toLocalTime()
+            if (!valid) warnings += "${occurrence.event.summary}: overnight or invalid class time; review manually"
+            valid
+        }.groupBy { occurrence ->
+            val event = occurrence.event
+            listOf(event.rawFields["UID"].orEmpty(), event.summary, event.location.orEmpty(), event.description.orEmpty(),
+                occurrence.start.atZone(zoneId).toLocalTime().toString(), occurrence.end.atZone(zoneId).toLocalTime().toString())
         }
-        drafts.filter { it.recurrenceId != null }.forEachIndexed { index, draft ->
-            val uid = draft.sourceRaw["UID"].orEmpty()
-            val date = draft.recurrenceId!!.atZone(zoneId).toLocalDate()
-            val source = lessonsByUid[uid].orEmpty().firstOrNull { it.dayOfWeek == date.dayOfWeek }
-                ?: lessonsByUid[uid].orEmpty().firstOrNull()
-            val replacement = draft.toLessonUi(index + baseDrafts.size, zoneId, untitled, weekNumberMode, semesterWeekStartDate)
-            if (source != null && replacement != null) {
-                add(ScheduleExceptionUi(
-                    id = "ics-recurrence-${source.id}-$date",
-                    lessonId = source.id,
-                    type = ScheduleExceptionKind.RESCHEDULE,
-                    date = date,
-                    title = replacement.title,
-                    teacher = replacement.teacher,
-                    location = replacement.location,
-                    note = replacement.note,
-                    dayOfWeek = replacement.dayOfWeek,
-                    startTime = replacement.startTime,
-                    endTime = replacement.endTime,
-                ))
-            }
-        }
+        val lessons = groups.entries.mapIndexed { index, (_, occurrences) ->
+            val occurrence = occurrences.first(); val event = occurrence.event
+            val start = occurrence.start.atZone(zoneId); val end = occurrence.end.atZone(zoneId)
+            val dates = occurrences.map { it.start.atZone(zoneId).toLocalDate() }.toSet()
+            LessonUi(id = "ics-$index-${event.rawFields["UID"].orEmpty()}-${event.summary.hashCode()}",
+                title = event.summary, teacher = event.rawFields["X-TEACHER"], location = event.location, note = event.description,
+                dayOfWeek = start.dayOfWeek, startTime = start.toLocalTime(), endTime = end.toLocalTime(),
+                scheduleRuleJson = com.classing.client.schedule.ScheduleRuleJson.encode(com.classing.shared.schedule.ScheduleRule(
+                    kind = com.classing.shared.schedule.RepeatKind.DATES, anchorDate = dates.min(), endDate = dates.max(), dates = dates,
+                    courseGroupId = event.rawFields["UID"],
+                )))
+        }.sortedWith(compareBy<LessonUi> { it.dayOfWeek.value }.thenBy { it.startTime })
+        return ParseOutcome(lessons, drafts, context.getString(R.string.parse_success_preview_message, lessons.size), warnings)
     }
-
-    if (drafts.isNotEmpty() && lessons.isEmpty()) {
-        return ParseOutcome(
-            lessons = emptyList(),
-            drafts = drafts,
-            message = context.getString(R.string.parse_no_valid_lesson_message),
-            warnings = emptyList(),
-        )
-    }
-
-    return when (result) {
-        is ImportResult.Success -> ParseOutcome(
-            lessons = lessons,
-            drafts = drafts,
-            message = context.getString(R.string.parse_success_preview_message, lessons.size),
-            warnings = result.payload.warnings,
-            exceptions = exceptions,
-        )
-
-        is ImportResult.PartialSuccess -> ParseOutcome(
-            lessons = lessons,
-            drafts = drafts,
-            message = context.getString(R.string.parse_partial_preview_message, lessons.size, result.droppedLines.size),
-            warnings = result.payload.warnings + result.droppedLines.take(8),
-            exceptions = exceptions,
-        )
-
-        is ImportResult.Failure -> ParseOutcome(
-            lessons = emptyList(),
-            drafts = emptyList(),
-            message = context.getString(R.string.parse_failure_message, result.reason),
-            warnings = emptyList(),
-        )
-    }
+    val failure = result as ImportResult.Failure
+    return ParseOutcome(emptyList(), emptyList(), context.getString(R.string.parse_failure_message, failure.reason), emptyList())
 }
 
 internal fun LessonUi.toPersistedLesson(): PersistedLesson {
@@ -278,6 +229,7 @@ internal fun LessonUi.toPersistedLesson(): PersistedLesson {
         startWeek = startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK),
         endWeek = endWeek.coerceIn(startWeek.coerceIn(DEFAULT_START_WEEK, DEFAULT_END_WEEK), DEFAULT_END_WEEK),
         weekParity = weekParity.name,
+        scheduleRuleJson = scheduleRuleJson,
     )
 }
 
@@ -297,6 +249,7 @@ internal fun PersistedLesson.toLessonUi(): LessonUi {
         startWeek = safeStartWeek,
         endWeek = safeEndWeek,
         weekParity = LessonWeekParity.fromRaw(weekParity),
+        scheduleRuleJson = scheduleRuleJson,
     )
 }
 

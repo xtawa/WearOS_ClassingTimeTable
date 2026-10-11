@@ -35,7 +35,8 @@ class ScheduleAssembler {
 
         val baseList = sessions
             .filter {
-                it.dayOfWeek == date.dayOfWeek && it.weekRule.contains(weekIndex)
+                if (it.scheduleRuleJson.isNullOrBlank()) it.dayOfWeek == date.dayOfWeek && it.weekRule.contains(weekIndex)
+                else runCatching { com.classing.client.schedule.ScheduleRuleJson.decode(it.scheduleRuleJson)?.matches(date, it.dayOfWeek) == true }.getOrDefault(false)
             }
             .mapNotNull { session ->
                 val course = courseMap[session.courseId] ?: return@mapNotNull null
@@ -128,9 +129,10 @@ class ScheduleAssembler {
         slots: List<TimeSlot>,
         exceptions: List<ScheduleException>,
     ): NextLessonHint {
-        val candidates = buildList {
-            for (i in 0..13) { // 扩展到 14 天，与提醒重建窗口一致
+        val candidates = buildList<LessonOccurrence> {
+            for (i in 0..366) {
                 val date = now.toLocalDate().plusDays(i.toLong())
+                if (date.isAfter(semester.endDate)) break
                 addAll(
                     buildDayOccurrences(
                         date = date,
@@ -142,6 +144,7 @@ class ScheduleAssembler {
                         exceptions = exceptions,
                     ),
                 )
+                if (any { it.startAt.isAfter(now) || it.status == LessonStatus.IN_PROGRESS }) break
             }
         }
 

@@ -1,0 +1,14 @@
+<resources>
+    <string name="ai_text_title">文字描述课表</string>
+    <string name="ai_text_input">课程、星期、日期、时间与教室</string>
+    <string name="ai_text_notice">AI 需要登录且可能消耗点数。保存前请逐项确认。</string>
+    <string name="ai_text_review">AI 可能推断缺失的周数范围。请核对日期、星期和时间；当前尚未保存。</string>
+    <string name="lms_title">Canvas（只读预览）</string>
+    <string name="lms_notice">使用学校授权的只读访问令牌，仅本次请求暂存在内存。无法授权时可选择 ICS 或手动建表。</string>
+    <string name="lms_origin">Canvas 学校地址（https://…）</string>
+    <string name="lms_token">本次授权访问令牌</string>
+    <string name="lms_read">读取课程、日历和作业</string>
+    <string name="lms_select_meetings">选择确实属于课时的日历事件</string>
+    <string name="lms_assignments">作业预览（%1$d）</string>
+    <string name="lms_review_notice">Canvas 日历事件按指定日期导入；作业单独预览，不作为课时导入。</string>
+</resources>

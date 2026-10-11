@@ -1,0 +1,38 @@
+{
+  "lessons": [
+    {
+      "id": "sample-1-0",
+      "title": "Mathematics",
+      "dayOfWeek": 1,
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "location": "A101",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    },
+    {
+      "id": "sample-1-1",
+      "title": "History",
+      "dayOfWeek": 3,
+      "startTime": "11:00",
+      "endTime": "12:00",
+      "location": "B2",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    },
+    {
+      "id": "sample-1-2",
+      "title": "Physics",
+      "dayOfWeek": 5,
+      "startTime": "14:00",
+      "endTime": "15:30",
+      "location": "Lab",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ALL"
+    }
+  ],
+  "warnings": []
+}

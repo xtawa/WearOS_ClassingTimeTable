@@ -1,0 +1,29 @@
+{
+  "lessons": [
+    {
+      "id": "sample-2-0",
+      "title": "Literature A",
+      "dayOfWeek": 1,
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "location": "A1",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "ODD"
+    },
+    {
+      "id": "sample-2-1",
+      "title": "Literature B",
+      "dayOfWeek": 1,
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "location": "A1",
+      "startWeek": 1,
+      "endWeek": 10,
+      "weekParity": "EVEN"
+    }
+  ],
+  "warnings": [
+    "A/B week anchor must be confirmed"
+  ]
+}

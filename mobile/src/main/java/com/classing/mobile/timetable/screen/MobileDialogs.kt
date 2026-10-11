@@ -34,6 +34,7 @@ internal fun MobileDialogs(
     onDeleteEditLesson: (LessonEditScope) -> Unit,
     showRestoreConfirmDialog: Boolean,
     pendingRestoreLessons: List<LessonUi>,
+    pendingRestoreExams: List<com.classing.shared.exam.Exam>?,
     pendingRestoreWarnings: List<String>,
     currentLessonsCount: Int,
     onDismissRestore: () -> Unit,
@@ -142,7 +143,7 @@ internal fun MobileDialogs(
         )
     }
 
-    if (showRestoreConfirmDialog && pendingRestoreLessons.isNotEmpty()) {
+    if (showRestoreConfirmDialog && (pendingRestoreLessons.isNotEmpty() || pendingRestoreExams != null)) {
         AlertDialog(
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surface,
@@ -158,6 +159,12 @@ internal fun MobileDialogs(
                         ),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    Text(if (pendingRestoreExams == null) {
+                        if (java.util.Locale.getDefault().language == "zh") "旧备份不包含考试，现有考试将保留。" else "Legacy backup: existing exams will be kept."
+                    } else {
+                        if (java.util.Locale.getDefault().language == "zh") "考试将替换为备份中的 ${pendingRestoreExams.size} 条记录。" else "Exams will be replaced with ${pendingRestoreExams.size} records."
+                    })
+                    pendingRestoreExams?.take(5)?.forEach { Text(it.title + " · " + com.classing.client.exam.examSummary(it)) }
                     pendingRestoreLessons.take(5).forEach { lesson ->
                         Text(
                             text = formatLessonSummary(lesson, context),

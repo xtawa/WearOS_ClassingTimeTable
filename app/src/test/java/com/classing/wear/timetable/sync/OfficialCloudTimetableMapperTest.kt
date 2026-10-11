@@ -87,6 +87,26 @@ class OfficialCloudTimetableMapperTest {
                 .put("timetable.exceptions", JSONArray()),
         )
 
+    @Test fun map_supportsObjectDomainsAndAdvancedRules() {
+        val rule = """{"version":1,"kind":"ROTATION","anchorDate":"2026-07-01","endDate":"2026-12-31","cycleLength":6,"cycleDays":[1]}"""
+        val item = record("", lesson("rotation", "Lab", 480, 525).put("scheduleRuleJson", rule), 30)
+        val root = JSONObject().put("records", JSONObject().put("timetable.lessons", JSONObject().put("rotation", item)))
+        val mapped = OfficialCloudTimetableMapper.map(root)!!
+        assertEquals(1, mapped.lessonCount)
+        assertEquals(rule, mapped.payload.sessions.single().scheduleRuleJson)
+    }
+    @Test fun malformedDomainCannotEraseExistingTimetableAsEmpty() {
+        val root = JSONObject().put("records", JSONObject().put("timetable.lessons", "invalid"))
+        assertThrows(IllegalStateException::class.java) { OfficialCloudTimetableMapper.map(root) }
+    }
+    @Test fun tombstoneWinsIdenticalVersionRegardlessOfArrivalOrder() {
+        val live = record("c", lesson("c", "Math", 480, 525), 5)
+        val deleted = record("c", lesson("c", "Math", 480, 525), 5, true)
+        listOf(JSONArray().put(live).put(deleted), JSONArray().put(deleted).put(live)).forEach {
+            assertEquals(0, OfficialCloudTimetableMapper.map(document(it))!!.lessonCount)
+        }
+    }
+
     private fun lesson(
         id: String,
         title: String,

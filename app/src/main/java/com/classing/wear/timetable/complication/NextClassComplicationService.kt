@@ -37,7 +37,7 @@ class NextClassComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun snapshotProvider(): NextClassSnapshotProvider {
         val app = applicationContext as ClassingTimetableApplication
-        return NextClassSnapshotProvider(app.appContainer)
+        return NextClassSnapshotProvider(app.appContainer, applicationContext)
     }
 
     private fun buildData(type: ComplicationType, snapshot: NextClassSnapshot): ComplicationData? {

@@ -25,7 +25,7 @@ internal fun DashboardLayer(
         prompts = prompts,
         contentPadding = contentPadding,
         lessonsForDate = lessonsForDate,
-        hasImportedSchedule = lessons.isNotEmpty(),
+        hasImportedSchedule = lessons.isNotEmpty() || com.xtawa.classingtime.data.MobilePrefsStore.hasTimetableState(androidx.compose.ui.platform.LocalContext.current),
         calendarEvents = calendarEvents,
         onOpenAskClassing = onOpenAskAi,
         onCourseClick = { course ->

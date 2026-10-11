@@ -26,12 +26,26 @@ data class NextClassSnapshot(
 
 class NextClassSnapshotProvider(
     private val appContainer: AppContainer,
+    private val context: android.content.Context? = null,
 ) {
     private val dateFormatter = DateTimeFormatter.ofPattern("MM-dd EEE", Locale.getDefault())
 
     suspend fun loadSnapshot(): NextClassSnapshot {
         val today = appContainer.timeProvider.today()
         val preferences = appContainer.settingsRepository.observePreferences().first()
+        if (context != null && com.classing.client.exam.ExamStore.mode(context) == com.classing.shared.exam.AcademicMode.EXAM) {
+            val now = java.time.Instant.now()
+            val exam = com.classing.shared.exam.nextExam(appContainer.database.examDao().getAll().map { it.toExam() }, now)
+            val label = if (Locale.getDefault().language == "zh") "考试" else "Exam"
+            val title = exam?.title ?: if (Locale.getDefault().language == "zh") "暂无考试" else "No exams"
+            val detail = exam?.let { com.classing.client.exam.examSummary(it, now) }.orEmpty()
+            val description = listOf(title, detail, exam?.location.orEmpty()).filter { it.isNotBlank() }.joinToString(" · ")
+            return NextClassSnapshot(exam != null, if (preferences.tileShowCourseName || exam == null) title else "",
+                "", label, if (preferences.tileShowTimeRange) detail else "", "",
+                if (preferences.tileShowLocation) exam?.location.orEmpty() else "",
+                if (preferences.tileShowCountdown) detail.substringAfter(" · ", "") else "",
+                title.take(8), description.take(120), description)
+        }
         val next = appContainer.scheduleRepository.observeNextLesson().first()
         val lesson = next.lesson
 

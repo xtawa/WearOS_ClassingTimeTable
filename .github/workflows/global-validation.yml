@@ -1,0 +1,32 @@
+name: Global validation
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  global:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test global phone and watch
+        run: ./gradlew --no-daemon --max-workers=2 :shared:test :mobile:testGlobalDebugUnitTest :app:testGlobalDebugUnitTest
+      - name: Lint global release
+        run: ./gradlew --no-daemon --max-workers=2 :mobile:lintGlobalRelease :app:lintGlobalRelease
+      - name: Build isolated global artifacts
+        run: ./gradlew --no-daemon --max-workers=2 :mobile:assembleGlobalRelease :app:assembleGlobalRelease :mobile:bundleGlobalRelease :app:bundleGlobalRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: global-preview-artifacts
+          path: |
+            mobile/build/outputs/apk/global/release/*.apk
+            app/build/outputs/apk/global/release/*.apk
+            mobile/build/outputs/bundle/globalRelease/*.aab
+            app/build/outputs/bundle/globalRelease/*.aab
+          if-no-files-found: error

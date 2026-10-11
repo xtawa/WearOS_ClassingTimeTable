@@ -26,6 +26,10 @@ import com.xtawa.classingtime.ui.theme.ClassingAppearanceStore
 import com.xtawa.classingtime.ui.theme.ClassingThemeMode
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() {
+        super.onStart()
+        com.xtawa.classingtime.metrics.ProductMetrics.record(this, com.xtawa.classingtime.metrics.ProductEvent.ACTIVE_DAY)
+    }
     internal val sharedImportUri = mutableStateOf<Uri?>(null)
     internal val sharedImportMime = mutableStateOf<String?>(null)
 

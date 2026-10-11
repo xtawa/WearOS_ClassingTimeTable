@@ -18,6 +18,7 @@ class ReminderRebuildReceiver : BroadcastReceiver() {
             reminderMinutes = settings.reminderMinutes,
         )
         DailyBriefingScheduler.sync(appContext, settings)
+        com.xtawa.classingtime.widget.NextClassWidget.refresh(appContext)
     }
 }
 

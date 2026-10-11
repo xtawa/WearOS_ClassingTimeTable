@@ -33,14 +33,19 @@ object OfficialCloudTimetableMapper {
         val records = document.optJSONObject("records") ?: return null
         if (!records.has(CloudSyncV2.DOMAIN_TIMETABLE_LESSONS) &&
             !records.has(CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS) &&
+            !records.has(CloudSyncV2.DOMAIN_TIMETABLE_EXAMS) &&
             !missingDomainsAreEmpty
         ) {
             return null
         }
 
-        val lessonRecords = latestRecords(records.optJSONArray(CloudSyncV2.DOMAIN_TIMETABLE_LESSONS) ?: JSONArray())
-        val exceptionRecords = latestRecords(records.optJSONArray(CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS) ?: JSONArray())
-        val mobileSettings = settingValues(records.optJSONArray(CloudSyncV2.DOMAIN_MOBILE_SETTINGS) ?: JSONArray())
+        val examRecords = latestRecords(domainRecords(records, CloudSyncV2.DOMAIN_TIMETABLE_EXAMS))
+        val exams = if (records.has(CloudSyncV2.DOMAIN_TIMETABLE_EXAMS)) examRecords.filterValues { !it.deleted }.map { (id, record) ->
+            com.classing.client.exam.ExamJson.decode(requireNotNull(record.payload)).also { require(it.id == id) }
+        }.also { com.classing.shared.exam.validateExams(it) } else if (missingDomainsAreEmpty) emptyList() else null
+        val lessonRecords = latestRecords(domainRecords(records, CloudSyncV2.DOMAIN_TIMETABLE_LESSONS))
+        val exceptionRecords = latestRecords(domainRecords(records, CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS))
+        val mobileSettings = settingValues(domainRecords(records, CloudSyncV2.DOMAIN_MOBILE_SETTINGS))
         val weekNumberMode = mobileSettings["weekNumberMode"]?.toString()?.uppercase().orEmpty()
         val configuredStart = mobileSettings["semesterWeekStartDate"]?.toString()
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
@@ -54,7 +59,7 @@ object OfficialCloudTimetableMapper {
         }
         // A wear-settings upload also changes document.updatedAt. Use only timetable record
         // versions so an unrelated setting change cannot trigger another full database apply.
-        val revision = (lessonRecords.values + exceptionRecords.values)
+        val revision = (lessonRecords.values + exceptionRecords.values + examRecords.values)
             .maxOfOrNull(CloudRecord::counter)
             ?.coerceAtLeast(1L)
             ?: document.optLong("updatedAt", 1L).coerceAtLeast(1L)
@@ -118,6 +123,7 @@ object OfficialCloudTimetableMapper {
                 startWeek = startWeek,
                 endWeek = item.optInt("endWeek", MAX_SCHEDULE_WEEK).coerceIn(startWeek, MAX_SCHEDULE_WEEK),
                 weekParity = parseWeekParity(item.optString("weekParity", "ALL")),
+                scheduleRuleJson = item.optNullableString("scheduleRuleJson")?.also { com.classing.client.schedule.ScheduleRuleJson.decode(it) },
                 version = revision,
             )
         }
@@ -188,6 +194,9 @@ object OfficialCloudTimetableMapper {
         return OfficialCloudTimetableSnapshot(
             payload = RemoteSchedulePayload(
                 dataVersion = revision,
+                exams = exams,
+                applyTimetable = records.has(CloudSyncV2.DOMAIN_TIMETABLE_LESSONS) ||
+                    records.has(CloudSyncV2.DOMAIN_TIMETABLE_EXCEPTIONS) || missingDomainsAreEmpty,
                 semesters = listOf(semester),
                 timeSlots = slots.values.toList(),
                 courses = courses,
@@ -209,9 +218,9 @@ object OfficialCloudTimetableMapper {
     private fun latestRecords(array: JSONArray): Map<String, CloudRecord> {
         val result = mutableMapOf<String, CloudRecord>()
         for (index in 0 until array.length()) {
-            val item = array.optJSONObject(index) ?: continue
+            val item = array.optJSONObject(index) ?: error("Invalid cloud record at $index")
             val id = item.optString("id")
-            if (id.isBlank()) continue
+            require(id.isNotBlank()) { "Cloud record has no ID" }
             val version = item.optJSONObject("version") ?: JSONObject()
             val candidate = CloudRecord(
                 payload = item.optString("payload").takeIf(String::isNotBlank)
@@ -222,12 +231,27 @@ object OfficialCloudTimetableMapper {
             )
             val current = result[id]
             if (current == null || candidate.counter > current.counter ||
-                candidate.counter == current.counter && candidate.deviceId > current.deviceId
+                candidate.counter == current.counter && candidate.deviceId > current.deviceId ||
+                candidate.counter == current.counter && candidate.deviceId == current.deviceId && candidate.deleted && !current.deleted
             ) {
                 result[id] = candidate
             }
         }
         return result
+    }
+
+    private fun domainRecords(records: JSONObject, domain: String): JSONArray {
+        if (!records.has(domain) || records.isNull(domain)) return JSONArray()
+        return when (val value = records.get(domain)) {
+            is JSONArray -> value
+            is JSONObject -> JSONArray().also { array -> value.keys().asSequence().sorted().forEach { id ->
+                val record = value.getJSONObject(id)
+                val copy = JSONObject(record.toString())
+                if (copy.optString("id").isBlank()) copy.put("id", id)
+                array.put(copy)
+            } }
+            else -> error("Cloud domain $domain must be an array or object")
+        }
     }
 
     private fun settingValues(array: JSONArray): Map<String, Any?> = latestRecords(array)

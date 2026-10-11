@@ -336,6 +336,7 @@ class MobileSyncListenerService : WearableListenerService() {
                 startWeek = startWeek,
                 endWeek = endWeek,
                 weekParity = weekParity,
+                scheduleRuleJson = item.optString("scheduleRuleJson").takeIf { it.isNotBlank() && it != "null" }?.also { com.classing.client.schedule.ScheduleRuleJson.decode(it) },
                 version = payloadVersion,
             )
         }
@@ -403,6 +404,7 @@ class MobileSyncListenerService : WearableListenerService() {
 
         val payload = RemoteSchedulePayload(
             dataVersion = payloadVersion,
+            exams = if (root.has("exams")) com.classing.client.exam.ExamJson.list(root.getJSONArray("exams")) else null,
             semesters = listOf(semester),
             timeSlots = slotMap.values.toList(),
             courses = courses,

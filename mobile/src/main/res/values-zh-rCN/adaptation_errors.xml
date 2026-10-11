@@ -1,0 +1,4 @@
+<resources>
+    <string name="ai_import_empty">未识别出完整课表。可手动建表或更换输入。</string>
+    <string name="rule_validation_failed">请核对学期起止、轮转日和用英文逗号分隔的日期。</string>
+</resources>

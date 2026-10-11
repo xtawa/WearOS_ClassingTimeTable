@@ -1,0 +1,1 @@
+participant_id,group,source_type,case_id,start_utc,elapsed_seconds,completed_correctly,correction_count,wrong_time_count,missing_count,duplicate_count,abandon_step,next_found_within_3_seconds,notes_redacted

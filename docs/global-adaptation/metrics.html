@@ -1,0 +1,36 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Classing · 本地指标</title>
+<style>body{margin:0;background:#f5f7f6;color:#171a1e;font:16px/1.7 system-ui}main{max-width:1050px;margin:auto;padding:36px 24px}h1{font-size:36px}a{color:#3e5ed7}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.card{background:#fcfdfc;border:1px solid #dde2e1;border-radius:24px;padding:24px}.value{font-size:36px;font-weight:700}.muted{color:#687078}input{font:inherit}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #dde2e1;text-align:left}.notice{background:#ffe8d6;color:#8c4110;padding:16px;border-radius:16px}svg{width:100%;max-height:200px}button{font:inherit;padding:10px 16px;border-radius:12px;border:1px solid #dde2e1;background:white;cursor:pointer}</style>
+<main><a href="index.html">← Classing 原型</a><h1>先看结果，再讨论假设。</h1><p class="muted">选择 App「关于 → 本地使用指标」导出的匿名 JSON。所有计算在本页完成，文件不会上传。</p><label>导入指标文件（可多选） <input type="file" id="files" multiple accept="application/json"></label><p id="status" role="status">尚无数据 · 不显示推测的用户实验结果</p><div class="grid" id="metrics"></div><h2>事件概览</h2><svg id="chart" viewBox="0 0 700 180" role="img" aria-label="匿名事件数量"></svg><table><thead><tr><th>指标</th><th>口径</th><th>样本与限制</th></tr></thead><tbody id="denominators"></tbody></table><p class="notice">默认关闭指标导致样本为自愿加入的人群。未完成 7 天观察的安装不计入 D7 分母。关闭指标会删掉本机数据。轮换设备或重复导出需按匿名安装 ID 去重；此面板按文件覆盖，不累加重复导出。A/B 结论必须另附分组和样本记录。</p></main>
+<script>
+const allowed=new Set(['CREATION_STARTED','CREATION_COMPLETED','IMPORT_CORRECTED','SYNC_ATTEMPT','SYNC_FAILED','SYNC_APPLIED','NEXT_CLASS_VIEWED','ACTIVE_DAY']);
+function aggregate(files, today=Math.floor(Date.now()/86400000)){
+ const unique=new Map(); files.forEach(f=>{if(f.format!=='classing_product_metrics_v1'||!f.installation||!Array.isArray(f.events))throw Error('指标格式不匹配');unique.set(f.installation,f);});
+ let started=0, completed=0, corrections=0, failures=0, attempts=0, viewed=0,mature=0,retained=0; const times=[];
+ unique.forEach(f=>{
+  const events=f.events.filter(e=>allowed.has(e.event)&&Number.isFinite(e.day));
+  const starts=events.filter(e=>e.event==='CREATION_STARTED');
+  const startSessions=new Set(starts.filter(e=>e.session).map(e=>e.session));
+  const rawEnds=events.filter(e=>e.event==='CREATION_COMPLETED'&&(!e.session||startSessions.has(e.session)));
+  const ends=Array.from(new Map(rawEnds.map((e,i)=>[e.session||('legacy'+i),e])).values());
+  const endSessions=new Set(ends.filter(e=>e.session).map(e=>e.session));
+  started+=new Set(starts.map((e,i)=>e.session||('legacy'+i))).size;
+  completed+=new Set(ends.map((e,i)=>e.session||('legacy'+i))).size;
+  times.push(...ends.map(e=>e.elapsedMs).filter(t=>Number.isFinite(t)&&t>0));
+  corrections+=events.filter(e=>e.event==='IMPORT_CORRECTED'&&e.session&&endSessions.has(e.session)).reduce((n,e)=>n+(Number.isFinite(e.count)?e.count:0),0);
+  attempts+=events.filter(e=>e.event==='SYNC_ATTEMPT').length; failures+=events.filter(e=>e.event==='SYNC_FAILED').length;viewed+=events.filter(e=>e.event==='NEXT_CLASS_VIEWED').length;
+  if(starts.length){const cohort=Math.min(...starts.map(e=>e.day));if(today>=cohort+7){mature++;if(events.some(e=>e.event==='ACTIVE_DAY'&&e.day===cohort+7))retained++;}}
+ });
+ return {started,completed,corrections,failures,attempts,viewed,mature,retained,installations:unique.size,meanSeconds:times.length?times.reduce((a,b)=>a+b,0)/times.length/1000:null,timedSamples:times.length};
+}
+window.aggregateMetrics=aggregate;
+function render(data){
+ const ratio=(n,d)=>d?(n/d*100).toFixed(1)+'%':'—';
+ const cards=[['建表完成率',ratio(data.completed,data.started),'完成 '+data.completed+' / 开始 '+data.started],['D7 留存',ratio(data.retained,data.mature),'活跃 '+data.retained+' / 成熟安装 '+data.mature],['平均纠错次数',data.completed?(data.corrections/data.completed).toFixed(2):'—','仅已完成的同一会话'],['同步失败率',ratio(data.failures,data.attempts),'失败 '+data.failures+' / 尝试 '+data.attempts],['平均建表时间',data.meanSeconds===null?'—':data.meanSeconds.toFixed(1)+' 秒','有耗时样本 '+data.timedSamples],['下一节课查看',data.viewed,'页面进入次数']];
+ const panel=document.getElementById('metrics');panel.replaceChildren();cards.forEach(c=>{const card=document.createElement('div');card.className='card';const title=document.createElement('div');title.textContent=c[0];const value=document.createElement('div');value.className='value';value.textContent=c[1];const detail=document.createElement('small');detail.className='muted';detail.textContent=c[2];card.append(title,value,detail);panel.append(card);});
+ const body=document.getElementById('denominators');body.replaceChildren();cards.forEach(c=>{const tr=document.createElement('tr');c.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td);});body.append(tr);});
+ const svg=document.getElementById('chart');svg.replaceChildren();const values=[data.started,data.completed,data.attempts,data.failures,data.viewed],max=Math.max(1,...values);
+ values.forEach((n,i)=>{const ns='http://www.w3.org/2000/svg';const rect=document.createElementNS(ns,'rect');rect.setAttribute('x',String(i*140+10));rect.setAttribute('y',String(145-n/max*120));rect.setAttribute('width','90');rect.setAttribute('height',String(n/max*120));rect.setAttribute('fill','#3e5ed7');const text=document.createElementNS(ns,'text');text.setAttribute('x',String(i*140+10));text.setAttribute('y','170');text.textContent=['开始','完成','同步','失败','查看'][i]+' '+n;svg.append(rect,text);});
+ document.getElementById('status').textContent='已载入 '+data.installations+' 个匿名安装。结果只代表这些文件。';
+}
+document.getElementById('files').addEventListener('change',async e=>{try{const files=await Promise.all(Array.from(e.target.files).map(async f=>{if(f.size>2000000)throw Error('指标文件过大');return JSON.parse(await f.text());}));render(aggregate(files));}catch(err){document.getElementById('status').textContent=err.message;}});
+</script></html>

@@ -61,7 +61,7 @@ object WearDataLayerSyncPublisher {
                 forceFull = forceFull,
             )
             val updatedAt = reserveRevision(context)
-            val payload = buildPayload(
+            val schedulePayload = buildPayload(
                 plan = plan,
                 zoneId = zoneId,
                 source = source,
@@ -70,6 +70,10 @@ object WearDataLayerSyncPublisher {
                 semesterWeekStartDate = semesterWeekStartDate,
                 requestId = requestId,
             )
+
+            // Exams are a complete, independently validated snapshot in FULL and DELTA packets.
+            val payload = JSONObject(schedulePayload).put("exams", com.classing.client.exam.ExamJson.array(
+                com.classing.client.exam.ExamStore.load(context))).toString()
 
             // Stage before transport so an extremely fast Wear ACK cannot race ahead of pending
             // state creation. Pending state is harmless if transport fails: it is request-scoped,
@@ -138,10 +142,17 @@ object WearDataLayerSyncPublisher {
             val raw = prefs.getString(key, null)?.takeIf(String::isNotBlank) ?: return@synchronized false
             val root = runCatching { JSONObject(raw) }.getOrNull() ?: return@synchronized false
             if (root.optString("nodeId") != nodeId) return@synchronized false
+            val revision = root.optLong("revision", 0L)
+            val confirmed = prefs.getLong(KEY_BASELINE_REVISION, 0L)
+            if (revision <= confirmed || revision <= 0 || System.currentTimeMillis() - root.optLong("createdAt", 0L) > PENDING_TTL_MS) {
+                prefs.edit().remove(key).commit()
+                return@synchronized false
+            }
             val baseline = baselineFromJson(root.optJSONObject("baseline")) ?: return@synchronized false
             prefs.edit()
                 .putString(KEY_BASELINE_NODE_ID, nodeId)
                 .putString(KEY_BASELINE, baselineToJson(baseline).toString())
+                .putLong(KEY_BASELINE_REVISION, revision)
                 .remove(key)
                 .commit()
         }
@@ -211,6 +222,7 @@ object WearDataLayerSyncPublisher {
             arr.put(
                 JSONObject()
                     .put("id", lesson.id)
+                    .put("scheduleRuleJson", lesson.scheduleRuleJson ?: JSONObject.NULL)
                     .put("title", lesson.title)
                     .put("teacher", lesson.teacher ?: "")
                     .put("dayOfWeek", lesson.dayOfWeek)
@@ -334,6 +346,7 @@ object WearDataLayerSyncPublisher {
     private const val BASELINE_PREFS = "wear_sync_payload_baseline"
     private const val KEY_BASELINE = "baseline"
     private const val KEY_BASELINE_NODE_ID = "baseline_node_id"
+    private const val KEY_BASELINE_REVISION = "baseline_revision"
     private const val KEY_LAST_REVISION = "last_revision"
     private const val PENDING_PREFIX = "pending_baseline_"
     private const val PENDING_TTL_MS = 24 * 60 * 60 * 1000L

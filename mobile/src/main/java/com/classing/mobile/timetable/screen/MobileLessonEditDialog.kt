@@ -120,6 +120,7 @@ internal fun LessonEditDialog(
         mutableStateOf(editContext.allowedScopes.firstOrNull() ?: LessonEditScope.WholeLesson)
     }
     var validationMessage by remember(lesson.id) { mutableStateOf<String?>(null) }
+    val meetingRule = remember(lesson.id) { MeetingRuleEditorState(lesson) }
 
     AlertDialog(
         shape = MaterialTheme.shapes.large,
@@ -254,6 +255,7 @@ internal fun LessonEditDialog(
                         )
                     }
                 }
+                MeetingRuleEditor(meetingRule)
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
@@ -301,6 +303,11 @@ internal fun LessonEditDialog(
                         }
 
                         else -> {
+                            val rule = runCatching { meetingRule.build() }
+                            if (rule.isFailure) {
+                                validationMessage = context.getString(R.string.rule_validation_failed)
+                                return@TextButton
+                            }
                             onSave(
                                 lesson.copy(
                                     title = safeTitle,
@@ -313,6 +320,7 @@ internal fun LessonEditDialog(
                                     startWeek = startWeek,
                                     endWeek = endWeek,
                                     weekParity = weekParity,
+                                    scheduleRuleJson = rule.getOrThrow(),
                                 ),
                                 scope,
                             )

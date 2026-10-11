@@ -76,6 +76,7 @@ import androidx.compose.material3.TextButton
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.isActive
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -231,6 +232,7 @@ internal fun MobileTimetableScreen(
     var detailReturnScheduleSubviewName by remember { mutableStateOf(ScheduleSubview.Timetable.name) }
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
     var pendingRestoreBaseLessons by remember { mutableStateOf<List<LessonUi>>(emptyList()) }
+    var pendingRestoreExams by remember { mutableStateOf<List<com.classing.shared.exam.Exam>?>(null) }
     var pendingRestoreExceptions by remember { mutableStateOf<List<ScheduleExceptionUi>>(emptyList()) }
     var pendingRestoreWeekNumberMode by remember { mutableStateOf<WeekNumberMode?>(null) }
     var pendingRestoreSemesterWeekStartDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -512,6 +514,7 @@ internal fun MobileTimetableScreen(
 
     fun clearPendingRestoreState() {
         pendingRestoreBaseLessons = emptyList()
+        pendingRestoreExams = null
         pendingRestoreExceptions = emptyList()
         pendingRestoreWeekNumberMode = null
         pendingRestoreSemesterWeekStartDate = null
@@ -813,7 +816,7 @@ internal fun MobileTimetableScreen(
         parseMessage = result.message
         importFeedback = importFeedback.parsed(ImportFocusMethod.ICS, result.message, result.warnings, result.lessons.isNotEmpty())
         warnings = result.warnings
-        importItemStates = buildImportItemStates(result.lessons, lessons)
+        importItemStates = buildImportItemStates(result.lessons, baseLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
         importPreviewSummary = buildImportPreviewSummary(importItemStates)
     }
 
@@ -826,7 +829,7 @@ internal fun MobileTimetableScreen(
         parseMessage = result.message
         importFeedback = importFeedback.parsed(ImportFocusMethod.JSON, result.message, result.warnings, result.lessons.isNotEmpty())
         warnings = result.warnings
-        importItemStates = buildImportItemStates(result.lessons, lessons)
+        importItemStates = buildImportItemStates(result.lessons, baseLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
         importPreviewSummary = buildImportPreviewSummary(importItemStates)
     }
 
@@ -1061,6 +1064,23 @@ internal fun MobileTimetableScreen(
         persistSettings()
     }
 
+    LaunchedEffect(initialized) {
+        if (!initialized) return@LaunchedEffect
+        var previous = com.classing.client.exam.ExamStore.load(context)
+        com.classing.client.exam.ExamStore.observe(context).collect { exams ->
+            if (previous != exams) {
+                previous = exams
+                MobilePrefsStore.markLocalTimetableUpdated(context)
+                val settings = MobilePrefsStore.loadSettings(context)
+                com.xtawa.classingtime.reminder.ReminderScheduler.sync(context, settings.reminderEnabled,
+                    com.xtawa.classingtime.reminder.KeepAliveLevel.fromRaw(settings.keepAliveLevel), settings.reminderMinutes)
+                com.xtawa.classingtime.widget.NextClassWidget.refresh(context)
+                requestCloudSync(trigger = "exam_changed")
+                scheduleWeekSettingsAutoSync()
+            }
+        }
+    }
+
     val restoreBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -1081,13 +1101,14 @@ internal fun MobileTimetableScreen(
         }
 
         val parsed = parseScheduleBackupJson(restoreRawJson, context)
-        if (parsed == null || parsed.baseLessons.isEmpty()) {
+        if (parsed == null || (parsed.baseLessons.isEmpty() && parsed.exams == null)) {
             parseMessage = context.getString(R.string.backup_restore_no_valid_lesson_message)
             warnings = emptyList()
             persistSettings()
             return@rememberLauncherForActivityResult
         }
 
+        pendingRestoreExams = parsed.exams
         pendingRestoreBaseLessons = parsed.baseLessons
         pendingRestoreExceptions = parsed.exceptions
         pendingRestoreWeekNumberMode = parsed.weekNumberMode
@@ -1284,6 +1305,7 @@ internal fun MobileTimetableScreen(
             initialCloudPassword = cloudPassword,
             initialCloudDriveFileName = cloudDriveFileName,
             onParseFile = { uri, target -> withContext(Dispatchers.IO) { runCatching {
+                if (target == OnboardingImportTarget.AI_DOCUMENT) return@runCatching importOnboardingDocument(context, uri)
                 val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
                     val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(8192)
                     while (true) { val n = input.read(buffer); if (n < 0) break; require(out.size() + n <= 5 * 1024 * 1024) { "Maximum file size is 5 MB" }; out.write(buffer, 0, n) }; out.toByteArray()
@@ -1304,6 +1326,7 @@ internal fun MobileTimetableScreen(
                     scheduleExceptions = scheduleExceptions + data.exceptions.filter { exception -> exception.lessonId == null || baseLessons.any { it.id == exception.lessonId } }
                     if (wasEmpty) data.weekNumberMode?.let { weekNumberMode = it }
                     rebuildScheduleProjection(); persistScheduleState()
+                    com.xtawa.classingtime.metrics.ProductMetrics.record(context, com.xtawa.classingtime.metrics.ProductEvent.CREATION_COMPLETED, completion.creationElapsedMs, sessionId = completion.creationSessionId)
                 }
                 celebrationTrigger++
                 showWeekend = completion.showWeekend
@@ -1362,8 +1385,9 @@ internal fun MobileTimetableScreen(
         return
     }
 
-    val homePromptHash = remember(baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate, weekStartDay) {
-        timetableFingerprint(baseLessons, zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay, scheduleExceptions)
+    val homeExams by remember { com.classing.client.exam.ExamStore.observe(context) }.collectAsState(initial = com.classing.client.exam.ExamStore.load(context))
+    val homePromptHash = remember(homeExams, baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate, weekStartDay) {
+        timetableFingerprint(baseLessons, zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay, scheduleExceptions, homeExams)
     }
     LaunchedEffect(layerName, accountSummary.userId, homePromptHash) {
         val uid = accountSummary.userId
@@ -1379,7 +1403,7 @@ internal fun MobileTimetableScreen(
         cached.edit().putString("preferences:$uid", aiPreferences.toJson().toString()).apply()
         if (!aiPreferences.showPromptSuggestions) { homePrompts = emptyList(); return@LaunchedEffect }
         val date = LocalDate.now(zoneId)
-        val snapshot = timetableSnapshot(baseLessons, date, weekIndexForMode(date, weekNumberMode, semesterWeekStartDate, weekStartDay), zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay).put("exceptions", org.json.JSONObject(buildScheduleBackupJson(baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
+        val snapshot = timetableSnapshot(baseLessons, date, weekIndexForMode(date, weekNumberMode, semesterWeekStartDate, weekStartDay), zoneId.id, weekNumberMode, semesterWeekStartDate, weekStartDay).put("exams", com.classing.client.exam.ExamJson.array(homeExams)).put("exceptions", org.json.JSONObject(buildScheduleBackupJson(baseLessons, scheduleExceptions, zoneId, weekNumberMode, semesterWeekStartDate)).getJSONArray("exceptions"))
         aiApiClient.prompts(token, snapshot, false).onSuccess { result ->
             homePrompts = result.prompts
             cached.edit().putString("promptHash:v2:$uid", homePromptHash).putString("prompts:v2:$uid", org.json.JSONArray(result.prompts).toString()).apply()
@@ -1559,7 +1583,7 @@ internal fun MobileTimetableScreen(
                 if (pendingImportLessons.isEmpty() || !importFeedback.canConfirm(ImportFocusMethod.ICS)) {
                     showImportMessage(context.getString(R.string.no_pending_import_message), ImportFocusMethod.ICS)
                 } else {
-                    val conflicts = detectImportConflicts(pendingImportLessons, lessons)
+                    val conflicts = detectImportConflicts(pendingImportLessons, baseLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
                     if (conflicts.isEmpty()) {
                         snapshotBefore("import_replace")
                         applyImportedLessons(pendingImportLessons, pendingImportExceptions)
@@ -1584,9 +1608,9 @@ internal fun MobileTimetableScreen(
                     showImportMessage(context.getString(R.string.no_pending_import_message), ImportFocusMethod.JSON)
                 } else {
                     val conflicts = if (jsonImportMode == JsonImportMode.REPLACE) {
-                        detectLessonConflicts(pendingImportLessons)
+                        detectLessonConflicts(pendingImportLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
                     } else {
-                        detectImportConflicts(pendingImportLessons, lessons)
+                        detectImportConflicts(pendingImportLessons, baseLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
                     }
                     if (conflicts.isEmpty()) {
                         if (jsonImportMode == JsonImportMode.REPLACE) {
@@ -1779,7 +1803,7 @@ internal fun MobileTimetableScreen(
                             endWeek = endWeek,
                             weekParity = weekParity,
                         )
-                        val conflicts = findConflictsWithExisting(newLesson, lessons)
+                        val conflicts = findConflictsWithExisting(newLesson, baseLessons, weekNumberMode, semesterWeekStartDate, weekStartDay)
                         if (conflicts.isEmpty()) {
                             appendManualLesson(newLesson)
                             showImportMessage(context.getString(R.string.manual_import_success_message, safeTitle), ImportFocusMethod.MANUAL)
@@ -2106,6 +2130,7 @@ internal fun MobileTimetableScreen(
                         pendingExportJson = buildScheduleBackupJson(
                             baseLessons = baseLessons,
                             exceptions = scheduleExceptions,
+                            exams = com.classing.client.exam.ExamStore.load(context),
                             zoneId = zoneId,
                             weekNumberMode = weekNumberMode,
                             semesterWeekStartDate = semesterWeekStartDate,
@@ -3157,6 +3182,7 @@ internal fun MobileTimetableScreen(
         },
         showRestoreConfirmDialog = showRestoreConfirmDialog,
         pendingRestoreLessons = pendingRestoreBaseLessons,
+        pendingRestoreExams = pendingRestoreExams,
         pendingRestoreWarnings = pendingRestoreWarnings,
         currentLessonsCount = baseLessons.size,
         onDismissRestore = {
@@ -3166,6 +3192,7 @@ internal fun MobileTimetableScreen(
             persistSettings()
         },
         onConfirmRestore = {
+            pendingRestoreExams?.let { com.classing.client.exam.ExamStore.save(context, it) }
             snapshotBefore("restore_backup")
             pendingRestoreWeekNumberMode?.let { weekNumberMode = it }
             pendingRestoreSemesterWeekStartDate?.let { semesterWeekStartDate = it }

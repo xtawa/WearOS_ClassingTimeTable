@@ -159,7 +159,7 @@ class IcsImportParserTest {
     }
 
     @Test
-    fun parse_warnsAboutInvalidRecurrenceId() {
+    fun parse_skipsInvalidRecurrenceIdInsteadOfCreatingPhantomCourse() {
         val raw = """
             BEGIN:VCALENDAR
             BEGIN:VEVENT
@@ -173,8 +173,8 @@ class IcsImportParserTest {
 
         val result = parser.parse(raw)
         assertTrue(result is ImportResult.PartialSuccess)
-        val event = result.payload.events.single()
-        assertNull(event.recurrenceId)
+        assertTrue(result.payload.events.isEmpty())
+        assertEquals(1, result.payload.summary.skippedCount)
         assertEquals("RECURRENCE-ID", result.payload.summary.warnings.single().field)
     }
 

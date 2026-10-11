@@ -1,6 +1,8 @@
 package com.classing.wear.timetable.tile
 
 import androidx.wear.tiles.DimensionBuilders
+import androidx.wear.tiles.ColorBuilders
+import androidx.wear.tiles.ModifiersBuilders
 import androidx.wear.tiles.LayoutElementBuilders
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
@@ -65,7 +67,7 @@ class NextClassTileService : TileService() {
 
     private fun snapshotProvider(): NextClassSnapshotProvider {
         val app = applicationContext as ClassingTimetableApplication
-        return NextClassSnapshotProvider(app.appContainer)
+        return NextClassSnapshotProvider(app.appContainer, applicationContext)
     }
 
     private fun unavailableSnapshot(): NextClassSnapshot {
@@ -98,19 +100,13 @@ class NextClassTileService : TileService() {
         if (snapshot.courseTitle.isNotBlank()) {
             content
                 .addContent(spacer(4f))
-                .addContent(textElement(snapshot.courseTitle, 16f))
+                .addContent(textElement(snapshot.courseTitle, 16f, 2))
         }
 
         if (snapshot.timeText.isNotBlank()) {
             content
                 .addContent(spacer(2f))
                 .addContent(textElement(snapshot.timeText, 14f))
-        }
-
-        if (snapshot.teacherText.isNotBlank()) {
-            content
-                .addContent(spacer(2f))
-                .addContent(textElement(snapshot.teacherText, 12f))
         }
 
         if (snapshot.locationText.isNotBlank()) {
@@ -130,19 +126,24 @@ class NextClassTileService : TileService() {
             .setHeight(DimensionBuilders.expand())
             .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
+            .setModifiers(ModifiersBuilders.Modifiers.Builder()
+                .setPadding(ModifiersBuilders.Padding.Builder().setAll(DimensionBuilders.dp(24f)).build())
+                .setBackground(ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(0xFF000000.toInt())).build())
+                .build())
             .addContent(content.build())
             .build()
     }
 
-    private fun textElement(text: String, sizeSp: Float): LayoutElementBuilders.LayoutElement {
+    private fun textElement(text: String, sizeSp: Float, maxLines: Int = 1): LayoutElementBuilders.LayoutElement {
         return LayoutElementBuilders.Text.Builder()
             .setText(text)
             .setFontStyle(
                 LayoutElementBuilders.FontStyle.Builder()
                     .setSize(DimensionBuilders.sp(sizeSp))
+                    .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
                     .build(),
             )
-            .setMaxLines(1)
+            .setMaxLines(maxLines)
             .build()
     }
 

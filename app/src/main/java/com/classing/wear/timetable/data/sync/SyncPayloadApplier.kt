@@ -24,9 +24,17 @@ class SyncPayloadApplier(
     private val database: AppDatabase,
 ) {
     suspend fun apply(payload: RemoteSchedulePayload, mode: SyncMode): ApplyPayloadResult {
+        payload.exams?.let { com.classing.shared.exam.validateExams(it) }
         var total = 0
 
         database.withTransaction {
+            payload.exams?.let { exams ->
+                database.examDao().deleteAll()
+                database.examDao().upsert(exams.map(com.classing.wear.timetable.data.local.entity.ExamEntity::from))
+                total += exams.size
+            }
+            // A cloud document with only exam records is not an authoritative course snapshot.
+            if (!payload.applyTimetable) return@withTransaction
             val semesterDao = database.semesterDao()
             val slotDao = database.timeSlotDao()
             val courseDao = database.courseDao()
@@ -162,6 +170,7 @@ class SyncPayloadApplier(
                     startWeek = remote.startWeek,
                     endWeek = remote.endWeek,
                     weekParity = remote.weekParity,
+                    scheduleRuleJson = remote.scheduleRuleJson,
                     version = remote.version,
                 )
                 val id = stableLocalId(

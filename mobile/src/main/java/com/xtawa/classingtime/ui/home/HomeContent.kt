@@ -117,6 +117,10 @@ internal fun HomeContent(
                 visible = !assistantState.focused && state.phase != HomePhase.Finished && state.phase != HomePhase.NoClasses,
                 onCourseClick = onCourseClick,
             )
+            if (state.freshnessText.isNotBlank()) {
+                Text(state.freshnessText, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             val todayEvents = calendarEvents.filter {
                 Instant.ofEpochMilli(it.startMillis).atZone(ZoneId.systemDefault()).toLocalDate() == state.date
             }
