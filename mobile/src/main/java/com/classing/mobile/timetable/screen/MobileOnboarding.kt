@@ -48,7 +48,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import android.animation.ValueAnimator
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,6 +67,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -67,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
+import com.xtawa.classingtime.ui.components.ClassingOobeHero
+import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.time.LocalDate
@@ -152,6 +166,7 @@ internal fun MobileOnboardingFlow(
 
     val autoDetection = remember { detectWearAutoSyncPlan(findWearOsCompanionInfo(context)) }
     val stepCount = 6
+    val animateOobe = ValueAnimator.areAnimatorsEnabled()
     val animatedStepProgress by animateFloatAsState(
         targetValue = (stepIndex + 1).toFloat() / stepCount,
         animationSpec = tween(360),
@@ -333,24 +348,27 @@ internal fun MobileOnboardingFlow(
                 .padding(top = ClassingSpacing.xs, bottom = ClassingSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            when (stepIndex) {
+            AnimatedContent(
+                targetState = stepIndex,
+                modifier = Modifier.fillMaxWidth(),
+                transitionSpec = {
+                    if (!animateOobe) {
+                        fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+                    } else {
+                        val forward = if (targetState > initialState) 1 else -1
+                        (slideInHorizontally(tween(ClassingMotion.ContentReveal)) { forward * it / 7 } +
+                            fadeIn(tween(ClassingMotion.ContentReveal))) togetherWith
+                            (slideOutHorizontally(tween(ClassingMotion.Exit)) { -forward * it / 11 } +
+                                fadeOut(tween(ClassingMotion.Exit)))
+                    }.using(SizeTransform(clip = false))
+                },
+                label = "oobe_page_motion",
+            ) { visibleStep ->
+            Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
+            when (visibleStep) {
                 0 -> {
                     Spacer(modifier = Modifier.height(20.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(84.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                                shape = RoundedCornerShape(24.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            painter = painterResource(id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) R.drawable.classing_icon_dark else R.drawable.classing_icon_light),
-                            contentDescription = null,
-                            modifier = Modifier.size(52.dp),
-                        )
-                    }
+                    ClassingOobeHero(completed = false)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.onboarding_welcome_title),
@@ -707,22 +725,7 @@ internal fun MobileOnboardingFlow(
 
                 else -> {
                     Spacer(modifier = Modifier.height(36.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(96.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(ClassingRadii.pill),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(54.dp),
-                        )
-                    }
+                    ClassingOobeHero(completed = true)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.onboarding_complete_title),
@@ -736,6 +739,8 @@ internal fun MobileOnboardingFlow(
                         textAlign = TextAlign.Start,
                     )
                 }
+            }
+            }
             }
         }
     }
@@ -753,13 +758,23 @@ private fun OnboardingOptionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
 ) {
+    val selectedColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .16f)
+        else MaterialTheme.colorScheme.surface.copy(alpha = .90f),
+        animationSpec = tween(if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.ContentReveal else 0),
+        label = "oobe_option_background",
+    )
+    val selectedScale by animateFloatAsState(
+        targetValue = if (selected) 1f else .985f,
+        animationSpec = if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.responsiveSpring()
+            else tween(0),
+        label = "oobe_option_selection",
+    )
     ClassingInformationIsland(
+        modifier = Modifier.graphicsLayer { scaleX = selectedScale; scaleY = selectedScale }
+            .semantics { this.selected = selected },
         onClick = onClick,
-        containerColor = if (selected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-        } else {
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
-        },
+        containerColor = selectedColor,
         contentPadding = PaddingValues(ClassingSpacing.md),
     ) {
         Row(
