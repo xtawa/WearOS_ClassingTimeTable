@@ -1,5 +1,6 @@
 package com.xtawa.classingtime.ui.components
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 
 /** Shared island shell; explicit semantic colors and warning borders remain available. */
@@ -25,5 +27,12 @@ internal fun ClassingCard(
     border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f)),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(modifier.fillMaxWidth(), shape, colors, elevation, border, content)
+    Card(
+        modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = ClassingMotion.softSpring()),
+        shape = shape,
+        colors = colors,
+        elevation = elevation,
+        border = border,
+        content = content,
+    )
 }
