@@ -45,6 +45,7 @@ import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.home.HomeCourseUiModel
 import com.xtawa.classingtime.ui.home.HomePhase
 import com.xtawa.classingtime.ui.home.HomeUiState
+import com.xtawa.classingtime.ui.components.ClassingBitsProgressBar
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -271,48 +272,21 @@ private fun CourseMetadata(course: HomeCourseUiModel) {
 
 @Composable
 internal fun ClassProgress(progress: Float, modifier: Modifier = Modifier) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = ClassingMotion.settledSpring(),
-        label = "class_progress",
+    ClassingBitsProgressBar(
+        progress = progress,
+        modifier = modifier,
+        height = 6.dp,
     )
-    Column(
-        modifier = modifier.semantics {
-            progressBarRangeInfo = ProgressBarRangeInfo(animatedProgress, 0f..1f)
-        },
-        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant, CircleShape),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(animatedProgress)
-                    .height(6.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-            )
-        }
-    }
 }
 
 @Composable
 private fun TemporalLine(progress: Float) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant, CircleShape),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress.coerceIn(0.08f, 1f))
-                .height(4.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.68f), CircleShape),
-        )
-    }
+    ClassingBitsProgressBar(
+        progress = progress,
+        height = 4.dp,
+        minimumVisible = 0.08f,
+        progressColor = MaterialTheme.colorScheme.primary.copy(alpha = .68f),
+    )
 }
 
 private fun countdownProgress(minutes: Long?): Float {
