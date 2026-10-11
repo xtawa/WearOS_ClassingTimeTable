@@ -490,3 +490,8 @@ img { display: block; max-width: 100%; }
   }
   .method-row:hover, .reminder-row:hover { transform: translateX(5px); }
 }
+
+/* The original Magnet positions elements with inline transforms; honor reduced motion explicitly. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-magnet > div { transform: none !important; transition: none !important; }
+}
