@@ -47,9 +47,7 @@ internal class AskAiVoiceInput(
        val now = android.os.SystemClock.elapsedRealtime()
        if (now - lastVisualUpdate >= 80L) {
         lastVisualUpdate = now
-        var energy = 0.0
-        for (i in 0 until n) { val sample = buffer[i].toDouble() / 32768.0; energy += sample * sample }
-        val level = (sqrt(energy / n) * 5.5).toFloat().coerceIn(0f, 1f)
+        val level = normalizedVoiceRms(buffer, n)
         scope.launch(Dispatchers.Main.immediate) {
          if (active && current == generation) onAudioLevel(level)
         }
@@ -85,6 +83,18 @@ internal class AskAiVoiceInput(
   else { runCatching { audio?.release() }; output?.delete() }
   onRecording(false); onAudioLevel(0f); onProcessing(false)
  }
+}
+
+/** Pure PCM envelope conversion for the recording UI; does not process/store audio. */
+internal fun normalizedVoiceRms(buffer: ShortArray, count: Int): Float {
+    val samples = count.coerceIn(0, buffer.size)
+    if (samples == 0) return 0f
+    var energy = 0.0
+    for (index in 0 until samples) {
+        val sample = buffer[index].toDouble() / 32768.0
+        energy += sample * sample
+    }
+    return (sqrt(energy / samples) * 5.5).toFloat().coerceIn(0f, 1f)
 }
 
 internal fun wavHeader(length: Int): ByteArray = java.nio.ByteBuffer.allocate(44).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
