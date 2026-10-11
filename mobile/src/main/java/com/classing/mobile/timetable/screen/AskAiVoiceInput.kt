@@ -5,6 +5,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import java.io.File
+import kotlin.math.sqrt
 import kotlinx.coroutines.*
 
 /** Always encode locally as MP3, then send to the account's configured cloud transcriber. */
@@ -13,6 +14,7 @@ internal class AskAiVoiceInput(
  private val scope: CoroutineScope,
  private val onRecording: (Boolean) -> Unit,
  private val onProcessing: (Boolean) -> Unit,
+ private val onAudioLevel: (Float) -> Unit = {},
  private val onCloudAudio: (File) -> Unit,
  private val onError: (String) -> Unit,
 ) {
@@ -36,11 +38,22 @@ internal class AskAiVoiceInput(
    recordingJob = scope.launch(Dispatchers.IO) {
     try {
      output.outputStream().use { out -> VoiceMp3Encoder(out).use { encoder ->
-      val buffer = ShortArray(4096); var total = 0
+      val buffer = ShortArray(1024); var total = 0; var lastVisualUpdate = 0L
       while (active && current == generation && total < 16000 * 59) {
        ensureActive(); val n = audio.read(buffer, 0, minOf(buffer.size, 16000 * 59 - total))
        if (n <= 0) break
        encoder.write(buffer, n); total += n
+       // Sample actual microphone levels at a bounded refresh rate (~12 updates/s).
+       val now = android.os.SystemClock.elapsedRealtime()
+       if (now - lastVisualUpdate >= 80L) {
+        lastVisualUpdate = now
+        var energy = 0.0
+        for (i in 0 until n) { val sample = buffer[i].toDouble() / 32768.0; energy += sample * sample }
+        val level = (sqrt(energy / n) * 5.5).toFloat().coerceIn(0f, 1f)
+        scope.launch(Dispatchers.Main.immediate) {
+         if (active && current == generation) onAudioLevel(level)
+        }
+       }
       }
      } }
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
@@ -52,7 +65,7 @@ internal class AskAiVoiceInput(
  }
  fun finish(cancelled: Boolean) {
   if (cancelled) { cancel(); return }; if (!active) return
-  active = false; timeout?.cancel(); onRecording(false); onProcessing(true)
+  active = false; timeout?.cancel(); onRecording(false); onAudioLevel(0f); onProcessing(true)
   val audio = recorder; val output = file; val job = recordingJob; val current = generation
   runCatching { audio?.stop() }
   scope.launch {
@@ -70,7 +83,7 @@ internal class AskAiVoiceInput(
   val output = file; file = null; val job = recordingJob; recordingJob = null
   if (job != null) { job.cancel(); job.invokeOnCompletion { runCatching { audio?.release() }; output?.delete() } }
   else { runCatching { audio?.release() }; output?.delete() }
-  onRecording(false); onProcessing(false)
+  onRecording(false); onAudioLevel(0f); onProcessing(false)
  }
 }
 
