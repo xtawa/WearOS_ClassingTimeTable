@@ -7,27 +7,32 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.using
 
 /**
- * Native transition grammar based on React Bits AnimatedContent / FadeContent.
+ * Native transition grammar inspired by React Bits AnimatedContent/FadeContent.
  *
- * Shared by onboarding and schedule day paging to avoid two subtly different
- * hand-coded directional fade implementations. No browser/GSAP dependencies.
+ * Compose's ContentTransform.using() is a member extension of
+ * AnimatedContentTransitionScope and cannot be called in this standalone factory.
+ * Construct the ContentTransform explicitly to keep OOBE and date paging reusable.
  */
 internal object ClassingBitsTransitions {
     fun horizontal(direction: Int, enabled: Boolean = true): ContentTransform {
         if (!enabled) {
-            return (fadeIn(tween(0)) togetherWith fadeOut(tween(0)))
-                .using(SizeTransform(clip = false))
+            return ContentTransform(
+                targetContentEnter = fadeIn(tween(0)),
+                initialContentExit = fadeOut(tween(0)),
+                sizeTransform = SizeTransform(clip = false),
+            )
         }
         val sign = if (direction >= 0) 1 else -1
-        return (
-            (slideInHorizontally(tween(ClassingMotion.ContentReveal)) { sign * it / 7 }
-                + fadeIn(tween(ClassingMotion.ContentReveal))) togetherWith
-            (slideOutHorizontally(tween(ClassingMotion.Exit)) { -sign * it / 11 }
-                + fadeOut(tween(ClassingMotion.Exit)))
-        ).using(SizeTransform(clip = false))
+        return ContentTransform(
+            targetContentEnter =
+                slideInHorizontally(tween(ClassingMotion.ContentReveal)) { sign * it / 7 } +
+                fadeIn(tween(ClassingMotion.ContentReveal)),
+            initialContentExit =
+                slideOutHorizontally(tween(ClassingMotion.Exit)) { -sign * it / 11 } +
+                fadeOut(tween(ClassingMotion.Exit)),
+            sizeTransform = SizeTransform(clip = false),
+        )
     }
 }
