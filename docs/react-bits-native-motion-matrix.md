@@ -38,3 +38,41 @@ Source vocabulary: [React Bits](https://github.com/DavidHDev/react-bits). The An
 8. Onboarding forwards/backwards/skips => progress updates to correct step and responds to repeated fast clicks.
 9. Check both light/dark Material schemes and high font scales.
 10. Run `:mobile:testDebugUnitTest`, `:mobile:compileDebugKotlin` and `:app:compileDebugKotlin` (adjust variant names if CI uses flavors).
+
+## OOBE, timetable and shared motion expansion (2026-10-11)
+
+| Area | React Bits pattern | Native implementation |
+| --- | --- | --- |
+| OOBE welcome | Orb | `ClassingOobeHero`: subtle concentric orbit around the product icon, only while welcome is in view |
+| OOBE complete | AnimatedContent / Reveal | The same hero changes to a static confirmation ring with a one-shot scale-in |
+| OOBE six-step flow | AnimatedContent + FadeContent | Directional slide/fade between pages; reversing moves backwards; no offscreen infinite animation |
+| OOBE setup method cards | FadeContent stagger | Nine import choices enter in order (80 ms stagger); selected card morphs surface tint and scale |
+| OOBE import progress | Loading dots | Audio-free, task-scoped, accessible busy motion replaces indefinite generic progress stripe |
+| OOBE step indicator | Determinate animated track | Shared `ClassingBitsProgressBar`, driven by actual step index |
+| Timetable date paging | AnimatedContent | Shares `ClassingBitsTransitions.horizontal` with OOBE, preventing motion-direction drift |
+| Timetable day tabs | Responsive spring cards | Animated selected background/foreground and tab scale |
+| Home live-course card | Responsive spring | Touch-state press scale via shared `bitsPress` |
+| Home timeline | FadeContent stagger | Course rows reveal in order when the timeline opens |
+| Home AI quick prompts | FadeContent stagger | Suggestions enter in order on focus |
+| Home course/time bars | Smooth progress | Two custom implementations replaced with shared transform-based `ClassingBitsProgressBar` |
+| Calendar sync | Loading dots / FadeContent | Busy state changes to animated dots, returning to last sync status with a crossfade |
+| Settings island and action row | Responsive spring | Two duplicate hand-written press animations replaced by one `bitsPress` modifier |
+
+### Internal reuse
+- `ClassingBitsTransitions.horizontal(direction, enabled)` standardizes directional navigation animations.
+- `Modifier.bitsReveal(index)` standardizes appearance-only alpha/translation, without layout remeasurement.
+- `Modifier.bitsPress(pressed)` standardizes tap/press response; it is not a perpetual pulse.
+- `ClassingBitsProgressBar(progress)` displays the real accessible percentage while animating a transform-only fill.
+- `ClassingBitsLoadingDots()` is attached only to in-flight work, and provides indeterminate progress semantics.
+- The native Orb is only mounted on OOBE's welcome page; shader-heavy React Bits effects are intentionally excluded.
+- These are Compose-native **adaptations** of React Bits patterns, not copies of the original browser/GSAP/GLSL implementations.
+
+### Additional acceptance
+1. Go through OOBE forwards/backwards and skip; step direction and determinate fraction must match.
+2. Tap import method cards during their first appearance; selection should never change the requested method.
+3. Import JSON/ICS, cancel the chooser, test failure and retry; busy indicator stops when the operation ends.
+4. Confirm successful OOBE displays the static completion ring and dashboard action still navigates.
+5. Select different days in the timetable rapidly; verify date/content always match.
+6. Turn off Android animations and compare OOBE, cards, tabs, and synchronization.
+7. Verify timeline and quick prompts are focus/toggle scoped; no animation while offscreen.
+8. Confirm TalkBack reading order and large text/layout remain unchanged.
