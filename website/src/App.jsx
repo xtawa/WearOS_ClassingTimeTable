@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Magnet from "./Magnet";
 import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
 import { BellRinging } from "@phosphor-icons/react/dist/csr/BellRinging";
@@ -85,7 +86,7 @@ function Hero({ onNavigate }) {
         <h1>别让<br /><em>下一节课，</em><br />突然出现。</h1>
         <p className="hero-lede">课程、教室、提醒与同步，<br />都在你的节奏里。</p>
         <div className="hero-actions">
-          <PrimaryLink>开始使用</PrimaryLink>
+          <Magnet padding={24} magnetStrength={8} wrapperClassName="hero-magnet"><PrimaryLink>开始使用</PrimaryLink></Magnet>
           <button className="button button-text" type="button" onClick={() => onNavigate("features")}>认识 Classing <ArrowRight weight="bold" /></button>
         </div>
       </div>
