@@ -1,14 +1,13 @@
 package com.xtawa.classingtime.ui.timetable
 
 import com.xtawa.classingtime.ui.components.ClassingPageHeader
+import android.animation.ValueAnimator
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -42,9 +41,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.CollectionInfo
@@ -59,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.theme.ClassingBitsTransitions
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -101,18 +103,10 @@ internal fun TimetableContent(
         AnimatedContent(
             targetState = state,
             transitionSpec = {
-                val direction = if (targetState.selectedDate.isAfter(initialState.selectedDate)) 1 else -1
-                (
-                    slideInHorizontally(
-                        animationSpec = tween(ClassingMotion.ContentReveal),
-                        initialOffsetX = { width -> direction * width / 5 },
-                    ) + fadeIn(tween(ClassingMotion.ContentReveal))
-                    ).togetherWith(
-                    slideOutHorizontally(
-                        animationSpec = tween(ClassingMotion.Exit),
-                        targetOffsetX = { width -> -direction * width / 7 },
-                    ) + fadeOut(tween(ClassingMotion.Exit)),
-                ).using(SizeTransform(clip = false))
+                ClassingBitsTransitions.horizontal(
+                    direction = if (targetState.selectedDate.isAfter(initialState.selectedDate)) 1 else -1,
+                    enabled = ValueAnimator.areAnimatorsEnabled(),
+                )
             },
             contentKey = { it.selectedDate },
             label = "timetable_day_change",
@@ -188,6 +182,22 @@ private fun WeekContextStrip(
     ) {
         items(days, key = { it.date }) { day ->
             val selected = day.date == selectedDate
+            val animatedBackground by animateColorAsState(
+                targetValue = if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                animationSpec = tween(if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.ContentReveal else 0),
+                label = "timetable_day_background",
+            )
+            val animatedInk by animateColorAsState(
+                targetValue = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                animationSpec = tween(if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.ContentReveal else 0),
+                label = "timetable_day_ink",
+            )
+            val tabScale by animateFloatAsState(
+                targetValue = if (selected) 1f else .96f,
+                animationSpec = if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.responsiveSpring()
+                else tween(0),
+                label = "timetable_day_tab_scale",
+            )
             val dayDescription = stringResource(
                 R.string.timetable_day_description,
                 day.dayLabel,
@@ -198,6 +208,7 @@ private fun WeekContextStrip(
             Surface(
                 modifier = Modifier
                     .width(if (largeText) 68.dp else 54.dp)
+                    .graphicsLayer { scaleX = tabScale; scaleY = tabScale }
                     .selectable(
                         selected = selected,
                         onClick = { onSelectDate(day) },
@@ -213,8 +224,8 @@ private fun WeekContextStrip(
                         )
                     },
                 shape = RoundedCornerShape(ClassingRadii.medium),
-                color = if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                contentColor = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                color = animatedBackground,
+                contentColor = animatedInk,
             ) {
                 Column(
                     modifier = Modifier.padding(vertical = ClassingSpacing.sm),
