@@ -41,12 +41,15 @@ import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -149,6 +152,11 @@ internal fun MobileOnboardingFlow(
 
     val autoDetection = remember { detectWearAutoSyncPlan(findWearOsCompanionInfo(context)) }
     val stepCount = 6
+    val animatedStepProgress by animateFloatAsState(
+        targetValue = (stepIndex + 1).toFloat() / stepCount,
+        animationSpec = tween(360),
+        label = "onboarding_step_progress",
+    )
     val nextEnabled = stepIndex < stepCount - 1
     val formattedSemesterDate = remember(semesterWeekStartDate) {
         semesterWeekStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -221,11 +229,20 @@ internal fun MobileOnboardingFlow(
                         Spacer(modifier = Modifier.width(52.dp))
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = stringResource(R.string.onboarding_step_of, stepIndex + 1, stepCount),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.onboarding_step_of, stepIndex + 1, stepCount),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { animatedStepProgress },
+                            modifier = Modifier.width(96.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+                    }
                     com.xtawa.classingtime.metrics.MetricsSettingsCard(onEnabled = {
                         com.xtawa.classingtime.metrics.ProductMetrics.record(context,
                             com.xtawa.classingtime.metrics.ProductEvent.CREATION_STARTED, sessionId = sessionId)
