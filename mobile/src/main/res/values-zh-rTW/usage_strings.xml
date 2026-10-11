@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_usage_privacy_title">使用情況與隱私</string>
+    <string name="settings_usage_collection_title">允許收集使用情況資訊</string>
+    <string name="settings_usage_collection_desc">用於改善相容性。會上傳 Android ID、安裝級唯一序號、安裝日期、裝置時區、裝置型號與製造商、系統資訊和應用程式版本；Wear OS 端不會收集這些資訊。</string>
+</resources>
