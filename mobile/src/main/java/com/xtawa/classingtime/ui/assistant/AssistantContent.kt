@@ -689,13 +689,14 @@ private fun VoiceInputButton(enabled: Boolean, recording: Boolean, voiceLevel: F
         animationSpec = tween(120),
         label = "assistant_voice_ring",
     )
+    val ringTint = MaterialTheme.colorScheme.error
     IconButton(
         onClick = { if (recording) onFinish(false) else onStart() },
         enabled = enabled,
         modifier = Modifier.drawBehind {
             if (recording) {
                 drawCircle(
-                    color = androidx.compose.ui.graphics.Color.Red.copy(alpha = .06f + ringLevel * .13f),
+                    color = ringTint.copy(alpha = .06f + ringLevel * .13f),
                     radius = size.minDimension * (.34f + ringLevel * .16f),
                 )
             }
