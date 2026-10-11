@@ -71,6 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.bitsReveal
 import com.xtawa.classingtime.ui.components.ClassingBitsProgressBar
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
 import com.xtawa.classingtime.ui.components.ClassingOobeHero
@@ -378,53 +379,53 @@ internal fun MobileOnboardingFlow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 0, 
                         title = stringResource(R.string.onboarding_import_option_ics),
                         desc = stringResource(R.string.onboarding_import_option_ics_desc),
                         selected = importTarget == OnboardingImportTarget.ICS,
                         icon = Icons.Filled.Event,
                         onClick = { importTarget = OnboardingImportTarget.ICS },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 1, 
                         title = stringResource(R.string.ai_import_document),
                         desc = stringResource(R.string.ai_import_notice),
                         selected = importTarget == OnboardingImportTarget.AI_DOCUMENT,
                         icon = Icons.Filled.Event,
                         onClick = { importTarget = OnboardingImportTarget.AI_DOCUMENT },
                     )
-                    OnboardingOptionCard(title = stringResource(R.string.ai_text_title), desc = stringResource(R.string.ai_text_notice),
+                    OnboardingOptionCard(staggerIndex = 2, title = stringResource(R.string.ai_text_title), desc = stringResource(R.string.ai_text_notice),
                         selected = importTarget == OnboardingImportTarget.AI_TEXT, icon = Icons.Filled.Edit, onClick = { importTarget = OnboardingImportTarget.AI_TEXT })
-                    OnboardingOptionCard(title = stringResource(R.string.lms_title), desc = stringResource(R.string.lms_notice),
+                    OnboardingOptionCard(staggerIndex = 3, title = stringResource(R.string.lms_title), desc = stringResource(R.string.lms_notice),
                         selected = importTarget == OnboardingImportTarget.CANVAS, icon = Icons.Filled.CloudSync, onClick = { importTarget = OnboardingImportTarget.CANVAS })
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 4, 
                         title = stringResource(R.string.onboarding_import_option_json),
                         desc = stringResource(R.string.onboarding_import_option_json_desc),
                         selected = importTarget == OnboardingImportTarget.JSON,
                         icon = Icons.Filled.DataObject,
                         onClick = { importTarget = OnboardingImportTarget.JSON },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 5, 
                         title = stringResource(R.string.onboarding_import_option_cloud),
                         desc = stringResource(R.string.onboarding_import_option_cloud_desc),
                         selected = importTarget == OnboardingImportTarget.CLOUD_SYNC,
                         icon = Icons.Filled.CloudSync,
                         onClick = { importTarget = OnboardingImportTarget.CLOUD_SYNC },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 6, 
                         title = stringResource(R.string.onboarding_import_option_backup),
                         desc = stringResource(R.string.onboarding_import_option_backup_desc),
                         selected = importTarget == OnboardingImportTarget.BACKUP_RESTORE,
                         icon = Icons.Filled.SettingsBackupRestore,
                         onClick = { importTarget = OnboardingImportTarget.BACKUP_RESTORE },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 7, 
                         title = stringResource(R.string.onboarding_import_option_manual),
                         desc = stringResource(R.string.onboarding_import_option_manual_desc),
                         selected = importTarget == OnboardingImportTarget.MANUAL_ENTRY,
                         icon = Icons.Filled.Edit,
                         onClick = { importTarget = OnboardingImportTarget.MANUAL_ENTRY },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 8, 
                         title = stringResource(R.string.onboarding_import_option_later),
                         desc = stringResource(R.string.onboarding_import_option_later_desc),
                         selected = importTarget == OnboardingImportTarget.NONE,
@@ -742,6 +743,7 @@ private fun OnboardingOptionCard(
     selected: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
+    staggerIndex: Int = 0,
 ) {
     val selectedColor by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .16f)
@@ -756,7 +758,8 @@ private fun OnboardingOptionCard(
         label = "oobe_option_selection",
     )
     ClassingInformationIsland(
-        modifier = Modifier.graphicsLayer { scaleX = selectedScale; scaleY = selectedScale }
+        modifier = Modifier.bitsReveal(staggerIndex)
+            .graphicsLayer { scaleX = selectedScale; scaleY = selectedScale }
             .semantics { this.selected = selected },
         onClick = onClick,
         containerColor = selectedColor,
