@@ -317,6 +317,7 @@
     <string name="onboarding_import_action_open_cloud_sync">配置云同步</string>
     <string name="onboarding_welcome_title">欢迎使用 Classing 课程表</string>
     <string name="onboarding_welcome_subtitle">Make every minute matter.</string>
+    <string name="onboarding_import_processing">正在导入课程表…</string>
     <string name="onboarding_import_title">导入你的课表</string>
     <string name="onboarding_import_subtitle">选择导入方式，或稍后导入</string>
     <string name="onboarding_import_option_ics">从 ICS 导入</string>
