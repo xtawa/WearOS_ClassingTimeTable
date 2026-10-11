@@ -792,6 +792,7 @@
     <string name="assistant_welcome_title">What would you like to know?</string>
     <string name="assistant_welcome_hint">Ask about classes, free time, rooms, or your week.</string>
     <string name="assistant_answer">Classing answer</string>
+    <string name="assistant_generating_answer">Generating an answer…</string>
     <string name="assistant_reading_schedule">Reading your schedule…</string>
     <string name="assistant_send_question">Send question</string>
     <string name="assistant_sign_in_title">Sign in to ask Classing</string>
