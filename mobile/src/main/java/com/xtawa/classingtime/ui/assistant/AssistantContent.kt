@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -579,7 +580,7 @@ private fun AssistantComposer(
                             }
                         },
                     )
-                    VoiceInputButton(enabled, recording, onVoiceStart, onVoiceFinish)
+                    VoiceInputButton(enabled, recording, voiceLevel, onVoiceStart, onVoiceFinish)
                     AnimatedContent(
                         targetState = canSubmit,
                         transitionSpec = {
@@ -682,8 +683,24 @@ private fun ModelSelector(
 }
 
 @Composable
-private fun VoiceInputButton(enabled: Boolean, recording: Boolean, onStart: () -> Unit, onFinish: (Boolean) -> Unit) {
-    IconButton(onClick = { if (recording) onFinish(false) else onStart() }, enabled = enabled) {
+private fun VoiceInputButton(enabled: Boolean, recording: Boolean, voiceLevel: Float, onStart: () -> Unit, onFinish: (Boolean) -> Unit) {
+    val ringLevel by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (recording) voiceLevel.coerceIn(0f, 1f) else 0f,
+        animationSpec = tween(120),
+        label = "assistant_voice_ring",
+    )
+    IconButton(
+        onClick = { if (recording) onFinish(false) else onStart() },
+        enabled = enabled,
+        modifier = Modifier.drawBehind {
+            if (recording) {
+                drawCircle(
+                    color = androidx.compose.ui.graphics.Color.Red.copy(alpha = .06f + ringLevel * .13f),
+                    radius = size.minDimension * (.34f + ringLevel * .16f),
+                )
+            }
+        },
+    ) {
         Icon(
             if (recording) Icons.Rounded.StopCircle else Icons.Rounded.Mic,
             stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_voice_hold),
