@@ -50,14 +50,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import android.animation.ValueAnimator
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -80,6 +74,7 @@ import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
 import com.xtawa.classingtime.ui.components.ClassingOobeHero
+import com.xtawa.classingtime.ui.theme.ClassingBitsTransitions
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -352,15 +347,10 @@ internal fun MobileOnboardingFlow(
                 targetState = stepIndex,
                 modifier = Modifier.fillMaxWidth(),
                 transitionSpec = {
-                    if (!animateOobe) {
-                        fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                    } else {
-                        val forward = if (targetState > initialState) 1 else -1
-                        (slideInHorizontally(tween(ClassingMotion.ContentReveal)) { forward * it / 7 } +
-                            fadeIn(tween(ClassingMotion.ContentReveal))) togetherWith
-                            (slideOutHorizontally(tween(ClassingMotion.Exit)) { -forward * it / 11 } +
-                                fadeOut(tween(ClassingMotion.Exit)))
-                    }.using(SizeTransform(clip = false))
+                    ClassingBitsTransitions.horizontal(
+                        direction = if (targetState > initialState) 1 else -1,
+                        enabled = animateOobe,
+                    )
                 },
                 label = "oobe_page_motion",
             ) { visibleStep ->
