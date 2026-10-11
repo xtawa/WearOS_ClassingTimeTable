@@ -317,6 +317,7 @@
     <string name="onboarding_import_action_open_cloud_sync">Set up cloud sync</string>
     <string name="onboarding_welcome_title">Welcome to Classing Timetable</string>
     <string name="onboarding_welcome_subtitle">Make every minute matter.</string>
+    <string name="onboarding_import_processing">Importing your schedule…</string>
     <string name="onboarding_import_title">Import Your Schedule</string>
     <string name="onboarding_import_subtitle">Choose an import method, or import later.</string>
     <string name="onboarding_import_option_ics">Import from ICS</string>
