@@ -10,9 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -41,17 +38,12 @@ import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,7 +74,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -343,15 +334,6 @@ private fun QueryAnchor(message: AssistantMessageUiModel, previewImages: Boolean
     }
 }
 
-@Composable
-internal fun ThinkingIndicator() {
-    val transition = rememberInfiniteTransition(label = "thinking_shimmer")
-    val offset by transition.animateFloat(0f, 500f, infiniteRepeatable(tween(1400)), label = "thinking_offset")
-    Text("thinking…", style = MaterialTheme.typography.bodyMedium.copy(brush = Brush.linearGradient(
-        colors = listOf(MaterialTheme.colorScheme.onSurfaceVariant, Color.LightGray, MaterialTheme.colorScheme.onSurfaceVariant),
-        start = Offset(offset - 200f, 0f), end = Offset(offset + 200f, 0f))),
-        modifier = Modifier.padding(vertical = 8.dp).semantics { liveRegion = LiveRegionMode.Polite })
-}
 
 @Composable
 private fun ResultIsland(content: @Composable () -> Unit) {
