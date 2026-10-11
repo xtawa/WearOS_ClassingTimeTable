@@ -1,5 +1,6 @@
 package com.classing.wear.timetable.ui.component
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.classing.wear.timetable.ui.theme.ClassingWearMotion
 import com.classing.wear.timetable.ui.theme.ClassingWearAmbientBlue
 import com.classing.wear.timetable.ui.theme.ClassingWearAmbientViolet
 import com.classing.wear.timetable.ui.theme.ClassingWearRadii
@@ -100,7 +102,7 @@ fun ClassingIsland(
     }
     if (onClick != null) {
         Card(
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = ClassingWearMotion.settledSpring()),
             onClick = onClick,
             colors = colors,
             shape = shape,
@@ -108,7 +110,7 @@ fun ClassingIsland(
         )
     } else {
         Card(
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = ClassingWearMotion.settledSpring()),
             colors = colors,
             shape = shape,
             content = islandContent,

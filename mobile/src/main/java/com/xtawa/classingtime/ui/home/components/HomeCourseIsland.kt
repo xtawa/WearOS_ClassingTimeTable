@@ -8,7 +8,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +49,8 @@ import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.home.HomeCourseUiModel
 import com.xtawa.classingtime.ui.home.HomePhase
 import com.xtawa.classingtime.ui.home.HomeUiState
+import com.xtawa.classingtime.ui.components.bitsPress
+import com.xtawa.classingtime.ui.components.ClassingBitsProgressBar
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -77,13 +83,21 @@ internal fun HomeCourseIsland(
         label = "home_course_accent",
     )
     val a11yStateDescription = localizedCourseStateDescription(state)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = ClassingMotion.settledSpring())
+            .bitsPress(pressed)
             .clip(RoundedCornerShape(ClassingRadii.large))
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.Button,
+                onClick = onClick,
+            )
             .semantics(mergeDescendants = true) {
                 heading()
                 stateDescription = a11yStateDescription
@@ -271,48 +285,21 @@ private fun CourseMetadata(course: HomeCourseUiModel) {
 
 @Composable
 internal fun ClassProgress(progress: Float, modifier: Modifier = Modifier) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = ClassingMotion.settledSpring(),
-        label = "class_progress",
+    ClassingBitsProgressBar(
+        progress = progress,
+        modifier = modifier,
+        height = 6.dp,
     )
-    Column(
-        modifier = modifier.semantics {
-            progressBarRangeInfo = ProgressBarRangeInfo(animatedProgress, 0f..1f)
-        },
-        verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant, CircleShape),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(animatedProgress)
-                    .height(6.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-            )
-        }
-    }
 }
 
 @Composable
 private fun TemporalLine(progress: Float) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant, CircleShape),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress.coerceIn(0.08f, 1f))
-                .height(4.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.68f), CircleShape),
-        )
-    }
+    ClassingBitsProgressBar(
+        progress = progress,
+        height = 4.dp,
+        minimumVisible = 0.08f,
+        progressColor = MaterialTheme.colorScheme.primary.copy(alpha = .68f),
+    )
 }
 
 private fun countdownProgress(minutes: Long?): Float {

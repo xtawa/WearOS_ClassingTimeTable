@@ -48,6 +48,8 @@ internal data class AssistantUiState(
     val recording: Boolean = false,
     val uploading: Boolean = false,
     val transcribing: Boolean = false,
+    /** Real microphone RMS envelope, normalized to [0, 1] only while recording. */
+    val voiceLevel: Float = 0f,
     val prompts: List<String> = emptyList(),
     val showImagePreviews: Boolean = true,
     val showReasoning: Boolean = true,

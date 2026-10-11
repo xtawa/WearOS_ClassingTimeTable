@@ -1,5 +1,10 @@
 package com.xtawa.classingtime.screen
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,8 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.ClassingBitsLoadingDots
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
 import com.xtawa.classingtime.ui.components.ClassingPageHeader
+import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 
 @Composable
@@ -79,9 +86,27 @@ internal fun CalendarSyncSettingsPage(
             Button(onClick = onSync, enabled = !busy && (preferences.importEnabled || preferences.exportEnabled)) {
                 Text(stringResource(R.string.calendar_sync_now))
             }
-            if (busy || status.isNotBlank()) Text(
-                if (busy) stringResource(R.string.calendar_sync_working) else status,
-                style = MaterialTheme.typography.bodySmall)
+            AnimatedContent(
+                targetState = busy,
+                transitionSpec = {
+                    fadeIn(tween(ClassingMotion.ContentReveal)) togetherWith
+                        fadeOut(tween(ClassingMotion.Exit))
+                },
+                label = "calendar_sync_activity",
+            ) { working ->
+                if (working) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ClassingBitsLoadingDots()
+                        Text(stringResource(R.string.calendar_sync_working), style = MaterialTheme.typography.bodySmall)
+                    }
+                } else if (status.isNotBlank()) {
+                    Text(status, style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
     }
 }

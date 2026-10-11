@@ -45,6 +45,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import com.xtawa.classingtime.ui.home.HomeAssistantUiState
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.bitsReveal
 import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
@@ -85,9 +86,10 @@ internal fun HomeAiPrompt(
                 horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
                 verticalArrangement = Arrangement.spacedBy(ClassingSpacing.xs),
             ) {
-                suggestions.take(3).forEach { suggestion ->
+                suggestions.take(3).forEachIndexed { index, suggestion ->
                     QuickPromptChip(
                         text = suggestion,
+                        staggerIndex = index,
                         onClick = {
                             onQueryChange(suggestion)
                             onFocusedChange(true)
@@ -173,9 +175,10 @@ internal fun HomeAiPrompt(
 }
 
 @Composable
-private fun QuickPromptChip(text: String, onClick: () -> Unit) {
+private fun QuickPromptChip(text: String, staggerIndex: Int, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
+        modifier = Modifier.bitsReveal(staggerIndex),
         shape = RoundedCornerShape(ClassingRadii.pill),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
     ) {

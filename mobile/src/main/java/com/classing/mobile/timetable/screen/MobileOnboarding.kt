@@ -47,6 +47,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import android.animation.ValueAnimator
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,6 +60,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,7 +71,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.bitsReveal
+import com.xtawa.classingtime.ui.components.ClassingBitsProgressBar
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
+import com.xtawa.classingtime.ui.components.ClassingOobeHero
+import com.xtawa.classingtime.ui.theme.ClassingBitsTransitions
+import com.xtawa.classingtime.ui.theme.ClassingMotion
 import com.xtawa.classingtime.ui.theme.ClassingRadii
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import java.time.LocalDate
@@ -149,6 +162,7 @@ internal fun MobileOnboardingFlow(
 
     val autoDetection = remember { detectWearAutoSyncPlan(findWearOsCompanionInfo(context)) }
     val stepCount = 6
+    val animateOobe = ValueAnimator.areAnimatorsEnabled()
     val nextEnabled = stepIndex < stepCount - 1
     val formattedSemesterDate = remember(semesterWeekStartDate) {
         semesterWeekStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -221,11 +235,20 @@ internal fun MobileOnboardingFlow(
                         Spacer(modifier = Modifier.width(52.dp))
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = stringResource(R.string.onboarding_step_of, stepIndex + 1, stepCount),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.onboarding_step_of, stepIndex + 1, stepCount),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        ClassingBitsProgressBar(
+                            progress = (stepIndex + 1).toFloat() / stepCount,
+                            modifier = Modifier.width(96.dp),
+                            height = 4.dp,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+                    }
                     com.xtawa.classingtime.metrics.MetricsSettingsCard(onEnabled = {
                         com.xtawa.classingtime.metrics.ProductMetrics.record(context,
                             com.xtawa.classingtime.metrics.ProductEvent.CREATION_STARTED, sessionId = sessionId)
@@ -316,24 +339,22 @@ internal fun MobileOnboardingFlow(
                 .padding(top = ClassingSpacing.xs, bottom = ClassingSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
         ) {
-            when (stepIndex) {
+            AnimatedContent(
+                targetState = stepIndex,
+                modifier = Modifier.fillMaxWidth(),
+                transitionSpec = {
+                    ClassingBitsTransitions.horizontal(
+                        direction = if (targetState > initialState) 1 else -1,
+                        enabled = animateOobe,
+                    )
+                },
+                label = "oobe_page_motion",
+            ) { visibleStep ->
+            Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
+            when (visibleStep) {
                 0 -> {
                     Spacer(modifier = Modifier.height(20.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(84.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                                shape = RoundedCornerShape(24.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            painter = painterResource(id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) R.drawable.classing_icon_dark else R.drawable.classing_icon_light),
-                            contentDescription = null,
-                            modifier = Modifier.size(52.dp),
-                        )
-                    }
+                    ClassingOobeHero(completed = false)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.onboarding_welcome_title),
@@ -358,53 +379,53 @@ internal fun MobileOnboardingFlow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 0, 
                         title = stringResource(R.string.onboarding_import_option_ics),
                         desc = stringResource(R.string.onboarding_import_option_ics_desc),
                         selected = importTarget == OnboardingImportTarget.ICS,
                         icon = Icons.Filled.Event,
                         onClick = { importTarget = OnboardingImportTarget.ICS },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 1, 
                         title = stringResource(R.string.ai_import_document),
                         desc = stringResource(R.string.ai_import_notice),
                         selected = importTarget == OnboardingImportTarget.AI_DOCUMENT,
                         icon = Icons.Filled.Event,
                         onClick = { importTarget = OnboardingImportTarget.AI_DOCUMENT },
                     )
-                    OnboardingOptionCard(title = stringResource(R.string.ai_text_title), desc = stringResource(R.string.ai_text_notice),
+                    OnboardingOptionCard(staggerIndex = 2, title = stringResource(R.string.ai_text_title), desc = stringResource(R.string.ai_text_notice),
                         selected = importTarget == OnboardingImportTarget.AI_TEXT, icon = Icons.Filled.Edit, onClick = { importTarget = OnboardingImportTarget.AI_TEXT })
-                    OnboardingOptionCard(title = stringResource(R.string.lms_title), desc = stringResource(R.string.lms_notice),
+                    OnboardingOptionCard(staggerIndex = 3, title = stringResource(R.string.lms_title), desc = stringResource(R.string.lms_notice),
                         selected = importTarget == OnboardingImportTarget.CANVAS, icon = Icons.Filled.CloudSync, onClick = { importTarget = OnboardingImportTarget.CANVAS })
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 4, 
                         title = stringResource(R.string.onboarding_import_option_json),
                         desc = stringResource(R.string.onboarding_import_option_json_desc),
                         selected = importTarget == OnboardingImportTarget.JSON,
                         icon = Icons.Filled.DataObject,
                         onClick = { importTarget = OnboardingImportTarget.JSON },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 5, 
                         title = stringResource(R.string.onboarding_import_option_cloud),
                         desc = stringResource(R.string.onboarding_import_option_cloud_desc),
                         selected = importTarget == OnboardingImportTarget.CLOUD_SYNC,
                         icon = Icons.Filled.CloudSync,
                         onClick = { importTarget = OnboardingImportTarget.CLOUD_SYNC },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 6, 
                         title = stringResource(R.string.onboarding_import_option_backup),
                         desc = stringResource(R.string.onboarding_import_option_backup_desc),
                         selected = importTarget == OnboardingImportTarget.BACKUP_RESTORE,
                         icon = Icons.Filled.SettingsBackupRestore,
                         onClick = { importTarget = OnboardingImportTarget.BACKUP_RESTORE },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 7, 
                         title = stringResource(R.string.onboarding_import_option_manual),
                         desc = stringResource(R.string.onboarding_import_option_manual_desc),
                         selected = importTarget == OnboardingImportTarget.MANUAL_ENTRY,
                         icon = Icons.Filled.Edit,
                         onClick = { importTarget = OnboardingImportTarget.MANUAL_ENTRY },
                     )
-                    OnboardingOptionCard(
+                    OnboardingOptionCard(staggerIndex = 8, 
                         title = stringResource(R.string.onboarding_import_option_later),
                         desc = stringResource(R.string.onboarding_import_option_later_desc),
                         selected = importTarget == OnboardingImportTarget.NONE,
@@ -690,22 +711,7 @@ internal fun MobileOnboardingFlow(
 
                 else -> {
                     Spacer(modifier = Modifier.height(36.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(96.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(ClassingRadii.pill),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(54.dp),
-                        )
-                    }
+                    ClassingOobeHero(completed = true)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.onboarding_complete_title),
@@ -719,6 +725,8 @@ internal fun MobileOnboardingFlow(
                         textAlign = TextAlign.Start,
                     )
                 }
+            }
+            }
             }
         }
     }
@@ -735,14 +743,26 @@ private fun OnboardingOptionCard(
     selected: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
+    staggerIndex: Int = 0,
 ) {
+    val selectedColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .16f)
+        else MaterialTheme.colorScheme.surface.copy(alpha = .90f),
+        animationSpec = tween(if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.ContentReveal else 0),
+        label = "oobe_option_background",
+    )
+    val selectedScale by animateFloatAsState(
+        targetValue = if (selected) 1f else .985f,
+        animationSpec = if (ValueAnimator.areAnimatorsEnabled()) ClassingMotion.responsiveSpring()
+            else tween(0),
+        label = "oobe_option_selection",
+    )
     ClassingInformationIsland(
+        modifier = Modifier.bitsReveal(staggerIndex)
+            .graphicsLayer { scaleX = selectedScale; scaleY = selectedScale }
+            .semantics { this.selected = selected },
         onClick = onClick,
-        containerColor = if (selected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-        } else {
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
-        },
+        containerColor = selectedColor,
         contentPadding = PaddingValues(ClassingSpacing.md),
     ) {
         Row(

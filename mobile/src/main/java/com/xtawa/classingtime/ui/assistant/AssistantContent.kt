@@ -10,11 +10,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -40,17 +38,12 @@ import com.xtawa.classingtime.ui.components.ClassingPageHeader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,7 +74,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -210,7 +202,7 @@ internal fun AssistantContent(
                     items(state.messages, key = { it.id }) { message ->
                         when (message.role) {
                             AssistantMessageRole.User -> QueryAnchor(message, state.showImagePreviews, state.showTimestamps)
-                            AssistantMessageRole.Assistant -> ResultIsland {
+                            AssistantMessageRole.Assistant -> if (message.content.isNotBlank() || message.reasoning.isNotBlank() || !state.sending) ResultIsland {
                                 if (state.showReasoning && message.reasoning.isNotBlank()) {
                                     var expanded by remember(message.id) { mutableStateOf(state.sending) }
                                     LaunchedEffect(state.sending) { if (!state.sending) expanded = false }
@@ -222,7 +214,12 @@ internal fun AssistantContent(
                         }
                     }
                     item { courseProposal() }
-                    if (state.sending) item { ProcessingIsland() }
+                    if (state.sending) item {
+                        ProcessingIsland(
+                            if (state.messages.lastOrNull()?.content?.isNotBlank() == true) AssistantActivityPhase.Responding
+                            else AssistantActivityPhase.Thinking,
+                        )
+                    }
                     if (state.status.isNotBlank()) item { StatusIsland(state.status) }
                     if (state.usageNotice.isNotBlank()) item {
                         Text(state.usageNotice, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -265,6 +262,7 @@ internal fun AssistantContent(
                 recording = state.recording,
                 uploading = state.uploading,
                 transcribing = state.transcribing,
+                voiceLevel = state.voiceLevel,
                 onAttach = onAttach,
                 onTakePhoto = onTakePhoto,
                 onChooseImage = onChooseImage,
@@ -336,15 +334,6 @@ private fun QueryAnchor(message: AssistantMessageUiModel, previewImages: Boolean
     }
 }
 
-@Composable
-internal fun ThinkingIndicator() {
-    val transition = rememberInfiniteTransition(label = "thinking_shimmer")
-    val offset by transition.animateFloat(0f, 500f, infiniteRepeatable(tween(1400)), label = "thinking_offset")
-    Text("thinking…", style = MaterialTheme.typography.bodyMedium.copy(brush = Brush.linearGradient(
-        colors = listOf(MaterialTheme.colorScheme.onSurfaceVariant, Color.LightGray, MaterialTheme.colorScheme.onSurfaceVariant),
-        start = Offset(offset - 200f, 0f), end = Offset(offset + 200f, 0f))),
-        modifier = Modifier.padding(vertical = 8.dp).semantics { liveRegion = LiveRegionMode.Polite })
-}
 
 @Composable
 private fun ResultIsland(content: @Composable () -> Unit) {
@@ -380,17 +369,7 @@ private fun ResultIsland(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ProcessingIsland() {
-    val transition = rememberInfiniteTransition(label = "assistant_processing")
-    val scale by transition.animateFloat(
-        initialValue = 0.82f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(ClassingMotion.Ambient),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "assistant_processing_scale",
-    )
+private fun ProcessingIsland(phase: AssistantActivityPhase) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -403,24 +382,23 @@ private fun ProcessingIsland() {
             horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .scale(scale)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+            AssistantActivityVisual(phase = phase)
+            AnimatedContent(
+                targetState = phase,
+                transitionSpec = {
+                    fadeIn(tween(ClassingMotion.ContentReveal))
+                        .togetherWith(fadeOut(tween(ClassingMotion.Exit)))
+                },
+                label = "assistant_output_phase",
+            ) { currentPhase ->
+                Text(
+                    text = if (currentPhase == AssistantActivityPhase.Responding)
+                        stringResource(R.string.assistant_generating_answer)
+                    else stringResource(R.string.assistant_reading_schedule),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = stringResource(R.string.assistant_reading_schedule),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -442,6 +420,7 @@ private fun AssistantComposer(
     recording: Boolean,
     uploading: Boolean,
     transcribing: Boolean,
+    voiceLevel: Float,
     onAttach: () -> Unit,
     onTakePhoto: () -> Unit,
     onChooseImage: () -> Unit,
@@ -481,9 +460,25 @@ private fun AssistantComposer(
                 }
             }
             if (uploading) Text(stringResource(R.string.assistant_uploading), style = MaterialTheme.typography.bodySmall)
-            if (recording || transcribing) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { onVoiceFinish(true) }) { Text(stringResource(R.string.assistant_cancel_voice)) }
+            AnimatedVisibility(
+                visible = recording || transcribing,
+                enter = fadeIn(tween(ClassingMotion.ContentReveal)),
+                exit = fadeOut(tween(ClassingMotion.Exit)),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
+                    AssistantActivityVisual(
+                        phase = if (recording) AssistantActivityPhase.Recording else AssistantActivityPhase.Transcribing,
+                        audioLevel = voiceLevel,
+                    )
+                    Text(
+                        stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = { onVoiceFinish(true) }) {
+                        Text(stringResource(R.string.assistant_cancel_voice))
+                    }
+                }
             }
             AnimatedVisibility(showPromptSuggestions && question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0 && (prompts.isNotEmpty() || promptNotice.isNotBlank())) {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -512,7 +507,13 @@ private fun AssistantComposer(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 1.dp,
             ) {
-                if (transcribing) Box(Modifier.fillMaxWidth().padding(ClassingSpacing.md)) { ThinkingIndicator() }
+                if (transcribing) Box(Modifier.fillMaxWidth().padding(ClassingSpacing.md)) {
+                    Text(
+                        text = stringResource(R.string.assistant_transcribing),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 else Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -561,7 +562,7 @@ private fun AssistantComposer(
                             }
                         },
                     )
-                    VoiceInputButton(enabled, recording, onVoiceStart, onVoiceFinish)
+                    VoiceInputButton(enabled, recording, voiceLevel, onVoiceStart, onVoiceFinish)
                     AnimatedContent(
                         targetState = canSubmit,
                         transitionSpec = {
@@ -664,8 +665,25 @@ private fun ModelSelector(
 }
 
 @Composable
-private fun VoiceInputButton(enabled: Boolean, recording: Boolean, onStart: () -> Unit, onFinish: (Boolean) -> Unit) {
-    IconButton(onClick = { if (recording) onFinish(false) else onStart() }, enabled = enabled) {
+private fun VoiceInputButton(enabled: Boolean, recording: Boolean, voiceLevel: Float, onStart: () -> Unit, onFinish: (Boolean) -> Unit) {
+    val ringLevel by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (recording) voiceLevel.coerceIn(0f, 1f) else 0f,
+        animationSpec = tween(120),
+        label = "assistant_voice_ring",
+    )
+    val ringTint = MaterialTheme.colorScheme.error
+    IconButton(
+        onClick = { if (recording) onFinish(false) else onStart() },
+        enabled = enabled,
+        modifier = Modifier.drawBehind {
+            if (recording) {
+                drawCircle(
+                    color = ringTint.copy(alpha = .06f + ringLevel * .13f),
+                    radius = size.minDimension * (.34f + ringLevel * .16f),
+                )
+            }
+        },
+    ) {
         Icon(
             if (recording) Icons.Rounded.StopCircle else Icons.Rounded.Mic,
             stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_voice_hold),

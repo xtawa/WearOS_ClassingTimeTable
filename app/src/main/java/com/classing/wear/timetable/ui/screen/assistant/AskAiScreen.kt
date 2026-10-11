@@ -47,6 +47,7 @@ import com.classing.wear.timetable.core.time.TimeProvider
 import com.classing.wear.timetable.core.time.WeekCalculator
 import com.classing.wear.timetable.domain.model.LessonOccurrence
 import com.classing.wear.timetable.domain.repository.ScheduleRepository
+import com.classing.wear.timetable.ui.component.WearAiThinkingDots
 import com.classing.wear.timetable.ui.component.screenPadding
 import java.time.ZoneId
 import kotlinx.coroutines.launch
@@ -261,7 +262,7 @@ fun AskAiScreen(
                         },
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CircularProgressIndicator(strokeWidth = 2.dp)
+                            WearAiThinkingDots()
                             Text(stringResource(R.string.ask_ai_reading_schedule))
                         }
                     }

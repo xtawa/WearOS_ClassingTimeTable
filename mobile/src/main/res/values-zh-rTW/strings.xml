@@ -317,6 +317,7 @@
     <string name="onboarding_import_action_open_cloud_sync">設定雲端同步</string>
     <string name="onboarding_welcome_title">歡迎使用 Classing 課程表</string>
     <string name="onboarding_welcome_subtitle">Make every minute matter.</string>
+    <string name="onboarding_import_processing">正在匯入課表…</string>
     <string name="onboarding_import_title">匯入你的課表</string>
     <string name="onboarding_import_subtitle">選擇匯入方式，或稍後再匯入。</string>
     <string name="onboarding_import_option_ics">從 ICS 匯入</string>
@@ -792,6 +793,7 @@
     <string name="assistant_welcome_title">想了解什麼？</string>
     <string name="assistant_welcome_hint">可以詢問課程、空閒時間、教室或本週安排。</string>
     <string name="assistant_answer">Classing 回答</string>
+    <string name="assistant_generating_answer">正在生成回答…</string>
     <string name="assistant_reading_schedule">正在讀取課表…</string>
     <string name="assistant_send_question">傳送問題</string>
     <string name="assistant_sign_in_title">登入後詢問 Classing</string>

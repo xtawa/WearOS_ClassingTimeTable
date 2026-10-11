@@ -492,7 +492,9 @@ internal fun ImportLayer(
             }
             var reasoningExpanded by remember { mutableStateOf(false) }
             LaunchedEffect(photoBusy) { reasoningExpanded = photoBusy }
-            if (photoBusy) com.xtawa.classingtime.ui.assistant.ThinkingIndicator()
+            if (photoBusy) com.xtawa.classingtime.ui.assistant.AssistantActivityVisual(
+                phase = com.xtawa.classingtime.ui.assistant.AssistantActivityPhase.Thinking,
+            )
             if (photoReasoning.isNotBlank()) {
                 androidx.compose.material3.TextButton(onClick = { reasoningExpanded = !reasoningExpanded }) {
                     Text(stringResource(R.string.ai_photo_reasoning) + if (reasoningExpanded) " ▴" else " ▾")
