@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.xtawa.classingtime.ui.components.bitsReveal
 import com.xtawa.classingtime.R
 import com.xtawa.classingtime.ui.home.HomeCourseUiModel
 import com.xtawa.classingtime.ui.theme.ClassingMotion
@@ -60,6 +61,7 @@ internal fun HomeTimeline(
                 TimelineCourseItem(
                     course = course,
                     emphasized = index == 0,
+                    entranceIndex = index,
                     onClick = { onCourseClick(course) },
                 )
             }
@@ -71,11 +73,13 @@ internal fun HomeTimeline(
 private fun TimelineCourseItem(
     course: HomeCourseUiModel,
     emphasized: Boolean,
+    entranceIndex: Int,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .bitsReveal(entranceIndex)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = ClassingSpacing.xs)
             .semantics { traversalIndex = if (emphasized) 0f else 1f },
