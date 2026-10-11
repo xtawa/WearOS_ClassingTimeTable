@@ -41,7 +41,6 @@ import com.xtawa.classingtime.ui.components.ClassingCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -72,6 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.classing.shared.sync.CloudSyncContracts
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.ClassingBitsProgressBar
 import com.xtawa.classingtime.ui.components.ClassingInformationIsland
 import com.xtawa.classingtime.ui.components.ClassingOobeHero
 import com.xtawa.classingtime.ui.theme.ClassingBitsTransitions
@@ -162,11 +162,6 @@ internal fun MobileOnboardingFlow(
     val autoDetection = remember { detectWearAutoSyncPlan(findWearOsCompanionInfo(context)) }
     val stepCount = 6
     val animateOobe = ValueAnimator.areAnimatorsEnabled()
-    val animatedStepProgress by animateFloatAsState(
-        targetValue = (stepIndex + 1).toFloat() / stepCount,
-        animationSpec = tween(360),
-        label = "onboarding_step_progress",
-    )
     val nextEnabled = stepIndex < stepCount - 1
     val formattedSemesterDate = remember(semesterWeekStartDate) {
         semesterWeekStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -246,10 +241,10 @@ internal fun MobileOnboardingFlow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        LinearProgressIndicator(
-                            progress = { animatedStepProgress },
+                        ClassingBitsProgressBar(
+                            progress = (stepIndex + 1).toFloat() / stepCount,
                             modifier = Modifier.width(96.dp),
-                            color = MaterialTheme.colorScheme.primary,
+                            height = 4.dp,
                             trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         )
                     }
