@@ -3,13 +3,16 @@ package com.xtawa.classingtime.screen
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.xtawa.classingtime.R
+import com.xtawa.classingtime.ui.components.ClassingBitsLoadingDots
 import java.time.DayOfWeek
 import androidx.compose.ui.platform.LocalContext
 import java.time.LocalTime
@@ -72,7 +75,16 @@ internal fun OnboardingImportEditor(target: OnboardingImportTarget, staged: Back
    Text(stringResource(R.string.onboarding_import_now))
   }
  }
- if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+ AnimatedVisibility(visible = busy) {
+  Row(
+   modifier = Modifier.fillMaxWidth(),
+   verticalAlignment = Alignment.CenterVertically,
+   horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+   ClassingBitsLoadingDots()
+   Text(stringResource(R.string.onboarding_import_processing), style = MaterialTheme.typography.bodySmall)
+  }
+ }
  if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodySmall)
  staged?.let { data ->
   Text(stringResource(R.string.onboarding_import_done, data.baseLessons.size), style = MaterialTheme.typography.titleSmall)
