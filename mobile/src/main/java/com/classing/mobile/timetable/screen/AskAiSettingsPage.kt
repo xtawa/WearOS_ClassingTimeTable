@@ -66,6 +66,7 @@ internal fun AskAiSettingsPage(
  val thumbnails = remember(userId) { mutableStateMapOf<String, Bitmap>() }
  var uploading by remember { mutableStateOf(false) }
  var recording by remember { mutableStateOf(false) }
+  var voiceLevel by remember { mutableFloatStateOf(0f) }
  var transcribing by remember { mutableStateOf(false) }
  var transcriptionJob by remember { mutableStateOf<Job?>(null) }
  var subpage by rememberSaveable(userId) { mutableStateOf("") }
@@ -198,7 +199,8 @@ internal fun AskAiSettingsPage(
   }
  }
  val voice = remember(context, userId) {
-  AskAiVoiceInput(context, scope, onRecording = { recording = it }, onProcessing = { transcribing = it },
+  AskAiVoiceInput(context, scope, onRecording = { recording = it; if (!it) voiceLevel = 0f }, onProcessing = { transcribing = it },
+    onAudioLevel = { voiceLevel = it },
    onCloudAudio = { file ->
     transcribing = true
     transcriptionJob = scope.launch {
@@ -285,7 +287,7 @@ internal fun AskAiSettingsPage(
     question = question, sending = sending, status = status, selectedModelId = selectedModel,
     models = models.map { AssistantModelUiModel(it.id, it.name, it.description, it.id in preferences.favoriteModels) },
     attachments = attachments.map { AssistantAttachmentUiModel(it.attachmentId, it.name, thumbnails[it.attachmentId]) },
-    uploading = uploading, recording = recording, transcribing = transcribing,
+    uploading = uploading, recording = recording, transcribing = transcribing, voiceLevel = voiceLevel,
     prompts = prompts, showImagePreviews = preferences.imagePreviews, showReasoning = preferences.showReasoning, showTimestamps = preferences.showTimestamps,
     showPromptSuggestions = preferences.showPromptSuggestions, preferencesSaving = preferencesSaving, usageNotice = usageNotice, promptNotice = promptNotice,
     conversations = conversations.map { AssistantConversationUiModel(it.conversationId, it.title) },
