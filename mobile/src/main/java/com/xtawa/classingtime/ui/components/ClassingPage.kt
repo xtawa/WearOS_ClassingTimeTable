@@ -1,7 +1,6 @@
 package com.xtawa.classingtime.ui.components
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -145,14 +143,9 @@ internal fun ClassingInformationIsland(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (onClick != null && isPressed) 0.986f else 1f,
-        animationSpec = ClassingMotion.responsiveSpring(),
-        label = "Classing island press",
-    )
     val animatedModifier = modifier
         .animateContentSize(animationSpec = ClassingMotion.softSpring())
-        .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+        .bitsPress(isPressed, enabled = onClick != null)
     val interactionModifier = if (onClick == null) {
         animatedModifier
     } else {
@@ -192,16 +185,11 @@ internal fun ClassingActionRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.986f else 1f,
-        animationSpec = ClassingMotion.responsiveSpring(),
-        label = "Classing action press",
-    )
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = ClassingSpacing.minimumTouchTarget)
-            .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+            .bitsPress(isPressed)
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
             .padding(vertical = ClassingSpacing.xs),
         horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
