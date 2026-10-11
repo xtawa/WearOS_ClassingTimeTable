@@ -210,7 +210,7 @@ internal fun AssistantContent(
                     items(state.messages, key = { it.id }) { message ->
                         when (message.role) {
                             AssistantMessageRole.User -> QueryAnchor(message, state.showImagePreviews, state.showTimestamps)
-                            AssistantMessageRole.Assistant -> ResultIsland {
+                            AssistantMessageRole.Assistant -> if (message.content.isNotBlank() || message.reasoning.isNotBlank() || !state.sending) ResultIsland {
                                 if (state.showReasoning && message.reasoning.isNotBlank()) {
                                     var expanded by remember(message.id) { mutableStateOf(state.sending) }
                                     LaunchedEffect(state.sending) { if (!state.sending) expanded = false }
@@ -222,7 +222,12 @@ internal fun AssistantContent(
                         }
                     }
                     item { courseProposal() }
-                    if (state.sending) item { ProcessingIsland() }
+                    if (state.sending) item {
+                        ProcessingIsland(
+                            if (state.messages.lastOrNull()?.content?.isNotBlank() == true) AssistantActivityPhase.Responding
+                            else AssistantActivityPhase.Thinking,
+                        )
+                    }
                     if (state.status.isNotBlank()) item { StatusIsland(state.status) }
                     if (state.usageNotice.isNotBlank()) item {
                         Text(state.usageNotice, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -265,6 +270,7 @@ internal fun AssistantContent(
                 recording = state.recording,
                 uploading = state.uploading,
                 transcribing = state.transcribing,
+                voiceLevel = state.voiceLevel,
                 onAttach = onAttach,
                 onTakePhoto = onTakePhoto,
                 onChooseImage = onChooseImage,
@@ -380,17 +386,7 @@ private fun ResultIsland(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ProcessingIsland() {
-    val transition = rememberInfiniteTransition(label = "assistant_processing")
-    val scale by transition.animateFloat(
-        initialValue = 0.82f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(ClassingMotion.Ambient),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "assistant_processing_scale",
-    )
+private fun ProcessingIsland(phase: AssistantActivityPhase) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -403,24 +399,23 @@ private fun ProcessingIsland() {
             horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .scale(scale)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+            AssistantActivityVisual(phase = phase)
+            AnimatedContent(
+                targetState = phase,
+                transitionSpec = {
+                    fadeIn(tween(ClassingMotion.ContentReveal))
+                        .togetherWith(fadeOut(tween(ClassingMotion.Exit)))
+                },
+                label = "assistant_output_phase",
+            ) { currentPhase ->
+                Text(
+                    text = if (currentPhase == AssistantActivityPhase.Responding)
+                        stringResource(R.string.assistant_generating_answer)
+                    else stringResource(R.string.assistant_reading_schedule),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = stringResource(R.string.assistant_reading_schedule),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -442,6 +437,7 @@ private fun AssistantComposer(
     recording: Boolean,
     uploading: Boolean,
     transcribing: Boolean,
+    voiceLevel: Float,
     onAttach: () -> Unit,
     onTakePhoto: () -> Unit,
     onChooseImage: () -> Unit,
@@ -481,9 +477,25 @@ private fun AssistantComposer(
                 }
             }
             if (uploading) Text(stringResource(R.string.assistant_uploading), style = MaterialTheme.typography.bodySmall)
-            if (recording || transcribing) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { onVoiceFinish(true) }) { Text(stringResource(R.string.assistant_cancel_voice)) }
+            AnimatedVisibility(
+                visible = recording || transcribing,
+                enter = fadeIn(tween(ClassingMotion.ContentReveal)),
+                exit = fadeOut(tween(ClassingMotion.Exit)),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
+                    AssistantActivityVisual(
+                        phase = if (recording) AssistantActivityPhase.Recording else AssistantActivityPhase.Transcribing,
+                        audioLevel = voiceLevel,
+                    )
+                    Text(
+                        stringResource(if (recording) R.string.assistant_recording_hint else R.string.assistant_transcribing),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = { onVoiceFinish(true) }) {
+                        Text(stringResource(R.string.assistant_cancel_voice))
+                    }
+                }
             }
             AnimatedVisibility(showPromptSuggestions && question.isBlank() && !recording && !transcribing && enabled && WindowInsets.ime.getBottom(LocalDensity.current) == 0 && (prompts.isNotEmpty() || promptNotice.isNotBlank())) {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -512,7 +524,13 @@ private fun AssistantComposer(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 1.dp,
             ) {
-                if (transcribing) Box(Modifier.fillMaxWidth().padding(ClassingSpacing.md)) { ThinkingIndicator() }
+                if (transcribing) Box(Modifier.fillMaxWidth().padding(ClassingSpacing.md)) {
+                    Text(
+                        text = stringResource(R.string.assistant_transcribing),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 else Row(
                     modifier = Modifier
                         .fillMaxWidth()
