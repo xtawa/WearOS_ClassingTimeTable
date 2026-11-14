@@ -16,8 +16,8 @@ struct WatchAssistantView: View {
                 ForEach(chat.prompts, id: \.self) { p in Button(p) { chat.draft = p } }
                 TextField("问题（支持系统听写）", text: $chat.draft)
                 Button("发送") { chat.send() }.disabled(chat.busy || chat.draft.isEmpty)
-                if chat.courseProposal != nil { DisclosureGroup("课程建议") { Text((try? chat.courseProposal?.text()) ?? "").font(.caption); Button("确认应用") { chat.apply(exams: false) } } }
-                if chat.examProposal != nil { DisclosureGroup("考试建议") { Text((try? chat.examProposal?.text()) ?? "").font(.caption); Button("确认应用") { chat.apply(exams: true) } } }
+                if chat.courseProposal != nil { NavigationLink("课程建议") { ScrollView { VStack(alignment: .leading, spacing: 8) { Text((try? chat.courseProposal?.text()) ?? "").font(.caption); Button("确认应用") { chat.apply(exams: false) } } }.navigationTitle("课程建议") } }
+                if chat.examProposal != nil { NavigationLink("考试建议") { ScrollView { VStack(alignment: .leading, spacing: 8) { Text((try? chat.examProposal?.text()) ?? "").font(.caption); Button("确认应用") { chat.apply(exams: true) } } }.navigationTitle("考试建议") } }
             }
         }.navigationTitle("课表助手").task { await chat.attach(store) }.onDisappear { chat.cancel() }
     }
