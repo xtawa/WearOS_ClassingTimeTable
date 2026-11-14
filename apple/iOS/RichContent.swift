@@ -25,7 +25,8 @@ struct RichAnnouncementView: UIViewRepresentable {
 struct AttachmentThumbnail: View {
     @EnvironmentObject var store: AppStore
     var attachment: JSONValue
-    @State private var image: UIImage?, unavailable = false
+    @State private var image: UIImage?
+    @State private var unavailable = false
     var body: some View {
         VStack(alignment: .leading) { if let image = image { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180).clipShape(RoundedRectangle(cornerRadius: 12)) }; Text(attachment["name"].string).font(.caption); if unavailable { Text("附件不可用或已过期").font(.caption2).foregroundStyle(.secondary) } }
         .task { guard attachment["mimeType"].string.hasPrefix("image/") else { return }; do { let response = try await store.api.response("GET", "/api/v1/ai/attachments/\(attachment["attachmentId"].string)"); image = UIImage(data: response.data); unavailable = image == nil } catch { unavailable = true } }

@@ -2,7 +2,11 @@ import SwiftUI
 import ClassingCore
 struct AssistantSettingsView: View {
     @EnvironmentObject var store: AppStore
-    @State private var preferences: JSONValue = .null, usage: JSONValue = .null, cards: [JSONValue] = [], models: [JSONValue] = [], code = ""
+    @State private var preferences: JSONValue = .null
+    @State private var usage: JSONValue = .null
+    @State private var cards: [JSONValue] = []
+    @State private var models: [JSONValue] = []
+    @State private var code = ""
     var body: some View {
         Form {
             if !store.signedIn { Text("请先登录以管理云端助手。") }

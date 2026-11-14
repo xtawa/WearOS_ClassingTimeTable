@@ -39,7 +39,9 @@ struct RootView: View {
 }
 struct HomeView: View {
     @EnvironmentObject var store: AppStore
-    @State private var addCourse = false, addExam = false, showChanges = false
+    @State private var addCourse = false
+    @State private var addExam = false
+    @State private var showChanges = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -66,7 +68,9 @@ struct HomeView: View {
 }
 struct TimetableView: View {
     @EnvironmentObject var store: AppStore
-    @State private var selected = Date(), mode = "week", search = ""
+    @State private var selected = Date()
+    @State private var mode = "week"
+    @State private var search = ""
     var week: Date { let day = (try? SchoolTime.day(SchoolTime.dateString(selected, zone: store.state.settings.timezone))) ?? selected; return SchoolTime.weekStart(day, weekday: store.state.settings.weekStart) }
     var body: some View {
         VStack(spacing: 10) {
@@ -103,7 +107,8 @@ struct OccurrenceDetailView: View {
 }
 struct OnboardingView: View {
     @EnvironmentObject var store: AppStore
-    @State private var step = 0, semester = Date()
+    @State private var step = 0
+    @State private var semester = Date()
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 28) {

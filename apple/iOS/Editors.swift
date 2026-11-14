@@ -4,8 +4,22 @@ struct LessonEditor: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) var dismiss
     @State var lesson: Lesson
-    @State private var startClock = "08:00", endClock = "09:30"
-    @State private var ruleMode = "legacy", anchor = "", end = "", interval = 1, cycle = 2, cycleDays = "1", days = "", holidays = "", dates = "", advance = false, term = "", meeting = "", group = "", deleting = false
+    @State private var startClock = "08:00"
+    @State private var endClock = "09:30"
+    @State private var ruleMode = "legacy"
+    @State private var anchor = ""
+    @State private var end = ""
+    @State private var interval = 1
+    @State private var cycle = 2
+    @State private var cycleDays = "1"
+    @State private var days = ""
+    @State private var holidays = ""
+    @State private var dates = ""
+    @State private var advance = false
+    @State private var term = ""
+    @State private var meeting = ""
+    @State private var group = ""
+    @State private var deleting = false
     var body: some View {
         Form {
             Section("课程信息") { TextField("课程名", text: $lesson.title); optional("教师", $lesson.teacher); optional("地点", $lesson.location); optional("备注", $lesson.note) }
@@ -83,7 +97,8 @@ struct ChangeEditor: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) var dismiss
     @State var exception: ScheduleException
-    @State private var startClock = "08:00", endClock = "09:30"
+    @State private var startClock = "08:00"
+    @State private var endClock = "09:30"
     var body: some View {
         Form {
             Picker("类型", selection: $exception.type) { Text("取消").tag("CANCEL"); Text("改时间 / 地点").tag("RESCHEDULE"); Text("补课").tag("MAKE_UP"); Text("放假").tag("HOLIDAY") }

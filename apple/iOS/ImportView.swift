@@ -5,8 +5,18 @@ import ClassingCore
 import UIKit
 struct ImportView: View {
     @EnvironmentObject var store: AppStore
-    @State private var raw = "", draft: ImportDraft?, picker = false, photo: PhotosPickerItem?, camera = false, busy = false, replace = false, confirm = false
-    @State private var canvasOrigin = "", canvasToken = "", from = SchoolTime.dateString(Date()), through = SchoolTime.dateString(Date().addingTimeInterval(15_552_000))
+    @State private var raw = ""
+    @State private var draft: ImportDraft?
+    @State private var picker = false
+    @State private var photo: PhotosPickerItem?
+    @State private var camera = false
+    @State private var busy = false
+    @State private var replace = false
+    @State private var confirm = false
+    @State private var canvasOrigin = ""
+    @State private var canvasToken = ""
+    @State private var from = SchoolTime.dateString(Date())
+    @State private var through = SchoolTime.dateString(Date().addingTimeInterval(15_552_000))
     var body: some View {
         Form {
             Section("ICS / JSON / 文本") {

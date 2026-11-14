@@ -8,7 +8,9 @@ struct AssistantView: View {
     @StateObject private var chat = AssistantModel()
     @StateObject private var speech = SpeechInput()
     @StateObject private var playback = SpeechPlayback()
-    @State private var filePicker = false, proposalKind: Bool?, applyDialog = false
+    @State private var filePicker = false
+    @State private var proposalKind: Bool?
+    @State private var applyDialog = false
     @State private var voiceTask: Task<Void, Never>?
     var body: some View {
         VStack(spacing: 0) {

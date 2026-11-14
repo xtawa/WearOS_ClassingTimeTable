@@ -5,7 +5,9 @@ import ClassingCore
 
 @MainActor final class PhoneWatchBridge: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = PhoneWatchBridge()
-    @Published var reachable = false, pendingAuthorization: String?, pendingBYOK: JSONValue?
+    @Published var reachable = false
+    @Published var pendingAuthorization: String?
+    @Published var pendingBYOK: JSONValue?
     private weak var store: AppStore?
     private let pairingKey = Curve25519.KeyAgreement.PrivateKey()
     private var peerKey: Data?

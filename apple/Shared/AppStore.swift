@@ -5,8 +5,12 @@ import UserNotifications
 
 @MainActor final class AppStore: ObservableObject {
     @Published private(set) var state = AppState()
-    @Published var error: String?, status = "", syncing = false, signedIn = false
-    @Published var account: JSONValue = .null, membership: JSONValue = .null
+    @Published var error: String?
+    @Published var status = ""
+    @Published var syncing = false
+    @Published var signedIn = false
+    @Published var account: JSONValue = .null
+    @Published var membership: JSONValue = .null
     @Published var byok = ByokConfiguration(ownerId: "local")
     let vault = KeychainVault()
     lazy var api = ClassingAPI(baseURL: URL(string: Bundle.main.object(forInfoDictionaryKey: "ClassingAPIBaseURL") as? String ?? "https://api-classing.underflo.ink")!, vault: vault, platform: Self.platform, bundleID: Bundle.main.bundleIdentifier ?? "com.xtawa.classingtime.apple")

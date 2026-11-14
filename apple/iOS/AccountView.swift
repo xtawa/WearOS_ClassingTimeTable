@@ -3,7 +3,18 @@ import ClassingCore
 import WebKit
 struct AccountView: View {
     @EnvironmentObject var store: AppStore
-    @State private var identifier = "", password = "", username = "", email = "", code = "", challenge = "", consent = false, register = false, security: JSONValue = .null, turnstile = "", verify = false, busy = false
+    @State private var identifier = ""
+    @State private var password = ""
+    @State private var username = ""
+    @State private var email = ""
+    @State private var code = ""
+    @State private var challenge = ""
+    @State private var consent = false
+    @State private var register = false
+    @State private var security: JSONValue = .null
+    @State private var turnstile = ""
+    @State private var verify = false
+    @State private var busy = false
     var body: some View {
         Form {
             if store.signedIn {
@@ -42,12 +53,22 @@ struct AccountView: View {
 }
 struct PasswordResetView: View {
     @EnvironmentObject var store: AppStore
-    @State private var email = "", token = "", password = "", sent = false
+    @State private var email = ""
+    @State private var token = ""
+    @State private var password = ""
+    @State private var sent = false
     var body: some View { Form { TextField("邮箱", text: $email).textInputAutocapitalization(.never).keyboardType(.emailAddress); Button("发送重置邮件") { Task { do { _ = try await store.api.request("POST", "/api/v1/auth/password/reset/request", body: .object(["email": .string(email)]), authorized: false); sent = true } catch { store.error = error.localizedDescription } } }; if sent { Text("若邮箱存在，你会收到重置邮件。"); TextField("邮件中的重置令牌", text: $token).autocorrectionDisabled(); SecureField("新密码", text: $password); Button("重置密码") { Task { do { _ = try await store.api.request("POST", "/api/v1/auth/password/reset/confirm", body: .object(["token": .string(token), "newPassword": .string(password)]), authorized: false); password = ""; await store.logout(); store.status = "密码已重置，请重新登录" } catch { store.error = error.localizedDescription } } } } }.navigationTitle("重置密码").onDisappear { password = ""; token = "" } }
 }
 struct AccountManagementView: View {
     @EnvironmentObject var store: AppStore
-    @State private var username = "", email = "", password = "", newPassword = "", emailRequest = "", code = "", confirmText = "", deleting = false
+    @State private var username = ""
+    @State private var email = ""
+    @State private var password = ""
+    @State private var newPassword = ""
+    @State private var emailRequest = ""
+    @State private var code = ""
+    @State private var confirmText = ""
+    @State private var deleting = false
     var body: some View {
         Form {
             Section("资料") { TextField("用户名", text: $username); TextField("邮箱", text: $email).textInputAutocapitalization(.never); SecureField("当前密码", text: $password); Button("保存资料") { run { let response = try await store.api.request("PATCH", "/api/v1/account/me", body: .object(["username": .string(username), "email": .string(email), "currentPassword": .string(password)])); emailRequest = response["emailChange"]["requestId"].string; try await store.refreshAccount() } }; if !emailRequest.isEmpty { TextField("新邮箱验证码", text: $code); Button("确认更换邮箱") { run { _ = try await store.api.request("POST", "/api/v1/account/email/confirm", body: .object(["requestId": .string(emailRequest), "verificationCode": .string(code)])); await store.logout() } } } }

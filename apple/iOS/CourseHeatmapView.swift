@@ -3,7 +3,8 @@ import ClassingCore
 struct CourseHeatmapView: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.colorScheme) var scheme
-    @State private var date = Date(), table = false
+    @State private var date = Date()
+    @State private var table = false
     private let light = [0x91A3ED, 0x6E85E3, 0x3E5ED7, 0x2345AA], dark = [0x4D5AA7, 0x6C7BC3, 0x8C9AD9, 0xB1BFF3]
     var cells: [HeatmapCell] {
         let selected = (try? SchoolTime.day(SchoolTime.dateString(date, zone: store.state.settings.timezone))) ?? date

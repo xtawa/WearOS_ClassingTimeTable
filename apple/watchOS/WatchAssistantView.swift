@@ -24,7 +24,8 @@ struct WatchAssistantView: View {
 }
 struct WatchSettings: View {
     @EnvironmentObject var store: AppStore
-    @State private var raw = "", importing = false
+    @State private var raw = ""
+    @State private var importing = false
     var body: some View {
         List {
             NavigationLink(store.signedIn ? "账号信息" : "登录账号") { WatchLoginView() }
@@ -46,7 +47,11 @@ struct WatchSettings: View {
 }
 struct WatchLoginView: View {
     @EnvironmentObject var store: AppStore
-    @State private var authorization: JSONValue = .null, identifier = "", password = "", consent = false, busy = false
+    @State private var authorization: JSONValue = .null
+    @State private var identifier = ""
+    @State private var password = ""
+    @State private var consent = false
+    @State private var busy = false
     var body: some View {
         List {
             if store.signedIn { Text(store.account["username"].string); Text(store.account["email"].string); Text(store.membership["accountType"].string); Button("退出登录", role: .destructive) { Task { await store.logout() } } }

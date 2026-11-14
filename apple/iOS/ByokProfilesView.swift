@@ -2,7 +2,10 @@ import SwiftUI
 import ClassingCore
 struct ByokProfilesView: View {
     @EnvironmentObject var store: AppStore
-    @State private var editor: ByokProfile?, deleting: String?, confirmDelete = false, confirmWatch = false
+    @State private var editor: ByokProfile?
+    @State private var deleting: String?
+    @State private var confirmDelete = false
+    @State private var confirmWatch = false
     var body: some View {
         Form {
             Toggle("使用 BYOK 助手", isOn: Binding(get: { store.byok.enabled }, set: { value in var c = store.byok; c.enabled = value; save(c) }))
@@ -29,7 +32,8 @@ struct ByokProfileEditor: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) var dismiss
     @State var profile: ByokProfile
-    @State private var key = "", busy = false
+    @State private var key = ""
+    @State private var busy = false
     var body: some View {
         Form { TextField("配置名称", text: $profile.name); Picker("用途", selection: $profile.role) { Text("问答").tag("CHAT"); Text("识图").tag("VISION"); Text("转写").tag("TRANSCRIPTION"); Text("朗读").tag("SPEECH") }; TextField("HTTPS API 根地址", text: $profile.baseUrl).textInputAutocapitalization(.never).autocorrectionDisabled(); TextField("模型 ID", text: $profile.model).textInputAutocapitalization(.never).autocorrectionDisabled(); SecureField("API Key（留空保留原密钥）", text: $key); if profile.role == "SPEECH" { TextField("音色，如 alloy", text: $profile.voice) }; Text("接口为 OpenAI-compatible 的 chat/completions、audio/transcriptions、audio/speech。根地址通常包含 /v1。").font(.caption).foregroundStyle(.secondary) }.navigationTitle("模型配置").toolbar { ToolbarItem(placement: .confirmationAction) { Button("保存") { save() }.disabled(busy) }; ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } } }.onDisappear { key = "" }
     }

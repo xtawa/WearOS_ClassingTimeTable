@@ -38,7 +38,9 @@ import ClassingCore
 struct CalendarSettingsView: View {
     @EnvironmentObject var store: AppStore
     @ObservedObject var bridge = CalendarBridge.shared
-    @State private var selected = "", draft: ImportDraft?, confirm = false
+    @State private var selected = ""
+    @State private var draft: ImportDraft?
+    @State private var confirm = false
     var body: some View {
         Form {
             Button("授权并读取系统日历") { Task { do { try await bridge.authorize() } catch { store.error = error.localizedDescription } } }

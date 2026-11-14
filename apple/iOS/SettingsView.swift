@@ -15,7 +15,8 @@ struct SettingsView: View {
 }
 struct AppearanceSettingsView: View {
     @EnvironmentObject var store: AppStore
-    @State private var semester = "", zone = ""
+    @State private var semester = ""
+    @State private var zone = ""
     var body: some View {
         Form {
             Section("学期") { TextField("第一周开始 YYYY-MM-DD", text: $semester); TextField("课表 IANA 时区", text: $zone).autocorrectionDisabled().textInputAutocapitalization(.never); Picker("每周开始日", selection: string("weekStartDay")) { ForEach(SchoolTime.weekdays, id: \.self) { Text($0).tag($0) } }; Picker("周次模式", selection: string("weekNumberMode")) { Text("学期周").tag("SEMESTER"); Text("自然周").tag("NATURAL") }; Toggle("显示周末", isOn: boolean("showWeekend")) }
@@ -46,7 +47,8 @@ struct NotificationSettingsView: View {
 }
 struct CloudSettingsView: View {
     @EnvironmentObject var store: AppStore
-    @State private var password = "", busy = false
+    @State private var password = ""
+    @State private var busy = false
     var body: some View {
         Form {
             Toggle("启用云同步", isOn: Binding(get: { store.state.settings["cloudSyncEnabled"].bool }, set: { store.setting("cloudSyncEnabled", .bool($0)) }))
@@ -69,7 +71,11 @@ struct WatchSettingsView: View {
 }
 struct BackupView: View {
     @EnvironmentObject var store: AppStore
-    @State private var file: ExportDocument?, export = false, format = "json", restore: ScheduleSnapshot?, confirm = false
+    @State private var file: ExportDocument?
+    @State private var export = false
+    @State private var format = "json"
+    @State private var restore: ScheduleSnapshot?
+    @State private var confirm = false
     var body: some View {
         List {
             Section("导出") { Picker("格式", selection: $format) { Text("完整 JSON 备份").tag("json"); Text("ICS（未来一年）").tag("ics") }; Button("导出文件") { do { let data: Data; if format == "json" { var s = store.state; s.cloud = CloudDocument(); data = try Wire.encoder.encode(s) } else { let from = SchoolTime.dateString(store.now, zone: store.state.settings.timezone), to = SchoolTime.dateString(SchoolTime.addDays(try SchoolTime.day(from), 366), zone: "UTC"); data = Data(try ICS.export(store.state, from: from, through: to).utf8) }; file = ExportDocument(data: data); export = true } catch { store.error = error.localizedDescription } } }

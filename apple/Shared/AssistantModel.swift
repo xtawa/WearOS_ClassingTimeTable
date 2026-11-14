@@ -8,9 +8,20 @@ struct ChatMessage: Codable, Identifiable, Equatable {
 }
 struct PendingAttachment: Identifiable { var id: String, name: String, mime: String; var data: Data? }
 @MainActor final class AssistantModel: ObservableObject {
-    @Published var messages: [ChatMessage] = [], conversations: [JSONValue] = [], models: [JSONValue] = [], prompts: [String] = []
-    @Published var draft = "", model = "", busy = false, conversationId: String?, usage: JSONValue = .null, preferences: JSONValue = .null
-    @Published var attachments: [PendingAttachment] = [], courseProposal: JSONValue?, examProposal: JSONValue?, expected: AppState?
+    @Published var messages: [ChatMessage] = []
+    @Published var conversations: [JSONValue] = []
+    @Published var models: [JSONValue] = []
+    @Published var prompts: [String] = []
+    @Published var draft = ""
+    @Published var model = ""
+    @Published var busy = false
+    @Published var conversationId: String?
+    @Published var usage: JSONValue = .null
+    @Published var preferences: JSONValue = .null
+    @Published var attachments: [PendingAttachment] = []
+    @Published var courseProposal: JSONValue?
+    @Published var examProposal: JSONValue?
+    @Published var expected: AppState?
     var task: Task<Void, Never>?
     private var store: AppStore?
     private var context = ""
