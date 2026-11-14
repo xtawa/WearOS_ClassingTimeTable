@@ -20,7 +20,7 @@ struct CourseProvider: TimelineProvider {
         let s = state ?? ((try? SharedDisk.load()) ?? AppState())
         if s.settings["academicMode"].string == "EXAM", let e = s.exams.filter({ !$0.completed && $0.end > date }).sorted(by: { $0.startAt < $1.startAt }).first { return CourseEntry(date: date, title: e.title, location: e.location, start: e.start, end: e.end, following: "考试", exam: true, timezone: e.timezone) }
         let upcoming = (try? ScheduleProjector.upcoming(s, now: date)) ?? []
-        guard let o = upcoming.first else { return CourseEntry(date: date, title: "暂时没有课程", location: "享受自由时间", following: "", exam: false) }
+        guard let o = upcoming.first else { return CourseEntry(date: date, title: "暂时没有课程", location: "享受自由时间", start: nil, end: nil, following: "", exam: false, timezone: s.settings.timezone) }
         return CourseEntry(date: date, title: o.title, location: o.location ?? "", start: o.start, end: o.end, following: upcoming.dropFirst().first?.title ?? "", exam: false, timezone: s.settings.timezone)
     }
 }

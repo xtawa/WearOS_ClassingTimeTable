@@ -64,7 +64,7 @@ node --test apple/Preview/projection.test.mjs
 `.github/workflows/apple-ci.yml` 配置两个 job：
 
 1. `preview`：语法/配置校验、浏览器数据契约与 Playwright 测试。
-2. `native`：`macos-26` runner、Xcode 26+、Swift 核心测试、XcodeGen 工程生成、iOS/watchOS/两个组件 target 编译、iPhone UI 测试与 iPhone/Watch 截图。
+2. `native`：`macos-26` runner、Xcode 26+、Swift 核心测试、XcodeGen 工程生成、iOS/watchOS/两个组件 target 编译、真机 Release 归档及未签名 IPA、iPhone UI 测试与 iPhone/Watch 截图。
 
 触发条件为 main 上的 Apple 文件变更、相关 PR 或手动 `workflow_dispatch`。可以用 repository variable `APPLE_XCODE_PATH` 指定完整 Developer 路径，例如 `/Applications/Xcode_26.2.app/Contents/Developer`；默认使用 runner 的 Xcode。
 
@@ -72,8 +72,20 @@ node --test apple/Preview/projection.test.mjs
 
 - `apple-browser-preview-and-tests`：浏览器截图、报告、失败 trace。
 - `apple-native-simulator-builds`：模拟器 `.app`、PNG 截图、`.xcresult` 与 UI 测试附件。
+- `apple-unsigned-iphone-watch-ipa`：真机 Release 构建的 `Classing-unsigned.ipa`。
 
-**本次没有提交、push 或触发 GitHub Actions，因此尚无本次原生 CI 成功结果。** 本地没有启动 macOS 虚拟机。GitHub 托管的 macOS runner 承担 Apple SDK 编译。
+GitHub 托管的 macOS runner 承担 Apple SDK 编译；最新运行状态和产物以 Actions 页面为准。
+
+IPA 通过现有 XcodeGen embed 依赖包含 iPhone、Watch 及两端 Widget 扩展：
+
+```text
+Payload/Classing.app/
+  PlugIns/ClassingWidgets.appex/
+  Watch/ClassingWatch.app/
+    PlugIns/ClassingWatchWidgets.appex/
+```
+
+工作流关闭代码签名并直接将归档中的设备 App 打包，无需 Apple 账号或签名密钥。未签名 IPA 不能直接安装；安装前须为主 App、Watch App 和扩展分别签名并匹配 provisioning profiles、App Group 及 companion 关系。模拟器产物单独保留，不用于 IPA。
 
 ## Mac / Xcode
 

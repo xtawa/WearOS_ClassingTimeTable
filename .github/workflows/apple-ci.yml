@@ -73,6 +73,29 @@ jobs:
           xcodebuild -project apple/Classing.xcodeproj -scheme ClassingWatch
           -configuration Debug -destination 'generic/platform=watchOS Simulator'
           -derivedDataPath apple/build/watch CODE_SIGNING_ALLOWED=NO build
+      - name: Archive iPhone app with embedded Apple Watch app (unsigned devices)
+        run: >-
+          xcodebuild -project apple/Classing.xcodeproj -scheme Classing
+          -configuration Release -destination 'generic/platform=iOS'
+          -derivedDataPath apple/build/device
+          -archivePath apple/build/Classing.xcarchive
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
+      - name: Package unsigned iPhone and Watch IPA
+        run: |
+          APP=apple/build/Classing.xcarchive/Products/Applications/Classing.app
+          test -d "$APP/Watch/ClassingWatch.app"
+          test -d "$APP/PlugIns/ClassingWidgets.appex"
+          test -d "$APP/Watch/ClassingWatch.app/PlugIns/ClassingWatchWidgets.appex"
+          mkdir -p apple/build/ipa/Payload apple/build/artifacts
+          ditto "$APP" apple/build/ipa/Payload/Classing.app
+          cd apple/build/ipa
+          ditto -c -k --keepParent Payload ../artifacts/Classing-unsigned.ipa
+      - name: Upload unsigned iPhone and Watch IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-unsigned-iphone-watch-ipa
+          path: apple/build/artifacts/Classing-unsigned.ipa
+          if-no-files-found: error
       - name: Native UI tests and screenshots
         run: bash apple/scripts/native-preview.sh
       - name: Upload native simulator apps and test results
@@ -92,4 +115,6 @@ jobs:
           echo '## Apple validation' >> "$GITHUB_STEP_SUMMARY"
           echo '- Swift core tests, iOS/watchOS simulator builds and native UI tests run on this macOS runner.' >> "$GITHUB_STEP_SUMMARY"
           echo '- Download apple-native-simulator-builds for PNG previews and .xcresult diagnostics.' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Simulator .app bundles are unsigned. They are not an IPA and cannot be installed on a physical iPhone.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Download apple-unsigned-iphone-watch-ipa for Classing-unsigned.ipa: the device iPhone app with its embedded Apple Watch app and both widget extensions.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- The IPA is unsigned and must be signed with matching provisioning profiles for the phone app, Watch app and extensions before physical-device installation.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Simulator .app bundles remain separate from the device IPA.' >> "$GITHUB_STEP_SUMMARY"
