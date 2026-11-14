@@ -1,0 +1,3 @@
+tree-sitter==0.26.1
+tree-sitter-swift==0.7.4
+PyYAML==6.0.2

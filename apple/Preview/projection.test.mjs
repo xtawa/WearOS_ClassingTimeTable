@@ -1,0 +1,12 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { project, conflicts, matchesRule, parseDraft, validateLesson, weekStart } from './projection.mjs';
+const fixture=JSON.parse(await readFile(new URL('../Fixtures/demo.json',import.meta.url),'utf8'));
+test('shared fixture projects Monday and applies changed location',()=>{const rows=project(fixture,'2026-11-16');assert.equal(rows.length,2);assert.equal(rows[0].title,'交互设计');assert.equal(rows[1].location,'教学楼 B305');assert.equal(rows[1].source,'REGULAR');});
+test('cancelled regular lesson stays cancelled',()=>{const s=structuredClone(fixture);s.exceptions.push({id:'cancel',lessonId:'demo-design',type:'CANCEL',date:'2026-11-16'});assert.equal(project(s,'2026-11-16').length,1);});
+test('empty scenario and conflict scenario',()=>{const s=structuredClone(fixture);s.lessons.push({...s.lessons[0],id:'conflict',startMinute:630,endMinute:720});assert.equal(conflicts(project(s,'2026-11-16')).length,1);s.lessons=[];s.exceptions=[];assert.deepEqual(project(s,'2026-11-16'),[]);});
+test('rotation holidays pause pointer',()=>{const r={kind:'ROTATION',anchorDate:'2026-09-07',endDate:'2026-09-30',schoolDays:[1,2,3,4,5],cycleLength:3,cycleDays:[1],holidays:['2026-09-08'],advanceOnHolidays:false};assert.equal(matchesRule(r,'2026-09-11',1),true);r.advanceOnHolidays=true;assert.equal(matchesRule(r,'2026-09-11',1),false);});
+test('week start and exact-date rules',()=>{assert.equal(weekStart('2026-09-09'), '2026-09-07');assert.equal(matchesRule({kind:'DATES',anchorDate:'2026-09-07',endDate:'2026-09-30',dates:['2026-09-10']},'2026-09-10',1),true);});
+test('JSON and TSV imports validate, not silently normalize',()=>{assert.equal(parseDraft('数学\t2\t08:00\t09:30')[0].startMinute,480);assert.equal(parseDraft(JSON.stringify(fixture)).length,6);assert.throws(()=>parseDraft('数学\t2\t10:00\t09:30'));assert.throws(()=>parseDraft('{invalid'));assert.throws(()=>validateLesson({...fixture.lessons[0],dayOfWeek:8}));});
+test('fixture is explicitly synthetic and has no credential fields',()=>{assert.ok(fixture.lessons.every(l=>l.id.startsWith('demo-')));const keys=JSON.stringify(fixture);for(const secret of ['accessToken','refreshToken','apiKey','password'])assert.equal(keys.includes(secret),false);});

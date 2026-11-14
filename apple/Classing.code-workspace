@@ -1,0 +1,74 @@
+{
+  "folders": [
+    {
+      "name": "ClassingCore · Windows Swift",
+      "path": "ClassingCore"
+    },
+    {
+      "name": "iOS · SwiftUI",
+      "path": "iOS"
+    },
+    {
+      "name": "watchOS · SwiftUI",
+      "path": "watchOS"
+    },
+    {
+      "name": "Shared Apple services",
+      "path": "Shared"
+    },
+    {
+      "name": "Browser preview",
+      "path": "Preview"
+    }
+  ],
+  "extensions": {
+    "recommendations": [
+      "swiftlang.swift-vscode",
+      "llvm-vs-code-extensions.lldb-dap"
+    ]
+  },
+  "settings": {
+    "files.exclude": {
+      "**/.build": true,
+      "**/.tools": true,
+      "**/node_modules": true
+    },
+    "swift.path": "${workspaceFolder:ClassingCore · Windows Swift}/../.tools/Swift/Toolchains/6.4.2+NoAsserts/usr/bin"
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Apple: Windows UI preview",
+        "type": "shell",
+        "command": "node",
+        "args": [
+          "${workspaceFolder:Browser preview}/server.mjs"
+        ],
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "Apple: Portable Swift tests",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "-NoProfile",
+          "-File",
+          "${workspaceFolder:ClassingCore · Windows Swift}/../scripts/test-windows.ps1"
+        ],
+        "problemMatcher": []
+      },
+      {
+        "label": "Apple: Preview contract tests",
+        "type": "shell",
+        "command": "node",
+        "args": [
+          "--test",
+          "${workspaceFolder:Browser preview}/projection.test.mjs"
+        ],
+        "problemMatcher": []
+      }
+    ]
+  }
+}

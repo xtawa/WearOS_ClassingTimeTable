@@ -3,4 +3,5 @@
     <exclude domain="sharedpref" path="mobile_auth_credentials.xml" />
     <exclude domain="sharedpref" path="mobile_cloud_credentials.xml" />
     <exclude domain="sharedpref" path="mobile_cloud_sync_v2_state.xml" />
+    <exclude domain="sharedpref" path="classing_byok_private.xml" />
 </full-backup-content>

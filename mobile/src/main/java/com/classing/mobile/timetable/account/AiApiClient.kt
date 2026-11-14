@@ -36,6 +36,7 @@ data class AiUsageSummary(
     val transcriptionPoints: Int = 0,
     val suggestionPoints: Int = 0,
     val transcriptionSeconds: Int = 0,
+    val mode: String = "INHERIT",
 )
 
 data class AiModelOption(val id: String, val name: String, val description: String)
@@ -75,6 +76,7 @@ class AiApiClient(
             body.optJSONObject("helpers")?.optInt("transcriptionPoints") ?: 0,
             body.optJSONObject("helpers")?.optInt("suggestionPoints") ?: 0,
             body.optJSONObject("helpers")?.optInt("transcriptionSeconds") ?: 0,
+            usage.optString("mode", "INHERIT"),
         )
     }
 

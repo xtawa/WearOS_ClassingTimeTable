@@ -1,0 +1,1 @@
+{"name":"classing-apple-preview","private":true,"type":"module","scripts":{"start":"node server.mjs","test:contracts":"node --test projection.test.mjs","test:e2e":"playwright test"},"devDependencies":{"@playwright/test":"1.56.1"}}

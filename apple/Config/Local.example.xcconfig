@@ -1,0 +1,8 @@
+// Optional local developer settings. No secrets belong in this file.
+// Copy Config/Local.example.xcconfig to Config/Local.xcconfig on your Mac.
+DEVELOPMENT_TEAM =
+// Xcode xcconfig uses // for comments, so split the HTTPS URL with an empty expansion.
+CLASSING_API_BASE_URL = https:/$()/api-classing.underflo.ink
+GOOGLE_DRIVE_CLIENT_ID =
+GOOGLE_DRIVE_REDIRECT_URI =
+GOOGLE_DRIVE_CALLBACK_SCHEME = classing-google

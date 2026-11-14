@@ -26,6 +26,8 @@ import kotlinx.coroutines.isActive
 @Composable
 internal fun HomeScreen(
     contentPadding: PaddingValues,
+    scheduleDisplay: com.xtawa.classingtime.ui.theme.ScheduleDisplay = com.xtawa.classingtime.ui.theme.ScheduleDisplay.Focus,
+    weekStartDay: java.time.DayOfWeek = java.time.DayOfWeek.MONDAY,
     lessonsForDate: (LocalDate) -> List<LessonUi>,
     hasImportedSchedule: Boolean,
     prompts: List<String> = emptyList(),
@@ -64,8 +66,17 @@ internal fun HomeScreen(
     val exams by remember { ExamStore.observe(context) }.collectAsState(initial = ExamStore.load(context))
     Column(Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding())) {
         AcademicModeSwitch(mode, { mode = it; ExamStore.setMode(context, it); com.xtawa.classingtime.widget.NextClassWidget.refresh(context) }, Modifier.align(Alignment.CenterHorizontally))
-        if (mode == AcademicMode.EXAM) ExamPanel(exams, onSave = { ExamStore.save(context, it) },
-            onAsk = { onOpenAskClassing(if (java.util.Locale.getDefault().language == "zh") "我的下一场考试是什么？" else "What is my next exam?") }, modifier = Modifier.weight(1f))
+        if (mode == AcademicMode.EXAM) HomeExamContent(exams, onSave = { ExamStore.save(context, it) },
+            onAsk = { onOpenAskClassing(if (java.util.Locale.getDefault().language == "zh") "我的下一场考试是什么？" else "What is my next exam?") },
+            onSettings = onOpenSettings, modifier = Modifier.weight(1f))
+        else if (scheduleDisplay == com.xtawa.classingtime.ui.theme.ScheduleDisplay.Dense)
+            com.xtawa.classingtime.ui.timetable.DenseTimetableContent(lessonsForDate, firstDay = weekStartDay,
+                onOpenLesson = { lesson, date ->
+                    onCourseClick(HomeCourseUiModel(id = "${lesson.id}@$date@${lesson.startTime}", sourceLessonId = lesson.id, date = date, title = lesson.title,
+                        teacher = lesson.teacher, location = lesson.location, startTime = lesson.startTime, endTime = lesson.endTime,
+                        accent = com.xtawa.classingtime.ui.theme.classingCourseAccent(lesson.title)))
+                }, actions = { androidx.compose.material3.TextButton(onClick = onOpenSettings) { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.xtawa.classingtime.R.string.home_open_settings)) } },
+                onAsk = { onOpenAskClassing(if (java.util.Locale.getDefault().language == "zh") "这周有哪些课程？" else "What are my classes this week?") }, modifier = Modifier.weight(1f))
         else HomeContent(
         state = homeState,
         calendarEvents = calendarEvents,

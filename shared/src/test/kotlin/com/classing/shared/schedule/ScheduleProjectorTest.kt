@@ -10,6 +10,17 @@ class ScheduleProjectorTest {
     private val projector = ScheduleProjector()
 
     @Test
+    fun noteOnlyOverrideRetainsRegularSourceAndFollowingWeekMetadata() {
+        val date=LocalDate.of(2026,10,12)
+        val course=CourseRule("math","Math",DayOfWeek.MONDAY,LocalTime.of(9,0),LocalTime.of(10,0),1,20,note="Original")
+        val override=ScheduleExceptionRule.Reschedule("note","math",date,date,course.startTime,course.endTime,newNote="Bring calculator")
+        val input=ScheduleInput(date,courses=listOf(course),exceptions=listOf(override))
+        val changed=projector.project(input,date,date).single()
+        assertEquals(OccurrenceSource.REGULAR,changed.source);assertEquals("Bring calculator",changed.note)
+        assertEquals("Original",projector.project(input,date.plusWeeks(1),date.plusWeeks(1)).single().note)
+    }
+
+    @Test
     fun project_includesRescheduleWhoseOriginalDateIsOutsideWindow() {
         val monday = LocalDate.of(2026, 2, 23)
         val target = monday.plusWeeks(1).plusDays(2)

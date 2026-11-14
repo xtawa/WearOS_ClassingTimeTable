@@ -31,8 +31,9 @@ private fun AskAiSubpage(title: String, padding: PaddingValues, onBack: () -> Un
  }
 }
 @Composable
-internal fun AskAiPreferencesPage(padding: PaddingValues, preferences: AiPreferences, models: List<AiModelOption>, saving: Boolean, syncStatus: String, onBack: () -> Unit, onPatch: (JSONObject) -> Unit) {
+internal fun AskAiPreferencesPage(padding: PaddingValues, preferences: AiPreferences, models: List<AiModelOption>, saving: Boolean, syncStatus: String, onBack: () -> Unit, onPatch: (JSONObject) -> Unit, onOpenByok: () -> Unit = {}) {
  AskAiSubpage(stringResource(R.string.assistant_settings), padding, onBack) {
+  OutlinedButton(onClick = onOpenByok, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.byok_title) + " · Pro") }
   Text(stringResource(R.string.assistant_settings_sync), style = MaterialTheme.typography.bodyMedium)
   Text(syncStatus, color = MaterialTheme.colorScheme.onSurfaceVariant)
   var expanded by remember { mutableStateOf(false) }
@@ -72,13 +73,22 @@ internal fun AskAiUsagePage(padding: PaddingValues, usage: AiUsageSummary?, stat
  var code by rememberSaveable { mutableStateOf("") }
  var pendingCard by remember { mutableStateOf<String?>(null) }
  val canReset = !resetting && usage != null && usage.limit > 0 && usage.used > 0 && usage.reserved == 0
- val usedProgress by animateFloatAsState(targetValue = usage?.let { if (it.limit <= 0) 0f else ((it.used + it.reserved).toFloat() / it.limit).coerceIn(0f,1f) } ?: 0f, label = "quota-reset")
+
  AskAiSubpage(stringResource(R.string.assistant_usage_limits), padding, onBack) {
   usage?.let {
-   val remaining = if (it.limit < 0) -1 else (it.limit + it.creditAvailable - it.used - it.reserved).coerceAtLeast(0)
-   Text(if (remaining < 0) stringResource(R.string.account_ai_quota_unlimited) else stringResource(R.string.account_ai_quota_remaining, remaining, it.limit), style = MaterialTheme.typography.headlineSmall)
-   LinearProgressIndicator(progress = { usedProgress }, modifier = Modifier.fillMaxWidth())
-   Text(stringResource(R.string.account_ai_credit_balance, it.creditBalance))
+   val balance = com.classing.shared.ai.pointBalance(it.limit, it.used, it.reserved, it.creditAvailable, blocked = it.mode == "BLOCKED")
+   com.xtawa.classingtime.ui.components.ClassingInformationIsland {
+    Text(stringResource(R.string.ai_points_weekly), style = MaterialTheme.typography.labelLarge)
+    Text(if (balance.weeklyRemaining == null) stringResource(R.string.account_ai_quota_unlimited) else
+     stringResource(R.string.account_ai_quota_remaining, balance.weeklyRemaining ?: 0L, it.limit), style = MaterialTheme.typography.headlineSmall)
+    if (it.limit > 0) com.xtawa.classingtime.ui.components.ClassingBitsProgressBar(balance.weeklyProgress)
+    Text(stringResource(R.string.ai_points_breakdown, it.used, it.reserved), style = MaterialTheme.typography.bodySmall)
+   }
+   if(it.mode == "BLOCKED") Text(stringResource(R.string.ai_points_blocked),color=MaterialTheme.colorScheme.error)
+   Text(stringResource(R.string.ai_points_credits, it.creditBalance, balance.creditsAvailable))
+   balance.totalAvailable?.let { total -> Text(stringResource(R.string.ai_points_available, total), style = MaterialTheme.typography.titleMedium) }
+   Text(stringResource(R.string.ai_points_explanation), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+   Text(stringResource(R.string.ai_points_chat_cost), style = MaterialTheme.typography.bodySmall)
    if (it.creditFrozen) Text(stringResource(R.string.account_ai_credit_frozen), color = MaterialTheme.colorScheme.error)
    if (!it.isMember) Text(stringResource(R.string.account_ai_free_quota_hint))
    Text(stringResource(R.string.account_ai_quota_reset, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it.resetAt))))

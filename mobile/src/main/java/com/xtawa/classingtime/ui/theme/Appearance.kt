@@ -19,7 +19,15 @@ internal enum class ClassingThemeMode {
 internal data class ClassingAppearanceState(
     val themeMode: ClassingThemeMode = ClassingThemeMode.System,
     val dynamicColor: Boolean = false,
+    val scheduleDisplay: ScheduleDisplay = ScheduleDisplay.Focus,
 )
+
+internal enum class ScheduleDisplay {
+    Focus, Dense;
+    companion object {
+        fun fromRaw(raw: String?): ScheduleDisplay = entries.firstOrNull { it.name == raw } ?: Focus
+    }
+}
 
 internal object ClassingAppearanceStore {
     private const val PrefsName = "classing_appearance"
@@ -31,6 +39,7 @@ internal object ClassingAppearanceStore {
         return ClassingAppearanceState(
             themeMode = ClassingThemeMode.fromRaw(preferences.getString(ThemeModeKey, null)),
             dynamicColor = preferences.getBoolean(DynamicColorKey, false),
+            scheduleDisplay = ScheduleDisplay.fromRaw(preferences.getString("schedule_display", null)),
         )
     }
 
@@ -39,6 +48,7 @@ internal object ClassingAppearanceStore {
             .edit()
             .putString(ThemeModeKey, state.themeMode.name)
             .putBoolean(DynamicColorKey, state.dynamicColor)
+            .putString("schedule_display", state.scheduleDisplay.name)
             .apply()
     }
 }

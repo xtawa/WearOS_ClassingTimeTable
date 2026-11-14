@@ -260,6 +260,9 @@ internal fun MobileTimetableScreen(
     var wearSyncMode by remember { mutableStateOf(WearSyncMode.AUTO) }
     var showOnboarding by remember { mutableStateOf(false) }
     var onboardingImportFocusMethod by remember { mutableStateOf<ImportFocusMethod?>(null) }
+    var onboardingLogin by remember { mutableStateOf(false) }
+    var onboardingAuthReady by remember { mutableStateOf(false) }
+
     var cloudProvider by remember { mutableStateOf(CloudProviderUi.WEBDAV) }
     var cloudSyncEnabled by remember { mutableStateOf(false) }
     var cloudServerUrl by remember { mutableStateOf("") }
@@ -359,6 +362,10 @@ internal fun MobileTimetableScreen(
     }
 
     fun handleBackNavigation(): Boolean {
+        if (showOnboarding && onboardingLogin && settingsPageName == SettingsPage.Account.name) {
+            if (!accountBusy) onboardingLogin = false
+            return true
+        }
         val current = MobileBackState(
             layer = MobileLayer.entries.firstOrNull { it.name == layerName } ?: MobileLayer.Dashboard,
             scheduleSubview = ScheduleSubview.entries.firstOrNull { it.name == scheduleSubviewName } ?: ScheduleSubview.Timetable,
@@ -1291,8 +1298,476 @@ internal fun MobileTimetableScreen(
         }
         return
     }
+    val renderAccountPages: @Composable (SettingsPage, PaddingValues) -> Unit = { page, innerPadding ->
+        when (page) {
+                SettingsPage.Account -> AccountSettingsPage(
+                    contentPadding = innerPadding,
+                    accountSummary = accountSummary,
+                    membershipSummary = membershipSummary,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    pendingEmailChange = pendingEmailChange,
+                    loginLockSeconds = loginLockSeconds,
+                    legalAgreementUrls = legalAgreementUrls,
+                    onBack = {
+                        handleBackNavigation()
+                    },
+                    onLogin = { identifier, password ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val session = accountApiClient.login(identifier, password)
+                                if (session.isSuccess) {
+                                    val auth = session.getOrThrow()
+                                    AuthCredentialStore.saveSession(
+                                        context,
+                                        auth.accessToken,
+                                        auth.refreshToken,
+                                        auth.accessExpiresAt,
+                                        auth.refreshExpiresAt,
+                                    )
+                                    refreshAccountProfile(showStatus = true)
+                                    persistSettings()
+                                    requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+                                    if (showOnboarding && accountSummary.userId.isNotBlank()) {
+                                        onboardingAuthReady = true
+                                        onboardingLogin = false
+                                    }
+                                } else {
+                                    val error = session.exceptionOrNull() as? AccountApiException
+                                    if (error?.errorCode == "AUTH_LOGIN_LOCKED") {
+                                        loginLockSeconds = error.retryAfterSeconds.takeIf { it > 0 } ?: 900
+                                    }
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        session.exceptionOrNull(),
+                                        R.string.account_error_login_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onLogout = {
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                // Refreshes the short-lived access token first so the server
+                                // actually revokes the session, then clears local credentials.
+                                AccountSessionManager.logout(context, accountApiClient)
+                                accountSummary = AccountSummary()
+                                membershipSummary = MembershipSummary()
+                                pendingEmailChange = null
+                                accountStatusMessage = context.getString(R.string.account_logged_out)
+                                persistSettings()
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onOpenDeleteAccount = { openSettingsPage(SettingsPage.AccountDelete) },
+                    onRefresh = {
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                refreshAccountProfile(showStatus = true)
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onRedeem = { code ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = context.getString(R.string.account_login_required_redeem)
+                                } else {
+                                    val redeemed = accountApiClient.redeemCode(accessToken, code)
+                                    if (redeemed.isSuccess) {
+                                        refreshAccountProfile(showStatus = true)
+                                        if (cloudProvider == CloudProviderUi.OFFICIAL) {
+                                            requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED, force = true)
+                                        }
+                                    } else {
+                                        accountStatusMessage = accountErrorMessage(
+                                            context,
+                                            redeemed.exceptionOrNull(),
+                                            R.string.account_redeem_failed,
+                                        )
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onOpenRegister = {
+                        accountStatusMessage = ""
+                        registrationChallengeId = ""
+                        openSettingsPage(SettingsPage.AccountRegister)
+                    },
+                    onOpenPasswordReset = {
+                        accountStatusMessage = ""
+                        openSettingsPage(SettingsPage.AccountPasswordReset)
+                    },
+                    onOpenEmailChange = {
+                        accountStatusMessage = ""
+                        emailChangeVerificationFailures = 0
+                        openSettingsPage(SettingsPage.AccountEmailChange)
+                    },
+                    onApproveWearLogin = { authorizationId ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
+                                } else {
+                                    val result = accountApiClient.approveWearDeviceLogin(
+                                        accessToken = accessToken,
+                                        authorizationId = authorizationId,
+                                        debug = devModeEnabled,
+                                    )
+                                    accountStatusMessage = if (result.isSuccess) {
+                                        val approval = result.getOrThrow()
+                                        val finalDebug = if (devModeEnabled) {
+                                            val statusResult = accountApiClient.awaitWearDeviceLoginDebug(accessToken, authorizationId)
+                                            statusResult.getOrNull()
+                                                ?: (statusResult.exceptionOrNull() as? AccountApiException)?.debugInfo
+                                                ?: approval.debug
+                                        } else {
+                                            approval.debug
+                                        }
+                                        wearLoginDebugMessage(
+                                            context.getString(R.string.account_wear_qr_approved),
+                                            devModeEnabled,
+                                            finalDebug,
+                                        )
+                                    } else {
+                                        val error = result.exceptionOrNull()
+                                        wearLoginDebugMessage(
+                                            accountErrorMessage(
+                                                context,
+                                                error,
+                                                R.string.account_wear_qr_approve_failed,
+                                            ),
+                                            devModeEnabled,
+                                            (error as? AccountApiException)?.debugInfo,
+                                        )
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.AccountDelete -> AccountDeletePage(
+                    contentPadding = innerPadding, busy = accountBusy, statusMessage = accountStatusMessage,
+                    onBack = { handleBackNavigation() },
+                    onDeleteAccount = { currentPassword, confirm ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                if (accessToken == null) {
+                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
+                                } else {
+                                    val result = accountApiClient.deleteAccount(accessToken, currentPassword, confirm)
+                                    if (result.isSuccess) {
+                                        AuthCredentialStore.clear(context)
+                                        accountSummary = AccountSummary()
+                                        membershipSummary = MembershipSummary()
+                                        pendingEmailChange = null
+                                        emailChangeRequestId = ""
+                                        accountStatusMessage = context.getString(R.string.account_delete_success)
+                                        persistSettings()
+                                    } else {
+                                        accountStatusMessage = accountErrorMessage(
+                                            context,
+                                            result.exceptionOrNull(),
+                                            R.string.account_delete_failed,
+                                        )
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.AccountEmailChange -> AccountEmailChangePage(
+                    contentPadding = innerPadding,
+                    username = accountSummary.username,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    requestId = emailChangeRequestId,
+                    verificationLocked = emailChangeVerificationFailures >= 10,
+                    onBack = { handleBackNavigation() },
+                    onRequest = { newEmail, currentPassword ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                if (newEmail.trim().equals(accountSummary.email.trim(), ignoreCase = true)) {
+                                    accountStatusMessage = context.getString(R.string.account_error_email_unchanged)
+                                    return@launch
+                                }
+                                val accessToken = ensureAccessToken()
+                                val result = if (accessToken == null) null else accountApiClient.requestEmailChange(
+                                    accessToken = accessToken,
+                                    username = accountSummary.username,
+                                    email = newEmail,
+                                    currentPassword = currentPassword,
+                                )
+                                if (result?.isSuccess == true) {
+                                    val request = result.getOrThrow()
+                                    emailChangeRequestId = request.requestId
+                                    emailChangeVerificationFailures = 0
+                                    pendingEmailChange = PendingEmailChange(newEmail.trim(), request.expiresAt)
+                                    accountStatusMessage = context.getString(R.string.account_email_change_sent)
+                                } else {
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        result?.exceptionOrNull(),
+                                        R.string.account_verification_send_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onConfirm = { code ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val accessToken = ensureAccessToken()
+                                val result = if (accessToken == null) null else accountApiClient.confirmEmailChange(
+                                    accessToken,
+                                    emailChangeRequestId,
+                                    code,
+                                )
+                                if (result?.isSuccess == true) {
+                                    AuthCredentialStore.clear(context)
+                                    accountSummary = AccountSummary()
+                                    membershipSummary = MembershipSummary()
+                                    pendingEmailChange = null
+                                    emailChangeRequestId = ""
+                                    accountStatusMessage = context.getString(R.string.account_email_change_success)
+                                    persistSettings()
+                                    openSettingsPage(SettingsPage.Account)
+                                } else {
+                                    val error = result?.exceptionOrNull()
+                                    if ((error as? AccountApiException)?.errorCode == "ACCOUNT_EMAIL_VERIFICATION_INVALID") {
+                                        emailChangeVerificationFailures += 1
+                                    }
+                                    accountStatusMessage = if (emailChangeVerificationFailures >= 10) {
+                                        context.getString(R.string.account_verification_locked)
+                                    } else {
+                                        accountErrorMessage(context, error, R.string.account_verification_invalid)
+                                    }
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.AccountRegister -> AccountRegisterPage(
+                    contentPadding = innerPadding,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    challengeId = registrationChallengeId,
+                    legalAgreementUrls = legalAgreementUrls,
+                    onBack = { handleBackNavigation() },
+                    onReloadSecurityConfig = { registrationConfigRevision++ },
+                    onRequestVerification = { username, email, password ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val security = accountApiClient.registrationSecurityConfig().getOrElse {
+                                    accountStatusMessage = context.getString(R.string.account_registration_config_failed)
+                                    return@launch
+                                }
+                                legalAgreementUrls = security.legalAgreementUrls
+                                if (security.turnstileRequired) {
+                                    if (security.turnstileSiteKey.isBlank()) {
+                                        accountStatusMessage = context.getString(R.string.account_turnstile_unavailable)
+                                    } else {
+                                        registrationTurnstileSiteKey = security.turnstileSiteKey
+                                        pendingTurnstileRegistration = Triple(username, email, password)
+                                    }
+                                    return@launch
+                                }
+                                val challenge = accountApiClient.requestRegistrationVerification(username, email, password, "")
+                                if (challenge.isSuccess) {
+                                    registrationChallengeId = challenge.getOrThrow().challengeId
+                                    accountStatusMessage = context.getString(R.string.account_verification_sent)
+                                } else {
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        challenge.exceptionOrNull(),
+                                        R.string.account_verification_send_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onConfirmVerification = { code ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val session = accountApiClient.confirmRegistration(registrationChallengeId, code)
+                                if (session.isSuccess) {
+                                    val auth = session.getOrThrow()
+                                    AuthCredentialStore.saveSession(
+                                        context,
+                                        auth.accessToken,
+                                        auth.refreshToken,
+                                        auth.accessExpiresAt,
+                                        auth.refreshExpiresAt,
+                                    )
+                                    refreshAccountProfile(showStatus = true)
+                                    registrationChallengeId = ""
+                                    requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
+                                    if (showOnboarding && accountSummary.userId.isNotBlank()) {
+                                        onboardingAuthReady = true
+                                        onboardingLogin = false
+                                    }
+                                    openSettingsPage(SettingsPage.Account)
+                                } else {
+                                    accountStatusMessage = accountErrorMessage(
+                                        context,
+                                        session.exceptionOrNull(),
+                                        R.string.account_error_register_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+                SettingsPage.AccountPasswordReset -> AccountPasswordResetPage(
+                    contentPadding = innerPadding,
+                    initialEmail = accountSummary.email,
+                    statusMessage = accountStatusMessage,
+                    busy = accountBusy,
+                    onBack = { handleBackNavigation() },
+                    onRequestPasswordReset = { email ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val result = accountApiClient.requestPasswordReset(email)
+                                accountStatusMessage = if (result.isSuccess) {
+                                    context.getString(R.string.password_reset_request_sent)
+                                } else {
+                                    accountErrorMessage(
+                                        context,
+                                        result.exceptionOrNull(),
+                                        R.string.password_reset_request_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                    onConfirmPasswordReset = { token, newPassword ->
+                        coroutineScope.launch {
+                            accountBusy = true
+                            try {
+                                val result = accountApiClient.confirmPasswordReset(token, newPassword)
+                                accountStatusMessage = if (result.isSuccess) {
+                                    AuthCredentialStore.clear(context)
+                                    context.getString(R.string.password_reset_confirmed)
+                                } else {
+                                    accountErrorMessage(
+                                        context,
+                                        result.exceptionOrNull(),
+                                        R.string.password_reset_confirm_failed,
+                                    )
+                                }
+                            } finally {
+                                accountBusy = false
+                            }
+                        }
+                    },
+                )
+
+            else -> Unit
+        }
+    }
+    pendingTurnstileRegistration?.let { pending ->
+        TurnstileVerificationDialog(
+            siteKey = registrationTurnstileSiteKey,
+            onVerified = { token ->
+                if (pendingTurnstileRegistration == pending && !accountBusy) {
+                    pendingTurnstileRegistration = null
+                    accountBusy = true
+                    coroutineScope.launch {
+                        try {
+                            val challenge = accountApiClient.requestRegistrationVerification(
+                                pending.first,
+                                pending.second,
+                                pending.third,
+                                token,
+                            )
+                            if (challenge.isSuccess) {
+                                registrationChallengeId = challenge.getOrThrow().challengeId
+                                accountStatusMessage = context.getString(R.string.account_verification_sent)
+                            } else {
+                                accountStatusMessage = accountErrorMessage(
+                                    context,
+                                    challenge.exceptionOrNull(),
+                                    R.string.account_verification_send_failed,
+                                )
+                            }
+                        } finally {
+                            accountBusy = false
+                        }
+                    }
+                }
+            },
+            onDismiss = {
+                pendingTurnstileRegistration = null
+                accountBusy = false
+            },
+        )
+    }
+
     if (showOnboarding) {
         MobileOnboardingFlow(
+            authReady = onboardingAuthReady,
+            onRequestLogin = {
+                coroutineScope.launch {
+                    if (ensureAccessToken() != null && refreshAccountProfile(showStatus = false)) onboardingAuthReady = true
+                    else {
+                        onboardingAuthReady = false
+                        accountStatusMessage = context.getString(R.string.ai_import_login)
+                        settingsPageName = SettingsPage.Account.name
+                        onboardingLogin = true
+                    }
+                }
+            },
+            loginContent = if (onboardingLogin) ({
+                androidx.compose.ui.window.Dialog(onDismissRequest = { if (!accountBusy) onboardingLogin = false },
+                    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+                    androidx.compose.material3.Surface(modifier = Modifier.fillMaxSize()) {
+                        renderAccountPages(SettingsPage.entries.firstOrNull { it.name == settingsPageName } ?: SettingsPage.Account,
+                            PaddingValues(top = 24.dp, bottom = 24.dp))
+                    }
+                }
+            }) else null,
             initialShowWeekend = showWeekend,
             initialReminderEnabled = reminderEnabled,
             initialSemesterWeekStartDate = semesterWeekStartDate,
@@ -1838,39 +2313,12 @@ internal fun MobileTimetableScreen(
                     alpha = 1f - (0.08f * progress)
                 },
             transitionSpec = {
+                val enabled = android.animation.ValueAnimator.areAnimatorsEnabled()
                 when (resolveContentTransitionDirection(initialState, targetState)) {
-                    ContentTransitionDirection.Forward -> (
-                        slideInHorizontally(
-                            animationSpec = tween(ClassingMotion.ContentReveal),
-                            initialOffsetX = { fullWidth -> fullWidth / 4 },
-                        ) + fadeIn(animationSpec = tween(ClassingMotion.ContentReveal))
-                        ).togetherWith(
-                        slideOutHorizontally(
-                            animationSpec = tween(ClassingMotion.Exit),
-                            targetOffsetX = { fullWidth -> -(fullWidth / 6) },
-                        ) + fadeOut(animationSpec = tween(ClassingMotion.Exit)),
-                    )
-
-                    ContentTransitionDirection.Backward -> (
-                        slideInHorizontally(
-                            animationSpec = tween(ClassingMotion.ContentReveal),
-                            initialOffsetX = { fullWidth -> -(fullWidth / 4) },
-                        ) + fadeIn(animationSpec = tween(ClassingMotion.ContentReveal))
-                        ).togetherWith(
-                        slideOutHorizontally(
-                            animationSpec = tween(ClassingMotion.Exit),
-                            targetOffsetX = { fullWidth -> fullWidth / 6 },
-                        ) + fadeOut(animationSpec = tween(ClassingMotion.Exit)),
-                    )
-
-                    ContentTransitionDirection.None -> (
-                        fadeIn(animationSpec = tween(ClassingMotion.Micro))
-                        ).togetherWith(
-                        fadeOut(animationSpec = tween(ClassingMotion.Micro)),
-                    )
-                }.using(
-                    SizeTransform(clip = false),
-                )
+                    ContentTransitionDirection.Forward -> com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.horizontal(1, enabled)
+                    ContentTransitionDirection.Backward -> com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.horizontal(-1, enabled)
+                    ContentTransitionDirection.None -> com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(enabled)
+                }
             },
             label = "mobile_content_transition",
         ) { destination ->
@@ -1880,9 +2328,10 @@ internal fun MobileTimetableScreen(
                     ScheduleSubview.Timetable -> WeekBoardLayer(
                         contentPadding = innerPadding,
                         visibleDays = visibleDays,
+                        scheduleDisplay = appearanceState.scheduleDisplay,
                         lessonsForDate = ::lessonsForDate,
                         hasSchedule = baseLessons.isNotEmpty(),
-                        scheduleChangeCount = scheduleExceptions.size,
+                        scheduleChangeCount = scheduleExceptions.count { it.isScheduleChange(baseLessons) },
                         onBackToHome = { layerName = MobileLayer.Dashboard.name },
                         onOpenCalendar = { scheduleSubviewName = ScheduleSubview.Calendar.name },
                         onOpenHeatmap = { scheduleSubviewName = ScheduleSubview.Heatmap.name },
@@ -2002,6 +2451,8 @@ internal fun MobileTimetableScreen(
                 }
 
                 MobileLayer.Dashboard -> DashboardLayer(
+                    scheduleDisplay = appearanceState.scheduleDisplay,
+                    weekStartDay = weekStartDay,
                     prompts = homePrompts,
                     contentPadding = innerPadding,
                     lessons = displayLessons,
@@ -2295,401 +2746,8 @@ internal fun MobileTimetableScreen(
                     },
                 )
 
-                SettingsPage.Account -> AccountSettingsPage(
-                    contentPadding = innerPadding,
-                    accountSummary = accountSummary,
-                    membershipSummary = membershipSummary,
-                    statusMessage = accountStatusMessage,
-                    busy = accountBusy,
-                    pendingEmailChange = pendingEmailChange,
-                    loginLockSeconds = loginLockSeconds,
-                    legalAgreementUrls = legalAgreementUrls,
-                    onBack = {
-                        handleBackNavigation()
-                    },
-                    onLogin = { identifier, password ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val session = accountApiClient.login(identifier, password)
-                                if (session.isSuccess) {
-                                    val auth = session.getOrThrow()
-                                    AuthCredentialStore.saveSession(
-                                        context,
-                                        auth.accessToken,
-                                        auth.refreshToken,
-                                        auth.accessExpiresAt,
-                                        auth.refreshExpiresAt,
-                                    )
-                                    refreshAccountProfile(showStatus = true)
-                                    persistSettings()
-                                    requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
-                                } else {
-                                    val error = session.exceptionOrNull() as? AccountApiException
-                                    if (error?.errorCode == "AUTH_LOGIN_LOCKED") {
-                                        loginLockSeconds = error.retryAfterSeconds.takeIf { it > 0 } ?: 900
-                                    }
-                                    accountStatusMessage = accountErrorMessage(
-                                        context,
-                                        session.exceptionOrNull(),
-                                        R.string.account_error_login_failed,
-                                    )
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onLogout = {
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                // Refreshes the short-lived access token first so the server
-                                // actually revokes the session, then clears local credentials.
-                                AccountSessionManager.logout(context, accountApiClient)
-                                accountSummary = AccountSummary()
-                                membershipSummary = MembershipSummary()
-                                pendingEmailChange = null
-                                accountStatusMessage = context.getString(R.string.account_logged_out)
-                                persistSettings()
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onOpenDeleteAccount = { openSettingsPage(SettingsPage.AccountDelete) },
-                    onRefresh = {
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                refreshAccountProfile(showStatus = true)
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onRedeem = { code ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val accessToken = ensureAccessToken()
-                                if (accessToken == null) {
-                                    accountStatusMessage = context.getString(R.string.account_login_required_redeem)
-                                } else {
-                                    val redeemed = accountApiClient.redeemCode(accessToken, code)
-                                    if (redeemed.isSuccess) {
-                                        refreshAccountProfile(showStatus = true)
-                                        if (cloudProvider == CloudProviderUi.OFFICIAL) {
-                                            requestCloudSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED, force = true)
-                                        }
-                                    } else {
-                                        accountStatusMessage = accountErrorMessage(
-                                            context,
-                                            redeemed.exceptionOrNull(),
-                                            R.string.account_redeem_failed,
-                                        )
-                                    }
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onOpenRegister = {
-                        accountStatusMessage = ""
-                        registrationChallengeId = ""
-                        openSettingsPage(SettingsPage.AccountRegister)
-                    },
-                    onOpenPasswordReset = {
-                        accountStatusMessage = ""
-                        openSettingsPage(SettingsPage.AccountPasswordReset)
-                    },
-                    onOpenEmailChange = {
-                        accountStatusMessage = ""
-                        emailChangeVerificationFailures = 0
-                        openSettingsPage(SettingsPage.AccountEmailChange)
-                    },
-                    onApproveWearLogin = { authorizationId ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val accessToken = ensureAccessToken()
-                                if (accessToken == null) {
-                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
-                                } else {
-                                    val result = accountApiClient.approveWearDeviceLogin(
-                                        accessToken = accessToken,
-                                        authorizationId = authorizationId,
-                                        debug = devModeEnabled,
-                                    )
-                                    accountStatusMessage = if (result.isSuccess) {
-                                        val approval = result.getOrThrow()
-                                        val finalDebug = if (devModeEnabled) {
-                                            val statusResult = accountApiClient.awaitWearDeviceLoginDebug(accessToken, authorizationId)
-                                            statusResult.getOrNull()
-                                                ?: (statusResult.exceptionOrNull() as? AccountApiException)?.debugInfo
-                                                ?: approval.debug
-                                        } else {
-                                            approval.debug
-                                        }
-                                        wearLoginDebugMessage(
-                                            context.getString(R.string.account_wear_qr_approved),
-                                            devModeEnabled,
-                                            finalDebug,
-                                        )
-                                    } else {
-                                        val error = result.exceptionOrNull()
-                                        wearLoginDebugMessage(
-                                            accountErrorMessage(
-                                                context,
-                                                error,
-                                                R.string.account_wear_qr_approve_failed,
-                                            ),
-                                            devModeEnabled,
-                                            (error as? AccountApiException)?.debugInfo,
-                                        )
-                                    }
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                )
-
-                SettingsPage.AccountDelete -> AccountDeletePage(
-                    contentPadding = innerPadding, busy = accountBusy, statusMessage = accountStatusMessage,
-                    onBack = { handleBackNavigation() },
-                    onDeleteAccount = { currentPassword, confirm ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val accessToken = ensureAccessToken()
-                                if (accessToken == null) {
-                                    accountStatusMessage = context.getString(R.string.account_error_session_expired)
-                                } else {
-                                    val result = accountApiClient.deleteAccount(accessToken, currentPassword, confirm)
-                                    if (result.isSuccess) {
-                                        AuthCredentialStore.clear(context)
-                                        accountSummary = AccountSummary()
-                                        membershipSummary = MembershipSummary()
-                                        pendingEmailChange = null
-                                        emailChangeRequestId = ""
-                                        accountStatusMessage = context.getString(R.string.account_delete_success)
-                                        persistSettings()
-                                    } else {
-                                        accountStatusMessage = accountErrorMessage(
-                                            context,
-                                            result.exceptionOrNull(),
-                                            R.string.account_delete_failed,
-                                        )
-                                    }
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                )
-
-                SettingsPage.AccountEmailChange -> AccountEmailChangePage(
-                    contentPadding = innerPadding,
-                    username = accountSummary.username,
-                    statusMessage = accountStatusMessage,
-                    busy = accountBusy,
-                    requestId = emailChangeRequestId,
-                    verificationLocked = emailChangeVerificationFailures >= 10,
-                    onBack = { handleBackNavigation() },
-                    onRequest = { newEmail, currentPassword ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                if (newEmail.trim().equals(accountSummary.email.trim(), ignoreCase = true)) {
-                                    accountStatusMessage = context.getString(R.string.account_error_email_unchanged)
-                                    return@launch
-                                }
-                                val accessToken = ensureAccessToken()
-                                val result = if (accessToken == null) null else accountApiClient.requestEmailChange(
-                                    accessToken = accessToken,
-                                    username = accountSummary.username,
-                                    email = newEmail,
-                                    currentPassword = currentPassword,
-                                )
-                                if (result?.isSuccess == true) {
-                                    val request = result.getOrThrow()
-                                    emailChangeRequestId = request.requestId
-                                    emailChangeVerificationFailures = 0
-                                    pendingEmailChange = PendingEmailChange(newEmail.trim(), request.expiresAt)
-                                    accountStatusMessage = context.getString(R.string.account_email_change_sent)
-                                } else {
-                                    accountStatusMessage = accountErrorMessage(
-                                        context,
-                                        result?.exceptionOrNull(),
-                                        R.string.account_verification_send_failed,
-                                    )
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onConfirm = { code ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val accessToken = ensureAccessToken()
-                                val result = if (accessToken == null) null else accountApiClient.confirmEmailChange(
-                                    accessToken,
-                                    emailChangeRequestId,
-                                    code,
-                                )
-                                if (result?.isSuccess == true) {
-                                    AuthCredentialStore.clear(context)
-                                    accountSummary = AccountSummary()
-                                    membershipSummary = MembershipSummary()
-                                    pendingEmailChange = null
-                                    emailChangeRequestId = ""
-                                    accountStatusMessage = context.getString(R.string.account_email_change_success)
-                                    persistSettings()
-                                    openSettingsPage(SettingsPage.Account)
-                                } else {
-                                    val error = result?.exceptionOrNull()
-                                    if ((error as? AccountApiException)?.errorCode == "ACCOUNT_EMAIL_VERIFICATION_INVALID") {
-                                        emailChangeVerificationFailures += 1
-                                    }
-                                    accountStatusMessage = if (emailChangeVerificationFailures >= 10) {
-                                        context.getString(R.string.account_verification_locked)
-                                    } else {
-                                        accountErrorMessage(context, error, R.string.account_verification_invalid)
-                                    }
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                )
-
-                SettingsPage.AccountRegister -> AccountRegisterPage(
-                    contentPadding = innerPadding,
-                    statusMessage = accountStatusMessage,
-                    busy = accountBusy,
-                    challengeId = registrationChallengeId,
-                    legalAgreementUrls = legalAgreementUrls,
-                    onBack = { handleBackNavigation() },
-                    onReloadSecurityConfig = { registrationConfigRevision++ },
-                    onRequestVerification = { username, email, password ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val security = accountApiClient.registrationSecurityConfig().getOrElse {
-                                    accountStatusMessage = context.getString(R.string.account_registration_config_failed)
-                                    return@launch
-                                }
-                                legalAgreementUrls = security.legalAgreementUrls
-                                if (security.turnstileRequired) {
-                                    if (security.turnstileSiteKey.isBlank()) {
-                                        accountStatusMessage = context.getString(R.string.account_turnstile_unavailable)
-                                    } else {
-                                        registrationTurnstileSiteKey = security.turnstileSiteKey
-                                        pendingTurnstileRegistration = Triple(username, email, password)
-                                    }
-                                    return@launch
-                                }
-                                val challenge = accountApiClient.requestRegistrationVerification(username, email, password, "")
-                                if (challenge.isSuccess) {
-                                    registrationChallengeId = challenge.getOrThrow().challengeId
-                                    accountStatusMessage = context.getString(R.string.account_verification_sent)
-                                } else {
-                                    accountStatusMessage = accountErrorMessage(
-                                        context,
-                                        challenge.exceptionOrNull(),
-                                        R.string.account_verification_send_failed,
-                                    )
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onConfirmVerification = { code ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val session = accountApiClient.confirmRegistration(registrationChallengeId, code)
-                                if (session.isSuccess) {
-                                    val auth = session.getOrThrow()
-                                    AuthCredentialStore.saveSession(
-                                        context,
-                                        auth.accessToken,
-                                        auth.refreshToken,
-                                        auth.accessExpiresAt,
-                                        auth.refreshExpiresAt,
-                                    )
-                                    refreshAccountProfile(showStatus = true)
-                                    registrationChallengeId = ""
-                                    requestOfficialSettingsSync(CloudSyncContracts.TRIGGER_SETTINGS_CHANGED)
-                                    openSettingsPage(SettingsPage.Account)
-                                } else {
-                                    accountStatusMessage = accountErrorMessage(
-                                        context,
-                                        session.exceptionOrNull(),
-                                        R.string.account_error_register_failed,
-                                    )
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                )
-
-                SettingsPage.AccountPasswordReset -> AccountPasswordResetPage(
-                    contentPadding = innerPadding,
-                    initialEmail = accountSummary.email,
-                    statusMessage = accountStatusMessage,
-                    busy = accountBusy,
-                    onBack = { handleBackNavigation() },
-                    onRequestPasswordReset = { email ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val result = accountApiClient.requestPasswordReset(email)
-                                accountStatusMessage = if (result.isSuccess) {
-                                    context.getString(R.string.password_reset_request_sent)
-                                } else {
-                                    accountErrorMessage(
-                                        context,
-                                        result.exceptionOrNull(),
-                                        R.string.password_reset_request_failed,
-                                    )
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                    onConfirmPasswordReset = { token, newPassword ->
-                        coroutineScope.launch {
-                            accountBusy = true
-                            try {
-                                val result = accountApiClient.confirmPasswordReset(token, newPassword)
-                                accountStatusMessage = if (result.isSuccess) {
-                                    AuthCredentialStore.clear(context)
-                                    context.getString(R.string.password_reset_confirmed)
-                                } else {
-                                    accountErrorMessage(
-                                        context,
-                                        result.exceptionOrNull(),
-                                        R.string.password_reset_confirm_failed,
-                                    )
-                                }
-                            } finally {
-                                accountBusy = false
-                            }
-                        }
-                    },
-                )
+                SettingsPage.Account, SettingsPage.AccountDelete, SettingsPage.AccountEmailChange,
+                SettingsPage.AccountRegister, SettingsPage.AccountPasswordReset -> renderAccountPages(destination.settingsPage, innerPadding)
 
                 SettingsPage.DailyBriefing -> DailyBriefingSettingsPage(
                     accessAllowed = accountSummary.userId.isBlank() || membershipSummary.isMember || accountSummary.accountClass == "LEGACY",
@@ -3063,44 +3121,6 @@ internal fun MobileTimetableScreen(
             }
         }
         }
-    }
-
-    pendingTurnstileRegistration?.let { pending ->
-        TurnstileVerificationDialog(
-            siteKey = registrationTurnstileSiteKey,
-            onVerified = { token ->
-                if (pendingTurnstileRegistration == pending && !accountBusy) {
-                    pendingTurnstileRegistration = null
-                    accountBusy = true
-                    coroutineScope.launch {
-                        try {
-                            val challenge = accountApiClient.requestRegistrationVerification(
-                                pending.first,
-                                pending.second,
-                                pending.third,
-                                token,
-                            )
-                            if (challenge.isSuccess) {
-                                registrationChallengeId = challenge.getOrThrow().challengeId
-                                accountStatusMessage = context.getString(R.string.account_verification_sent)
-                            } else {
-                                accountStatusMessage = accountErrorMessage(
-                                    context,
-                                    challenge.exceptionOrNull(),
-                                    R.string.account_verification_send_failed,
-                                )
-                            }
-                        } finally {
-                            accountBusy = false
-                        }
-                    }
-                }
-            },
-            onDismiss = {
-                pendingTurnstileRegistration = null
-                accountBusy = false
-            },
-        )
     }
 
     MobileDialogs(

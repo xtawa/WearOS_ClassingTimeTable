@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "values": {
+      "timezone": "Asia/Shanghai", "semesterWeekStartDate": "2026-09-07", "weekStartDay": "MONDAY", "weekNumberMode": "SEMESTER", "showWeekend": true,
+      "reminderEnabled": false, "reminderMinutes": 15, "dailyBriefingEnabled": false, "dailyBriefingTime": "20:00", "dailyBriefingChannel": "APP_NOTIFICATION",
+      "cloudProvider": "OFFICIAL", "cloudSyncEnabled": false, "syncScopes": "TIMETABLE,MOBILE_SETTINGS,WEAR_SETTINGS", "academicMode": "SCHEDULE", "appearance": "system", "onboardingCompleted": true
+    }
+  },
+  "lessons": [
+    {"id":"demo-design","title":"交互设计","teacher":"陈老师","location":"设计楼 A203","note":"带上笔记本","dayOfWeek":1,"startMinute":600,"endMinute":690,"startWeek":1,"endWeek":20,"weekParity":"ALL"},
+    {"id":"demo-math","title":"高等数学","teacher":"李老师","location":"教学楼 B301","note":"","dayOfWeek":1,"startMinute":840,"endMinute":930,"startWeek":1,"endWeek":20,"weekParity":"ALL"},
+    {"id":"demo-English","title":"大学英语","teacher":"周老师","location":"语言中心 206","dayOfWeek":2,"startMinute":510,"endMinute":600,"startWeek":1,"endWeek":20,"weekParity":"ALL"},
+    {"id":"demo-code","title":"程序设计","teacher":"王老师","location":"计算机楼 C402","dayOfWeek":3,"startMinute":600,"endMinute":720,"startWeek":1,"endWeek":20,"weekParity":"ALL"},
+    {"id":"demo-physics","title":"物理实验","teacher":"赵老师","location":"实验楼 D102","dayOfWeek":4,"startMinute":840,"endMinute":960,"startWeek":1,"endWeek":20,"weekParity":"ALL"},
+    {"id":"demo-sport","title":"体育","location":"东区操场","dayOfWeek":5,"startMinute":900,"endMinute":990,"startWeek":1,"endWeek":20,"weekParity":"ALL"}
+  ],
+  "exceptions": [
+    {"id":"demo-change","lessonId":"demo-math","type":"RESCHEDULE","date":"2026-11-16","location":"教学楼 B305","note":"教室调整","startMinute":840,"endMinute":930}
+  ],
+  "exams": [
+    {"id":"demo-exam","title":"高等数学 · 期中考试","startAt":1795222800000,"endAt":1795228200000,"timezone":"Asia/Shanghai","location":"教学楼 B101","note":"携带学生证","courseId":"demo-math","reminderMinutes":30,"completed":false}
+  ]
+}

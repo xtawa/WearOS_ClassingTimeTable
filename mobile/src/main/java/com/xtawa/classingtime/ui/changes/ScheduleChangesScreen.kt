@@ -8,6 +8,7 @@ import com.xtawa.classingtime.R
 import com.xtawa.classingtime.screen.LessonUi
 import com.xtawa.classingtime.screen.ScheduleExceptionKind
 import com.xtawa.classingtime.screen.ScheduleExceptionUi
+import com.xtawa.classingtime.screen.isScheduleChange
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -29,6 +30,7 @@ internal fun ScheduleChangesScreen(
         val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
         ScheduleChangesUiState(
             changes = exceptions
+                .filter { it.isScheduleChange(baseLessons) }
                 .sortedWith(compareBy<ScheduleExceptionUi> { it.date }.thenBy { it.startTime })
                 .map { exception ->
                     val base = baseLessons.firstOrNull { it.id == exception.lessonId }

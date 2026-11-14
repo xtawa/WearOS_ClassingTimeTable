@@ -14,13 +14,43 @@ import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.DayOfWeek
+import com.classing.client.byok.*
+import com.classing.shared.ai.*
+import org.json.JSONArray
+import org.json.JSONObject
+
+private suspend fun onboardingByok(context: Context): ByokConfig? {
+    val owner=com.xtawa.classingtime.data.MobilePrefsStore.loadSettings(context).accountSummary.userId
+    if(owner.isBlank()) return null
+    val config=ByokStore.load(context,owner)
+    if(!config.enabled) return null
+    requireMobileByokPro(context,owner)
+    return config
+}
+
+private suspend fun recognizeByok(context: Context, profile: ByokProfile, prompt: String, images: List<ByokImage> = emptyList()): BackupRestorePayload {
+    val today=LocalDate.now()
+    val snapshot=timetableSnapshot(emptyList(),today,1,ZoneId.systemDefault().id,WeekNumberMode.SEMESTER,today,DayOfWeek.MONDAY)
+    val messages=JSONArray().put(JSONObject().put("role","user").put("content",prompt))
+    val reply=ByokProvider().chat(profile,messages,snapshot,images)
+    val proposal=ByokActions.parse(reply).first ?: error(context.getString(R.string.ai_import_empty))
+    require((0 until proposal.getJSONArray("actions").length()).all {proposal.getJSONArray("actions").getJSONObject(it).getString("operation")=="create"})
+    val lessons=applyAskAiCourseProposal(emptyList(),proposal)
+    return BackupRestorePayload(lessons,emptyList(),null,null,listOf(context.getString(R.string.ai_text_review),ByokActions.display(reply)).filter(String::isNotBlank))
+}
 
 internal suspend fun importOnboardingDocument(context: Context, uri: Uri): BackupRestorePayload = withContext(Dispatchers.IO) {
     val token = AccountSessionManager.ensureAccessToken(context) ?: error(context.getString(R.string.ai_import_login))
     val client = AiApiClient(appContext = context)
+    val byok=onboardingByok(context)
+    val vision=byok?.let {it.profile(it.visionId)}
     val lessons = mutableListOf<LessonUi>()
     val warnings = mutableListOf<String>()
     suspend fun recognize(jpeg: ByteArray) {
+        if(vision!=null) {
+            val parsed=recognizeByok(context,vision,"Extract every meeting from this timetable image as create actions. Do not invent unreadable fields; ask for clarification.",listOf(ByokImage("timetable",jpeg)))
+            lessons+=parsed.baseLessons;warnings+=parsed.warnings;return
+        }
         val result = client.photoImport(token, jpeg).getOrThrow()
         val parsed = parseJsonToLessons(result.timetable.toString(), context)
         lessons += parsed.lessons
@@ -55,6 +85,7 @@ internal suspend fun importOnboardingDocument(context: Context, uri: Uri): Backu
 internal suspend fun importOnboardingText(context: Context, text: String): BackupRestorePayload = withContext(Dispatchers.IO) {
     require(text.isNotBlank() && text.length <= 12000)
     val token = AccountSessionManager.ensureAccessToken(context) ?: error(context.getString(R.string.ai_import_login))
+    onboardingByok(context)?.let {return@withContext recognizeByok(context,it.profile(it.chatId),"Create the timetable from this text as create actions. Ask for missing times rather than guessing. Input:\n$text")}
     val client = AiApiClient(appContext = context)
     val model = client.models(token).getOrThrow().first
     val today = LocalDate.now()

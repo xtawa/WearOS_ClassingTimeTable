@@ -16,6 +16,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +62,8 @@ fun AskAiScreen(
     onBack: () -> Unit,
     onOpenAccount: () -> Unit,
 ) {
+    var byokSettings by remember { mutableStateOf(false) }
+    if(byokSettings) { ByokWearSettingsScreen({byokSettings=false},onOpenAccount);return }
     val context = LocalContext.current
     val database = (context.applicationContext as com.classing.wear.timetable.ClassingTimetableApplication).appContainer.database
     val examEntities by database.examDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
@@ -103,7 +106,7 @@ fun AskAiScreen(
             .onFailure { status = it.message.orEmpty() }
     }
 
-    LaunchedEffect(Unit) { loadAssistant() }
+    LaunchedEffect(byokSettings) { loadAssistant() }
 
     val lessons = remember(weekSchedule) {
         weekSchedule.days.values.flatten().sortedBy { it.startAt }
@@ -154,9 +157,9 @@ fun AskAiScreen(
                     ""
                 }
                 status = if (result.truncated) {
-                    context.getString(R.string.ask_ai_truncated) + " · " + context.getString(R.string.ask_ai_cost_points, result.costPoints)
+                    context.getString(R.string.ask_ai_truncated) + " · " + (if(result.byok) context.getString(R.string.byok_provider_cost) else context.getString(R.string.ask_ai_cost_points, result.costPoints))
                 } else {
-                    context.getString(R.string.ask_ai_cost_points, result.costPoints)
+                    if(result.byok) context.getString(R.string.byok_provider_cost) else context.getString(R.string.ask_ai_cost_points, result.costPoints)
                 }
                 client.conversations(token).onSuccess { conversations = it }
             }.onFailure { error ->
@@ -172,6 +175,7 @@ fun AskAiScreen(
         contentPadding = screenPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        item { TextButton(onClick={byokSettings=true}) {Text(context.getString(R.string.byok_title)+" · Pro")} }
         item {
             Text(
                 text = stringResource(R.string.ask_ai_title),

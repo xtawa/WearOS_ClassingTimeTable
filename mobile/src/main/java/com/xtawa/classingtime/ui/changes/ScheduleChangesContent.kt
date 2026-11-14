@@ -102,9 +102,7 @@ internal fun ScheduleChangesContent(
         AnimatedContent(
             targetState = filtered,
             transitionSpec = {
-                fadeIn(com.xtawa.classingtime.ui.theme.ClassingMotion.settledSpring())
-                    .togetherWith(fadeOut())
-                    .using(SizeTransform(clip = false))
+                com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(android.animation.ValueAnimator.areAnimatorsEnabled())
             },
             contentKey = { list -> list.map { it.id } },
             label = "schedule_change_filter",

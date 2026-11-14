@@ -1,6 +1,9 @@
 package com.classing.wear.timetable.account
 
 import android.content.Context
+import com.classing.client.byok.*
+import com.classing.shared.ai.*
+import kotlinx.coroutines.CancellationException
 import com.classing.wear.timetable.security.ClientIntegrity
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -14,7 +17,7 @@ import org.json.JSONObject
 data class WearAiModel(val id: String, val name: String, val description: String)
 data class WearAiConversation(val id: String, val title: String, val updatedAt: Long)
 data class WearAiMessage(val id: String, val role: String, val content: String)
-data class WearAiChatResult(val conversationId: String, val reply: String, val truncated: Boolean, val costPoints: Int)
+data class WearAiChatResult(val conversationId: String, val reply: String, val truncated: Boolean, val costPoints: Int, val byok: Boolean = false)
 
 class WearAiApiException(
     val statusCode: Int,
@@ -28,37 +31,42 @@ class WearAiApiClient(
 ) {
     private val appContext = context.applicationContext
 
-    suspend fun models(accessToken: String): Result<Pair<String, List<WearAiModel>>> =
-        request("GET", "/api/v1/ai/models", accessToken).map { body ->
-            val items = body.optJSONArray("models").toObjects { item ->
-                WearAiModel(item.optString("id"), item.optString("name"), item.optString("description"))
-            }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
-            body.optString("defaultModel").takeIf { default -> items.any { it.id == default } }.orEmpty().ifBlank {
-                items.firstOrNull()?.id.orEmpty()
-            } to items
-        }
+    suspend fun checkByokPro(accessToken: String): Result<Boolean> = request("GET", "/api/v1/ai/usage/me", accessToken).map {
+        it.getJSONObject("usage").optBoolean("isMember")
+    }
+    private suspend fun privateConfig(token: String): ByokConfig? {
+        val session=WearDirectAccountSessionManager.ensureSession(appContext) ?: return null
+        val config=ByokStore.load(appContext,session.userId)
+        if(!config.enabled) return null
+        check(checkByokPro(session.accessToken).getOrThrow()) { "BYOK requires Pro" }
+        return config
+    }
+    private suspend fun <T> safe(block: suspend () -> T): Result<T> = try { Result.success(block()) }
+        catch(e: CancellationException) {throw e} catch(e: Exception) {Result.failure(e)}
 
-    suspend fun conversations(accessToken: String): Result<List<WearAiConversation>> =
-        request("GET", "/api/v1/ai/conversations?limit=8", accessToken).map { body ->
-            body.optJSONArray("conversations").toObjects { item ->
-                WearAiConversation(
-                    id = item.optString("conversationId"),
-                    title = item.optString("title"),
-                    updatedAt = item.optLong("updatedAt"),
-                )
+    suspend fun models(accessToken: String): Result<Pair<String,List<WearAiModel>>> = safe {
+        privateConfig(accessToken)?.let { c -> c.chatId to c.profiles.filter {it.role==ByokRole.CHAT}.map {WearAiModel(it.id,it.name,"BYOK · ${it.model}")} }
+            ?: request("GET", "/api/v1/ai/models", accessToken).getOrThrow().let { body ->
+                val items=body.optJSONArray("models").toObjects {WearAiModel(it.optString("id"),it.optString("name"),it.optString("description"))}.filter {it.id.isNotBlank()&&it.name.isNotBlank()}
+                body.optString("defaultModel").takeIf {id->items.any{it.id==id}}.orEmpty().ifBlank {items.firstOrNull()?.id.orEmpty()} to items
             }
+    }
+    suspend fun conversations(accessToken: String): Result<List<WearAiConversation>> = safe {
+        privateConfig(accessToken)?.let { c ->
+            val local=ByokStore.history(appContext,c.ownerId)
+            if(local.length()==0) emptyList() else listOf(WearAiConversation("byok-local",local.optJSONObject(0)?.optString("content")?.take(40).orEmpty(),0))
+        } ?: request("GET", "/api/v1/ai/conversations?limit=8", accessToken).getOrThrow().optJSONArray("conversations").toObjects {
+            WearAiConversation(it.optString("conversationId"),it.optString("title"),it.optLong("updatedAt"))
         }
-
-    suspend fun messages(accessToken: String, conversationId: String): Result<List<WearAiMessage>> =
-        request("GET", "/api/v1/ai/conversations/$conversationId/messages", accessToken).map { body ->
-            body.optJSONArray("messages").toObjects { item ->
-                WearAiMessage(
-                    id = item.optString("messageId"),
-                    role = item.optString("role"),
-                    content = item.optString("content"),
-                )
-            }
+    }
+    suspend fun messages(accessToken: String, conversationId: String): Result<List<WearAiMessage>> = safe {
+        privateConfig(accessToken)?.let { c ->
+            require(conversationId=="byok-local")
+            ByokStore.history(appContext,c.ownerId).toObjects {WearAiMessage(it.optString("id"),it.getString("role").uppercase(),it.getString("content"))}
+        } ?: request("GET", "/api/v1/ai/conversations/$conversationId/messages", accessToken).getOrThrow().optJSONArray("messages").toObjects {
+            WearAiMessage(it.optString("messageId"),it.optString("role"),it.optString("content"))
         }
+    }
 
     suspend fun chat(
         accessToken: String,
@@ -67,7 +75,17 @@ class WearAiApiClient(
         timetableSnapshot: JSONObject?,
         model: String,
     ): Result<WearAiChatResult> = withContext(Dispatchers.IO) {
-        runCatching {
+        safe {
+            val config=privateConfig(accessToken)
+            if(config!=null) {
+                require(model==config.chatId) { "Choose the current BYOK model" }
+                val history=if(conversationId=="byok-local") ByokStore.history(appContext,config.ownerId) else JSONArray()
+                history.put(JSONObject().put("id",UUID.randomUUID().toString()).put("role","user").put("content",message))
+                val reply=ByokProvider().chat(config.profile(config.chatId),history,timetableSnapshot ?: JSONObject(),readOnly=true)
+                history.put(JSONObject().put("id",UUID.randomUUID().toString()).put("role","assistant").put("content",reply))
+                val saved=runCatching {ByokStore.saveHistory(appContext,config.ownerId,history)}.isSuccess
+                return@safe WearAiChatResult("byok-local",if(saved) reply else reply+"\n\n[Could not save this answer locally]",false,0,true)
+            }
             ClientIntegrity.ensureTrusted(appContext, baseUrl).getOrThrow()
             val body = JSONObject()
                 .put("clientRequestId", UUID.randomUUID().toString())

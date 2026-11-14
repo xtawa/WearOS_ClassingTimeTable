@@ -89,8 +89,7 @@ internal fun CalendarSyncSettingsPage(
             AnimatedContent(
                 targetState = busy,
                 transitionSpec = {
-                    fadeIn(tween(ClassingMotion.ContentReveal)) togetherWith
-                        fadeOut(tween(ClassingMotion.Exit))
+                    com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(android.animation.ValueAnimator.areAnimatorsEnabled())
                 },
                 label = "calendar_sync_activity",
             ) { working ->

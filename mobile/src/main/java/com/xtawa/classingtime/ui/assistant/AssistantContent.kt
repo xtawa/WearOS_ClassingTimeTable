@@ -386,8 +386,7 @@ private fun ProcessingIsland(phase: AssistantActivityPhase) {
             AnimatedContent(
                 targetState = phase,
                 transitionSpec = {
-                    fadeIn(tween(ClassingMotion.ContentReveal))
-                        .togetherWith(fadeOut(tween(ClassingMotion.Exit)))
+                    com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(android.animation.ValueAnimator.areAnimatorsEnabled())
                 },
                 label = "assistant_output_phase",
             ) { currentPhase ->
@@ -566,9 +565,7 @@ private fun AssistantComposer(
                     AnimatedContent(
                         targetState = canSubmit,
                         transitionSpec = {
-                            (scaleIn(tween(ClassingMotion.Micro)) + fadeIn())
-                                .togetherWith(scaleOut(tween(ClassingMotion.Micro)) + fadeOut())
-                                .using(SizeTransform(clip = false))
+                            com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.pop(android.animation.ValueAnimator.areAnimatorsEnabled())
                         },
                         label = "assistant_send_state",
                     ) { showSend ->

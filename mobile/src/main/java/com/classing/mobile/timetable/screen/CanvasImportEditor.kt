@@ -31,7 +31,7 @@ import kotlinx.coroutines.CancellationException
         catch(e: CancellationException) { throw e } catch(e: Exception) { error = e.message.orEmpty() }
         finally { token = ""; busy = false }
     } }) { Text(stringResource(R.string.lms_read)) }
-    if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+    if (busy) com.xtawa.classingtime.ui.components.ClassingBitsLoadingDots()
     if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
     snapshot?.let { data ->
         Text(stringResource(R.string.lms_select_meetings))

@@ -28,7 +28,7 @@ internal fun ClassingCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = ClassingMotion.softSpring()),
+        modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = if (android.animation.ValueAnimator.areAnimatorsEnabled()) ClassingMotion.softSpring() else androidx.compose.animation.core.snap()),
         shape = shape,
         colors = colors,
         elevation = elevation,

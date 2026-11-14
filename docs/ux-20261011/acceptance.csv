@@ -1,0 +1,27 @@
+id,area,action,expected,verification
+U01,display,Toggle Focus and Dense in Appearance,Both dashboard and full timetable use the chosen display with Focus as legacy default,Local unit tests and HTML preview; device NOT_RUN
+U02,dense,Page across month and choose Sunday week start,Seven consecutive dates preserve week start and month boundary,Local unit test PASS
+U03,dense,Open overlapping lessons and use large font,All lessons remain sorted and visible; large text allows horizontal scrolling,Ordering unit test PASS; device NOT_RUN
+U04,exam,Create edit delete and switch capsule,Course-style surfaces and confirmation; stale edits do not overwrite changes,Compilation and existing exam unit tests; device NOT_RUN
+U05,metrics,Open OOBE and Release About,No local metrics switch; Debug plus developer mode only,Source verification; device NOT_RUN
+U06,onboarding,Select AI photo or text while signed out,Login opens before importer; success continues original choice; cancellation does not import,Gate unit test PASS; account integration NOT_RUN
+U07,onboarding,Register with Turnstile during import,Verification dialog is mounted during OOBE and successful registration resumes import,Source verification; authenticated integration NOT_RUN
+U08,metadata,Edit single occurrence note without changing time,Note affects this occurrence only and does not enter reschedules; following week retains base,Mobile and shared unit tests PASS
+U09,metadata,Save identical values then change start time,No-op creates no exception; actual time change remains a reschedule,Local unit test PASS
+U10,points,Reserve more than weekly balance or disable official AI,Credits exclude only overflow reservation; total never overflows; disabled mode has zero spendable points,Shared and Web unit tests PASS
+U11,motion,Disable animations and append dialogs,Content stays visible; shared motion replay is suppressed; loading ends with work,Web unit test PASS; Android device NOT_RUN
+B01,BYOK,Add chat vision transcription speech profiles,Strict HTTPS endpoints and role matching; Pro check before save and call,Contract/config tests PASS; authenticated provider NOT_RUN
+B02,BYOK,Call with an image or recording,Chat image_url and transcription multipart use the selected role; voice fills a draft without sending,Request contract tests PASS; real provider/device NOT_RUN
+B03,BYOK,Read a reply aloud,Uses selected speech model and manual playback; stops on leaving/background,Request contract test PASS; audio device NOT_RUN
+B04,BYOK,Open settings and return,Draft and current conversation are retained; secret inputs are masked,Route-state implementation; device NOT_RUN
+B05,BYOK,Fail local storage after receiving reply,Answer stays readable; failure is reported and does not trigger resend,Source verification; device fault injection NOT_RUN
+B06,BYOK,Fail private config read or expire Pro,No silent official AI fallback; requests stop; local keys can be cleared,Source verification and request gate; authenticated integration NOT_RUN
+B07,BYOK,Request course or exam changes,Preview validates complete batch and stale snapshot; nothing writes until confirmation,Proposal validation tests PASS; device NOT_RUN
+B08,privacy,Inspect backup and synchronization boundary,Private preference file excluded from every backup path and sync serializers,tools/verify_byok_boundary.py PASS
+B09,Wear,Send a model to a paired watch on same account and edition,Watch receives only chosen model after matching code and acknowledges encrypted save,Payload and crypto tests PASS; edition source guard PASS; Bluetooth device NOT_RUN
+B10,Wear,Cancel disconnect timeout mismatch account or tamper,Connection closes immediately; authentication rejects tamper; no cloud fallback,Cancellation/crypto tests PASS; Bluetooth device NOT_RUN
+B11,Wear,Use BYOK AskAI and reopen history,Direct provider read-only answers and local encrypted history; provider-cost notice,Compilation and contract coverage; real watch/provider NOT_RUN
+B12,scope,Inspect modules and backend,No OPPO module and no Web BYOK or server-side user key storage,Source verification
+B13,privacy,Return malformed JSON or echo the credential from a provider,Errors omit raw response and credential; successful text removes the current credential,Mock provider contract tests PASS
+B14,BYOK,Delete a model then open its archived conversation,History remains readable; sending requires selecting an available chat model,Source verification; device NOT_RUN
+B15,privacy,Enter a key using an IME,Password keyboard masks text and disables autocorrect; invalid header characters rejected,Config unit test PASS; IME device NOT_RUN

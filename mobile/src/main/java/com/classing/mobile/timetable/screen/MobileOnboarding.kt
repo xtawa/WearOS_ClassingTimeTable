@@ -128,6 +128,9 @@ internal fun MobileOnboardingFlow(
     initialCloudPassword: String,
     initialCloudDriveFileName: String,
     onComplete: (OnboardingCompletion) -> Unit,
+    authReady: Boolean = false,
+    onRequestLogin: () -> Unit = {},
+    loginContent: (@Composable () -> Unit)? = null,
     onParseFile: suspend (android.net.Uri, OnboardingImportTarget) -> Result<BackupRestorePayload>,
 ) {
     var stagedImport by remember { mutableStateOf<BackupRestorePayload?>(null) }
@@ -139,6 +142,19 @@ internal fun MobileOnboardingFlow(
     val contentScroll = rememberScrollState()
     androidx.compose.runtime.LaunchedEffect(stepIndex) { contentScroll.scrollTo(0) }
     var importTarget by remember { mutableStateOf(OnboardingImportTarget.NONE) }
+    var awaitingImportLogin by remember { mutableStateOf(false) }
+    fun selectImportTarget(target: OnboardingImportTarget) {
+        if (target != importTarget) stagedImport = null
+        importTarget = target
+        awaitingImportLogin = target.requiresClassingLogin()
+        if (awaitingImportLogin) {
+            if (authReady) stepIndex = 2 else onRequestLogin()
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(authReady, awaitingImportLogin) {
+        if (authReady && awaitingImportLogin) { awaitingImportLogin = false; stepIndex = 2 }
+    }
+
     var wearSyncMode by remember {
         mutableStateOf(
             if (initialWearSyncMode == WearSyncMode.AUTO) WearSyncMode.AUTO else initialWearSyncMode,
@@ -249,10 +265,6 @@ internal fun MobileOnboardingFlow(
                             trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         )
                     }
-                    com.xtawa.classingtime.metrics.MetricsSettingsCard(onEnabled = {
-                        com.xtawa.classingtime.metrics.ProductMetrics.record(context,
-                            com.xtawa.classingtime.metrics.ProductEvent.CREATION_STARTED, sessionId = sessionId)
-                    })
                 }
             }
         },
@@ -270,7 +282,11 @@ internal fun MobileOnboardingFlow(
                         horizontalArrangement = Arrangement.spacedBy(ClassingSpacing.sm),
                     ) {
                         Button(
-                            onClick = { stepIndex = (stepIndex + 1).coerceAtMost(stepCount - 1) },
+                            onClick = {
+                                if (stepIndex == 1 && importTarget.requiresClassingLogin() && !authReady) {
+                                    awaitingImportLogin = true; onRequestLogin()
+                                } else stepIndex = (stepIndex + 1).coerceAtMost(stepCount - 1)
+                            },
                             shape = RoundedCornerShape(ClassingRadii.pill),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -384,53 +400,53 @@ internal fun MobileOnboardingFlow(
                         desc = stringResource(R.string.onboarding_import_option_ics_desc),
                         selected = importTarget == OnboardingImportTarget.ICS,
                         icon = Icons.Filled.Event,
-                        onClick = { importTarget = OnboardingImportTarget.ICS },
+                        onClick = { selectImportTarget(OnboardingImportTarget.ICS) },
                     )
                     OnboardingOptionCard(staggerIndex = 1, 
                         title = stringResource(R.string.ai_import_document),
                         desc = stringResource(R.string.ai_import_notice),
                         selected = importTarget == OnboardingImportTarget.AI_DOCUMENT,
                         icon = Icons.Filled.Event,
-                        onClick = { importTarget = OnboardingImportTarget.AI_DOCUMENT },
+                        onClick = { selectImportTarget(OnboardingImportTarget.AI_DOCUMENT) },
                     )
                     OnboardingOptionCard(staggerIndex = 2, title = stringResource(R.string.ai_text_title), desc = stringResource(R.string.ai_text_notice),
-                        selected = importTarget == OnboardingImportTarget.AI_TEXT, icon = Icons.Filled.Edit, onClick = { importTarget = OnboardingImportTarget.AI_TEXT })
+                        selected = importTarget == OnboardingImportTarget.AI_TEXT, icon = Icons.Filled.Edit, onClick = { selectImportTarget(OnboardingImportTarget.AI_TEXT) })
                     OnboardingOptionCard(staggerIndex = 3, title = stringResource(R.string.lms_title), desc = stringResource(R.string.lms_notice),
-                        selected = importTarget == OnboardingImportTarget.CANVAS, icon = Icons.Filled.CloudSync, onClick = { importTarget = OnboardingImportTarget.CANVAS })
+                        selected = importTarget == OnboardingImportTarget.CANVAS, icon = Icons.Filled.CloudSync, onClick = { selectImportTarget(OnboardingImportTarget.CANVAS) })
                     OnboardingOptionCard(staggerIndex = 4, 
                         title = stringResource(R.string.onboarding_import_option_json),
                         desc = stringResource(R.string.onboarding_import_option_json_desc),
                         selected = importTarget == OnboardingImportTarget.JSON,
                         icon = Icons.Filled.DataObject,
-                        onClick = { importTarget = OnboardingImportTarget.JSON },
+                        onClick = { selectImportTarget(OnboardingImportTarget.JSON) },
                     )
                     OnboardingOptionCard(staggerIndex = 5, 
                         title = stringResource(R.string.onboarding_import_option_cloud),
                         desc = stringResource(R.string.onboarding_import_option_cloud_desc),
                         selected = importTarget == OnboardingImportTarget.CLOUD_SYNC,
                         icon = Icons.Filled.CloudSync,
-                        onClick = { importTarget = OnboardingImportTarget.CLOUD_SYNC },
+                        onClick = { selectImportTarget(OnboardingImportTarget.CLOUD_SYNC) },
                     )
                     OnboardingOptionCard(staggerIndex = 6, 
                         title = stringResource(R.string.onboarding_import_option_backup),
                         desc = stringResource(R.string.onboarding_import_option_backup_desc),
                         selected = importTarget == OnboardingImportTarget.BACKUP_RESTORE,
                         icon = Icons.Filled.SettingsBackupRestore,
-                        onClick = { importTarget = OnboardingImportTarget.BACKUP_RESTORE },
+                        onClick = { selectImportTarget(OnboardingImportTarget.BACKUP_RESTORE) },
                     )
                     OnboardingOptionCard(staggerIndex = 7, 
                         title = stringResource(R.string.onboarding_import_option_manual),
                         desc = stringResource(R.string.onboarding_import_option_manual_desc),
                         selected = importTarget == OnboardingImportTarget.MANUAL_ENTRY,
                         icon = Icons.Filled.Edit,
-                        onClick = { importTarget = OnboardingImportTarget.MANUAL_ENTRY },
+                        onClick = { selectImportTarget(OnboardingImportTarget.MANUAL_ENTRY) },
                     )
                     OnboardingOptionCard(staggerIndex = 8, 
                         title = stringResource(R.string.onboarding_import_option_later),
                         desc = stringResource(R.string.onboarding_import_option_later_desc),
                         selected = importTarget == OnboardingImportTarget.NONE,
                         icon = Icons.Filled.CheckCircle,
-                        onClick = { importTarget = OnboardingImportTarget.NONE },
+                        onClick = { selectImportTarget(OnboardingImportTarget.NONE) },
                     )
                 }
 
@@ -546,7 +562,9 @@ internal fun MobileOnboardingFlow(
                                 }
 
                                 else -> {
-                            OnboardingImportEditor(importTarget, stagedImport, { stagedImport = it; it.semesterWeekStartDate?.let { date -> semesterWeekStartDate = date } }, onParseFile, sessionId, semesterWeekStartDate)
+                            if (importTarget.requiresClassingLogin() && !authReady) {
+                                Button(onClick = { awaitingImportLogin = true; onRequestLogin() }) { Text(stringResource(R.string.ai_import_login)) }
+                            } else OnboardingImportEditor(importTarget, stagedImport, { stagedImport = it; it.semesterWeekStartDate?.let { date -> semesterWeekStartDate = date } }, onParseFile, sessionId, semesterWeekStartDate)
                                 }
                             }
                     }
@@ -729,6 +747,7 @@ internal fun MobileOnboardingFlow(
             }
             }
         }
+    loginContent?.invoke()
     }
 }
 

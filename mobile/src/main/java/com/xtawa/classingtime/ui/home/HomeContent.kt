@@ -219,12 +219,7 @@ private fun PrimaryHomeIsland(
             HomePhase.NoClasses -> "no_classes"
         },
         transitionSpec = {
-            (if (motionEnabled) {
-                (fadeIn(tween(ClassingMotion.ContentReveal)) + scaleIn(initialScale = 0.96f)) togetherWith
-                    (fadeOut(tween(ClassingMotion.Exit)) + scaleOut(targetScale = 0.98f))
-            } else {
-                fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-            }).using(SizeTransform(clip = false))
+            com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(motionEnabled && android.animation.ValueAnimator.areAnimatorsEnabled())
         },
         label = "home_primary_island",
     ) { kind ->

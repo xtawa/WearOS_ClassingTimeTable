@@ -89,7 +89,7 @@ internal fun HomeCourseIsland(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = ClassingMotion.settledSpring())
+            .animateContentSize(animationSpec = if(android.animation.ValueAnimator.areAnimatorsEnabled()) ClassingMotion.settledSpring() else androidx.compose.animation.core.snap())
             .bitsPress(pressed)
             .clip(RoundedCornerShape(ClassingRadii.large))
             .clickable(
@@ -128,8 +128,7 @@ internal fun HomeCourseIsland(
                     AnimatedContent(
                         targetState = state.phase,
                         transitionSpec = {
-                            fadeIn(tween(ClassingMotion.ContentReveal)) togetherWith
-                                fadeOut(tween(ClassingMotion.Exit))
+                            com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(android.animation.ValueAnimator.areAnimatorsEnabled())
                         },
                         label = "home_course_phase_content",
                     ) { phase ->
@@ -165,7 +164,7 @@ private fun CourseIdentity(course: HomeCourseUiModel, phase: HomePhase, accent: 
             AnimatedContent(
                 targetState = phase,
                 transitionSpec = {
-                    fadeIn(tween(ClassingMotion.ContentReveal)) togetherWith fadeOut(tween(ClassingMotion.Exit))
+                    com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(android.animation.ValueAnimator.areAnimatorsEnabled())
                 },
                 label = "home_course_status",
             ) { targetPhase ->
@@ -192,7 +191,7 @@ private fun CourseIdentity(course: HomeCourseUiModel, phase: HomePhase, accent: 
         targetState = course,
         contentKey = { it.id },
         transitionSpec = {
-            fadeIn(tween(ClassingMotion.ContentReveal)) togetherWith fadeOut(tween(ClassingMotion.Exit))
+            com.xtawa.classingtime.ui.theme.ClassingBitsTransitions.fade(android.animation.ValueAnimator.areAnimatorsEnabled())
         },
         label = "home_course_identity",
     ) { targetCourse ->

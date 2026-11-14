@@ -16,7 +16,6 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -70,6 +69,17 @@ internal fun AskAiSettingsPage(
  var transcribing by remember { mutableStateOf(false) }
  var transcriptionJob by remember { mutableStateOf<Job?>(null) }
  var subpage by rememberSaveable(userId) { mutableStateOf("") }
+ var byokRevision by remember { mutableIntStateOf(0) }
+ val byokSession=remember(userId) {ByokConversationState(initialQuestion)}
+ var byokLoadFailed by remember(userId) {mutableStateOf(false)}
+ var byokConfig by remember(userId) { mutableStateOf<com.classing.shared.ai.ByokConfig?>(null) }
+ LaunchedEffect(userId, byokRevision) {
+  byokLoadFailed=false
+  byokConfig=if(userId.isBlank()) null else try {withContext(Dispatchers.IO) {com.classing.client.byok.ByokStore.load(context,userId)}}
+   catch(e: Exception) {byokLoadFailed=true;null}
+ }
+ val usingByok = byokConfig?.enabled == true
+
  var preferences by remember(userId) { mutableStateOf(runCatching { AiPreferences.fromJson(JSONObject(cache.getString("preferences:$userId", "{}").orEmpty())) }.getOrDefault(AiPreferences())) }
  var settingsReady by remember(userId) { mutableStateOf(false) }
  var preferencesSaving by remember { mutableStateOf(false) }
@@ -142,8 +152,8 @@ internal fun AskAiSettingsPage(
    finally { preferencesSaving = false }
   }
  }
- LaunchedEffect(loggedIn, member, userId) {
-  if (loggedIn) {
+ LaunchedEffect(loggedIn, member, userId, usingByok, byokConfig) {
+  if (loggedIn && byokConfig != null && !usingByok) {
    val token = AccountSessionManager.ensureAccessToken(context) ?: return@LaunchedEffect
    client.models(token).onSuccess { (default, items) -> models = items; serverDefaultModel = default; selectedModel = default }.onFailure { status = it.message.orEmpty() }
    loadPreferences(token)
@@ -152,8 +162,8 @@ internal fun AskAiSettingsPage(
    settingsReady = true
   }
  }
- LaunchedEffect(settingsReady, fingerprint, preferences.showPromptSuggestions) {
-  if (!settingsReady) return@LaunchedEffect
+ LaunchedEffect(settingsReady, fingerprint, preferences.showPromptSuggestions, usingByok) {
+  if (!settingsReady || usingByok) return@LaunchedEffect
   if (!preferences.showPromptSuggestions) { prompts = emptyList(); promptNotice = ""; return@LaunchedEffect }
   val token = AccountSessionManager.ensureAccessToken(context) ?: return@LaunchedEffect
   val force = !refreshedOnEntry && preferences.autoRefreshPrompts
@@ -279,9 +289,20 @@ internal fun AskAiSettingsPage(
  }
  CelebrationOverlay(resetCelebration)
  when (subpage) {
-  "settings" -> AskAiPreferencesPage(contentPadding, preferences, models, preferencesSaving, syncStatus, { subpage = "" }, ::patchPreferences)
+  "settings" -> AskAiPreferencesPage(contentPadding, preferences, models, preferencesSaving, syncStatus, { subpage = "" }, ::patchPreferences, { subpage = "byok" })
+  "byok" -> ByokSettingsPage(contentPadding, userId, member, { subpage = "" }, { byokRevision++ })
   "usage" -> AskAiUsagePage(contentPadding, usage, status, { subpage = "" }, resetCards, resetting, resetStatus, ::useResetCard)
-  else -> {
+  else -> if(byokLoadFailed || (loggedIn && byokConfig==null)) {
+   Column(Modifier.fillMaxSize().padding(contentPadding).padding(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+    com.xtawa.classingtime.ui.components.ClassingPageHeader(title=stringResource(R.string.byok_title),onBack=onBack,backLabel=stringResource(R.string.assistant_back))
+    if(byokLoadFailed) {Text(stringResource(R.string.byok_storage_failed));Button(onClick={subpage="byok"}) {Text(stringResource(R.string.assistant_settings))}}
+    else com.xtawa.classingtime.ui.components.ClassingBitsLoadingDots()
+   }
+  } else if (usingByok) {
+   ByokAssistantPage(contentPadding, byokConfig!!, snapshot, question, { question = "" }, onBack,
+    { subpage = "byok" }, onOpenAccount, fingerprint,
+    { applyAskAiCourseProposal(editableLessons,it);Unit }, onApplyCourseProposal, byokSession)
+  } else {
    val today = lessons.filter { it.dayOfWeek == currentDate.dayOfWeek }
    val uiState = AssistantUiState(loggedIn = loggedIn, member = member, hasSchedule = lessons.isNotEmpty() || exams.isNotEmpty(), contextLabel = "$currentDate · ${today.size}",
     question = question, sending = sending, status = status, selectedModelId = selectedModel,

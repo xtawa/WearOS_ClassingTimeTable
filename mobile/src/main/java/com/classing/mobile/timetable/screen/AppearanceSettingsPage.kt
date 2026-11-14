@@ -37,6 +37,7 @@ import com.xtawa.classingtime.ui.theme.ClassingAppearanceState
 import com.xtawa.classingtime.ui.theme.ClassingSpacing
 import com.xtawa.classingtime.ui.theme.ClassingTheme
 import com.xtawa.classingtime.ui.theme.ClassingThemeMode
+import com.xtawa.classingtime.ui.theme.ScheduleDisplay
 
 @Composable
 internal fun AppearanceSettingsPage(
@@ -63,6 +64,16 @@ internal fun AppearanceSettingsPage(
             modifier = Modifier.padding(top = ClassingSpacing.sm),
         )
 
+        Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
+            ClassingSectionLabel(stringResource(R.string.schedule_display_title))
+            ClassingInformationIsland {
+                Text(stringResource(R.string.schedule_display_desc), style = MaterialTheme.typography.bodyMedium)
+                ThemeModeChip(stringResource(R.string.schedule_display_focus), state.scheduleDisplay == ScheduleDisplay.Focus,
+                    { onStateChange(state.copy(scheduleDisplay = ScheduleDisplay.Focus)) })
+                ThemeModeChip(stringResource(R.string.schedule_display_dense), state.scheduleDisplay == ScheduleDisplay.Dense,
+                    { onStateChange(state.copy(scheduleDisplay = ScheduleDisplay.Dense)) })
+            }
+        }
         Column(verticalArrangement = Arrangement.spacedBy(ClassingSpacing.sm)) {
             ClassingSectionLabel(stringResource(R.string.settings_theme_mode_title))
             ClassingInformationIsland {

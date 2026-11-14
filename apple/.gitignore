@@ -1,0 +1,14 @@
+# Apple build and tooling outputs
+.tools/
+ClassingCore/.build/
+ClassingCore/.swiftpm/
+Classing.xcodeproj/
+Config/Local.xcconfig
+Config/*-Info.plist
+Config/*.entitlements
+Preview/node_modules/
+Preview/playwright-report/
+Preview/test-results/
+build/
+*.xcuserstate
+xcuserdata/

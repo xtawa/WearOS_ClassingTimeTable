@@ -142,7 +142,8 @@ class ScheduleProjector {
                                 teacher = exception.newTeacher ?: course.teacher,
                                 location = exception.newLocation ?: course.location,
                                 note = exception.newNote ?: course.note,
-                                source = OccurrenceSource.RESCHEDULED,
+                                source = if (exception.newDate == exception.date && exception.newStartTime == course.startTime &&
+                                    exception.newEndTime == course.endTime) OccurrenceSource.REGULAR else OccurrenceSource.RESCHEDULED,
                             )
                         }
                     } else {

@@ -134,7 +134,7 @@ fun ExamPanel(exams: List<Exam>, onSave: ((List<Exam>) -> Unit)? = null, onAsk: 
 }
 
 @Composable
-private fun ExamEditor(existing: Exam?, onDismiss: () -> Unit, onSave: (Exam) -> Unit) {
+fun ExamEditor(existing: Exam?, onDismiss: () -> Unit, onSave: (Exam) -> Unit) {
     val initial = remember { Instant.ofEpochMilli(existing?.startAt ?: (System.currentTimeMillis() + 86400000))
         .atZone(ZoneId.of(existing?.timezone ?: ZoneId.systemDefault().id)).let {
             if (existing == null) it.withSecond(0).withNano(0) else it

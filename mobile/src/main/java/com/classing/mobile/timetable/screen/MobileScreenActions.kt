@@ -253,6 +253,7 @@ internal fun applyLessonEdit(
     semesterWeekStartDate: LocalDate,
 ): ScheduleMutationResult {
     val targetLesson = editContext.lesson
+    if (!editContext.isNewLesson && updatedLesson == targetLesson) return ScheduleMutationResult(baseLessons, exceptions)
     return when (scope) {
         LessonEditScope.WholeLesson -> {
             if (editContext.isNewLesson) {

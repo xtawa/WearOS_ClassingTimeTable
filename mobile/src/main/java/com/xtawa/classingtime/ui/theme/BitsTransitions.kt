@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 
 /**
  * Native transition grammar inspired by React Bits AnimatedContent/FadeContent.
@@ -16,6 +18,17 @@ import androidx.compose.animation.slideOutHorizontally
  * Construct the ContentTransform explicitly to keep OOBE and date paging reusable.
  */
 internal object ClassingBitsTransitions {
+    fun pop(enabled: Boolean = true): ContentTransform = ContentTransform(
+        targetContentEnter = scaleIn(tween(if(enabled) ClassingMotion.Micro else 0),initialScale=0.86f) + fadeIn(tween(if(enabled) ClassingMotion.Micro else 0)),
+        initialContentExit = scaleOut(tween(if(enabled) ClassingMotion.Micro else 0),targetScale=0.86f) + fadeOut(tween(if(enabled) ClassingMotion.Micro else 0)),
+        sizeTransform = SizeTransform(clip=false),
+    )
+    fun fade(enabled: Boolean = true): ContentTransform = ContentTransform(
+        targetContentEnter = fadeIn(tween(if (enabled) ClassingMotion.ContentReveal else 0)),
+        initialContentExit = fadeOut(tween(if (enabled) ClassingMotion.Exit else 0)),
+        sizeTransform = SizeTransform(clip = false),
+    )
+
     fun horizontal(direction: Int, enabled: Boolean = true): ContentTransform {
         if (!enabled) {
             return ContentTransform(

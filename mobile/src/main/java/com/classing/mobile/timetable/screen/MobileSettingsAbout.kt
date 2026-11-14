@@ -2349,7 +2349,9 @@ internal fun AboutLayer(
                 checked = devModeEnabled,
                 onCheckedChange = onToggleDevMode,
             )
-            com.xtawa.classingtime.metrics.MetricsSettingsCard()
+            if (devModeEnabled && BuildConfig.DEBUG) {
+                com.xtawa.classingtime.metrics.MetricsSettingsCard()
+            }
 
             if (devModeEnabled) {
                 Card(

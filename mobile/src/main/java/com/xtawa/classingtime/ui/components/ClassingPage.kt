@@ -144,7 +144,7 @@ internal fun ClassingInformationIsland(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val animatedModifier = modifier
-        .animateContentSize(animationSpec = ClassingMotion.softSpring())
+        .animateContentSize(animationSpec = if (android.animation.ValueAnimator.areAnimatorsEnabled()) ClassingMotion.softSpring() else androidx.compose.animation.core.snap())
         .bitsPress(isPressed, enabled = onClick != null)
     val interactionModifier = if (onClick == null) {
         animatedModifier

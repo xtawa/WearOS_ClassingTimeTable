@@ -1,0 +1,95 @@
+name: Apple CI
+on:
+  push:
+    branches: [main]
+    paths: ['apple/**', '.github/workflows/apple-ci.yml']
+  pull_request:
+    paths: ['apple/**', '.github/workflows/apple-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: apple-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apple/Preview/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r apple/scripts/requirements.txt
+      - run: python -I apple/scripts/check_swift_syntax.py
+      - run: npm ci
+        working-directory: apple/Preview
+      - run: npm run test:contracts
+        working-directory: apple/Preview
+      - run: npx playwright install --with-deps chromium
+        working-directory: apple/Preview
+      - run: npm run test:e2e
+        working-directory: apple/Preview
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apple-browser-preview-and-tests
+          path: |
+            apple/Preview/playwright-report
+            apple/Preview/test-results
+          if-no-files-found: warn
+  native:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: ${{ vars.APPLE_XCODE_PATH || '/Applications/Xcode.app/Contents/Developer' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Apple SDKs
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          xcrun simctl list runtimes
+          test "$(xcodebuild -version | head -1 | awk '{print $2}' | cut -d. -f1)" -ge 26
+      - name: Test portable Swift business logic
+        run: swift test --package-path apple/ClassingCore --enable-code-coverage
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          cp apple/Config/Local.example.xcconfig apple/Config/Local.xcconfig
+          xcodegen generate --spec apple/project.yml --project apple
+      - name: Compile iPhone app and widgets (unsigned simulator)
+        run: >-
+          xcodebuild -project apple/Classing.xcodeproj -scheme Classing
+          -configuration Debug -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath apple/build/ios CODE_SIGNING_ALLOWED=NO build
+      - name: Compile Apple Watch app and complications
+        run: >-
+          xcodebuild -project apple/Classing.xcodeproj -scheme ClassingWatch
+          -configuration Debug -destination 'generic/platform=watchOS Simulator'
+          -derivedDataPath apple/build/watch CODE_SIGNING_ALLOWED=NO build
+      - name: Native UI tests and screenshots
+        run: bash apple/scripts/native-preview.sh
+      - name: Upload native simulator apps and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-native-simulator-builds
+          path: |
+            apple/build/ios/Build/Products/Debug-iphonesimulator/*.app
+            apple/build/watch/Build/Products/Debug-watchsimulator/*.app
+            apple/build/screenshots
+            apple/build/UITests.xcresult
+          if-no-files-found: warn
+      - name: Publish CI summary
+        if: always()
+        run: |
+          echo '## Apple validation' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Swift core tests, iOS/watchOS simulator builds and native UI tests run on this macOS runner.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Download apple-native-simulator-builds for PNG previews and .xcresult diagnostics.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Simulator .app bundles are unsigned. They are not an IPA and cannot be installed on a physical iPhone.' >> "$GITHUB_STEP_SUMMARY"

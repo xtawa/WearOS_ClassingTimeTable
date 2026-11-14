@@ -256,3 +256,7 @@ internal data class WearSyncModeResolution(
     val effectiveMode: WearSyncMode,
     val autoDetection: WearAutoDetectionResult?,
 )
+
+/** Local file/manual imports remain usable without a Classing account. */
+internal fun OnboardingImportTarget.requiresClassingLogin(): Boolean =
+    this == OnboardingImportTarget.AI_DOCUMENT || this == OnboardingImportTarget.AI_TEXT

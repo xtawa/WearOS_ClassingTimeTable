@@ -129,6 +129,7 @@ import org.json.JSONObject
 internal fun WeekBoardLayer(
     contentPadding: PaddingValues,
     visibleDays: List<DayOfWeek>,
+    scheduleDisplay: com.xtawa.classingtime.ui.theme.ScheduleDisplay = com.xtawa.classingtime.ui.theme.ScheduleDisplay.Focus,
     lessonsForDate: (LocalDate) -> List<LessonUi>,
     hasSchedule: Boolean,
     scheduleChangeCount: Int,
@@ -139,6 +140,16 @@ internal fun WeekBoardLayer(
     onOpenLesson: (LessonUi, LocalDate) -> Unit,
     onLongPressLesson: (LessonUi) -> Unit,
 ) {
+    if (scheduleDisplay == com.xtawa.classingtime.ui.theme.ScheduleDisplay.Dense) {
+        com.xtawa.classingtime.ui.timetable.DenseTimetableContent(lessonsForDate,
+            firstDay = visibleDays.firstOrNull() ?: DayOfWeek.MONDAY, contentPadding = contentPadding,
+            onBack = onBackToHome, onOpenLesson = onOpenLesson, onLongPressLesson = onLongPressLesson,
+            actions = {
+                TextButton(onClick = onOpenCalendar) { Text(stringResource(R.string.schedule_dense_calendar)) }
+                TextButton(onClick = onOpenChanges) { Text(stringResource(R.string.schedule_dense_changes)) }
+            })
+        return
+    }
     val context = LocalContext.current
     val today = LocalDate.now()
     val weekDates = remember(visibleDays, today) {

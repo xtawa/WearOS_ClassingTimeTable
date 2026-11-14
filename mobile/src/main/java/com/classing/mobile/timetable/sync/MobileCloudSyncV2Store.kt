@@ -294,6 +294,7 @@ object MobileCloudSyncV2Store {
             }
         }
         cached.values.filter { !it.isDeleted && it.id !in current }.forEach { old ->
+            if (!shouldDeleteMissingCloudRecord(domain)) return@forEach
             val version = nextVersion(context, now)
             result[old.id] = old.copy(
                 version = version,

@@ -47,6 +47,15 @@ internal data class ScheduleExceptionUi(
     val endTime: LocalTime? = null,
 )
 
+/** Same-time per-occurrence metadata overrides are not timetable moves. */
+internal fun ScheduleExceptionUi.isScheduleChange(baseLessons: List<LessonUi>): Boolean {
+    if (type != ScheduleExceptionKind.RESCHEDULE) return true
+    val base = baseLessons.firstOrNull { it.id == lessonId } ?: return true
+    return (startTime != null && startTime != base.startTime) ||
+        (endTime != null && endTime != base.endTime) ||
+        (dayOfWeek != null && dayOfWeek != date.dayOfWeek)
+}
+
 internal enum class EffectiveLessonOrigin {
     BASE,
     RESCHEDULED,
@@ -281,7 +290,8 @@ internal fun buildEffectiveOccurrencesForDateRange(
                     if (!exception.lessonId.isNullOrBlank()) {
                         dayLessons.removeAll { it.sourceLessonId == exception.lessonId }
                     }
-                    dayLessons += exception.toOccurrence(date, weekIndex, EffectiveLessonOrigin.RESCHEDULED)
+                    dayLessons += exception.toOccurrence(date, weekIndex,
+                        if (exception.isScheduleChange(baseLessons)) EffectiveLessonOrigin.RESCHEDULED else EffectiveLessonOrigin.BASE)
                 }
 
                 ScheduleExceptionKind.MAKE_UP -> {

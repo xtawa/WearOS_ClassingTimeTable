@@ -12,6 +12,8 @@ import java.time.LocalDate
 @Composable
 internal fun DashboardLayer(
     contentPadding: PaddingValues,
+    scheduleDisplay: com.xtawa.classingtime.ui.theme.ScheduleDisplay = com.xtawa.classingtime.ui.theme.ScheduleDisplay.Focus,
+    weekStartDay: java.time.DayOfWeek = java.time.DayOfWeek.MONDAY,
     lessons: List<LessonUi>,
     prompts: List<String> = emptyList(),
     calendarEvents: List<SystemCalendarEvent> = emptyList(),
@@ -23,6 +25,8 @@ internal fun DashboardLayer(
 ) {
     HomeScreen(
         prompts = prompts,
+        scheduleDisplay = scheduleDisplay,
+        weekStartDay = weekStartDay,
         contentPadding = contentPadding,
         lessonsForDate = lessonsForDate,
         hasImportedSchedule = lessons.isNotEmpty() || com.xtawa.classingtime.data.MobilePrefsStore.hasTimetableState(androidx.compose.ui.platform.LocalContext.current),
