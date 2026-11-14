@@ -40,7 +40,8 @@ struct CourseRow: View {
     }
 }
 struct NextCourseCard: View {
-    var occurrence: Occurrence?, now: Date
+    var occurrence: Occurrence?
+    var now: Date
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(occurrence.map { $0.start <= now ? "正在上课" : "下一节课" } ?? "空闲时间", systemImage: "sparkle").font(.caption).foregroundStyle(.secondary)
