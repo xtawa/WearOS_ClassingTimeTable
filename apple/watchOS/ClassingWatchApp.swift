@@ -12,13 +12,13 @@ struct WatchRootView: View {
         NavigationStack {
             List {
                 NavigationLink { WatchTodayView() } label: { NextCourseCard(occurrence: store.upcoming.first, now: store.now) }.listRowBackground(Color.clear)
-                NavigationLink("今日课程", systemImage: "sun.max") { WatchTodayView() }
-                NavigationLink("本周课表", systemImage: "calendar") { WatchWeekView() }
-                NavigationLink("考试", systemImage: "graduationcap") { WatchExamsView() }
-                NavigationLink("Ask AI / BYOK", systemImage: "sparkles") { WatchAssistantView() }
-                NavigationLink("课程管理", systemImage: "pencil") { WatchCoursesView() }
-                NavigationLink("调课与补课", systemImage: "arrow.triangle.swap") { WatchChangesView() }
-                NavigationLink("设置与账号", systemImage: "gearshape") { WatchSettings() }
+                NavigationLink { WatchTodayView() } label: { Label("今日课程", systemImage: "sun.max") }
+                NavigationLink { WatchWeekView() } label: { Label("本周课表", systemImage: "calendar") }
+                NavigationLink { WatchExamsView() } label: { Label("考试", systemImage: "graduationcap") }
+                NavigationLink { WatchAssistantView() } label: { Label("Ask AI / BYOK", systemImage: "sparkles") }
+                NavigationLink { WatchCoursesView() } label: { Label("课程管理", systemImage: "pencil") }
+                NavigationLink { WatchChangesView() } label: { Label("调课与补课", systemImage: "arrow.triangle.swap") }
+                NavigationLink { WatchSettings() } label: { Label("设置与账号", systemImage: "gearshape") }
             }.navigationTitle("Classing")
         }.tint(.indigo)
         .alert("操作未完成", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("知道了", role: .cancel) {} } message: { Text(store.error ?? "") }
