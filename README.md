@@ -1,5 +1,7 @@
 # Classing Timetable (Phone + Wear OS)
 
+**即将推出iOS/Apple Watch版本，敬请期待！**
+
 增量更新后，工程拆分为：
 
 - `mobile`：手机端（课程管理、导入、提醒设置、同步主控）
