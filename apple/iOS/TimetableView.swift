@@ -129,7 +129,7 @@ struct TimetableView: View {
                     .accessibilityLabel("\(item.title)，\(SchoolTime.clock(item.startMinute))至\(SchoolTime.clock(item.endMinute))，\(item.location ?? "")")
                     .accessibilityIdentifier("timetable-week-course")
             }
-        }.frame(width: width, height: CGFloat(lastHour - firstHour) * hourHeight).overlay(alignment: .leading) { Rectangle().fill(.secondary.opacity(0.1)).frame(width: 0.5) }
+        }.frame(width: width, height: CGFloat(lastHour - firstHour) * hourHeight, alignment: .topLeading).overlay(alignment: .leading) { Rectangle().fill(.secondary.opacity(0.1)).frame(width: 0.5) }
     }
     private var emptyWeek: some View {
         ContentUnavailableView {

@@ -40,6 +40,9 @@ final class ClassingUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["课表"].waitForExistence(timeout: 10)); app.tabBars.buttons["课表"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["timetable-week-course"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["timetable-period"].waitForExistence(timeout: 5))
+        let morningCourse = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND label BEGINSWITH %@", "timetable-week-course", "大学英语")).firstMatch
+        XCTAssertTrue(morningCourse.waitForExistence(timeout: 5))
+        XCTAssertLessThan(morningCourse.frame.minY, app.buttons["timetable-period"].frame.maxY + 160, "08:30 course must stay near the first hour, without a centered-canvas offset")
         let original = app.buttons["timetable-period"].label
         app.buttons["timetable-next"].tap(); XCTAssertNotEqual(app.buttons["timetable-period"].label, original)
         app.buttons["timetable-previous"].tap()
