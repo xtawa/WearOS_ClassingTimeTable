@@ -41,6 +41,17 @@ final class CompanionSyncTests: XCTestCase {
         try CompanionSync.apply(CompanionSync.outbound(watch, role: .watch), to: &phone, role: .phone)
         XCTAssertTrue(phone.lessons.isEmpty)
     }
+    func testOlderQueuedPhoneSnapshotCannotRollBackNewerSchoolSettings() throws {
+        var phone = try phone(), watch = AppState()
+        let older = CompanionSync.outbound(phone, role: .phone)
+        phone.settings["semesterWeekStartDate"] = .string("2026-09-14")
+        phone.settings["timezone"] = .string("Asia/Tokyo")
+        try CompanionSync.capture(&phone, role: .phone, now: 300)
+        try CompanionSync.apply(CompanionSync.outbound(phone, role: .phone), to: &watch, role: .watch)
+        try CompanionSync.apply(older, to: &watch, role: .watch)
+        XCTAssertEqual(watch.settings.semesterStart, "2026-09-14")
+        XCTAssertEqual(watch.settings.timezone, "Asia/Tokyo")
+    }
     func testInvalidIncomingDocumentLeavesExistingStateUntouched() throws {
         let phone = try phone(); var watch = AppState(); try CloudSync.capture(&watch)
         let previous = watch; var invalid = CompanionSync.outbound(phone, role: .phone); invalid.format = "invalid"

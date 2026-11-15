@@ -26,7 +26,10 @@ public enum CompanionSync {
             // School dates, timezone and global behavior are managed on iPhone.
             // A fresh/legacy watch must not override them with newer defaults.
             let bootstrapped = candidate.settings[readyKey].bool
-            let authoritative = Set(settings.filter { $0.id != "academicMode" || !bootstrapped }.map(\.id))
+            let watchDefaults = Set((candidate.cloud.records["mobile.settings"] ?? []).filter { $0.version.deviceId == candidate.deviceId }.map(\.id))
+            // After bootstrap keep the phone's existing logical versions so an
+            // older queued file cannot roll back a newer direct-message update.
+            let authoritative = Set(settings.filter { (!bootstrapped || watchDefaults.contains($0.id)) && ($0.id != "academicMode" || !bootstrapped) }.map(\.id))
             candidate.cloud.records["mobile.settings"] = (candidate.cloud.records["mobile.settings"] ?? []).filter { !authoritative.contains($0.id) }
         }
         try CloudSync.apply(incoming, to: &candidate, now: now, domains: domains, includingCompanionDomains: true)
