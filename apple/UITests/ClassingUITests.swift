@@ -58,6 +58,16 @@ final class ClassingUITests: XCTestCase {
         XCTAssertTrue(app.buttons["onboarding-next"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["next-course"].waitForExistence(timeout: 5))
     }
+    func testAssistantRendersRichReplyAndScrollableTableAndCode() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--assistant-preview"]; app.launch()
+        XCTAssertTrue(app.tabBars.buttons["助手"].waitForExistence(timeout: 10)); app.tabBars.buttons["助手"].tap()
+        XCTAssertTrue(app.staticTexts["今日课程"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["# 今日课程"].exists); screenshot("iPhone-assistant-rich")
+        let table = app.descendants(matching: .any)["reply-table"].firstMatch
+        reveal(table, in: app); screenshot("iPhone-assistant-table")
+        let code = app.descendants(matching: .any)["reply-code"].firstMatch
+        reveal(code, in: app); XCTAssertTrue(app.buttons["复制代码"].exists); screenshot("iPhone-assistant-code")
+    }
     func testStoreKitLocalPurchaseAndRestore() throws {
         let session = try SKTestSession(configurationFileNamed: "ClassingTest")
         session.resetToDefaultState()

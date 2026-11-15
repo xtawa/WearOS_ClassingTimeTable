@@ -8,6 +8,7 @@ import ClassingCore
     @ViewBuilder private var content: some View {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--demo") && ProcessInfo.processInfo.arguments.contains("--settings") { NavigationStack { WatchSettings() }.tint(.indigo) }
+        else if ProcessInfo.processInfo.arguments.contains("--demo") && ProcessInfo.processInfo.arguments.contains("--assistant-preview") { NavigationStack { WatchAssistantView() }.tint(.indigo) }
         else { WatchRootView() }
         #else
         WatchRootView()

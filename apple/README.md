@@ -76,6 +76,14 @@ WatchConnectivity 消息传输并等待保存确认；离线或较大资料使�
 完成后不追加一个会使成功回答报错的额度请求；完成帧后的尾部或连接关闭不撤销已完成的回答。
 正常请求取消不弹“操作未完成”，未启用云同步的首页刷新只更新本地安排。
 
+手机与手表的助手回答支持 Markdown 标题、强调、链接、引用、有序/无序与任务列表、
+横向表格及代码块。代码保持原样，手机可复制代码；思考过程沿用相同排版。未闭合的
+代码围栏也会随流式输出显示，不等整个回复完成。用户自己输入的消息保留原文。
+
+SSE 直接按 UTF-8 字节识别 LF/CRLF/CR 和空行边界，避免 Foundation `AsyncBytes.lines`
+合并空行后，把不同事件的 JSON 累积到 `done`。回归测试通过实际 URLSession 接收后端形状的
+完整事件流，并分别检查 delta、usage、done，不只向聊天 API 注入预先拆好的事件。
+
 ## Windows：无需本地虚拟机
 
 ### 现在就预览
@@ -175,7 +183,7 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 
 2026-11-15 更新后的验证范围：
 
-- **Windows 的 77 项 Swift XCTest 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、凭据隔离、BYOK、首页/组件边界、助手请求与完成帧、取消识别，以及独立于云范围的设备同步、手表初始化与乱序投递保护。macOS 的相同测试以对应提交的 Actions 为准。
+- **Windows 的 89 项 Swift XCTest 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、凭据隔离、BYOK、首页/组件边界、助手请求与完成帧、UTF-8 事件流分帧、URLSession 接收、富格式排版、取消识别，以及独立于云范围的设备同步、手表初始化与乱序投递保护。macOS 的相同测试以对应提交的 Actions 为准。
 - **7 项浏览器数据契约测试通过，8 项 Playwright UI 测试通过**。
 - 全部 Apple Swift 源码通过真实 Swift 语法解析，JSON/YAML 校验通过。
 - iPhone、Watch、两个 Widget 扩展已通过 Apple SDK 编译，设备 Release 归档及未签名 IPA 打包通过；后续变更以对应提交的 Actions 结果为准。

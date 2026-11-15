@@ -9,7 +9,7 @@ python3 "$ROOT/scripts/boot-simulator.py" "$PHONE"
 test_status=0
 xcodebuild -project "$ROOT/Classing.xcodeproj" -scheme Classing -configuration Debug \
   -destination "platform=iOS Simulator,id=$PHONE" -derivedDataPath "$ROOT/build/ios" \
-  -resultBundlePath "$ROOT/build/UITests.xcresult" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test || test_status=$?
+  -resultBundlePath "$ROOT/build/UITests.xcresult" -parallel-testing-enabled NO CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-1}" CODE_SIGNING_ALLOWED=NO test || test_status=$?
 xcrun xcresulttool export attachments --path "$ROOT/build/UITests.xcresult" --output-path "$ROOT/build/screenshots/test-attachments"
 # XCTest captures after the app is ready, unlike an immediate post-launch simctl capture.
 python3 - "$ROOT/build/screenshots" <<'PY'
@@ -34,3 +34,7 @@ xcrun simctl terminate "$WATCH" com.xtawa.classingtime.apple.watchkitapp
 xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo --settings
 sleep 2
 xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch-settings.png"
+xcrun simctl terminate "$WATCH" com.xtawa.classingtime.apple.watchkitapp
+xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo --assistant-preview
+sleep 2
+xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch-assistant.png"

@@ -145,7 +145,7 @@ struct DataSettingsView: View {
 struct AboutSettingsView: View {
     var body: some View {
         List {
-            Section { Text("Classing").font(.title2.bold()); Text("iPhone 与 Apple Watch 课程表").foregroundStyle(.secondary); LabeledContent("版本", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") }
+            Section { Text("Classing").font(.title2.bold()); Text("iPhone 与 Apple Watch 课程表").foregroundStyle(.secondary); LabeledContent("版本", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"); LabeledContent("构建", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1") }
             Section { NavigationLink("公告") { AnnouncementsView() }; Link("隐私政策", destination: URL(string: "https://lyxyy.notion.site/classing-user-policy")!); Link("使用条款", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!) }
         }.navigationTitle("关于 Classing")
     }

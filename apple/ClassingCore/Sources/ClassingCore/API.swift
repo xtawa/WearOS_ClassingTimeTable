@@ -26,11 +26,15 @@ public protocol HTTPTransport: Sendable {
     func stream(_ request: URLRequest, onEvent: @escaping @Sendable (SSEEvent) async throws -> Void) async throws
 }
 public final class URLTransport: NSObject, HTTPTransport, URLSessionTaskDelegate, @unchecked Sendable {
+    private let configuration: URLSessionConfiguration
     private lazy var session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral; config.timeoutIntervalForRequest = 60; config.timeoutIntervalForResource = 300
-        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }()
-    public override init() { super.init() }
+    public override init() {
+        let config = URLSessionConfiguration.ephemeral; config.timeoutIntervalForRequest = 60; config.timeoutIntervalForResource = 300
+        configuration = config; super.init()
+    }
+    init(configuration: URLSessionConfiguration) { self.configuration = configuration; super.init() }
     public func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
     public func send(_ request: URLRequest, limit: Int = 10_485_760) async throws -> HTTPResponse {
         #if os(iOS) || os(watchOS) || os(macOS)
@@ -52,11 +56,11 @@ public final class URLTransport: NSObject, HTTPTransport, URLSessionTaskDelegate
         }
         guard response.value(forHTTPHeaderField: "Content-Type")?.contains("text/event-stream") == true else { throw ClassingError.invalid("服务器未返回事件流。") }
         var parser = SSEParser(), total = 0
-        for try await line in bytes.lines { try Task.checkCancellation(); total += line.utf8.count; guard total <= 8_388_608 else { throw ClassingError.invalid("事件流过大。") }; if let event = parser.line(line) { try await onEvent(event) } }
+        for try await byte in bytes { try Task.checkCancellation(); total += 1; guard total <= 8_388_608 else { throw ClassingError.invalid("事件流过大。") }; if let event = parser.byte(byte) { try await onEvent(event) } }
         if let event = parser.finish() { try await onEvent(event) }
         #else
         let response = try await send(request, limit: 8_388_608); guard (200...299).contains(response.status) else { throw Self.error(response.status, response.data) }
-        var parser = SSEParser(); for line in String(decoding: response.data, as: UTF8.self).replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n") { if let e = parser.line(line) { try await onEvent(e) } }; if let e = parser.finish() { try await onEvent(e) }
+        var parser = SSEParser(); for byte in response.data { if let e = parser.byte(byte) { try await onEvent(e) } }; if let e = parser.finish() { try await onEvent(e) }
         #endif
     }
     public static func error(_ status: Int, _ data: Data) -> ClassingError { let v = try? JSONValue.decode(data); return .network(status, v?["code"].string ?? "HTTP_ERROR", v?["message"].string.isEmpty == false ? v!["message"].string : "请求失败") }

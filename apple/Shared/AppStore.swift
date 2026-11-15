@@ -49,6 +49,7 @@ import UserNotifications
             if ProcessInfo.processInfo.arguments.contains("--empty") { state.lessons = []; state.exams = []; state.exceptions = [] }
             if ProcessInfo.processInfo.arguments.contains("--exam") { state.settings["academicMode"] = .string("EXAM") }
             if ProcessInfo.processInfo.arguments.contains("--onboarding") { state.settings["onboardingCompleted"] = .bool(false) }
+            if ProcessInfo.processInfo.arguments.contains("--assistant-preview") { signedIn = true }
         }
         #endif
         prepareCompanion()

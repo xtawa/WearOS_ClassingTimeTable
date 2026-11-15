@@ -8,7 +8,7 @@ final class AssistantContractTests: XCTestCase {
     func testSwiftTaskCancellationIsNotAnOperationalError() { XCTAssertTrue(ClassingError.isCancellation(CancellationError())) }
     func testURLSessionCancellationIsNotAnOperationalError() { XCTAssertTrue(ClassingError.isCancellation(URLError(.cancelled))); XCTAssertTrue(ClassingError.isCancellation(NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled))) }
     func testTimeoutAndAuthorizationErrorsRemainOperationalErrors() { XCTAssertFalse(ClassingError.isCancellation(URLError(.timedOut))); XCTAssertFalse(ClassingError.isCancellation(ClassingError.network(401, "UNAUTHORIZED", "请登录"))) }
-    private func client(_ transport: AssistantTransport) async throws -> ClassingAPI {
+    private func client(_ transport: any HTTPTransport) async throws -> ClassingAPI {
         let vault = MemoryTokenVault()
         await vault.write(try AuthSession(.object(["accessToken": .string("test-access"), "refreshToken": .string("test-refresh"), "accessExpiresAt": .int(Wire.milliseconds() + 3_600_000)])))
         return ClassingAPI(baseURL: URL(string: "https://example.invalid")!, vault: vault, platform: "IOS", bundleID: "test", transport: transport)
@@ -73,6 +73,27 @@ final class AssistantContractTests: XCTestCase {
         let api = try await client(transport), result = try await chat(api)
         XCTAssertTrue(result["replayed"].bool)
     }
+    func testActualURLSessionTransportPreservesBackendEventBoundaries() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AssistantSSEProtocol.self]
+        let api = try await client(URLTransport(configuration: configuration)), log = EventLog()
+        let result = try await api.chat(message: "课表", conversationId: nil, snapshot: .object([:]), model: "test", attachments: []) { await log.append($0.event) }
+        let names = await log.names
+        XCTAssertEqual(names, ["conversation", "delta", "delta", "usage", "done"])
+        XCTAssertEqual(result["reply"].string, "## 今日课程\n**线性代数** ☀️")
+    }
+}
+private final class AssistantSSEProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "example.invalid" }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/event-stream; charset=utf-8"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        let body = "event: conversation\ndata: {\"conversationId\":\"test\"}\n\nevent: delta\ndata: {\"text\":\"## 今日课程\\n\"}\n\nevent: delta\ndata: {\"text\":\"**线性代数** ☀️\"}\n\nevent: usage\ndata: {\"used\":1}\n\nevent: done\ndata: {\"reply\":\"## 今日课程\\n**线性代数** ☀️\",\"courseProposal\":null,\"examProposal\":null}\n\n"
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
 }
 private actor AssistantTransport: HTTPTransport {
     var bodies: [JSONValue] = []

@@ -31,12 +31,29 @@ public enum AIProposal {
 public struct SSEEvent: Equatable, Sendable { public var event: String, data: String, id: String? }
 public struct SSEParser: Sendable {
     private var event = "message", data: [String] = [], id: String?
+    private var bytes: [UInt8] = [], previousWasCR = false, firstLine = true
     public init() {}
+    /// Preserve blank lines: Foundation's AsyncBytes.lines coalesces line breaks,
+    /// but an empty line is the event boundary in SSE.
+    public mutating func byte(_ byte: UInt8) -> SSEEvent? {
+        if byte == 10 && previousWasCR { previousWasCR = false; return nil }
+        previousWasCR = byte == 13
+        guard byte == 10 || byte == 13 else { bytes.append(byte); return nil }
+        return bufferedLine()
+    }
+    private mutating func bufferedLine() -> SSEEvent? {
+        var text = String(decoding: bytes, as: UTF8.self); bytes.removeAll(keepingCapacity: true)
+        if firstLine { firstLine = false; if text.hasPrefix("\u{FEFF}") { text.removeFirst() } }
+        return line(text)
+    }
     public mutating func line(_ line: String) -> SSEEvent? {
         if line.isEmpty { guard !data.isEmpty else { event = "message"; return nil }; let result = SSEEvent(event: event, data: data.joined(separator: "\n"), id: id); event = "message"; data = []; return result }
         if line.hasPrefix(":") { return nil }; let split = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
         let name = String(split[0]); var value = split.count > 1 ? String(split[1]) : ""; if value.hasPrefix(" ") { value.removeFirst() }
         switch name { case "event": event = value; case "data": data.append(value); case "id": if !value.contains("\0") { id = value }; default: break }; return nil
     }
-    public mutating func finish() -> SSEEvent? { line("") }
+    public mutating func finish() -> SSEEvent? {
+        if !bytes.isEmpty, let event = bufferedLine() { return event }
+        return line("")
+    }
 }

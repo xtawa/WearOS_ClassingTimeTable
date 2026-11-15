@@ -74,19 +74,19 @@ jobs:
         run: >-
           xcodebuild -project apple/Classing.xcodeproj -scheme Classing
           -configuration Debug -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath apple/build/ios CODE_SIGNING_ALLOWED=NO build
+          -derivedDataPath apple/build/ios CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO build
       - name: Compile Apple Watch app and complications
         run: >-
           xcodebuild -project apple/Classing.xcodeproj -scheme ClassingWatch
           -configuration Debug -destination 'generic/platform=watchOS Simulator'
-          -derivedDataPath apple/build/watch CODE_SIGNING_ALLOWED=NO build
+          -derivedDataPath apple/build/watch CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO build
       - name: Archive iPhone app with embedded Apple Watch app (unsigned devices)
         run: >-
           xcodebuild -project apple/Classing.xcodeproj -scheme Classing
           -configuration Release -destination 'generic/platform=iOS'
           -derivedDataPath apple/build/device
           -archivePath apple/build/Classing.xcarchive
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
+          CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
       - name: Package unsigned iPhone and Watch IPA
         run: |
           APP=apple/build/Classing.xcarchive/Products/Applications/Classing.app

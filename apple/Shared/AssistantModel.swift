@@ -29,6 +29,14 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
     var byok: Bool { store?.byok.enabled == true }
     func attach(_ store: AppStore) async {
         self.store = store
+        if store.demo {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--assistant-preview") && messages.isEmpty {
+                messages = [ChatMessage(role: "user", content: "帮我整理今天的课程与准备事项。"), ChatMessage(role: "assistant", content: Self.previewReply)]
+            }
+            #endif
+            return
+        }
         let nextContext = byok ? "byok:" + store.byokOwner : "official:" + store.account["userId"].string
         if nextContext != context { cancel(); messages = []; conversationId = nil; attachments = []; courseProposal = nil; examProposal = nil; context = nextContext }
         if byok { await loadLocal(); return }; guard store.signedIn else { return }
@@ -109,4 +117,44 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
         guard let store = store else { return }
         do { let data = try Wire.encoder.encode(Array(messages.suffix(100))); guard data.count <= 524288 else { throw ClassingError.invalid("本地 BYOK 对话已超过 512 KiB，请新建对话。") }; try await store.vault.setSecret(String(decoding: data, as: UTF8.self), key: "byok.history." + store.byokOwner) } catch { store.error = error.localizedDescription }
     }
+    #if DEBUG
+    private static let previewReply = """
+    # 今日课程
+
+    **线性代数**在教学楼 A-205。带上课本，也给自己留一点路上的时间。
+
+    - **时间**：09:00–10:30
+    - **地点**：教学楼 A-205
+      - 提前十分钟到教室
+    - [x] 课本已准备
+    - [ ] 复习上次的笔记
+
+    > 不必一次做完所有事，先准备好下一节课。
+
+    ## 本周安排
+
+    | 课程 | 时间 | 教室 |
+    | :--- | :---: | --- |
+    | 线性代数 | 周一 09:00 | A-205 |
+    | 大学英语 | 周三 14:00 | B-301 |
+
+    ## 准备步骤
+
+    1. 复习向量与矩阵，标记不理解的 `rank(A)`。
+    2. 阅读[课程资料](https://example.com/course)。
+
+    ### 导出示例
+
+    ```json
+    {
+      "course": "线性代数",
+      "room": "A-205"
+    }
+    ```
+
+    ---
+
+    *以上为界面演示数据。*
+    """
+    #endif
 }
