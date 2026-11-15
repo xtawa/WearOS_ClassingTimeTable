@@ -391,7 +391,7 @@ class AccountApiClient(
         channel: DailyBriefingChannel,
         time: String,
         timezone: String = TimeZone.getDefault().id,
-    ): Result<Unit> {
+    ): Result<DailyBriefingRemote> {
         val body = JSONObject()
             .put("enabled", enabled)
             .put("channel", channel.name)
@@ -405,7 +405,11 @@ class AccountApiClient(
             path = "/api/v1/briefings/daily",
             accessToken = accessToken,
             body = body,
-        ).map { Unit }
+        ).map { response ->
+            val item = response.getJSONObject("briefing")
+            DailyBriefingRemote(item.optBoolean("enabled"), DailyBriefingChannel.fromRaw(item.optString("channel")),
+                item.optString("time", "20:00"), item.optString("timezone", "Asia/Shanghai"))
+        }
     }
 
     private suspend fun postAuthSession(path: String, body: JSONObject): Result<AuthSession> {

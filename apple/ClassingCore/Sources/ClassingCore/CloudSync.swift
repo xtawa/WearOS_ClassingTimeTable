@@ -96,7 +96,7 @@ public enum CloudSync {
         }
         state.cloud = try state.cloud.merged(with: CloudDocument(), now: now)
     }
-    public static func apply(_ remote: CloudDocument, to state: inout AppState, now: Int64 = Wire.milliseconds(), domains: Set<String>? = nil, includingCompanionDomains: Bool = false) throws {
+    public static func apply(_ remote: CloudDocument, to state: inout AppState, now: Int64 = Wire.milliseconds(), domains: Set<String>? = nil, includingCompanionDomains: Bool = false, preservingSettings: Set<String> = []) throws {
         func enabled(_ domain: String, settings: Settings) -> Bool { Self.enabled(domain, settings: settings) || (includingCompanionDomains && CompanionSync.domains.contains(domain)) }
         // Disabled scopes stay untouched and are not echoed back to remote.
         var filtered = remote; filtered.records = remote.records.filter { enabled($0.key, settings: state.settings) && (domains == nil || domains!.contains($0.key)) }
@@ -109,6 +109,8 @@ public enum CloudSync {
             if document.records["timetable.exams"] != nil { candidate.exams = try decode("timetable.exams", Exam.self) }
         }
         if enabled("mobile.settings", settings: state.settings) || enabled("wear.settings", settings: state.settings) { for domain in ["mobile.settings", "wear.settings", "cloud.config"] where enabled(domain, settings: state.settings) && (domains == nil || domains!.contains(domain)) { for r in document.records[domain] ?? [] where r.deletedAt == nil && r.id != "syncScopes" { if domain == "wear.settings" && !r.id.hasPrefix("watch") { continue }; if let p = r.payload { candidate.settings[r.id] = try JSONValue.decode(Data(p.utf8))["value"] } } } }
+        // Independently managed server preferences must not be rolled back by an old cloud snapshot.
+        for key in preservingSettings { candidate.settings[key] = state.settings[key] }
         try candidate.validate(); candidate.cloud = document; candidate.counter = max(candidate.counter, document.records.values.flatMap { $0 }.map { $0.version.counter }.max() ?? 0); candidate.lastSyncAt = now; state = candidate
     }
     /// Member PUT replaces the entire remote document. Round-trip disabled remote

@@ -22,6 +22,7 @@ import UserNotifications
     var demo = false
     var officialCloudAllowed: Bool { signedIn && membership["access"]["cloudSync"].bool && membership["expiresAt"].int > Wire.milliseconds() }
     var byokAllowed: Bool { signedIn && (membership["access"].object["byok"]?.bool ?? membership["access"]["cloudSync"].bool) && membership["expiresAt"].int > Wire.milliseconds() }
+    private var serverBriefingSettings: Set<String> { signedIn ? ["dailyBriefingEnabled", "dailyBriefingChannel", "dailyBriefingTime", "dailyBriefingTimezone"] : [] }
     var companionAccountID: String? {
         guard accountResolved else { return nil }; guard signedIn else { return "" }
         let id = account["userId"].string.isEmpty ? account["id"].string : account["userId"].string
@@ -91,7 +92,7 @@ import UserNotifications
     func save(_ lesson: Lesson) { mutate("编辑课程前") { try lesson.validate(); if let i = $0.lessons.firstIndex(where: { $0.id == lesson.id }) { $0.lessons[i] = lesson } else { $0.lessons.append(lesson) } } }
     func save(_ exam: Exam) { mutate("编辑考试前") { try exam.validate(); if let i = $0.exams.firstIndex(where: { $0.id == exam.id }) { $0.exams[i] = exam } else { $0.exams.append(exam) } } }
     func save(_ exception: ScheduleException) { mutate("编辑调课前") { try exception.validate(); if let i = $0.exceptions.firstIndex(where: { $0.id == exception.id }) { $0.exceptions[i] = exception } else { $0.exceptions.append(exception) } } }
-    @discardableResult func receive(_ document: CloudDocument) -> Bool { do { var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CompanionSync.apply(document, to: &current, role: Self.companionRole)
+    @discardableResult func receive(_ document: CloudDocument) -> Bool { do { var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CompanionSync.apply(document, to: &current, role: Self.companionRole, preservingSettings: serverBriefingSettings)
         guard current.cloud != state.cloud || current.lessons != state.lessons || current.exams != state.exams || current.exceptions != state.exceptions || current.settings != state.settings else { return true }
         try commit(current); status = "已与另一设备合并"; return true } catch { report(error); return false } }
     func restore(_ snapshot: ScheduleSnapshot) { mutate("恢复备份前") { $0.lessons = snapshot.lessons; $0.exceptions = snapshot.exceptions; $0.exams = snapshot.exams; $0.settings = snapshot.settings } }
@@ -158,12 +159,12 @@ import UserNotifications
             for attempt in 0..<3 {
                 let (remote, version) = try await provider.read()
                 // Rebase on the CURRENT state after each await, so in-flight edits cannot be lost.
-                var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CloudSync.apply(remote, to: &current)
+                var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CloudSync.apply(remote, to: &current, preservingSettings: serverBriefingSettings)
                 do {
                     let upload = try CloudSync.upload(current, preserving: remote)
                     if upload != remote { try await provider.write(upload, version: version) }
                     // Incorporate edits made while PUT was in flight before committing the result.
-                    var latest = state; try CompanionSync.capture(&latest, role: Self.companionRole); try CloudSync.apply(current.cloud, to: &latest); let hasPendingEdits = latest.cloud.records != current.cloud.records
+                    var latest = state; try CompanionSync.capture(&latest, role: Self.companionRole); try CloudSync.apply(current.cloud, to: &latest, preservingSettings: serverBriefingSettings); let hasPendingEdits = latest.cloud.records != current.cloud.records
                     try commit(latest)
                     if hasPendingEdits && attempt < 2 { continue }
                     if hasPendingEdits { status = "新修改已保存在本地，等待下一次同步"; return }
@@ -189,11 +190,11 @@ import UserNotifications
         let provider = OfficialCloud(api: api)
         for attempt in 0..<3 {
             let (remote, version) = try await provider.read()
-            var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CloudSync.apply(remote, to: &current, domains: domains)
+            var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CloudSync.apply(remote, to: &current, domains: domains, preservingSettings: serverBriefingSettings)
             do {
                 let upload = try CloudSync.upload(current, preserving: remote, domains: domains)
                 if upload != remote { try await provider.write(upload, version: version) }
-                var latest = state; try CompanionSync.capture(&latest, role: Self.companionRole); try CloudSync.apply(current.cloud, to: &latest, domains: domains); try commit(latest); return
+                var latest = state; try CompanionSync.capture(&latest, role: Self.companionRole); try CloudSync.apply(current.cloud, to: &latest, domains: domains, preservingSettings: serverBriefingSettings); try commit(latest); return
             } catch ClassingError.conflict { if attempt == 2 { throw ClassingError.conflict }; try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 400_000_000) }
         }
     }

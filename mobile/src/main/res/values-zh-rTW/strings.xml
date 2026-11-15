@@ -928,4 +928,5 @@
     <string name="byok_code">核對編號：%1$s</string>
     <string name="byok_storage_failed">無法讀取本機私密設定。請清除本機 BYOK 資料或重試，尚未傳送模型請求。</string>
     <string name="ai_points_blocked">此帳戶的官方 AI 已停用，加購點數仍保留在餘額中。</string>
+    <string name="daily_briefing_saving">正在儲存…</string>
 </resources>

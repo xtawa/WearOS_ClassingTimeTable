@@ -4,6 +4,21 @@ import XCTest
 import FoundationNetworking
 #endif
 final class IntegrationContractTests: XCTestCase {
+    func testOldCloudAndCompanionSettingsCannotReplaceCanonicalBriefingState() throws {
+        var old = AppState(); old.settings["dailyBriefingEnabled"] = .bool(false); old.settings["dailyBriefingTime"] = .string("19:00"); old.lessons = [Lesson(title: "Remote course")]
+        try CloudSync.capture(&old)
+        let preserved: Set<String> = ["dailyBriefingEnabled", "dailyBriefingTime"]
+        var local = AppState(); local.settings["dailyBriefingEnabled"] = .bool(true); local.settings["dailyBriefingTime"] = .string("21:00")
+        var companion = local
+        try CloudSync.apply(old.cloud, to: &local, preservingSettings: preserved)
+        try CompanionSync.apply(old.cloud, to: &companion, role: .watch, preservingSettings: preserved)
+        for result in [local, companion] {
+            XCTAssertTrue(result.settings["dailyBriefingEnabled"].bool); XCTAssertEqual(result.settings["dailyBriefingTime"].string, "21:00")
+            XCTAssertEqual(result.lessons.first?.title, "Remote course"); XCTAssertNotNil(result.cloud.records["mobile.settings"])
+        }
+        var guest = AppState(); try CloudSync.apply(old.cloud, to: &guest)
+        XCTAssertEqual(guest.settings["dailyBriefingTime"].string, "19:00")
+    }
     func testCaptureIsStableWithoutLocalChanges() throws { var s = AppState(); try CloudSync.capture(&s, now: 10); let baseline = s.cloud; try CloudSync.capture(&s, now: 20); XCTAssertEqual(s.cloud, baseline) }
     func testNaturalWeekMatchesAndroidFourDayRule() throws { var settings = Settings(); settings["weekNumberMode"] = .string("NATURAL"); settings["weekStartDay"] = .string("MONDAY"); XCTAssertEqual(try SchoolTime.weekIndex("2026-01-01", settings: settings), 1); XCTAssertEqual(try SchoolTime.weekIndex("2027-01-01", settings: settings), 53) }
     func testAndroidMakeupWireDecodes() throws { let raw = Data("{\"id\":\"makeup\",\"type\":\"MAKE_UP\",\"date\":\"2026-11-16\",\"title\":\"补课\",\"startMinute\":600,\"endMinute\":660}".utf8); let e = try Wire.decoder.decode(ScheduleException.self, from: raw); try e.validate(); XCTAssertEqual(e.type, "MAKE_UP") }

@@ -928,4 +928,5 @@
     <string name="byok_code">核对编号：%1$s</string>
     <string name="byok_storage_failed">无法读取本地私密设置。请清除本地 BYOK 数据或重试，尚未发送模型请求。</string>
     <string name="ai_points_blocked">此账户的官方 AI 已停用，加购点数仍保留在余额中。</string>
+    <string name="daily_briefing_saving">正在保存…</string>
 </resources>

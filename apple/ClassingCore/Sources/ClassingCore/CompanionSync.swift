@@ -18,7 +18,7 @@ public enum CompanionSync {
         document.changes = document.changes.filter { domains.contains($0.domain) && (role == .phone || $0.domain != "mobile.settings" || (state.settings[readyKey].bool && $0.recordId == "academicMode")) }
         return document
     }
-    public static func apply(_ remote: CloudDocument, to state: inout AppState, role: Role, now: Int64 = Wire.milliseconds()) throws {
+    public static func apply(_ remote: CloudDocument, to state: inout AppState, role: Role, now: Int64 = Wire.milliseconds(), preservingSettings: Set<String> = []) throws {
         var incoming = remote, candidate = state
         if role == .phone {
             incoming.records["mobile.settings"] = (incoming.records["mobile.settings"] ?? []).filter { $0.id == "academicMode" }
@@ -32,7 +32,7 @@ public enum CompanionSync {
             let authoritative = Set(settings.filter { (!bootstrapped || watchDefaults.contains($0.id)) && ($0.id != "academicMode" || !bootstrapped) }.map(\.id))
             candidate.cloud.records["mobile.settings"] = (candidate.cloud.records["mobile.settings"] ?? []).filter { !authoritative.contains($0.id) }
         }
-        try CloudSync.apply(incoming, to: &candidate, now: now, domains: domains, includingCompanionDomains: true)
+        try CloudSync.apply(incoming, to: &candidate, now: now, domains: domains, includingCompanionDomains: true, preservingSettings: preservingSettings)
         if role == .watch { candidate.settings[readyKey] = .bool(true) }
         state = candidate
     }

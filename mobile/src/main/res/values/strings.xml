@@ -928,4 +928,5 @@
     <string name="byok_code">Compare code: %1$s</string>
     <string name="byok_storage_failed">Private settings could not be opened. Clear local BYOK data or retry. No provider request was sent.</string>
     <string name="ai_points_blocked">Official AI is disabled for this account. Purchased points remain in your balance.</string>
+    <string name="daily_briefing_saving">Saving…</string>
 </resources>

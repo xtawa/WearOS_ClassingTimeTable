@@ -24,6 +24,18 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class AccountApiClientContractTest {
+    @Test
+    fun saveDailyBriefingSubscription_returnsCanonicalServerState() = runBlocking {
+        RecordingHttpServer(status = 200, body = """{"briefing":{"enabled":true,"channel":"EMAIL","time":"08:15","timezone":"Asia/Tokyo"}}""").use { server ->
+            val result = AccountApiClient(baseUrl = server.baseUrl).saveDailyBriefingSubscription(
+                accessToken = "token", enabled = true, channel = DailyBriefingChannel.BOTH, time = "07:30", timezone = "Asia/Shanghai",
+            ).getOrThrow()
+            assertEquals(DailyBriefingChannel.EMAIL, result.channel)
+            assertEquals("08:15", result.time)
+            assertEquals("Asia/Tokyo", result.timezone)
+        }
+    }
+
     // The email-change request uses PATCH, which the JVM's HttpURLConnection rejects (Android's
     // implementation supports it), so the response contract is exercised on the parser directly.
     @Test

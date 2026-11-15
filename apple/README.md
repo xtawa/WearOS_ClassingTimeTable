@@ -185,7 +185,7 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 
 2026-11-15 更新后的验证范围：
 
-- **Windows 的 101 项 Swift XCTest 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、凭据隔离、BYOK、首页/组件边界、助手请求与完成帧、UTF-8 事件流分帧、URLSession 接收、富格式排版、取消识别，以及独立于云范围的设备同步、手表初始化与乱序投递保护、简报投递时区和可读错误提示。macOS 的相同测试以对应提交的 Actions 为准。
+- **Windows 的 102 项 Swift XCTest 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、凭据隔离、BYOK、首页/组件边界、助手请求与完成帧、UTF-8 事件流分帧、URLSession 接收、富格式排版、取消识别，以及独立于云范围的设备同步、手表初始化与乱序投递保护、简报投递时区、旧云/设备快照不覆盖服务端简报偏好和可读错误提示。macOS 的相同测试以对应提交的 Actions 为准。
 - **7 项浏览器数据契约测试通过，8 项 Playwright UI 测试通过**。
 - 全部 Apple Swift 源码通过真实 Swift 语法解析，JSON/YAML 校验通过。
 - iPhone、Watch、两个 Widget 扩展已通过 Apple SDK 编译，设备 Release 归档及未签名 IPA 打包通过；后续变更以对应提交的 Actions 结果为准。
@@ -194,6 +194,7 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 - CI 的手机 UI 测试固定使用已安装的 iOS 26.2，避免 [iOS 26.5 StoreKit Test 配置回归](https://developer.apple.com/forums/thread/826971)。三项选择器测试保证指定运行时生效、缺失时报错以及默认选择行为；编译仍使用 runner 的当前 Xcode SDK。
 - 后端 `go test ./...` 通过；Apple/Web 不校验 Android 证书，Android/部分签名头仍 fail-closed。
 - Android 两项 `CrossPlatformCloudSettingsTest` 通过（Gradle `testCnDebugUnitTest` 定向运行），保留未知跨平台设置而不改变课表删除传播。旧 Android 版本须升级此兼容修复，避免误删 Apple 特有设置。
+- 本轮 Android `AccountApiClientContractTest` 13 项通过；移除过期的免费账号简报限制，保留服务端返回的规范状态，并在前台刷新。Windows 验证使用 JDK 21、短临时路径和 Kotlin `in-process` 编译，未更改系统 Java 配置。
 - 两套热力图序列色阶通过单色、单调明度、相邻明度差与表面对比校验。
 
 仍需真机验收：实际安装、Liquid Glass、相机/麦克风/日历权限、WatchConnectivity 配对/断网传输、加密密钥接收确认、WidgetKit 刷新预算、实时活动/灵动岛系统容器、语音服务、配置后的 Google OAuth 与真实账户联调。正式 IAP 还需真实商品、服务端验证和 Apple 沙盒联调。浏览器截图不能替代这些验收。

@@ -710,7 +710,7 @@ internal fun MobileTimetableScreen(
 
     suspend fun pullDailyBriefingSettings() {
         val uid = accountSummary.userId
-        if (uid.isBlank() || briefingDirty || (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY")) return
+        if (uid.isBlank() || briefingDirty) return
         val token = ensureAccessToken() ?: return
         accountApiClient.fetchDailyBriefingSubscription(token).onSuccess { remote ->
             if (uid == accountSummary.userId && !briefingDirty) {
@@ -738,7 +738,6 @@ internal fun MobileTimetableScreen(
             val profile = result.getOrThrow()
             accountSummary = profile.account
             membershipSummary = profile.membership.copy(lastCheckedAt = System.currentTimeMillis())
-            if (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY") dailyBriefingEnabled = false
             pendingEmailChange = profile.pendingEmailChange
             pullDailyBriefingSettings()
             if (showStatus) {
@@ -759,11 +758,6 @@ internal fun MobileTimetableScreen(
     }
 
     suspend fun saveDailyBriefingSettings(pushRemote: Boolean): Boolean {
-        if (accountSummary.userId.isNotBlank() && !membershipSummary.isMember && accountSummary.accountClass != "LEGACY" && dailyBriefingEnabled) {
-            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_tier_required)
-            return false
-        }
-
         if ((dailyBriefingChannel == DailyBriefingChannel.EMAIL || dailyBriefingChannel == DailyBriefingChannel.BOTH) &&
             accountSummary.userId.isBlank()
         ) {
@@ -781,6 +775,8 @@ internal fun MobileTimetableScreen(
             dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_saved_local)
             return true
         }
+        dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_saving)
+        val savedForUser = accountSummary.userId
         val result = accountApiClient.saveDailyBriefingSubscription(
             accessToken = accessToken,
             enabled = dailyBriefingEnabled,
@@ -788,6 +784,7 @@ internal fun MobileTimetableScreen(
             time = dailyBriefingTime,
             timezone = zoneId.id,
         )
+        if (savedForUser != accountSummary.userId) return false
         if (result.isFailure) {
             dailyBriefingStatusMessage = accountErrorMessage(
                 context,
@@ -795,7 +792,12 @@ internal fun MobileTimetableScreen(
                 R.string.daily_briefing_save_failed,
             )
         } else {
+            val canonical = result.getOrThrow()
+            dailyBriefingEnabled = canonical.enabled
+            dailyBriefingChannel = canonical.channel
+            dailyBriefingTime = canonical.time
             briefingDirty = false
+            persistSettings()
             // Some fixed offsets (e.g. +05:30) have no tz-database name; the service then uses
             // its default zone, so say so instead of implying the local time was honoured.
             val timezoneUnsupported = AccountApiClient.resolveBriefingTimezone(zoneId.id).unsupportedOffset
@@ -1277,9 +1279,9 @@ internal fun MobileTimetableScreen(
 
     LaunchedEffect(initialized, accountSummary.userId, accountSummary.accountClass, membershipSummary.isMember, lifecycleOwner) {
         if (!initialized || accountSummary.userId.isBlank()) return@LaunchedEffect
-        if (!membershipSummary.isMember && accountSummary.accountClass != "LEGACY") return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
+                pullDailyBriefingSettings()
                 ensureAccessToken()?.let { token -> accountApiClient.dailyBriefingNotifications(token).onSuccess { commands ->
                     MobileCloudSyncV2Store.consumeDailyBriefingCommands(context, commands)
                 } }
@@ -2750,7 +2752,7 @@ internal fun MobileTimetableScreen(
                 SettingsPage.AccountRegister, SettingsPage.AccountPasswordReset -> renderAccountPages(destination.settingsPage, innerPadding)
 
                 SettingsPage.DailyBriefing -> DailyBriefingSettingsPage(
-                    accessAllowed = accountSummary.userId.isBlank() || membershipSummary.isMember || accountSummary.accountClass == "LEGACY",
+                    accessAllowed = true,
                     contentPadding = innerPadding,
                     enabled = dailyBriefingEnabled,
                     channel = dailyBriefingChannel,
@@ -2761,9 +2763,7 @@ internal fun MobileTimetableScreen(
                         handleBackNavigation()
                     },
                     onEnabledChange = {
-                        if (it && accountSummary.userId.isNotBlank() && !membershipSummary.isMember && accountSummary.accountClass != "LEGACY") {
-                            dailyBriefingStatusMessage = context.getString(R.string.daily_briefing_tier_required)
-                        } else { briefingDirty = true; dailyBriefingEnabled = it }
+                        briefingDirty = true; dailyBriefingEnabled = it
                     },
                     onChannelChange = {
                         if (accountSummary.userId.isBlank() && (it == DailyBriefingChannel.EMAIL || it == DailyBriefingChannel.BOTH)) {
