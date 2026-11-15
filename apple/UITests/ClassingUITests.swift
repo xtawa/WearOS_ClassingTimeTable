@@ -1,6 +1,29 @@
 import XCTest
 import StoreKitTest
 final class ClassingUITests: XCTestCase {
+    func testImportShowsPreviewAndCompletionFeedback() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        XCTAssertTrue(app.tabBars.buttons["设置"].waitForExistence(timeout: 10)); app.tabBars.buttons["设置"].tap()
+        reveal(app.staticTexts["数据与备份"], in: app); app.staticTexts["数据与备份"].tap(); app.staticTexts["导入课表"].tap()
+        let text = app.textViews["import-text"]; XCTAssertTrue(text.waitForExistence(timeout: 5))
+        text.tap(); text.typeText("Imported course\t1\t09:00\t10:00")
+        app.buttons["解析"].tap()
+        let feedback = app.staticTexts["import-feedback"]; XCTAssertTrue(feedback.waitForExistence(timeout: 10))
+        XCTAssertTrue(feedback.label.contains("已解析 1 门课程"))
+        let confirm = app.buttons["确认导入"]; reveal(confirm, in: app); confirm.tap(); app.buttons["导入"].tap()
+        XCTAssertTrue(feedback.waitForExistence(timeout: 5)); XCTAssertTrue(feedback.label.contains("导入完成"))
+        screenshot("iPhone-import-complete")
+    }
+    func testAccountAndAboutMatchApplePlatform() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        XCTAssertTrue(app.tabBars.buttons["设置"].waitForExistence(timeout: 10)); app.tabBars.buttons["设置"].tap()
+        app.staticTexts["登录 Classing 账号"].tap()
+        reveal(app.buttons["apple-sign-in"], in: app); XCTAssertTrue(app.buttons["apple-sign-in"].exists)
+        XCTAssertFalse(app.staticTexts["国际版"].exists); XCTAssertFalse(app.staticTexts["兑换会员"].exists); screenshot("iPhone-apple-login")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        reveal(app.staticTexts["关于 Classing"], in: app); app.staticTexts["关于 Classing"].tap()
+        XCTAssertTrue(app.staticTexts["V1.1.4"].waitForExistence(timeout: 5)); screenshot("iPhone-about")
+    }
     func testMainScreensAndScreenshots() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["next-course"].waitForExistence(timeout: 10))
@@ -16,8 +39,9 @@ final class ClassingUITests: XCTestCase {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
         XCTAssertTrue(app.tabBars.buttons["课表"].waitForExistence(timeout: 10)); app.tabBars.buttons["课表"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["timetable-week-course"].firstMatch.waitForExistence(timeout: 5))
-        let original = app.staticTexts["timetable-period-label"].label
-        app.buttons["timetable-next"].tap(); XCTAssertNotEqual(app.staticTexts["timetable-period-label"].label, original)
+        XCTAssertTrue(app.buttons["timetable-period"].waitForExistence(timeout: 5))
+        let original = app.buttons["timetable-period"].label
+        app.buttons["timetable-next"].tap(); XCTAssertNotEqual(app.buttons["timetable-period"].label, original)
         app.buttons["timetable-previous"].tap()
         app.segmentedControls.buttons["日历"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["month-calendar"].waitForExistence(timeout: 5))

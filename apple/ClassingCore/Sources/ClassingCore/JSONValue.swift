@@ -18,6 +18,19 @@ public enum ClassingError: Error, LocalizedError, Equatable {
             case "BYOK_PROVIDER_ERROR": return "模型服务暂时无法完成请求，请检查模型配置或稍后重试。"
             case "AI_QUOTA_EXCEEDED", "AI_CREDIT_INSUFFICIENT": return "AI 可用额度不足，请查看用量或补充额度。"
             case "AUTH_INVALID_CREDENTIALS", "INVALID_CREDENTIALS": return "账号或密码不正确，请核对后重试。"
+            case "AUTH_APPLE_UNAVAILABLE": return "Apple 登录暂时不可用，请稍后重试或使用邮箱登录。"
+            case "AUTH_APPLE_CHALLENGE_INVALID", "AUTH_APPLE_TOKEN_INVALID": return "Apple 登录验证未完成，请重新使用 Apple 登录。"
+            case "ACCOUNT_APPLE_CONFLICT": return "这个 Apple 账号已连接其他 Classing 账号，请先核对登录账号。"
+            case "ACCOUNT_APPLE_MISMATCH": return "请选择当前 Classing 账号所连接的 Apple 账号。"
+            case "ACCOUNT_PASSWORD_CURRENT_INVALID": return "当前密码不正确，请核对后重试。"
+            case "ACCOUNT_EMAIL_BINDING_REQUIRED": return "请先在账号管理中连接并验证邮箱。"
+            case "ACCOUNT_EMAIL_INVALID": return "邮箱格式不正确，请检查后重试。"
+            case "ACCOUNT_EMAIL_CONFLICT": return "该邮箱已用于其他账号，请使用其他邮箱。"
+            case "ACCOUNT_PROFILE_CONFLICT": return "这个用户名已被使用，请换一个。"
+            case "ACCOUNT_USERNAME_INVALID": return "用户名请使用 3–40 位字母、数字、下划线、点或短横线。"
+            case "AUTH_PASSWORD_WEAK", "ACCOUNT_PASSWORD_WEAK", "ACCOUNT_PASSWORD_INVALID": return "密码长度不符合要求，请使用 8–128 位密码。"
+            case "AUTH_EMAIL_DELIVERY_FAILED": return "验证码邮件暂时发送失败，请稍后重试。"
+            case "BRIEFING_DISABLED": return "每日简报服务暂时不可用，现有设置会保留，请稍后重试。"
             default: break
             }
             switch status {

@@ -106,12 +106,24 @@ import UserNotifications
         let owner = account["userId"].string.isEmpty ? account["id"].string : account["userId"].string
         if !owner.isEmpty && state.settings["cloudAccountId"].string != owner {
             stopRealtime(); var local = state; local.cloud = CloudDocument()
-            local.settings["cloudAccountId"] = .string(owner); local.settings["cloudSyncEnabled"] = .bool(false); local.settings["officialEventVersion"] = .string("")
+            local.settings["cloudAccountId"] = .string(owner); local.settings["cloudSyncEnabled"] = .bool(false); local.settings["officialEventVersion"] = .string(""); local.settings["dailyBriefingEnabled"] = .bool(false)
             try commit(local); status = "账号已切换，请确认课表后重新开启云同步"
         }
         membership = try await api.request("GET", "/api/v1/membership/status")["membership"]
         try await loadPrivateByok()
         accountResolved = true; PhoneWatchBridge.shared.accountDidChange()
+        try? await refreshDailyBriefing()
+    }
+    func refreshDailyBriefing() async throws {
+        guard signedIn, !demo, let owner = companionAccountID, !owner.isEmpty else { return }
+        let value = try await api.request("GET", "/api/v1/briefings/daily")["briefing"]
+        guard signedIn, companionAccountID == owner else { return }
+        _ = try SchoolTime.minute(value["time"].string)
+        guard ["APP_NOTIFICATION", "EMAIL", "BOTH"].contains(value["channel"].string), TimeZone(identifier: value["timezone"].string) != nil else { return }
+        var local = state
+        local.settings["dailyBriefingEnabled"] = .bool(value["enabled"].bool); local.settings["dailyBriefingChannel"] = value["channel"]
+        local.settings["dailyBriefingTime"] = value["time"]; local.settings["dailyBriefingTimezone"] = value["timezone"]
+        if local.settings != state.settings { try commit(local) }
     }
     func login(_ identifier: String, _ password: String) async throws { _ = try await api.login(identifier: identifier, password: password); signedIn = true; try await refreshAccount(); startRealtime() }
     func signedInAfterRegistration(_ response: JSONValue) async throws { try await api.setSession(AuthSession(response)); signedIn = true; try await refreshAccount(); startRealtime() }
@@ -225,7 +237,14 @@ import UserNotifications
         Task { [weak self] in await self?.receiveCloudEvent(event) }
     }
     func stopRealtime() { realtime?.cancel(); realtime = nil; queuedCloudEvent = nil }
-    func becameActive() async { await start(); guard !demo else { return }; signedIn = (try? await api.session()) != nil; if !signedIn { account = .null; accountResolved = true }; PhoneWatchBridge.shared.accountDidChange(); changedServices(); if state.settings["cloudSyncEnabled"].bool { await sync(); startRealtime() }; await handleCommands() }
+    func becameActive() async {
+        let wasStarted = started; await start(); guard !demo else { return }
+        signedIn = (try? await api.session()) != nil
+        if !signedIn { account = .null; accountResolved = true }
+        PhoneWatchBridge.shared.accountDidChange()
+        if wasStarted { try? await refreshDailyBriefing() }
+        changedServices(); if state.settings["cloudSyncEnabled"].bool { await sync(); startRealtime() }; await handleCommands()
+    }
     func becameInactive() { stopRealtime() }
     private func changedServices() {
         refreshServices?.cancel(); let state = state

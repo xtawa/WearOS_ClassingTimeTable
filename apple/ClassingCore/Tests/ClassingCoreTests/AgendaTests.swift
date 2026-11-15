@@ -2,6 +2,14 @@ import XCTest
 @testable import ClassingCore
 
 final class AgendaTests: XCTestCase {
+    func testBriefingUsesDeliveryTimezoneWithoutChangingSchoolTimezone() throws {
+        var s = state(); s.settings["dailyBriefingEnabled"] = .bool(true); s.settings["dailyBriefingChannel"] = .string("APP_NOTIFICATION")
+        s.settings["dailyBriefingTime"] = .string("20:00"); s.settings["dailyBriefingTimezone"] = .string("America/New_York")
+        let now = try SchoolTime.instant(date: "2026-11-16", minute: 19 * 60, zone: "America/New_York")
+        let first = try XCTUnwrap(ReminderPlanner.plan(s, now: now).first { $0.id.hasPrefix("classing.briefing.") })
+        XCTAssertEqual(first.at, try SchoolTime.instant(date: "2026-11-16", minute: 20 * 60, zone: "America/New_York"))
+        XCTAssertEqual(s.settings.timezone, "Asia/Shanghai")
+    }
     func state() -> AppState {
         var s = AppState()
         s.settings["timezone"] = .string("Asia/Shanghai")

@@ -49,7 +49,7 @@ struct HomeView: View {
                     try await LiveActivityManager.update(store.agenda(at: Date()), enabled: store.state.settings["liveActivitiesEnabled"].bool)
                     try await Task.sleep(for: .seconds(60))
                 } catch is CancellationError { return }
-                catch { store.error = error.localizedDescription; return }
+                catch { store.report(error); return }
             }
         }
     }

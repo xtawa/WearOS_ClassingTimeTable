@@ -17,7 +17,7 @@ import ClassingCore
                     let audio = try await client.speech(chunk, voice: profile.voice); try Task.checkCancellation()
                     try await play(audio)
                 }
-            } catch { if !Task.isCancelled { store.error = error.localizedDescription } }
+            } catch { if !Task.isCancelled { store.report(error) } }
         }
     }
     private func play(_ data: Data) async throws {

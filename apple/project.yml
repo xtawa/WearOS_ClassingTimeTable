@@ -75,6 +75,7 @@ targets:
     entitlements:
       path: Config/iOS.entitlements
       properties:
+        com.apple.developer.applesignin: [Default]
         com.apple.security.application-groups: [group.com.xtawa.classingtime.apple]
     dependencies:
       - package: ClassingCore

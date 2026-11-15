@@ -20,14 +20,8 @@ struct NotificationSettingsView: View {
     @EnvironmentObject var store: AppStore
     var body: some View {
         Form {
-            Section("课程提醒") { Toggle("启用课程提醒", isOn: bool("reminderEnabled")); Stepper("提前 \(store.state.settings["reminderMinutes"].int) 分钟", value: Binding(get: { Int(store.state.settings["reminderMinutes"].int) }, set: { store.setting("reminderMinutes", .int(Int64($0))) }), in: 0...120, step: 5); Button("授权系统通知") { Task { do { guard try await LocalNotifications.permission() else { throw ClassingError.invalid("通知未获授权，请在系统设置中开启。") }; store.setting("reminderEnabled", .bool(true)) } catch { store.error = error.localizedDescription } } }; Button("发送本地测试通知") { Task { do { try await LocalNotifications.test("Classing 测试", body: "提醒将在这里显示。") } catch { store.error = error.localizedDescription } } } }
-            Section("每日简报") {
-                Toggle("启用每日简报", isOn: bool("dailyBriefingEnabled")); TextField("时间 HH:mm", text: str("dailyBriefingTime")); Picker("渠道", selection: str("dailyBriefingChannel")) { Text("本地通知").tag("APP_NOTIFICATION"); Text("邮件").tag("EMAIL"); Text("通知与邮件").tag("BOTH") }
-                Button("保存邮件订阅") { Task { do { _ = try await store.api.request("PUT", "/api/v1/briefings/daily", body: .object(["enabled": store.state.settings["dailyBriefingEnabled"], "time": store.state.settings["dailyBriefingTime"], "channel": store.state.settings["dailyBriefingChannel"], "timezone": .string(store.state.settings.timezone)])); store.status = "订阅已保存" } catch { store.error = error.localizedDescription } } }.disabled(!store.signedIn)
-                Button("试发简报") { Task { do { _ = try await store.api.request("POST", "/api/v1/briefings/daily/test", body: .object(["channel": store.state.settings["dailyBriefingChannel"]])); await store.handleCommands() } catch { store.error = error.localizedDescription } } }.disabled(!store.signedIn)
-                Button("取消邮件订阅", role: .destructive) { Task { do { _ = try await store.api.request("DELETE", "/api/v1/briefings/daily"); store.setting("dailyBriefingEnabled", .bool(false)) } catch { store.error = error.localizedDescription } } }.disabled(!store.signedIn)
-                Text("本地通知无需登录。Apple 不保证后台唤醒频率；应用每次打开、同步或编辑后重建最近 60 条提醒。通知与邮件不会使用未获服务端授权的云端课表。").font(.caption).foregroundStyle(.secondary)
-            }
+            Section("课程提醒") { Toggle("启用课程提醒", isOn: bool("reminderEnabled")); Stepper("提前 \(store.state.settings["reminderMinutes"].int) 分钟", value: Binding(get: { Int(store.state.settings["reminderMinutes"].int) }, set: { store.setting("reminderMinutes", .int(Int64($0))) }), in: 0...120, step: 5); Button("授权系统通知") { Task { do { guard try await LocalNotifications.permission() else { throw ClassingError.invalid("通知未获授权，请在系统设置中开启。") }; store.setting("reminderEnabled", .bool(true)) } catch { store.report(error) } } }; Button("发送本地测试通知") { Task { do { try await LocalNotifications.test("Classing 测试", body: "提醒将在这里显示。") } catch { store.report(error) } } } }
+            Section { NavigationLink("每日简报") { DailyBriefingSettingsView() } }
         }.navigationTitle("通知与简报")
     }
     func bool(_ key: String) -> Binding<Bool> { Binding(get: { store.state.settings[key].bool }, set: { store.setting(key, .bool($0)) }) }
@@ -41,8 +35,8 @@ struct CloudSettingsView: View {
         Form {
             Toggle("启用云同步", isOn: Binding(get: { store.state.settings["cloudSyncEnabled"].bool }, set: { store.setting("cloudSyncEnabled", .bool($0)) }))
             Picker("提供商", selection: str("cloudProvider")) { Text("Classing 官方云").tag("OFFICIAL"); Text("WebDAV").tag("WEBDAV"); Text("Google Drive").tag("GOOGLE_DRIVE") }
-            if store.state.settings["cloudProvider"].string == "WEBDAV" { TextField("服务器 HTTPS 地址", text: str("cloudServerUrl")).autocorrectionDisabled().textInputAutocapitalization(.never); TextField("文件路径", text: str("cloudRemotePath")); TextField("用户名", text: str("cloudUsername")); SecureField("密码（留空不变）", text: $password); Button("保存 WebDAV 密码") { Task { do { try await store.vault.setSecret(password, key: "webdav.password"); password = "" } catch { store.error = error.localizedDescription } } } }
-            if store.state.settings["cloudProvider"].string == "GOOGLE_DRIVE" { TextField("Drive 文件名", text: str("cloudDriveFileName")); Button("授权 Google Drive") { Task { do { try await DriveAuthorization.shared.authorize(vault: store.vault); store.status = "Drive 已授权" } catch { store.error = error.localizedDescription } } } }
+            if store.state.settings["cloudProvider"].string == "WEBDAV" { TextField("服务器 HTTPS 地址", text: str("cloudServerUrl")).autocorrectionDisabled().textInputAutocapitalization(.never); TextField("文件路径", text: str("cloudRemotePath")); TextField("用户名", text: str("cloudUsername")); SecureField("密码（留空不变）", text: $password); Button("保存 WebDAV 密码") { Task { do { try await store.vault.setSecret(password, key: "webdav.password"); password = "" } catch { store.report(error) } } } }
+            if store.state.settings["cloudProvider"].string == "GOOGLE_DRIVE" { TextField("Drive 文件名", text: str("cloudDriveFileName")); Button("授权 Google Drive") { Task { do { try await DriveAuthorization.shared.authorize(vault: store.vault); store.status = "Drive 已授权" } catch { store.report(error) } } } }
             Section("同步范围") { ForEach(["TIMETABLE", "MOBILE_SETTINGS", "WEAR_SETTINGS"], id: \.self) { scope in Toggle(scope, isOn: Binding(get: { store.state.settings.enabledScopes.contains(scope) }, set: { value in var scopes = store.state.settings.enabledScopes; if value { scopes.insert(scope) } else { scopes.remove(scope) }; store.setting("syncScopes", .string(scopes.sorted().joined(separator: ","))) })) } }
             Button { Task { await store.sync() } } label: { HStack { Text("立即同步"); if store.syncing { ProgressView() } } }.disabled(store.syncing)
             Text(store.status).font(.caption)
@@ -62,7 +56,7 @@ struct WatchSettingsView: View {
                 Text(bridge.deliveryStatus).font(.caption).foregroundStyle(.secondary)
                 if let confirmed = bridge.lastAcknowledgedAt { LabeledContent("最近接收确认", value: confirmed.formatted(date: .omitted, time: .shortened)) }
                 Button("发送最新课表") { bridge.publish(store.state, force: true) }
-                Text("在手表的“设置 → 连接与同步”选择“在 iPhone 上继续”，即可在这里的手机端完成登录与授权。").font(.caption).foregroundStyle(.secondary)
+                Text("账号默认随 iPhone 同步").font(.caption).foregroundStyle(.secondary)
             }
             Section("手表偏好") {
                 Toggle("显示教师", isOn: Binding(get: { store.state.settings["watchShowTeacher"].bool }, set: { store.setting("watchShowTeacher", .bool($0)) }))
@@ -82,9 +76,9 @@ struct BackupView: View {
     @State private var confirm = false
     var body: some View {
         List {
-            Section("导出") { Picker("格式", selection: $format) { Text("完整 JSON 备份").tag("json"); Text("ICS（未来一年）").tag("ics") }; Button("导出文件") { do { let data: Data; if format == "json" { var s = store.state; s.cloud = CloudDocument(); data = try Wire.encoder.encode(s) } else { let from = SchoolTime.dateString(store.now, zone: store.state.settings.timezone), to = SchoolTime.dateString(SchoolTime.addDays(try SchoolTime.day(from), 366), zone: "UTC"); data = Data(try ICS.export(store.state, from: from, through: to).utf8) }; file = ExportDocument(data: data); export = true } catch { store.error = error.localizedDescription } } }
+            Section("导出") { Picker("格式", selection: $format) { Text("完整 JSON 备份").tag("json"); Text("ICS（未来一年）").tag("ics") }; Button("导出文件") { do { let data: Data; if format == "json" { var s = store.state; s.cloud = CloudDocument(); data = try Wire.encoder.encode(s) } else { let from = SchoolTime.dateString(store.now, zone: store.state.settings.timezone), to = SchoolTime.dateString(SchoolTime.addDays(try SchoolTime.day(from), 366), zone: "UTC"); data = Data(try ICS.export(store.state, from: from, through: to).utf8) }; file = ExportDocument(data: data); export = true } catch { store.report(error) } } }
             Section("本地快照（最近 20 份）") { ForEach(store.state.snapshots) { s in Button { restore = s; confirm = true } label: { VStack(alignment: .leading) { Text(s.reason); Text(Date(timeIntervalSince1970: Double(s.createdAt) / 1000).formatted()).font(.caption).foregroundStyle(.secondary) } } } }
-        }.navigationTitle("备份与导出").fileExporter(isPresented: $export, document: file, contentType: format == "json" ? .json : .plainText, defaultFilename: "classing.\(format)") { result in if case .failure(let error) = result { store.error = error.localizedDescription } }
+        }.navigationTitle("备份与导出").fileExporter(isPresented: $export, document: file, contentType: format == "json" ? .json : .plainText, defaultFilename: "classing.\(format)") { result in if case .failure(let error) = result { store.report(error) } }
         .confirmationDialog("恢复此快照？", isPresented: $confirm) { Button("恢复") { if let s = restore { store.restore(s) } } } message: { Text("当前课表会先保存为新的快照。") }
     }
 }

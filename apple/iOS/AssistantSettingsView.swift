@@ -53,7 +53,18 @@ struct AssistantSettingsView: View {
         guard !saving, loaded else { return }; saving = true; pending = "正在保存…"; feedback = ""; defer { saving = false }
         do { preferences = try await store.api.setFavoriteModel(id, favorite: enabled) } catch { store.report(error) }
     }
-    func use(_ id: String) { Task { do { _ = try await store.api.request("POST", "/api/v1/ai/reset-cards/use", body: .object(["cardId": .string(id), "code": .string(code)])); code = ""; await load() } catch { store.report(error) } } }
+    func use(_ id: String) {
+        guard !saving else { return }; let value = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty || !value.isEmpty else { return }
+        saving = true; pending = "正在兑换…"; feedback = ""
+        Task { defer { saving = false }; do {
+            let body: JSONValue = id.isEmpty ? .object(["code": .string(value)]) : .object(["cardId": .string(id)])
+            let response = try await store.api.request("POST", "/api/v1/ai/reset-cards/use", body: body)
+            usage = .object(["usage": response["usage"]]); code = ""; feedback = "额度已重置，原定重置日期不变。"; store.status = feedback
+            // Redemption succeeded; a later list refresh must not suggest using the code again.
+            do { cards = try await store.api.request("GET", "/api/v1/ai/reset-cards")["cards"].array } catch { }
+        } catch { feedback = ClassingError.userMessage(error); store.report(error) } }
+    }
 }
 struct AnnouncementsView: View {
     @EnvironmentObject var store: AppStore

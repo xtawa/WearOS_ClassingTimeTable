@@ -45,8 +45,8 @@ struct TimetableView: View {
             Button { shift(-1) } label: { Image(systemName: "chevron.left").frame(width: 36, height: 36) }.accessibilityLabel(mode == "month" ? "上个月" : "上一周").accessibilityIdentifier("timetable-previous")
             Button {
                 jumpDate = (try? SchoolTime.instant(date: date, minute: 720, zone: store.state.settings.timezone)) ?? store.now; choosingDate = true
-            } label: { Text(periodTitle).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8).accessibilityIdentifier("timetable-period-label") }
-                .frame(maxWidth: .infinity)
+            } label: { Text(periodTitle).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8) }
+                .frame(maxWidth: .infinity).accessibilityIdentifier("timetable-period")
             if selected != "" && date != SchoolTime.dateString(store.now, zone: store.state.settings.timezone) { Button("今天") { selected = "" }.font(.caption) }
             Button { shift(1) } label: { Image(systemName: "chevron.right").frame(width: 36, height: 36) }.accessibilityLabel(mode == "month" ? "下个月" : "下一周").accessibilityIdentifier("timetable-next")
         }.buttonStyle(.plain).tint(ClassingPalette.accent).padding(.horizontal, 12).padding(.bottom, 4)

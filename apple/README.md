@@ -185,7 +185,7 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 
 2026-11-15 更新后的验证范围：
 
-- **Windows 的 99 项 Swift XCTest 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、凭据隔离、BYOK、首页/组件边界、助手请求与完成帧、UTF-8 事件流分帧、URLSession 接收、富格式排版、取消识别，以及独立于云范围的设备同步、手表初始化与乱序投递保护。macOS 的相同测试以对应提交的 Actions 为准。
+- **Windows 的 101 项 Swift XCTest 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、凭据隔离、BYOK、首页/组件边界、助手请求与完成帧、UTF-8 事件流分帧、URLSession 接收、富格式排版、取消识别，以及独立于云范围的设备同步、手表初始化与乱序投递保护、简报投递时区和可读错误提示。macOS 的相同测试以对应提交的 Actions 为准。
 - **7 项浏览器数据契约测试通过，8 项 Playwright UI 测试通过**。
 - 全部 Apple Swift 源码通过真实 Swift 语法解析，JSON/YAML 校验通过。
 - iPhone、Watch、两个 Widget 扩展已通过 Apple SDK 编译，设备 Release 归档及未签名 IPA 打包通过；后续变更以对应提交的 Actions 结果为准。
@@ -197,5 +197,11 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 - 两套热力图序列色阶通过单色、单调明度、相邻明度差与表面对比校验。
 
 仍需真机验收：实际安装、Liquid Glass、相机/麦克风/日历权限、WatchConnectivity 配对/断网传输、加密密钥接收确认、WidgetKit 刷新预算、实时活动/灵动岛系统容器、语音服务、配置后的 Google OAuth 与真实账户联调。正式 IAP 还需真实商品、服务端验证和 Apple 沙盒联调。浏览器截图不能替代这些验收。
+
+### 账号、简报与导入更新
+
+Apple 登录采用 AuthenticationServices 与服务端签发的五分钟单次 nonce；服务端验证 Apple JWKS 签名、issuer、audience、时效和 nonce。iOS entitlement 已声明 Sign in with Apple，正式签名仍需在开发者后台启用对应 App ID capability。后端需部署新的 `/auth/apple/nonce`、`/auth/apple`、`/account/providers/apple`，并配置 `APPLE_CLIENT_IDS=com.xtawa.classingtime.apple`。未配置时页面提示暂不可用，不创建模拟账号。首次 Apple 登录不自动合并同邮箱账号；用户可在账号管理中连接并验证邮箱，再设置密码。
+
+资料、邮箱与密码使用独立页面；普通用户名编辑无需当前密码。iOS 不提供会员兑换入口，保留购买和恢复购买；助手额度重置码仍可使用。每日简报在登录、回到前台和打开设置时从独立简报接口读取，保存使用服务端返回值，投递时区独立于学校时区。导入文件、文本、照片及 Canvas 均显示处理和完成反馈，确认后才写入课表。新增页面与交互的原生验收以当前提交 CI 为准。
 
 Apple 对后台执行和通知数有限制：预先排程最近 60 条通知，在编辑、同步、前台和系统允许的后台刷新时重建，不承诺 Android 式固定周期。ICS 重复事件在明确的 366 天窗口内展开，未支持的参数会报出警告而不是猜测；更远日程需重新导入。Canvas 只读、不保存令牌。对话中断保留草稿，AI 修改必须确认且验证提问时的快照。
