@@ -122,13 +122,26 @@ public actor ClassingAPI {
         let s = try AuthSession(v); try await setSession(s); return s
     }
     public func logout() async throws { let s = try await vault.read(); do { if let s = s { _ = try await request("POST", "/api/v1/auth/logout", body: .object(["refreshToken": .string(s.refreshToken)])) } } catch { try await setSession(nil); throw error }; try await setSession(nil) }
+    public func authorizeCompanion(approve: @escaping @Sendable (String) async throws -> Void) async throws -> AuthSession {
+        let started = try await request("POST", "/api/v1/auth/device/qr/start", body: .object(["deviceName": .string("Apple Watch")]), authorized: false)
+        let id = started["authorizationId"].string, secret = started["pollSecret"].string, expires = started["expiresAt"].int
+        guard !id.isEmpty, !secret.isEmpty, expires > Wire.milliseconds() else { throw ClassingError.invalid("手机账号同步请求已过期。") }
+        try Task.checkCancellation(); try await approve(id)
+        while Wire.milliseconds() < expires {
+            try Task.checkCancellation()
+            let response = try await request("POST", "/api/v1/auth/device/qr/poll", body: .object(["authorizationId": .string(id), "pollSecret": .string(secret)]), authorized: false)
+            if response["session"] != .null { return try AuthSession(response) }
+            try await Task.sleep(nanoseconds: UInt64(max(5, started["intervalSeconds"].int)) * 1_000_000_000)
+        }
+        throw ClassingError.invalid("手机账号同步请求已过期。")
+    }
     public func events(_ path: String, body: JSONValue?, headers: [String: String] = [:], onEvent: @escaping @Sendable (SSEEvent) async throws -> Void) async throws {
         let session = try await validSession(); let request = try make(body == nil ? "GET" : "POST", path, body: try body?.data(), token: session.accessToken, headers: headers)
         do { try await transport.stream(request, onEvent: onEvent) }
         catch ClassingError.network(401, _, _) { let fresh = try await refreshed(); try await transport.stream(make(body == nil ? "GET" : "POST", path, body: try body?.data(), token: fresh.accessToken, headers: headers), onEvent: onEvent) }
     }
     public func chat(message: String, conversationId: String?, snapshot: JSONValue, model: String, attachments: [String], onEvent: @escaping @Sendable (SSEEvent) async throws -> Void) async throws -> JSONValue {
-        var body: [String: JSONValue] = ["clientRequestId": .string(UUID().uuidString), "message": .string(message), "model": .string(model), "attachmentIds": .array(attachments.map(JSONValue.string)), "supportsTimetableActions": .bool(true), "supportsExamActions": .bool(true), "currentTimetableSnapshot": snapshot]
+        var body: [String: JSONValue] = ["clientRequestId": .string(UUID().uuidString), "message": .string(message), "model": .string(model), "attachmentIds": .array(attachments.map(JSONValue.string)), "supportsTimetableActions": .bool(platform != "WATCHOS"), "supportsExamActions": .bool(true), "currentTimetableSnapshot": snapshot]
         if let id = conversationId { body["conversationId"] = .string(id) } else { body["timetableSnapshot"] = snapshot }
         let result = EventResult()
         do {

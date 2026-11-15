@@ -38,3 +38,11 @@ xcrun simctl terminate "$WATCH" com.xtawa.classingtime.apple.watchkitapp
 xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo --assistant-preview
 sleep 2
 xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch-assistant.png"
+xcrun simctl terminate "$WATCH" com.xtawa.classingtime.apple.watchkitapp
+xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo --week
+sleep 2
+xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch-week.png"
+xcrun simctl terminate "$WATCH" com.xtawa.classingtime.apple.watchkitapp
+xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo --week --next-week
+sleep 2
+xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch-next-week.png"

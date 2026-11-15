@@ -39,9 +39,16 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
         }
         let nextContext = byok ? "byok:" + store.byokOwner : "official:" + store.account["userId"].string
         if nextContext != context { cancel(); messages = []; conversationId = nil; attachments = []; courseProposal = nil; examProposal = nil; context = nextContext }
-        if byok { await loadLocal(); return }; guard store.signedIn else { return }
+        if byok {
+            #if os(iOS)
+            await loadLocal()
+            #endif
+            return
+        }; guard store.signedIn else { return }
         do {
+            #if os(iOS)
             conversations = try await store.api.request("GET", "/api/v1/ai/conversations?limit=30")["conversations"].array
+            #endif
             let catalog = try await store.api.request("GET", "/api/v1/ai/models"); models = catalog["models"].array
             if model.isEmpty { model = catalog["defaultModel"].string }; usage = try await store.api.request("GET", "/api/v1/ai/usage/me")
             preferences = try await store.api.assistantPreferences()
@@ -59,6 +66,7 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
     func delete(_ id: String) async { guard let store = store else { return }; do { _ = try await store.api.request("DELETE", "/api/v1/ai/conversations/\(id)"); conversations.removeAll { $0["conversationId"].string == id }; if conversationId == id { newConversation() } } catch { store.error = error.localizedDescription } }
     func send() {
         guard !busy, let store = store, !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !byok || store.byokAllowed else { store.report(ClassingError.invalid("自备 AI 模型仅向有效的 Classing Pro 账号开放。")); return }
         let token = UUID(); activeRequest = token
         let prompt = draft, base = store.state, previous = messages, pending = attachments; expected = base; busy = true; courseProposal = nil; examProposal = nil
         messages.append(ChatMessage(role: "user", content: prompt, attachments: pending.map { .object(["attachmentId": .string($0.id), "name": .string($0.name), "mimeType": .string($0.mime)]) })); let replyID = UUID().uuidString; messages.append(ChatMessage(id: replyID, role: "assistant", content: ""))
@@ -78,7 +86,7 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
                         }; content = .array(parts)
                     }
                     let history = previous.map { JSONValue.object(["role": .string($0.role), "content": .string($0.content)]) } + [.object(["role": .string("user"), "content": content])]
-                    let reply = try await client.chat(history, snapshot: base.aiSnapshot(now: store.now)) { [weak self] delta in await self?.append(delta, id: replyID, reasoning: false) }
+                    let reply = try await client.chat(history, snapshot: base.aiSnapshot(now: store.now), allowsCourseChanges: AppStore.platform != "WATCHOS") { [weak self] delta in await self?.append(delta, id: replyID, reasoning: false) }
                     guard activeRequest == token else { return }; let proposal = try ByokActions.parse(reply); courseProposal = proposal.course; examProposal = proposal.exam
                     if let i = messages.firstIndex(where: { $0.id == replyID }) { messages[i].content = proposal.display }
                     await saveLocal()
@@ -100,6 +108,9 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
     }
     func cancel() { activeRequest = nil; task?.cancel(); task = nil; busy = false }
     func apply(exams: Bool) {
+        #if os(watchOS)
+        guard exams else { return }
+        #endif
         guard let store = store, let expected = expected, let proposal = exams ? examProposal : courseProposal else { return }
         do { try store.commit(AIProposal.apply(proposal, exams: exams, expected: expected, current: store.state)); courseProposal = nil; examProposal = nil } catch { store.error = error.localizedDescription }
     }

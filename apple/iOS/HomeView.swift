@@ -4,7 +4,6 @@ import ClassingCore
 struct HomeView: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var addCourse = false
     @State private var addExam = false
     @State private var showChanges = false
@@ -34,17 +33,6 @@ struct HomeView: View {
             }
         }
         .background(ClassingBackdrop()).navigationTitle("Classing").navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-            NavigationLink { AssistantView() } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles").font(.title3).foregroundStyle(ClassingPalette.accent)
-                    Text("问问 Classing").font(.subheadline.weight(.medium)).lineLimit(1).minimumScaleFactor(0.8)
-                    Spacer()
-                    if !dynamicTypeSize.isAccessibilitySize { Text("课程 · 空闲时间").font(.caption).foregroundStyle(.secondary) }
-                    Image(systemName: "arrow.up.right").font(.caption.weight(.semibold))
-                }.padding(16).classingGlass()
-            }.buttonStyle(.plain).padding(.horizontal, 20).padding(.bottom, 8)
-        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu { Button("添加课程", systemImage: "plus") { addCourse = true }; Button("添加考试", systemImage: "graduationcap") { addExam = true }; NavigationLink("导入课表") { ImportView() } } label: { Image(systemName: "plus") }
@@ -74,13 +62,7 @@ struct HomeView: View {
                     Text("第 \(week) 周").font(.caption.weight(.medium)).foregroundStyle(ClassingPalette.accent)
                 }
             }
-            Text(greeting(snapshot.phase)).font(.system(.largeTitle, design: .rounded, weight: .bold)).accessibilityAddTraits(.isHeader)
-            Text(snapshot.phase == .inProgress ? "专注此刻，下一站已经为你准备好。" : "今天的安排，慢慢来，也来得及。")
-                .font(.subheadline).foregroundStyle(.secondary)
         }.environment(\.timeZone, TimeZone(identifier: snapshot.timezone) ?? .current)
-    }
-    private func greeting(_ phase: AgendaSnapshot.Phase) -> String {
-        switch phase { case .inProgress: return "把时间，留给当下。"; case .breakTime: return "课间，松一口气。"; case .finished: return "今天辛苦了。"; case .free: return "今天，自由安排。"; case .empty: return "你好，新的学期。"; case .upcoming: return "下一站，准备好了。" }
     }
     private func summary(_ snapshot: AgendaSnapshot) -> some View {
         HStack(spacing: 0) {
@@ -97,7 +79,7 @@ struct HomeView: View {
     private func timeline(_ snapshot: AgendaSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack { Text("今日时间线").font(.headline); Spacer(); NavigationLink("完整课表") { TimetableView() }.font(.caption) }
-            if store.today.isEmpty { Label("没有课的日子，也很值得期待。", systemImage: "leaf").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 12) }
+            if store.today.isEmpty { Text("暂无课程").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 12) }
             ForEach(store.today) { occurrence in
                 NavigationLink { OccurrenceDetailView(occurrence: occurrence) } label: {
                     CourseRow(occurrence: occurrence).opacity(occurrence.end <= snapshot.date ? 0.55 : 1)

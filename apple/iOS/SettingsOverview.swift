@@ -6,37 +6,35 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("课程、提醒与设备，按你的习惯安排。")
-                    .font(.subheadline).foregroundStyle(.secondary)
                 SettingsIsland {
-                    SettingsLink(store.signedIn ? accountName : "登录 Classing 账号", icon: "person.crop.circle", detail: store.signedIn ? store.account["email"].string : "本地课表无需登录") { AccountView() }
+                    SettingsLink(store.signedIn ? accountName : "登录 Classing 账号", icon: "person.crop.circle", detail: store.signedIn ? store.account["email"].string : "") { AccountView() }
                     Divider().padding(.leading, 62)
-                    SettingsLink("Classing Pro", icon: "sparkles", detail: store.officialCloudAllowed ? "当前账号的 Pro 权益已生效" : "了解云同步与智能服务") { SubscriptionView() }
+                    SettingsLink("Classing Pro", icon: "sparkles", detail: store.officialCloudAllowed ? "已开通" : "") { SubscriptionView() }
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     sectionLabel("日常安排")
                     SettingsIsland {
-                        SettingsLink("学期与课程", icon: "calendar", detail: "\(store.state.lessons.count) 门课程 · 周次与临时安排") { CourseSettingsView() }
+                        SettingsLink("学期与课程", icon: "calendar", detail: "\(store.state.lessons.count) 门课程") { CourseSettingsView() }
                         Divider().padding(.leading, 62)
-                        SettingsLink("提醒与简报", icon: "bell", detail: store.state.settings["reminderEnabled"].bool ? "课前 \(store.state.settings["reminderMinutes"].int) 分钟提醒" : "按需开启课前提醒") { NotificationSettingsView() }
+                        SettingsLink("提醒与简报", icon: "bell", detail: store.state.settings["reminderEnabled"].bool ? "提前 \(store.state.settings["reminderMinutes"].int) 分钟" : "已关闭") { NotificationSettingsView() }
                         Divider().padding(.leading, 62)
-                        SettingsLink("外观与组件", icon: "paintpalette", detail: "主题 · 小组件 · 实时活动") { AppearanceSettingsView() }
+                        SettingsLink("外观与组件", icon: "paintpalette") { AppearanceSettingsView() }
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     sectionLabel("连接与助手")
                     SettingsIsland {
-                        SettingsLink("同步与设备", icon: "arrow.triangle.2.circlepath", detail: "云同步 · Apple Watch · 系统日历") { ConnectivitySettingsView() }
+                        SettingsLink("同步与设备", icon: "arrow.triangle.2.circlepath") { ConnectivitySettingsView() }
                         Divider().padding(.leading, 62)
-                        SettingsLink("Ask Classing", icon: "sparkles", detail: "助手偏好、用量与自备模型") { AssistantPreferencesView() }
+                        SettingsLink("Ask Classing", icon: "sparkles") { AssistantPreferencesView() }
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     sectionLabel("资料与帮助")
                     SettingsIsland {
-                        SettingsLink("数据与备份", icon: "archivebox", detail: "导入课表、导出与恢复") { DataSettingsView() }
+                        SettingsLink("数据与备份", icon: "archivebox") { DataSettingsView() }
                         Divider().padding(.leading, 62)
-                        SettingsLink("关于 Classing", icon: "info.circle", detail: "版本、公告与隐私政策") { AboutSettingsView() }
+                        SettingsLink("关于 Classing", icon: "info.circle") { AboutSettingsView() }
                     }
                 }
             }.padding(20)
@@ -58,7 +56,7 @@ private struct SettingsIsland<Content: View>: View {
 private struct SettingsLink<Destination: View>: View {
     var title: String, icon: String, detail: String
     var destination: Destination
-    init(_ title: String, icon: String, detail: String, @ViewBuilder destination: () -> Destination) {
+    init(_ title: String, icon: String, detail: String = "", @ViewBuilder destination: () -> Destination) {
         self.title = title; self.icon = icon; self.detail = detail; self.destination = destination()
     }
     var body: some View {
@@ -67,7 +65,7 @@ private struct SettingsLink<Destination: View>: View {
                 Image(systemName: icon).font(.title3).foregroundStyle(ClassingPalette.accent).frame(width: 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(.headline).foregroundStyle(.primary)
-                    Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
             }.padding(18).contentShape(Rectangle())

@@ -38,34 +38,6 @@ struct RootView: View {
         }
     }
 }
-struct TimetableView: View {
-    @EnvironmentObject var store: AppStore
-    @State private var selected = Date()
-    @State private var mode = "week"
-    @State private var search = ""
-    var week: Date { let day = (try? SchoolTime.day(SchoolTime.dateString(selected, zone: store.state.settings.timezone))) ?? selected; return SchoolTime.weekStart(day, weekday: store.state.settings.weekStart) }
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack { Button { selected = selected.addingTimeInterval(-604800) } label: { Image(systemName: "chevron.left") }; Spacer(); DatePicker("日期", selection: $selected, displayedComponents: .date).labelsHidden(); Spacer(); Button { selected = selected.addingTimeInterval(604800) } label: { Image(systemName: "chevron.right") } }.padding(.horizontal)
-            Picker("课表视图", selection: $mode) { Text("周课表").tag("week"); Text("日历").tag("day"); Text("课程管理").tag("list") }.pickerStyle(.segmented).padding(.horizontal)
-            if mode == "list" {
-                List { ForEach(store.state.lessons.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }) { l in NavigationLink { LessonEditor(lesson: l) } label: { VStack(alignment: .leading) { Text(l.title).font(.headline); Text("周\(l.dayOfWeek) \(SchoolTime.clock(l.startMinute))–\(SchoolTime.clock(l.endMinute)) · \(l.startWeek)–\(l.endWeek) 周").font(.caption).foregroundStyle(.secondary) } } } }.searchable(text: $search, prompt: "查找课程")
-            } else if mode == "day" {
-                ScrollView { VStack(spacing: 12) { ForEach(store.occurrences(SchoolTime.dateString(selected, zone: store.state.settings.timezone), SchoolTime.dateString(selected, zone: store.state.settings.timezone))) { o in NavigationLink { OccurrenceDetailView(occurrence: o) } label: { CourseRow(occurrence: o) }.buttonStyle(.plain) } }.padding() }
-            } else {
-                ScrollView([.horizontal, .vertical]) {
-                    HStack(alignment: .top, spacing: 10) {
-                        ForEach(0..<(store.state.settings["showWeekend"].bool ? 7 : 5), id: \.self) { offset in
-                            let d = SchoolTime.addDays(week, offset), date = SchoolTime.dateString(d, zone: "UTC")
-                            VStack(spacing: 10) { Text(d.formatted(.dateTime.weekday(.abbreviated).day())).font(.headline).padding(.vertical, 12); ForEach(store.occurrences(date, date)) { o in NavigationLink { OccurrenceDetailView(occurrence: o) } label: { CourseRow(occurrence: o) }.buttonStyle(.plain) }; Spacer(minLength: 20) }.frame(width: 154)
-                        }
-                    }.padding()
-                }
-            }
-        }.background(ClassingBackdrop()).navigationTitle("课表").toolbar { ToolbarItem(placement: .topBarTrailing) { NavigationLink { LessonEditor(lesson: Lesson(title: "")) } label: { Image(systemName: "plus") } } }
-        .onAppear { selected = store.now }
-    }
-}
 struct OccurrenceDetailView: View {
     @EnvironmentObject var store: AppStore
     var occurrence: Occurrence

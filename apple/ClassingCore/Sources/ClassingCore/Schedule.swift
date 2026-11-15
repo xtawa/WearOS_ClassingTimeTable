@@ -11,6 +11,16 @@ public enum SchoolTime {
     public static func addDays(_ date: Date, _ days: Int) -> Date { calendar().date(byAdding: .day, value: days, to: date)! }
     public static func days(_ a: Date, _ b: Date) -> Int { calendar().dateComponents([.day], from: a, to: b).day! }
     public static func weekStart(_ date: Date, weekday: Int) -> Date { addDays(date, -((self.weekday(date) - weekday + 7) % 7)) }
+    public static func weekDates(containing instant: Date, offset: Int = 0, settings: Settings) throws -> [String] {
+        let localDay = try day(dateString(instant, zone: settings.timezone))
+        let start = addDays(weekStart(localDay, weekday: settings.weekStart), offset * 7)
+        return (0..<7).map { dateString(addDays(start, $0), zone: "UTC") }
+    }
+    public static func monthDates(containing date: String, weekStart: Int) throws -> [String] {
+        let current = try day(date); var components = calendar().dateComponents([.year, .month], from: current); components.day = 1
+        let first = self.weekStart(calendar().date(from: components)!, weekday: weekStart)
+        return (0..<42).map { dateString(addDays(first, $0), zone: "UTC") }
+    }
     public static func weekIndex(_ date: String, semester: String, weekStart: Int) throws -> Int { let n = days(self.weekStart(try day(semester), weekday: weekStart), self.weekStart(try day(date), weekday: weekStart)); return Int(floor(Double(n) / 7)) + 1 }
     public static func weekIndex(_ date: String, settings: Settings) throws -> Int {
         if settings["weekNumberMode"].string == "NATURAL" {

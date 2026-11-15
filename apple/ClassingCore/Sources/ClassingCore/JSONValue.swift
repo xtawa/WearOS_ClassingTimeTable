@@ -9,10 +9,43 @@ public enum ClassingError: Error, LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .invalid(let m): return m
-        case .network(let s, let c, let m): return "\(m) [\(c), HTTP \(s)]"
+        case .network(let status, let code, _):
+            switch code {
+            case "AI_RESET_CARD_INVALID": return "重置码无效、已使用或已过期，请核对后重试。"
+            case "AI_RESET_BUSY": return "还有 AI 请求正在处理，请等待完成后再重置额度。"
+            case "AI_RESET_NOT_NEEDED": return "当前额度无需重置。"
+            case "AI_PREFERENCES_INVALID": return "这项助手设置未能保存，请刷新后重试。"
+            case "BYOK_PROVIDER_ERROR": return "模型服务暂时无法完成请求，请检查模型配置或稍后重试。"
+            case "AI_QUOTA_EXCEEDED", "AI_CREDIT_INSUFFICIENT": return "AI 可用额度不足，请查看用量或补充额度。"
+            case "AUTH_INVALID_CREDENTIALS", "INVALID_CREDENTIALS": return "账号或密码不正确，请核对后重试。"
+            default: break
+            }
+            switch status {
+            case 400, 422: return "提交的信息有误，请检查填写内容后重试。"
+            case 401: return "登录已过期，请重新登录。"
+            case 403: return "当前账号暂时无法使用此功能，请检查会员或账号权限。"
+            case 404: return "内容不存在或已被删除，请刷新后重试。"
+            case 409, 412: return "数据已发生变化，请刷新后重试。"
+            case 413: return "文件太大，请缩小文件后再试。"
+            case 429: return "操作太频繁，请稍后再试。"
+            case 500...599: return "服务暂时不可用，请稍后重试。"
+            default: return "请求未能完成，请稍后重试。"
+            }
         case .conflict: return "云端数据已变更，请重新同步。"
         case .missingSession: return "请先登录账号。"
         }
+    }
+    public static func userMessage(_ error: Error) -> String {
+        if let value = error as? ClassingError { return value.localizedDescription }
+        if let value = error as? URLError {
+            switch value.code {
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost: return "网络连接不可用，请检查网络后重试。"
+            case .timedOut: return "连接超时，请稍后重试。"
+            default: return "网络请求未完成，请稍后重试。"
+            }
+        }
+        if error is DecodingError { return "收到的数据无法识别，请更新应用或稍后重试。" }
+        return "操作未完成，请稍后重试。"
     }
 }
 /// Preserve integer milliseconds and Lamport counters, including values above 2^53.

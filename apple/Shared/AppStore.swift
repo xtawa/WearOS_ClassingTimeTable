@@ -9,6 +9,7 @@ import UserNotifications
     @Published var status = ""
     @Published var syncing = false
     @Published var signedIn = false
+    private(set) var accountResolved = false
     @Published var account: JSONValue = .null
     @Published var membership: JSONValue = .null
     @Published var byok = ByokConfiguration(ownerId: "local")
@@ -20,9 +21,15 @@ import UserNotifications
     private var queuedCloudEvent: SSEEvent?
     var demo = false
     var officialCloudAllowed: Bool { signedIn && membership["access"]["cloudSync"].bool && membership["expiresAt"].int > Wire.milliseconds() }
+    var byokAllowed: Bool { signedIn && (membership["access"].object["byok"]?.bool ?? membership["access"]["cloudSync"].bool) && membership["expiresAt"].int > Wire.milliseconds() }
+    var companionAccountID: String? {
+        guard accountResolved else { return nil }; guard signedIn else { return "" }
+        let id = account["userId"].string.isEmpty ? account["id"].string : account["userId"].string
+        return id.isEmpty ? nil : id
+    }
     func report(_ error: Error) {
         guard !Task.isCancelled, !ClassingError.isCancellation(error) else { return }
-        self.error = error.localizedDescription
+        self.error = ClassingError.userMessage(error)
     }
     var now: Date { demo ? ISO8601DateFormatter().date(from: "2026-11-16T01:41:00Z")! : Date() }
     static var platform: String {
@@ -65,7 +72,10 @@ import UserNotifications
         guard !started else { return }; started = true
         if demo { changedServices(); return }
         prepareCompanion()
-        do { signedIn = try await api.session() != nil; if signedIn { try await refreshAccount() } else { try await loadPrivateByok() } } catch { report(error) }
+        do { let session = try await api.session(); signedIn = session != nil; account = session?.account ?? .null; accountResolved = true
+            if signedIn { try await refreshAccount() } else { try await loadPrivateByok() }
+        } catch { report(error); if (try? await api.session()) == nil { signedIn = false; account = .null } }
+        PhoneWatchBridge.shared.accountDidChange()
         changedServices()
         if state.settings["cloudSyncEnabled"].bool && signedIn { await sync(); startRealtime() }
     }
@@ -101,10 +111,15 @@ import UserNotifications
         }
         membership = try await api.request("GET", "/api/v1/membership/status")["membership"]
         try await loadPrivateByok()
+        accountResolved = true; PhoneWatchBridge.shared.accountDidChange()
     }
     func login(_ identifier: String, _ password: String) async throws { _ = try await api.login(identifier: identifier, password: password); signedIn = true; try await refreshAccount(); startRealtime() }
     func signedInAfterRegistration(_ response: JSONValue) async throws { try await api.setSession(AuthSession(response)); signedIn = true; try await refreshAccount(); startRealtime() }
-    func logout() async { stopRealtime(); do { try await api.logout() } catch { self.error = error.localizedDescription }; signedIn = false; account = .null; membership = .null; do { try await loadPrivateByok() } catch { self.error = error.localizedDescription } }
+    func logout() async { stopRealtime(); do { try await api.logout() } catch { report(error) }; signedIn = false; account = .null; membership = .null; accountResolved = true; PhoneWatchBridge.shared.accountDidChange(); do { try await loadPrivateByok() } catch { report(error) } }
+    func setCompanionSession(_ session: AuthSession?) async throws {
+        stopRealtime(); try await api.setSession(session); signedIn = session != nil; account = session?.account ?? .null; membership = .null; accountResolved = true
+        if session != nil { try await refreshAccount(); startRealtime() } else { try await loadPrivateByok() }
+    }
     func provider() async throws -> any CloudProvider {
         switch state.settings["cloudProvider"].string {
         case "WEBDAV":
@@ -210,7 +225,7 @@ import UserNotifications
         Task { [weak self] in await self?.receiveCloudEvent(event) }
     }
     func stopRealtime() { realtime?.cancel(); realtime = nil; queuedCloudEvent = nil }
-    func becameActive() async { await start(); guard !demo else { return }; signedIn = (try? await api.session()) != nil; changedServices(); if state.settings["cloudSyncEnabled"].bool { await sync(); startRealtime() }; await handleCommands() }
+    func becameActive() async { await start(); guard !demo else { return }; signedIn = (try? await api.session()) != nil; if !signedIn { account = .null; accountResolved = true }; PhoneWatchBridge.shared.accountDidChange(); changedServices(); if state.settings["cloudSyncEnabled"].bool { await sync(); startRealtime() }; await handleCommands() }
     func becameInactive() { stopRealtime() }
     private func changedServices() {
         refreshServices?.cancel(); let state = state

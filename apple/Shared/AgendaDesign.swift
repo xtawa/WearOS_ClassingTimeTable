@@ -56,10 +56,8 @@ struct AgendaHeroCard: View {
                 }
             } else {
                 Image(systemName: snapshot.phase == .empty ? "calendar.badge.plus" : "leaf").font(.system(size: compact ? 24 : 36)).foregroundStyle(tint).padding(.top, 5)
-                Text(snapshot.phase == .empty ? "让安排，一目了然。" : snapshot.phase == .finished ? "今天的课，上完了。" : "留一点时间，给自己。")
+                Text(snapshot.phase == .empty ? (snapshot.isExam ? "暂无考试" : "暂无课程") : snapshot.phase == .finished ? "今日课程已结束" : "今日无课")
                     .font(compact ? .headline : .title2.bold())
-                Text(snapshot.phase == .empty ? (snapshot.isExam ? "添加考试后，时间与地点会显示在这里。" : "导入或添加课程，手机与手表都能随时查看。") : "下一段安排之前，好好休息一下。")
-                    .font(.caption).foregroundStyle(.secondary)
                 if let item {
                     Divider()
                     HStack { Text("接下来 · \(item.title)").lineLimit(1); Spacer(); Text(item.start, format: .dateTime.month().day().hour().minute()) }.font(.caption).foregroundStyle(.secondary)

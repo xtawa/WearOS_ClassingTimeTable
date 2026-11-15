@@ -4,12 +4,26 @@ final class ClassingUITests: XCTestCase {
     func testMainScreensAndScreenshots() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["next-course"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["问问 Classing"].exists)
         screenshot("iPhone-light")
         app.tabBars.buttons["课表"].tap(); XCTAssertTrue(app.navigationBars["课表"].waitForExistence(timeout: 5)); screenshot("iPhone-timetable")
         app.tabBars.buttons["助手"].tap(); screenshot("iPhone-assistant")
         app.tabBars.buttons["设置"].tap(); screenshot("iPhone-settings")
         reveal(app.staticTexts["数据与备份"], in: app); app.staticTexts["数据与备份"].tap()
         app.staticTexts["导入课表"].tap(); XCTAssertTrue(app.textViews["import-text"].waitForExistence(timeout: 5)); screenshot("iPhone-import")
+    }
+    func testTimetableWeekNavigationAndMonthCalendarDisplayCourses() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        XCTAssertTrue(app.tabBars.buttons["课表"].waitForExistence(timeout: 10)); app.tabBars.buttons["课表"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["timetable-week-course"].firstMatch.waitForExistence(timeout: 5))
+        let original = app.staticTexts["timetable-period-label"].label
+        app.buttons["timetable-next"].tap(); XCTAssertNotEqual(app.staticTexts["timetable-period-label"].label, original)
+        app.buttons["timetable-previous"].tap()
+        app.segmentedControls.buttons["日历"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["month-calendar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["timetable-day-course"].firstMatch.waitForExistence(timeout: 5))
+        screenshot("iPhone-calendar")
+        app.segmentedControls.buttons["课程"].tap(); screenshot("iPhone-course-list")
     }
     func testDarkModeAndLargeTextRemainNavigable() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]; app.launch()

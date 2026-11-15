@@ -13,7 +13,7 @@ settings:
   base:
     SWIFT_VERSION: '5.0'
     SWIFT_STRICT_CONCURRENCY: targeted
-    MARKETING_VERSION: '1.0.0'
+    MARKETING_VERSION: '1.1.4'
     CURRENT_PROJECT_VERSION: '1'
     DEVELOPMENT_TEAM: ''
     CLASSING_API_BASE_URL: 'https://api-classing.underflo.ink'

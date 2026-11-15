@@ -13,9 +13,10 @@ import ClassingCore
         try await vault.setSecret(String(decoding: Wire.encoder.encode(config), as: UTF8.self), key: "byok.config.\(byokOwner)"); byok = config
     }
     func byokClient(_ profile: ByokProfile) async throws -> BYOKClient {
+        guard byokAllowed else { throw ClassingError.invalid("自备 AI 模型仅向有效的 Classing Pro 账号开放。") }
         guard byok.ownerId == byokOwner else { throw ClassingError.invalid("请先选择当前账号的自备模型配置。") }
         try profile.validate(); guard let url = URL(string: profile.baseUrl) else { throw ClassingError.invalid("供应商地址无效。") }
-        let key = try await vault.secret(byokKeyName(profile.id)); return try BYOKClient(endpoint: url, model: profile.model, key: key)
+        let key = try await vault.secret(byokKeyName(profile.id)); guard byokAllowed else { throw ClassingError.invalid("Pro 已到期，请续订后使用自备模型。") }; return try BYOKClient(endpoint: url, model: profile.model, key: key)
     }
     func removeByokProfile(_ id: String) async throws { var config = byok; config.remove(id); try await vault.setSecret("", key: byokKeyName(id)); try await savePrivateByok(config) }
 }

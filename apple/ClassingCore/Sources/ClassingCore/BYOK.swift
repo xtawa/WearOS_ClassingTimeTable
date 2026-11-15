@@ -21,8 +21,9 @@ public struct BYOKClient: Sendable {
         // Gateways sometimes echo request headers in errors. Never surface raw provider errors.
         guard (200...299).contains(response.status) else { throw ClassingError.network(response.status, "BYOK_PROVIDER_ERROR", "自备模型请求失败") }; return response
     }
-    public func chat(_ messages: [JSONValue], snapshot: JSONValue, onDelta: @escaping @Sendable (String) async -> Void) async throws -> String {
-        let system = JSONValue.object(["role": .string("system"), "content": .string("你是课程表与考试助手。只依据当前课表回答，不猜测未知信息。\n" + ByokActions.policy + "\nCurrent snapshot:\n" + (try snapshot.text()))])
+    public func chat(_ messages: [JSONValue], snapshot: JSONValue, allowsCourseChanges: Bool = true, onDelta: @escaping @Sendable (String) async -> Void) async throws -> String {
+        let policy = allowsCourseChanges ? ByokActions.policy : "当前设备只查看课程，不生成课程新增、编辑、删除或调课操作。需要修改课程时请引导用户在 iPhone 处理。"
+        let system = JSONValue.object(["role": .string("system"), "content": .string("你是课程表与考试助手。只依据当前课表回答，不猜测未知信息。\n" + policy + "\nCurrent snapshot:\n" + (try snapshot.text()))])
         let body = try JSONValue.object(["model": .string(model), "stream": .bool(true), "messages": .array([system] + Array(messages.suffix(40)))]).data()
         let collector = BYOKResult(key: key)
         do {

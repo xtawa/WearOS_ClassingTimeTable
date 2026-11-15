@@ -10,12 +10,16 @@ import ClassingCore
     @Published var pendingBYOK: JSONValue?
     @Published var deliveryStatus = "尚未开始同步"
     @Published var lastAcknowledgedAt: Date?
+    @Published var accountStatus = "等待同步手机账号"
     private weak var store: AppStore?
     private let pairingKey = Curve25519.KeyAgreement.PrivateKey()
     private var peerKey: Data?
     private var latestTransferID: String?
     private var lastQueuedDigest: Data?
     private var lastQueuedTransferID: String?
+    private var phoneAccountID: String?
+    private var accountTask: Task<Void, Never>?
+    private var accountRequestID: UUID?
     var connectionSummary: String {
         guard WCSession.isSupported() else { return "当前设备不支持手表连接" }
         let session = WCSession.default
@@ -46,14 +50,82 @@ import ClassingCore
     private func ready() {
         reachable = WCSession.default.isReachable; announceKey()
         #if os(watchOS)
+        receiveContext(WCSession.default.receivedApplicationContext)
+        requestPhoneAccount()
         try? requestTimetable()
         #endif
+        accountDidChange()
         if let state = store?.state { publish(state, force: true) }
     }
     private func announceKey() {
         guard WCSession.default.activationState == .activated else { return }
-        try? WCSession.default.updateApplicationContext(["byokPublicKey": pairingKey.publicKey.rawRepresentation])
+        var context: [String: Any] = ["byokPublicKey": pairingKey.publicKey.rawRepresentation]
+        #if os(iOS)
+        if let id = store?.companionAccountID { context["phoneAccountId"] = id }
+        #endif
+        try? WCSession.default.updateApplicationContext(context)
     }
+    func accountDidChange() {
+        guard store?.demo == false, WCSession.isSupported() else { return }
+        #if os(iOS)
+        announceKey()
+        if let id = store?.companionAccountID, WCSession.default.activationState == .activated, WCSession.default.isReachable {
+            WCSession.default.sendMessage(["phoneAccountId": id], replyHandler: nil, errorHandler: { _ in })
+        }
+        #else
+        synchronizeAccount()
+        #endif
+    }
+    private func receiveContext(_ context: [String: Any]) {
+        if let key = context["byokPublicKey"] as? Data { peerKey = key }
+        #if os(watchOS)
+        if let id = context["phoneAccountId"] as? String { receivePhoneAccount(id) }
+        #endif
+    }
+    #if os(watchOS)
+    private func requestPhoneAccount() {
+        guard WCSession.default.isReachable else { return }
+        WCSession.default.sendMessage(["requestAccount": true], replyHandler: { [weak self] reply in
+            let id = reply["phoneAccountId"] as? String
+            Task { @MainActor in if let id { self?.receivePhoneAccount(id) } }
+        }, errorHandler: { _ in })
+    }
+    private func receivePhoneAccount(_ id: String) {
+        if phoneAccountID != id { accountTask?.cancel(); accountTask = nil; accountRequestID = nil; phoneAccountID = id }
+        synchronizeAccount()
+    }
+    func synchronizeAccount() {
+        guard accountTask == nil, let store, store.accountResolved, let expected = phoneAccountID else { return }
+        if store.companionAccountID == expected { accountStatus = expected.isEmpty ? "iPhone 未登录" : "已同步手机账号"; return }
+        let request = UUID(); accountRequestID = request
+        accountTask = Task {
+            defer { if accountRequestID == request { accountTask = nil; accountRequestID = nil } }
+            do {
+                try await store.setCompanionSession(nil); try Task.checkCancellation()
+                guard !expected.isEmpty else { accountStatus = "iPhone 已退出登录"; return }
+                guard WCSession.default.isReachable else { accountStatus = "等待 iPhone 连接后同步账号"; return }
+                accountStatus = "正在同步手机账号"
+                let session = try await store.api.authorizeCompanion { id in try await self.approveOnPhone(id, accountID: expected) }
+                try Task.checkCancellation()
+                let actual = session.account["userId"].string.isEmpty ? session.account["id"].string : session.account["userId"].string
+                guard phoneAccountID == expected, actual == expected else { throw ClassingError.invalid("手机账号已变化，请重新同步。") }
+                try await store.setCompanionSession(session); try Task.checkCancellation(); accountStatus = "已同步手机账号"
+            } catch { if accountRequestID == request && !Task.isCancelled { accountStatus = ClassingError.userMessage(error) } }
+        }
+    }
+    private func approveOnPhone(_ id: String, accountID: String) async throws {
+        try Task.checkCancellation()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            WCSession.default.sendMessage(["autoAuthorizationId": id, "expectedAccountId": accountID], replyHandler: { [weak self] reply in
+                let approved = reply["approved"] as? Bool == true, current = reply["phoneAccountId"] as? String
+                Task { @MainActor in
+                    if let current { self?.receivePhoneAccount(current) }
+                    if approved { continuation.resume() } else { continuation.resume(throwing: ClassingError.invalid("请在 iPhone 登录后重新同步账号。")) }
+                }
+            }, errorHandler: { continuation.resume(throwing: $0) })
+        }
+    }
+    #endif
     func publish(_ state: AppState, force: Bool = false) {
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { deliveryStatus = "等待连接启动后自动发送"; return }
         #if os(iOS)
@@ -125,12 +197,35 @@ import ClassingCore
     nonisolated func session(_ session: WCSession, didReceiveMessageData messageData: Data, replyHandler: @escaping (Data) -> Void) {
         Task { @MainActor in let accepted = self.accept(messageData); replyHandler((try? JSONValue.object(["accepted": .bool(accepted)]).data()) ?? Data()) }
     }
-    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) { let key = applicationContext["byokPublicKey"] as? Data; Task { @MainActor in self.peerKey = key } }
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        let key = applicationContext["byokPublicKey"] as? Data, account = applicationContext["phoneAccountId"] as? String
+        Task { @MainActor in var context: [String: Any] = [:]; if let key { context["byokPublicKey"] = key }; if let account { context["phoneAccountId"] = account }; self.receiveContext(context) }
+    }
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        let requested = message["requestAccount"] as? Bool == true, authorization = message["autoAuthorizationId"] as? String, expected = message["expectedAccountId"] as? String
+        Task { @MainActor in
+            #if os(iOS)
+            if requested { var reply: [String: Any] = [:]; if let id = self.store?.companionAccountID { reply["phoneAccountId"] = id }; replyHandler(reply); return }
+            if let authorization, let expected, !expected.isEmpty, let store = self.store, store.companionAccountID == expected {
+                do {
+                    _ = try await store.api.request("POST", "/api/v1/auth/device/qr/approve", body: .object(["authorizationId": .string(authorization)]))
+                    replyHandler(["approved": store.companionAccountID == expected, "phoneAccountId": store.companionAccountID ?? ""])
+                } catch { replyHandler(["approved": false, "phoneAccountId": store.companionAccountID ?? ""]) }
+                return
+            }
+            #endif
+            replyHandler(["approved": false])
+        }
+    }
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         let auth = message["authorizationId"] as? String, encrypted = message["encryptedBYOK"] as? Data, sender = message["senderKey"] as? Data
         let timetableRequested = message["requestTimetable"] as? Bool == true
         let receipt = message["syncAck"] as? String, accepted = message["accepted"] as? Bool == true
+        let phoneAccount = message["phoneAccountId"] as? String
         Task { @MainActor in
+            #if os(watchOS)
+            if let phoneAccount { self.receivePhoneAccount(phoneAccount) }
+            #endif
             if let receipt { self.receipt(receipt, accepted: accepted) }
             #if os(iOS)
             if timetableRequested, let state = self.store?.state { self.publish(state, force: true) }
@@ -172,6 +267,7 @@ import ClassingCore
     }
     func sendBYOK() async throws {
         guard let store = store, let peer = peerKey, WCSession.default.isReachable else { throw ClassingError.invalid("请先在两台设备上打开 Classing。") }
+        guard store.byokAllowed else { throw ClassingError.invalid("自备 AI 模型仅向有效的 Classing Pro 账号开放。") }
         let config = try store.byok.forWatch(), profile = try config.selected("CHAT"), secret = try await store.vault.secret(store.byokKeyName(profile.id))
         guard !secret.isEmpty else { throw ClassingError.invalid("未配置 BYOK 密钥。") }
         let value = JSONValue.object(["config": try JSONValue.encode(config), "key": .string(secret), "sentAt": .int(Wire.milliseconds())])
@@ -181,6 +277,7 @@ import ClassingCore
     func acceptBYOK() async {
         guard let value = pendingBYOK, let store = store else { return }; pendingBYOK = nil
         do { guard abs(Wire.milliseconds() - value["sentAt"].int) < 120_000 else { throw ClassingError.invalid("传输已过期。") }; let config = try ByokConfiguration.decode(value["config"])
+            guard store.byokAllowed else { throw ClassingError.invalid("自备 AI 模型仅向有效的 Classing Pro 账号开放。") }
             guard config.ownerId == store.byokOwner else { throw ClassingError.invalid("两端须使用同一账号，或都未登录后再传输。") }
             let profile = try config.selected("CHAT"); _ = try BYOKClient(endpoint: URL(string: profile.baseUrl)!, model: profile.model, key: value["key"].string)
             try await store.vault.setSecret(value["key"].string, key: store.byokKeyName(profile.id)); try await store.savePrivateByok(config) } catch { store.error = error.localizedDescription }

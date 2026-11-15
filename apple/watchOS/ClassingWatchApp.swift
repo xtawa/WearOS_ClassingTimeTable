@@ -9,6 +9,7 @@ import ClassingCore
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--demo") && ProcessInfo.processInfo.arguments.contains("--settings") { NavigationStack { WatchSettings() }.tint(.indigo) }
         else if ProcessInfo.processInfo.arguments.contains("--demo") && ProcessInfo.processInfo.arguments.contains("--assistant-preview") { NavigationStack { WatchAssistantView() }.tint(.indigo) }
+        else if ProcessInfo.processInfo.arguments.contains("--demo") && ProcessInfo.processInfo.arguments.contains("--week") { NavigationStack { WatchWeekView(initialOffset: ProcessInfo.processInfo.arguments.contains("--next-week") ? 1 : 0) }.tint(.indigo) }
         else { WatchRootView() }
         #else
         WatchRootView()
@@ -29,9 +30,7 @@ struct WatchRootView: View {
                 NavigationLink { WatchTodayView() } label: { Label("今日课程", systemImage: "sun.max") }
                 NavigationLink { WatchWeekView() } label: { Label("本周课表", systemImage: "calendar") }
                 NavigationLink { WatchExamsView() } label: { Label("考试", systemImage: "graduationcap") }
-                NavigationLink { WatchAssistantView() } label: { Label("Ask AI / BYOK", systemImage: "sparkles") }
-                NavigationLink { WatchCoursesView() } label: { Label("课程管理", systemImage: "pencil") }
-                NavigationLink { WatchChangesView() } label: { Label("调课与补课", systemImage: "arrow.triangle.swap") }
+                NavigationLink { WatchAssistantView() } label: { Label("助手", systemImage: "sparkles") }
                 NavigationLink { WatchSettings() } label: { Label("设置", systemImage: "gearshape") }
             }.navigationTitle("Classing")
         }.tint(.indigo)
@@ -41,35 +40,54 @@ struct WatchRootView: View {
 }
 struct WatchTodayView: View {
     @EnvironmentObject var store: AppStore
-    var body: some View { List { if store.today.isEmpty { Text("今天没有课程，享受自由时间。") }; ForEach(store.today) { o in NavigationLink { WatchOccurrenceDetail(o: o) } label: { CourseRow(occurrence: o) }.listRowBackground(Color.clear) } }.navigationTitle("今日") }
+    var body: some View { List { if store.today.isEmpty { Text("暂无课程") }; ForEach(store.today) { o in NavigationLink { WatchOccurrenceDetail(o: o) } label: { CourseRow(occurrence: o) }.listRowBackground(Color.clear) } }.navigationTitle("今日") }
 }
 struct WatchWeekView: View {
     @EnvironmentObject var store: AppStore
-    @State private var offset = 0
+    @State private var offset: Int
+    init(initialOffset: Int = 0) { _offset = State(initialValue: initialOffset) }
+    private var dates: [String] { (try? SchoolTime.weekDates(containing: store.now, offset: offset, settings: store.state.settings)) ?? [] }
+    private var weekTitle: String {
+        guard let first = dates.first, let week = try? SchoolTime.weekIndex(first, settings: store.state.settings), week > 0 else { return offset == 0 ? "本周" : "课表" }
+        return "第 \(week) 周"
+    }
     var body: some View {
-        List {
-            HStack { Button { offset -= 1 } label: { Image(systemName: "chevron.left") }; Spacer(); Text("\(offset == 0 ? "本周" : "第 \(offset) 周")"); Spacer(); Button { offset += 1 } label: { Image(systemName: "chevron.right") } }
-            let base = (try? SchoolTime.day(SchoolTime.dateString(store.now, zone: store.state.settings.timezone))) ?? store.now, start = SchoolTime.addDays(SchoolTime.weekStart(base, weekday: store.state.settings.weekStart), offset * 7)
-            ForEach(0..<7, id: \.self) { i in let d = SchoolTime.dateString(SchoolTime.addDays(start, i), zone: "UTC"); Section(d) { ForEach(store.occurrences(d, d)) { o in NavigationLink { WatchOccurrenceDetail(o: o) } label: { CourseRow(occurrence: o) }.listRowBackground(Color.clear) } } }
+        VStack(spacing: 0) {
+            HStack(spacing: 2) {
+                Button { offset -= 1 } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .accessibilityLabel("上一周").accessibilityIdentifier("watch-previous-week")
+                Button { offset = 0 } label: {
+                    VStack(spacing: 2) {
+                        Text(weekTitle).font(.headline)
+                        if let first = dates.first, let last = dates.last { Text("\(first.suffix(5)) — \(last.suffix(5))").font(.caption2).foregroundStyle(.secondary) }
+                    }.frame(maxWidth: .infinity, minHeight: 44)
+                }.accessibilityLabel("回到本周")
+                Button { offset += 1 } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .accessibilityLabel("下一周").accessibilityIdentifier("watch-next-week")
+            }.buttonStyle(.plain).padding(.horizontal, 3)
+            List {
+                ForEach(dates, id: \.self) { date in
+                    Section(date) {
+                        let occurrences = store.occurrences(date, date)
+                        if occurrences.isEmpty { Text("无课程").font(.caption).foregroundStyle(.secondary) }
+                        ForEach(occurrences) { o in NavigationLink { WatchOccurrenceDetail(o: o) } label: { CourseRow(occurrence: o) }.listRowBackground(Color.clear) }
+                    }
+                }
+            }
         }.navigationTitle("周课表")
     }
 }
 struct WatchOccurrenceDetail: View {
-    @EnvironmentObject var store: AppStore
     var o: Occurrence
-    var body: some View { List { Text(o.title).font(.title3.bold()); Text("\(o.date) \(SchoolTime.clock(o.startMinute))–\(SchoolTime.clock(o.endMinute))"); Text(o.location ?? "未设置地点"); Text(o.teacher ?? "未设置教师"); Text(o.note ?? ""); if let id = o.lessonId { NavigationLink("修改当天安排") { WatchChangeEditor(e: ScheduleException(type: "RESCHEDULE", date: o.date, lessonId: id)) }; Button("取消当天课程", role: .destructive) { store.save(ScheduleException(type: "CANCEL", date: o.date, lessonId: id)) } } }
-}
-}
-struct WatchCoursesView: View {
-    @EnvironmentObject var store: AppStore
-    var body: some View { List { NavigationLink("添加课程") { WatchLessonEditor(l: Lesson(title: "")) }; ForEach(store.state.lessons) { l in NavigationLink(l.title) { WatchLessonEditor(l: l) } } }.navigationTitle("课程管理") }
-}
-struct WatchLessonEditor: View {
-    @EnvironmentObject var store: AppStore
-    @Environment(\.dismiss) var dismiss
-    @State var l: Lesson
-    @State private var remove = false
-    var body: some View { Form { TextField("课程名", text: $l.title); TextField("地点", text: Binding(get: { l.location ?? "" }, set: { l.location = $0 })); TextField("教师", text: Binding(get: { l.teacher ?? "" }, set: { l.teacher = $0 })); Picker("星期", selection: $l.dayOfWeek) { ForEach(1...7, id: \.self) { Text("周\($0)").tag($0) } }; Stepper("开始 \(SchoolTime.clock(l.startMinute))", value: $l.startMinute, in: 0...1435, step: 5); Stepper("结束 \(SchoolTime.clock(l.endMinute))", value: $l.endMinute, in: 5...1440, step: 5); Stepper("起始周 \(l.startWeek)", value: $l.startWeek, in: 1...53); Stepper("结束周 \(l.endWeek)", value: $l.endWeek, in: 1...53); Picker("单双周", selection: $l.weekParity) { Text("每周").tag("ALL"); Text("单周").tag("ODD"); Text("双周").tag("EVEN") }; if l.scheduleRuleJson != nil { Text("高级重复规则请在 iPhone 编辑").font(.caption).foregroundStyle(.secondary) }; Button("保存") { do { try l.validate(); store.save(l); if store.error == nil { dismiss() } } catch { store.error = error.localizedDescription } }; if store.state.lessons.contains(where: { $0.id == l.id }) { Button("删除课程", role: .destructive) { remove = true } } }.navigationTitle("课程").confirmationDialog("删除课程？", isPresented: $remove) { Button("删除", role: .destructive) { store.mutate("删除课程前") { $0.lessons.removeAll { $0.id == l.id }; $0.exceptions.removeAll { $0.lessonId == l.id } }; dismiss() } } }
+    var body: some View {
+        List {
+            Text(o.title).font(.title3.bold())
+            Text("\(o.date) \(SchoolTime.clock(o.startMinute))–\(SchoolTime.clock(o.endMinute))")
+            if let location = o.location, !location.isEmpty { Label(location, systemImage: "mappin.and.ellipse") }
+            if let teacher = o.teacher, !teacher.isEmpty { Label(teacher, systemImage: "person") }
+            if let note = o.note, !note.isEmpty { Text(note) }
+        }.navigationTitle("课程详情")
+    }
 }
 struct WatchExamsView: View {
     @EnvironmentObject var store: AppStore
@@ -81,14 +99,4 @@ struct WatchExamEditor: View {
     @State var e: Exam
     @State private var remove = false
     var body: some View { Form { TextField("考试名称", text: $e.title); TextField("地点", text: $e.location); TextField("时区", text: $e.timezone); DatePicker("开始", selection: Binding(get: { e.start }, set: { e.startAt = Wire.milliseconds($0) })); DatePicker("结束", selection: Binding(get: { e.end }, set: { e.endAt = Wire.milliseconds($0) })); Stepper("提前 \(e.reminderMinutes) 分钟", value: $e.reminderMinutes, in: 0...10080, step: 5); Toggle("已完成", isOn: $e.completed); Button("保存") { do { try e.validate(); store.save(e); if store.error == nil { dismiss() } } catch { store.error = error.localizedDescription } }; Button("删除", role: .destructive) { remove = true } }.navigationTitle("考试").environment(\.timeZone, TimeZone(identifier: e.timezone) ?? .current).confirmationDialog("删除考试？", isPresented: $remove) { Button("删除", role: .destructive) { store.mutate("删除考试前") { $0.exams.removeAll { $0.id == e.id } }; dismiss() } } }
-}
-struct WatchChangesView: View {
-    @EnvironmentObject var store: AppStore
-    var body: some View { List { NavigationLink("添加临时安排") { WatchChangeEditor(e: ScheduleException(type: "MAKE_UP", date: SchoolTime.dateString(store.now, zone: store.state.settings.timezone))) }; ForEach(store.state.exceptions) { e in NavigationLink("\(e.date) \(e.title ?? e.type)") { WatchChangeEditor(e: e) } } }.navigationTitle("调课") }
-}
-struct WatchChangeEditor: View {
-    @EnvironmentObject var store: AppStore
-    @Environment(\.dismiss) var dismiss
-    @State var e: ScheduleException
-    var body: some View { Form { Picker("类型", selection: $e.type) { Text("取消").tag("CANCEL"); Text("改时间地点").tag("RESCHEDULE"); Text("补课").tag("MAKE_UP"); Text("放假").tag("HOLIDAY") }; TextField("日期 YYYY-MM-DD", text: $e.date); TextField("名称", text: Binding(get: { e.title ?? "" }, set: { e.title = $0 })); Picker("课程", selection: Binding(get: { e.lessonId ?? "" }, set: { e.lessonId = $0.isEmpty ? nil : $0 })) { Text("无 / 全天").tag(""); ForEach(store.state.lessons) { Text($0.title).tag($0.id) } }; Stepper("开始 \(SchoolTime.clock(e.startMinute ?? 480))", value: Binding(get: { e.startMinute ?? 480 }, set: { e.startMinute = $0 }), in: 0...1435, step: 5); Stepper("结束 \(SchoolTime.clock(e.endMinute ?? 570))", value: Binding(get: { e.endMinute ?? 570 }, set: { e.endMinute = $0 }), in: 5...1440, step: 5); TextField("地点", text: Binding(get: { e.location ?? "" }, set: { e.location = $0 })); Button("保存") { do { if e.startMinute == nil { e.startMinute = 480; e.endMinute = 570 }; try e.validate(); store.save(e); if store.error == nil { dismiss() } } catch { store.error = error.localizedDescription } }; if store.state.exceptions.contains(where: { $0.id == e.id }) { Button("删除临时安排", role: .destructive) { store.mutate("删除调课前") { $0.exceptions.removeAll { $0.id == e.id } }; dismiss() } } }.navigationTitle("临时安排") }
 }
