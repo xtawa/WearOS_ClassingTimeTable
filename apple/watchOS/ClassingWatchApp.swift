@@ -74,7 +74,9 @@ struct WatchWeekView: View {
                     }
                 }
             }
-        }.navigationTitle("周课表")
+        // The fixed week controls already provide the title. watchOS's large
+        // navigation title otherwise overlays this non-scrolling header.
+        }.navigationTitle("")
     }
 }
 struct WatchOccurrenceDetail: View {
