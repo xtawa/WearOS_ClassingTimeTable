@@ -163,6 +163,7 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 - iPhone、Watch、两个 Widget 扩展已通过 Apple SDK 编译，设备 Release 归档及未签名 IPA 打包通过；后续变更以对应提交的 Actions 结果为准。
 - 原生 UI 测试覆盖首页、深色大字体、空课表、组件/实时活动布局、四步引导及 StoreKit 本地购买/恢复。通过状态与截图以对应提交的 `apple-native-simulator-builds` 为准，不将源代码检查当作系统交互验收。
 - 模拟器启动有七分钟限时和一次保留数据的重启重试；三项脚本测试覆盖已启动设备、迁移超时恢复及重试失败退出。Watch 在手机 UI 测试结束后启动，手机测试禁用并行模拟器。
+- CI 的手机 UI 测试固定使用已安装的 iOS 26.2，避免 [iOS 26.5 StoreKit Test 配置回归](https://developer.apple.com/forums/thread/826971)。三项选择器测试保证指定运行时生效、缺失时报错以及默认选择行为；编译仍使用 runner 的当前 Xcode SDK。
 - 后端 `go test ./...` 通过；Apple/Web 不校验 Android 证书，Android/部分签名头仍 fail-closed。
 - Android 两项 `CrossPlatformCloudSettingsTest` 通过（Gradle `testCnDebugUnitTest` 定向运行），保留未知跨平台设置而不改变课表删除传播。旧 Android 版本须升级此兼容修复，避免误删 Apple 特有设置。
 - 两套热力图序列色阶通过单色、单调明度、相邻明度差与表面对比校验。

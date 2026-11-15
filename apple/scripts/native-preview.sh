@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$ROOT/build/screenshots"
 xcrun simctl list devices available -j > "$ROOT/build/devices.json"
-PHONE=$(python3 "$ROOT/scripts/select-simulator.py" "$ROOT/build/devices.json" iPhone)
+PHONE=$(python3 "$ROOT/scripts/select-simulator.py" "$ROOT/build/devices.json" iPhone "${CLASSING_IOS_SIMULATOR_RUNTIME:-}")
 WATCH=$(python3 "$ROOT/scripts/select-simulator.py" "$ROOT/build/devices.json" Watch)
 python3 "$ROOT/scripts/boot-simulator.py" "$PHONE"
 test_status=0

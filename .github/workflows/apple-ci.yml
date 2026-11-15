@@ -49,6 +49,8 @@ jobs:
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: ${{ vars.APPLE_XCODE_PATH || '/Applications/Xcode.app/Contents/Developer' }}
+      # iOS 26.5 has a known StoreKit Test configuration regression in CLI tests.
+      CLASSING_IOS_SIMULATOR_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-2
     steps:
       - uses: actions/checkout@v4
       - name: Check Apple SDKs
