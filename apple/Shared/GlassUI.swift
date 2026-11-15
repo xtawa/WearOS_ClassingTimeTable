@@ -35,7 +35,7 @@ struct CourseRow: View {
                 if occurrence.isChanged { Text(occurrence.source == "MAKE_UP" ? "补课" : "已调课").font(.caption).foregroundStyle(.orange) }
             }
             Spacer(minLength: 0)
-        }.padding(16)
+        }.fixedSize(horizontal: false, vertical: true).padding(16)
             .background(tint.opacity(scheme == .dark ? 0.10 : 0.065), in: RoundedRectangle(cornerRadius: 22))
             .accessibilityElement(children: .combine)
     }

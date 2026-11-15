@@ -4,6 +4,7 @@ import ClassingCore
 struct HomeView: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var addCourse = false
     @State private var addExam = false
     @State private var showChanges = false
@@ -36,8 +37,9 @@ struct HomeView: View {
             NavigationLink { AssistantView() } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "sparkles").font(.title3).foregroundStyle(ClassingPalette.accent)
-                    Text("问问 Classing").font(.subheadline.weight(.medium))
-                    Spacer(); Text("课程 · 空闲时间").font(.caption).foregroundStyle(.secondary)
+                    Text("问问 Classing").font(.subheadline.weight(.medium)).lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer()
+                    if !dynamicTypeSize.isAccessibilitySize { Text("课程 · 空闲时间").font(.caption).foregroundStyle(.secondary) }
                     Image(systemName: "arrow.up.right").font(.caption.weight(.semibold))
                 }.padding(16).classingGlass()
             }.buttonStyle(.plain).padding(.horizontal, 20).padding(.bottom, 8)
