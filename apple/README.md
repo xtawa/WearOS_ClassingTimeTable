@@ -36,8 +36,6 @@
 倒计时由系统计时文本显示，实际刷新仍受 WidgetKit 调度约束。应用内预览不替代真实主屏幕、
 锁屏及表盘上的安装验收。macOS CI 会导出首页深浅色、空课表和组件布局截图。
 
-## Windows：无需本地虚拟机
-
 ## 实时活动、引导与 Apple 订阅
 
 - 首次引导分为欢迎、学期日期、导入、按需授权四步。可以跳过，不强制登录、授权或订阅。
@@ -57,6 +55,8 @@
 注入测试商店，并以 Debug 参数 `--storekit-testing` 执行实际 StoreKit 测试购买和恢复。
 测试商品 ID 使用 `com.xtawa.classingtime.test.pro.monthly` / `.yearly`，不得复制为生产配置。
 本地测试不需要 Apple 账号，也不会真实扣款。常规 Debug/Release 启动不会自动启用测试商店。
+
+## Windows：无需本地虚拟机
 
 ### 现在就预览
 
@@ -153,15 +153,18 @@ Google Drive 必须填写自己的 iOS OAuth Client ID、回调 URI 和 callback
 
 ## 验证状态与必须验收的边界
 
-2026-11-14 在 Windows 完成：
+2026-11-15 更新后的验证范围：
 
-- **53 项 Swift XCTest 全部通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、无 Android 签名头、凭据不入设置、多角色 BYOK、供应商错误脱敏和跨分片密钥脱敏。
+- **58 项 Swift XCTest 已在 Windows 和 macOS 通过**：包括规则、ICS、考试、夏令时、V2 合并、scope、跨星期调课、远期课程、热力图、并发刷新/注销、无 Android 签名头、凭据不入设置、多角色 BYOK、供应商错误脱敏、跨分片密钥脱敏，以及首页/组件的课程边界、考试模式和午夜时间线。
 - **7 项浏览器数据契约测试通过，8 项 Playwright UI 测试通过**。
 - 全部 Apple Swift 源码通过真实 Swift 语法解析，JSON/YAML 校验通过。
+- iPhone、Watch、两个 Widget 扩展已通过 Apple SDK 编译，设备 Release 归档及未签名 IPA 打包通过；后续变更以对应提交的 Actions 结果为准。
+- 原生 UI 测试覆盖首页、深色大字体、空课表、组件/实时活动布局、四步引导及 StoreKit 本地购买/恢复。通过状态与截图以对应提交的 `apple-native-simulator-builds` 为准，不将源代码检查当作系统交互验收。
+- 模拟器启动有七分钟限时和一次保留数据的重启重试；三项脚本测试覆盖已启动设备、迁移超时恢复及重试失败退出。Watch 在手机 UI 测试结束后启动，手机测试禁用并行模拟器。
 - 后端 `go test ./...` 通过；Apple/Web 不校验 Android 证书，Android/部分签名头仍 fail-closed。
 - Android 两项 `CrossPlatformCloudSettingsTest` 通过（Gradle `testCnDebugUnitTest` 定向运行），保留未知跨平台设置而不改变课表删除传播。旧 Android 版本须升级此兼容修复，避免误删 Apple 特有设置。
 - 两套热力图序列色阶通过单色、单调明度、相邻明度差与表面对比校验。
 
-仍需 macOS CI/真机验收：Apple SDK 类型检查和实际安装、Liquid Glass、相机/麦克风/日历权限、WatchConnectivity 配对/断网传输、加密密钥接收确认、WidgetKit 刷新预算、语音服务、配置后的 Google OAuth 与真实账户联调。浏览器截图不能替代这些验收。
+仍需真机验收：实际安装、Liquid Glass、相机/麦克风/日历权限、WatchConnectivity 配对/断网传输、加密密钥接收确认、WidgetKit 刷新预算、实时活动/灵动岛系统容器、语音服务、配置后的 Google OAuth 与真实账户联调。正式 IAP 还需真实商品、服务端验证和 Apple 沙盒联调。浏览器截图不能替代这些验收。
 
 Apple 对后台执行和通知数有限制：预先排程最近 60 条通知，在编辑、同步、前台和系统允许的后台刷新时重建，不承诺 Android 式固定周期。ICS 重复事件在明确的 366 天窗口内展开，未支持的参数会报出警告而不是猜测；更远日程需重新导入。Canvas 只读、不保存令牌。对话中断保留草稿，AI 修改必须确认且验证提问时的快照。

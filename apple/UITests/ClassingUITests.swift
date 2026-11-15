@@ -23,6 +23,8 @@ final class ClassingUITests: XCTestCase {
         app.swipeUp(); screenshot("iPhone-widget-agenda")
         app.navigationBars["小组件"].buttons.element(boundBy: 0).tap(); app.staticTexts["小组件"].tap()
         app.segmentedControls.buttons["锁屏与手表"].tap(); screenshot("iPhone-widget-accessories")
+        app.segmentedControls.buttons["实时活动"].tap()
+        XCTAssertTrue(app.staticTexts["锁屏实时活动"].waitForExistence(timeout: 5)); screenshot("iPhone-live-activity")
     }
     func testEmptyScheduleAndExamMode() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--empty"]; app.launch()

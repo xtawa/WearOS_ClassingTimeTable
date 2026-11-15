@@ -27,6 +27,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r apple/scripts/requirements.txt
       - run: python -I apple/scripts/check_swift_syntax.py
+      - run: python -m unittest discover -s apple/scripts -p 'test_*.py'
       - run: npm ci
         working-directory: apple/Preview
       - run: npm run test:contracts

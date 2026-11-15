@@ -45,7 +45,7 @@ struct AgendaHeroCard: View {
                     Spacer(minLength: 2)
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(snapshot.countdownLabel).font(.caption).foregroundStyle(.secondary)
-                        Text(item.start, style: .time).font(compact ? .caption : .headline).monospacedDigit()
+                        Text(snapshot.target ?? item.start, style: .time).font(compact ? .caption : .headline).monospacedDigit()
                     }
                 }
                 if snapshot.phase == .inProgress {

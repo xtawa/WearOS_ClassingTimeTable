@@ -10,5 +10,6 @@ Preview/node_modules/
 Preview/playwright-report/
 Preview/test-results/
 build/
+__pycache__/
 *.xcuserstate
 xcuserdata/

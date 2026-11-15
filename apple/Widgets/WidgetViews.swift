@@ -24,7 +24,11 @@ struct AgendaWidgetCard: View {
                 HStack(spacing: 3) { Image(systemName: snapshot.isExam ? "graduationcap" : "calendar"); if let item { Text(item.start, style: .time) }; Text(title) }
             case .circular:
                 Gauge(value: snapshot.progress) { Image(systemName: snapshot.isExam ? "graduationcap" : "calendar") } currentValueLabel: {
-                    if item != nil { Text(snapshot.minutesRemaining >= 1440 ? "\(snapshot.minutesRemaining / 1440)天" : "\(snapshot.minutesRemaining)").font(.system(.title3, design: .rounded, weight: .semibold)).minimumScaleFactor(0.6) }
+                    if let item {
+                        if snapshot.minutesRemaining >= 1440 { Text("\(snapshot.minutesRemaining / 1440)天").font(.headline) }
+                        else if liveTimer { countdownText(item).font(.system(.caption, design: .rounded, weight: .semibold)).monospacedDigit().minimumScaleFactor(0.6) }
+                        else { Text("\(snapshot.minutesRemaining)").font(.system(.title3, design: .rounded, weight: .semibold)).minimumScaleFactor(0.6) }
+                    }
                     else { Image(systemName: "leaf") }
                 }.gaugeStyle(.accessoryCircular).tint(tint).accessibilityLabel("\(title)，\(snapshot.countdownLabel)\(snapshot.minutesRemaining)分钟")
             case .rectangular:
@@ -61,7 +65,7 @@ struct AgendaWidgetCard: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(item.start, style: .time).font(.system(.title2, design: .rounded, weight: .medium)).monospacedDigit()
                     Spacer(minLength: 2)
-                    if snapshot.minutesRemaining < 1440 { Text("\(snapshot.minutesRemaining) 分钟").font(.caption2).foregroundStyle(tint) }
+                    if snapshot.minutesRemaining < 1440 { countdownText(item).font(.caption2.monospacedDigit()).foregroundStyle(tint) }
                     else { Text(item.start, format: .dateTime.month().day()).font(.caption2).foregroundStyle(.secondary) }
                 }
                 if snapshot.phase == .inProgress { ProgressView(value: snapshot.progress).tint(tint) }
@@ -98,7 +102,7 @@ struct AgendaWidgetCard: View {
             }
             if snapshot.phase == .inProgress { ProgressView(value: snapshot.progress).tint(tint) }
             Divider()
-            let items = agenda ? Array(snapshot.today.filter { $0.end > snapshot.date }.prefix(4)) : Array(snapshot.upcoming.dropFirst().prefix(3))
+            let items = agenda ? Array(snapshot.today.filter { $0.end > snapshot.date && $0.id != item?.id }.prefix(4)) : Array(snapshot.upcoming.dropFirst().prefix(3))
             if items.isEmpty { Label("剩下的时间，留给自己。", systemImage: "leaf").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 12) }
             ForEach(items) { row($0, compact: false) }
             Spacer(minLength: 0)
