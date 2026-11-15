@@ -97,6 +97,8 @@ jobs:
           ditto "$APP" apple/build/ipa/Payload/Classing.app
           cd apple/build/ipa
           ditto -c -k --keepParent Payload ../artifacts/Classing-unsigned.ipa
+      - name: Verify packaged device bundle versions and companion metadata
+        run: python3 apple/scripts/verify_ipa.py apple/build/artifacts/Classing-unsigned.ipa --version 1.1.4 --build "$GITHUB_RUN_NUMBER"
       - name: Upload unsigned iPhone and Watch IPA
         uses: actions/upload-artifact@v4
         with:

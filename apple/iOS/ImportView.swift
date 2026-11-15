@@ -6,6 +6,7 @@ import UIKit
 struct ImportView: View {
     @EnvironmentObject var store: AppStore
     @State private var raw = ""
+    @FocusState private var textFocused: Bool
     @State private var draft: ImportDraft?
     @State private var picker = false
     @State private var photo: PhotosPickerItem?
@@ -23,9 +24,9 @@ struct ImportView: View {
     var body: some View {
         Form {
             Section("ICS / JSON / 文本") {
-                TextEditor(text: $raw).frame(minHeight: 150).font(.caption.monospaced()).accessibilityIdentifier("import-text")
+                TextEditor(text: $raw).focused($textFocused).frame(minHeight: 150).font(.caption.monospaced()).accessibilityIdentifier("import-text")
                 Text("文本格式：课程名、星期（1–7）、开始 HH:mm、结束 HH:mm，以制表符分隔。").font(.caption).foregroundStyle(.secondary)
-                HStack { Button("选择文件") { picker = true }; Spacer(); Button("解析") { parse() }.disabled(busy) }
+                HStack { Button("选择文件") { picker = true }; Spacer(); Button("解析") { parse() }.disabled(busy) }.buttonStyle(.borderless)
             }
             Section("照片识别") {
                 PhotosPicker(selection: $photo, matching: .images) { Label("从照片导入", systemImage: "photo") }
@@ -80,7 +81,7 @@ struct ImportView: View {
         .onDisappear { importTask?.cancel(); canvasToken = "" }
     }
     func perform(_ title: String, action: @escaping @MainActor () async throws -> ImportDraft) {
-        guard !busy else { return }; busy = true; operation = title; feedback = ""; draft = nil
+        guard !busy else { return }; textFocused = false; busy = true; operation = title; feedback = ""; draft = nil
         importTask = Task { defer { busy = false }; await Task.yield(); do {
             let result = try await action(); try Task.checkCancellation(); draft = result
             feedback = "已解析 \(result.lessons.count) 门课程、\(result.exceptions.count) 条日程、\(result.exams.count) 场考试，请确认导入。"

@@ -10,6 +10,7 @@ final class ClassingUITests: XCTestCase {
         app.buttons["解析"].tap()
         let feedback = app.staticTexts["import-feedback"]; XCTAssertTrue(feedback.waitForExistence(timeout: 10))
         XCTAssertTrue(feedback.label.contains("已解析 1 门课程"))
+        XCTAssertFalse(app.collectionViews["File View"].exists, "Parsing must not also open the file picker in the same Form row")
         let confirm = app.buttons["确认导入"]; reveal(confirm, in: app); confirm.tap(); app.buttons["导入"].tap()
         let completed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "导入完成"), object: feedback)
         XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 5), .completed)
