@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: apple
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -53,6 +55,8 @@ jobs:
       CLASSING_IOS_SIMULATOR_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-2
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: apple
       - name: Check Apple SDKs
         run: |
           xcodebuild -version
