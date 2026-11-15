@@ -49,6 +49,7 @@ targets:
     info:
       path: Config/iOS-Info.plist
       properties:
+        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
         CFBundleDisplayName: Classing
         CFBundleURLTypes:
           - CFBundleURLName: Classing
@@ -101,6 +102,7 @@ targets:
     info:
       path: Config/watchOS-Info.plist
       properties:
+        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
         CFBundleDisplayName: Classing
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.xtawa.classingtime.apple
@@ -135,6 +137,7 @@ targets:
     info:
       path: Config/Widgets-Info.plist
       properties:
+        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
         CFBundleDisplayName: Classing Widgets
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -161,6 +164,7 @@ targets:
     info:
       path: Config/WatchWidgets-Info.plist
       properties:
+        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
         CFBundleDisplayName: Classing Watch Widgets
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
