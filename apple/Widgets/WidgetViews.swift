@@ -63,7 +63,7 @@ struct AgendaWidgetCard: View {
             Spacer(minLength: 0)
             if let item {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(item.start, style: .time).font(.system(.title2, design: .rounded, weight: .medium)).monospacedDigit()
+                    Text(item.start, style: .time).font(.system(.title3, design: .rounded, weight: .medium)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
                     Spacer(minLength: 2)
                     if snapshot.minutesRemaining < 1440 { countdownText(item).font(.caption2.monospacedDigit()).foregroundStyle(tint) }
                     else { Text(item.start, format: .dateTime.month().day()).font(.caption2).foregroundStyle(.secondary) }

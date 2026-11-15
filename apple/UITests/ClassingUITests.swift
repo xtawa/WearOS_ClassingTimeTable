@@ -43,7 +43,9 @@ final class ClassingUITests: XCTestCase {
     }
     func testStoreKitLocalPurchaseAndRestore() throws {
         let session = try SKTestSession(configurationFileNamed: "ClassingTest")
+        session.resetToDefaultState()
         session.disableDialogs = true; session.clearTransactions()
+        defer { session.clearTransactions() }
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--storekit-testing"]; app.launch()
         XCTAssertTrue(app.tabBars.buttons["设置"].waitForExistence(timeout: 10)); app.tabBars.buttons["设置"].tap()
         app.staticTexts["Classing Pro"].tap()

@@ -193,6 +193,8 @@ schemes:
     test:
       targets: [ClassingUITests]
       gatherCoverageData: true
+    run:
+      storeKitConfiguration: Config/ClassingTest.storekit
   ClassingWatch:
     build:
       targets:

@@ -54,7 +54,9 @@
 `Config/ClassingTest.storekit` 仅包含本地测试商品及测试价格。UI 测试通过 `SKTestSession`
 注入测试商店，并以 Debug 参数 `--storekit-testing` 执行实际 StoreKit 测试购买和恢复。
 测试商品 ID 使用 `com.xtawa.classingtime.test.pro.monthly` / `.yearly`，不得复制为生产配置。
-本地测试不需要 Apple 账号，也不会真实扣款。常规 Debug/Release 启动不会自动启用测试商店。
+本地测试不需要 Apple 账号，也不会真实扣款。Xcode 的 Classing scheme 指向本地测试商店；
+测试购买入口仍只接受 Debug 参数 `--storekit-testing`。Release 归档不包含测试商店资源，
+不接受该参数。测试会话保留到整个购买/恢复用例结束，并在结束时清除测试交易。
 
 ## Windows：无需本地虚拟机
 

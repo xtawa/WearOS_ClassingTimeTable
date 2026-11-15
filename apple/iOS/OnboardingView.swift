@@ -23,10 +23,12 @@ struct OnboardingView: View {
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 16) {
                     HStack(spacing: 6) { ForEach(0..<4) { i in Capsule().fill(i == step ? ClassingPalette.accent : Color.primary.opacity(0.12)).frame(width: i == step ? 22 : 6, height: 6) } }
-                    Button(step == 3 ? "进入 Classing" : "继续") {
+                    Button {
                         if step < 3 { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) { step += 1 } }
                         else { finish() }
-                    }.font(.headline).frame(maxWidth: .infinity).padding(10).buttonStyle(.borderedProminent).controlSize(.large).tint(ClassingPalette.accent).accessibilityIdentifier("onboarding-next")
+                    } label: {
+                        Text(step == 3 ? "进入 Classing" : "继续").font(.headline).frame(maxWidth: .infinity).padding(10)
+                    }.buttonStyle(.borderedProminent).controlSize(.large).tint(ClassingPalette.accent).accessibilityIdentifier("onboarding-next")
                     if step > 0 { Button("上一步") { step -= 1 }.font(.subheadline).foregroundStyle(.secondary) }
                     Text("无需登录即可使用本地课表").font(.caption2).foregroundStyle(.secondary)
                 }.padding(.horizontal, 26).padding(.vertical, 16).background(.regularMaterial)
