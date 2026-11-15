@@ -11,7 +11,8 @@ final class ClassingUITests: XCTestCase {
         let feedback = app.staticTexts["import-feedback"]; XCTAssertTrue(feedback.waitForExistence(timeout: 10))
         XCTAssertTrue(feedback.label.contains("已解析 1 门课程"))
         let confirm = app.buttons["确认导入"]; reveal(confirm, in: app); confirm.tap(); app.buttons["导入"].tap()
-        XCTAssertTrue(feedback.waitForExistence(timeout: 5)); XCTAssertTrue(feedback.label.contains("导入完成"))
+        let completed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "导入完成"), object: feedback)
+        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 5), .completed)
         screenshot("iPhone-import-complete")
     }
     func testAccountAndAboutMatchApplePlatform() {
