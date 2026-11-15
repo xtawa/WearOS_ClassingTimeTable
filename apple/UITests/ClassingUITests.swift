@@ -35,10 +35,14 @@ final class ClassingUITests: XCTestCase {
     func testOnboardingCanFinishWithoutPermissionsOrSubscription() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--onboarding"]; app.launch()
         XCTAssertTrue(app.buttons["onboarding-next"].waitForExistence(timeout: 10)); screenshot("iPhone-oobe-welcome")
-        app.buttons["onboarding-next"].tap(); screenshot("iPhone-oobe-semester")
-        app.buttons["onboarding-next"].tap(); screenshot("iPhone-oobe-import")
-        app.buttons["onboarding-next"].tap(); screenshot("iPhone-oobe-permissions")
+        for (title, name) in [("从你的学期开始。", "iPhone-oobe-semester"), ("你的课表，轻松带来。", "iPhone-oobe-import"), ("只在需要时，提醒你。", "iPhone-oobe-permissions")] {
+            app.buttons["onboarding-next"].tap()
+            XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
+            screenshot(name)
+        }
+        XCTAssertTrue(app.buttons["开启课前通知"].exists)
         app.buttons["onboarding-next"].tap()
+        XCTAssertTrue(app.buttons["onboarding-next"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["next-course"].waitForExistence(timeout: 5))
     }
     func testStoreKitLocalPurchaseAndRestore() throws {
@@ -57,5 +61,10 @@ final class ClassingUITests: XCTestCase {
         app.buttons["恢复购买"].tap()
         XCTAssertTrue(app.staticTexts["本地测试订阅已恢复"].waitForExistence(timeout: 20))
     }
-    private func screenshot(_ name: String) { let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment) }
+    private func screenshot(_ name: String) {
+        // The onboarding state changes before its 250ms transition finishes.
+        // Let the compositor settle after the explicit page assertion above.
+        if name.hasPrefix("iPhone-oobe-") { Thread.sleep(forTimeInterval: 0.5) }
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
 }
