@@ -13,12 +13,19 @@ xcrun simctl bootstatus "$WATCH" -b
 xcodebuild -project "$ROOT/Classing.xcodeproj" -scheme Classing -configuration Debug \
   -destination "platform=iOS Simulator,id=$PHONE" -derivedDataPath "$ROOT/build/ios" \
   -resultBundlePath "$ROOT/build/UITests.xcresult" CODE_SIGNING_ALLOWED=NO test
-xcrun simctl install "$PHONE" "$ROOT/build/ios/Build/Products/Debug-iphonesimulator/Classing.app"
-xcrun simctl launch "$PHONE" com.xtawa.classingtime.apple --demo
-xcrun simctl io "$PHONE" screenshot "$ROOT/build/screenshots/iPhone-light.png"
-xcrun simctl ui "$PHONE" appearance dark
-xcrun simctl io "$PHONE" screenshot "$ROOT/build/screenshots/iPhone-dark.png"
+xcrun xcresulttool export attachments --path "$ROOT/build/UITests.xcresult" --output-path "$ROOT/build/screenshots/test-attachments"
+# XCTest captures after the app is ready, unlike an immediate post-launch simctl capture.
+python3 - "$ROOT/build/screenshots" <<'PY'
+import json, shutil, sys
+from pathlib import Path
+output = Path(sys.argv[1])
+attachments = output / 'test-attachments'
+for test in json.loads((attachments / 'manifest.json').read_text()):
+    for item in test['attachments']:
+        name = item['suggestedHumanReadableName'].split('_0_')[0]
+        if name.startswith('iPhone-'):
+            shutil.copyfile(attachments / item['exportedFileName'], output / (name + '.png'))
+PY
 xcrun simctl install "$WATCH" "$ROOT/build/watch/Build/Products/Debug-watchsimulator/ClassingWatch.app"
 xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo
 xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch.png"
-xcrun xcresulttool export attachments --path "$ROOT/build/UITests.xcresult" --output-path "$ROOT/build/screenshots/test-attachments"

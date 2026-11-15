@@ -33,6 +33,9 @@ import UserNotifications
         if preview || ProcessInfo.processInfo.arguments.contains("--demo") || ProcessInfo.processInfo.arguments.contains("--ui-testing") {
             demo = true
             if let url = Bundle.main.url(forResource: "demo", withExtension: "json"), let data = try? Data(contentsOf: url), let draft = try? ScheduleImport.json(data), let loaded = try? draft.applying(to: AppState(), replace: true) { state = loaded; state.settings["onboardingCompleted"] = .bool(true) }
+            if ProcessInfo.processInfo.arguments.contains("--dark") { state.settings["appearance"] = .string("dark") }
+            if ProcessInfo.processInfo.arguments.contains("--empty") { state.lessons = []; state.exams = []; state.exceptions = [] }
+            if ProcessInfo.processInfo.arguments.contains("--exam") { state.settings["academicMode"] = .string("EXAM") }
         }
         #endif
     }
@@ -62,6 +65,9 @@ import UserNotifications
     func occurrences(_ from: String, _ through: String) -> [Occurrence] { (try? ScheduleProjector.project(state, from: from, through: through)) ?? [] }
     var upcoming: [Occurrence] { (try? ScheduleProjector.upcoming(state, now: now)) ?? [] }
     var today: [Occurrence] { let d = SchoolTime.dateString(now, zone: state.settings.timezone); return occurrences(d, d) }
+    func agenda(at date: Date) -> AgendaSnapshot {
+        (try? AgendaSnapshot.make(state, at: date)) ?? (try! AgendaSnapshot.make(AppState(), at: date))
+    }
     func refreshAccount() async throws {
         let profile = try await api.request("GET", "/api/v1/account/me"); account = profile["account"]
         let owner = account["userId"].string.isEmpty ? account["id"].string : account["userId"].string

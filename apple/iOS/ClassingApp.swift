@@ -37,35 +37,6 @@ struct RootView: View {
         }
     }
 }
-struct HomeView: View {
-    @EnvironmentObject var store: AppStore
-    @State private var addCourse = false
-    @State private var addExam = false
-    @State private var showChanges = false
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack { VStack(alignment: .leading) { Text(store.now.formatted(.dateTime.month().day().weekday(.wide))).font(.subheadline).foregroundStyle(.secondary); Text("留一点时间，给自己。").font(.title2.bold()) }; Spacer() }.padding(.top, 12)
-                Picker("学习模式", selection: Binding(get: { store.state.settings["academicMode"].string }, set: { store.setting("academicMode", .string($0)) })) { Text("课程").tag("SCHEDULE"); Text("考试").tag("EXAM") }.pickerStyle(.segmented)
-                if store.state.settings["academicMode"].string == "EXAM" { ExamListView() }
-                else {
-                    TimelineView(.periodic(from: .now, by: 60)) { _ in NextCourseCard(occurrence: store.upcoming.first, now: store.now) }
-                    HStack { Text("今日安排").font(.title3.bold()); Spacer(); Text("\(store.today.count) 节课").foregroundStyle(.secondary) }
-                    if store.today.isEmpty { ContentUnavailableView("今天没有课程", systemImage: "leaf", description: Text("你可以添加课程，或在设置中导入课表。")) }
-                    ForEach(store.today) { o in NavigationLink { OccurrenceDetailView(occurrence: o) } label: { CourseRow(occurrence: o) }.buttonStyle(.plain) }
-                    let conflicts = ScheduleProjector.conflicts(store.today)
-                    if !conflicts.isEmpty { Label("有 \(conflicts.count) 处时间冲突，请在课表中核对。", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange) }
-                    Button { showChanges = true } label: { Label("调课与临时安排", systemImage: "arrow.triangle.swap").frame(maxWidth: .infinity).padding(16).classingGlass() }
-                }
-            }.padding(20)
-        }.background(ClassingBackdrop()).navigationTitle("Classing").navigationBarTitleDisplayMode(.large)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Menu { Button("添加课程", systemImage: "plus") { addCourse = true }; Button("添加考试", systemImage: "graduationcap") { addExam = true }; NavigationLink("导入课表") { ImportView() } } label: { Image(systemName: "plus") } } }
-        .sheet(isPresented: $addCourse) { NavigationStack { LessonEditor(lesson: Lesson(title: "")) } }
-        .sheet(isPresented: $addExam) { NavigationStack { ExamEditor(exam: Exam(title: "", start: store.now.addingTimeInterval(86400), end: store.now.addingTimeInterval(91800), timezone: store.state.settings.timezone)) } }
-        .sheet(isPresented: $showChanges) { NavigationStack { ChangesView() } }
-        .refreshable { await store.sync() }
-    }
-}
 struct TimetableView: View {
     @EnvironmentObject var store: AppStore
     @State private var selected = Date()

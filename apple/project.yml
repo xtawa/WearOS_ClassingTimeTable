@@ -36,6 +36,7 @@ targets:
     sources:
       - iOS
       - Shared
+      - path: Widgets/WidgetViews.swift
       - path: Fixtures/demo.json
         buildPhase: resources
       - path: Config/PrivacyInfo.xcprivacy
@@ -119,6 +120,7 @@ targets:
     sources:
       - Widgets
       - path: Shared/Persistence.swift
+      - path: Shared/AgendaDesign.swift
       - path: Config/PrivacyInfo.xcprivacy
         buildPhase: resources
     settings:
@@ -144,6 +146,7 @@ targets:
     sources:
       - Widgets
       - path: Shared/Persistence.swift
+      - path: Shared/AgendaDesign.swift
       - path: Config/PrivacyInfo.xcprivacy
         buildPhase: resources
     settings:

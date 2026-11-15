@@ -3,3 +3,4 @@ import SwiftUI
 #Preview("iPhone · Week") { NavigationStack { TimetableView() }.environmentObject(AppStore(preview: true)) }
 #Preview("iPhone · Settings") { NavigationStack { SettingsView() }.environmentObject(AppStore(preview: true)) }
 #Preview("iPhone · Heatmap") { NavigationStack { CourseHeatmapView() }.environmentObject(AppStore(preview: true)) }
+#Preview("iPhone · Widgets") { NavigationStack { WidgetGalleryView() }.environmentObject(AppStore(preview: true)) }

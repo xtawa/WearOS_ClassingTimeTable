@@ -11,7 +11,11 @@ struct WatchRootView: View {
     var body: some View {
         NavigationStack {
             List {
-                NavigationLink { WatchTodayView() } label: { NextCourseCard(occurrence: store.upcoming.first, now: store.now) }.listRowBackground(Color.clear)
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    NavigationLink { if store.state.settings["academicMode"].string == "EXAM" { WatchExamsView() } else { WatchTodayView() } } label: {
+                        AgendaHeroCard(snapshot: store.agenda(at: store.demo ? store.now : context.date), compact: true)
+                    }.buttonStyle(.plain)
+                }.listRowBackground(Color.clear).listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 6, trailing: 0))
                 NavigationLink { WatchTodayView() } label: { Label("今日课程", systemImage: "sun.max") }
                 NavigationLink { WatchWeekView() } label: { Label("本周课表", systemImage: "calendar") }
                 NavigationLink { WatchExamsView() } label: { Label("考试", systemImage: "graduationcap") }

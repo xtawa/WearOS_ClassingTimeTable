@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject var store: AppStore
     var body: some View {
         List {
+            Section { NavigationLink { WidgetGalleryView() } label: { Label("小组件", systemImage: "square.grid.2x2") } }
             Section { NavigationLink { AccountView() } label: { Label(store.signedIn ? store.account["username"].string : "登录 Classing 账号", systemImage: "person.crop.circle") } }
             Section("课程与提醒") { NavigationLink("学期与外观") { AppearanceSettingsView() }; NavigationLink("通知与每日简报") { NotificationSettingsView() }; NavigationLink("导入课表") { ImportView() }; NavigationLink("系统日历") { CalendarSettingsView() }; NavigationLink("课程密度热力图") { CourseHeatmapView() }; NavigationLink("调课与临时安排") { ChangesView() }; NavigationLink("备份与导出") { BackupView() } }
             Section("连接") { NavigationLink("云同步") { CloudSettingsView() }; NavigationLink("Apple Watch") { WatchSettingsView() }; NavigationLink("Ask AI 偏好") { AssistantSettingsView() }; NavigationLink("BYOK · 自备 AI 密钥") { BYOKSettingsView() } }
