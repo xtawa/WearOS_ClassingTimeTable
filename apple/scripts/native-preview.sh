@@ -28,4 +28,9 @@ if [ "$test_status" -ne 0 ]; then exit "$test_status"; fi
 python3 "$ROOT/scripts/boot-simulator.py" "$WATCH"
 xcrun simctl install "$WATCH" "$ROOT/build/watch/Build/Products/Debug-watchsimulator/ClassingWatch.app"
 xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo
+sleep 2
 xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch.png"
+xcrun simctl terminate "$WATCH" com.xtawa.classingtime.apple.watchkitapp
+xcrun simctl launch "$WATCH" com.xtawa.classingtime.apple.watchkitapp --demo --settings
+sleep 2
+xcrun simctl io "$WATCH" screenshot "$ROOT/build/screenshots/Apple-Watch-settings.png"

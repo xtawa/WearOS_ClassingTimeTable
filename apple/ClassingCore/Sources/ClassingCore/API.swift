@@ -126,9 +126,44 @@ public actor ClassingAPI {
     public func chat(message: String, conversationId: String?, snapshot: JSONValue, model: String, attachments: [String], onEvent: @escaping @Sendable (SSEEvent) async throws -> Void) async throws -> JSONValue {
         var body: [String: JSONValue] = ["clientRequestId": .string(UUID().uuidString), "message": .string(message), "model": .string(model), "attachmentIds": .array(attachments.map(JSONValue.string)), "supportsTimetableActions": .bool(true), "supportsExamActions": .bool(true), "currentTimetableSnapshot": snapshot]
         if let id = conversationId { body["conversationId"] = .string(id) } else { body["timetableSnapshot"] = snapshot }
-        let result = EventResult(); try await events("/api/v1/ai/chat", body: .object(body)) { event in
-            let value = try JSONValue.decode(Data(event.data.utf8)); if event.event == "error" { throw ClassingError.network(502, value["code"].string, value["message"].string) }; if event.event == "done" { await result.set(value) }; try await onEvent(event)
-        }; guard let done = await result.get() else { throw ClassingError.invalid("回答中断，草稿已保留。") }; return done
+        let result = EventResult()
+        do {
+            try await events("/api/v1/ai/chat", body: .object(body)) { event in
+                // A valid done event commits the answer. Trailers or a socket
+                // close after it cannot turn that completed reply into a failure.
+                guard await result.get() == nil else { return }
+                switch event.event {
+                case "conversation", "delta", "reasoning", "error", "done":
+                    guard let value = try? JSONValue.decode(Data(event.data.utf8)), case .object = value else {
+                        throw ClassingError.invalid("AI 回复的 \(event.event) 数据格式无效，请重试。草稿已保留。")
+                    }
+                    if event.event == "error" { throw ClassingError.network(502, value["code"].string, value["message"].string.isEmpty ? "AI 服务暂时无法完成回答" : value["message"].string) }
+                    if event.event == "done" {
+                        guard case .string = value["reply"] else {
+                            guard value["replayed"].bool && !value["messageId"].string.isEmpty else { throw ClassingError.invalid("AI 回复的 done 结果缺少完成信息，请重试。草稿已保留。") }
+                            await result.set(value); try await onEvent(event); return
+                        }
+                        await result.set(value)
+                    }
+                    try await onEvent(event)
+                case "usage":
+                    // Quota is secondary to the answer; the observer can ignore
+                    // an unrecognized quota shape without losing the reply.
+                    try await onEvent(event)
+                default: break
+                }
+            }
+        } catch { if await result.get() == nil { throw error } }
+        guard let done = await result.get() else { throw ClassingError.invalid("回答中断，草稿已保留。") }; return done
+    }
+    public func assistantPreferences() async throws -> JSONValue { try await request("GET", "/api/v1/ai/preferences")["preferences"] }
+    public func setAssistantPreference(_ key: String, to value: Bool) async throws -> JSONValue {
+        guard ["autoRefreshPrompts", "showPromptSuggestions", "voiceAutoSend", "showReasoning", "imagePreviews", "showTimestamps"].contains(key) else { throw ClassingError.invalid("不支持的助手设置。") }
+        return try await request("PATCH", "/api/v1/ai/preferences", body: .object([key: .bool(value)]))["preferences"]
+    }
+    public func setFavoriteModel(_ id: String, favorite: Bool) async throws -> JSONValue {
+        guard !id.isEmpty, id.count <= 160 else { throw ClassingError.invalid("模型标识无效。") }
+        return try await request("PATCH", "/api/v1/ai/preferences", body: .object([favorite ? "favoriteAdd" : "favoriteRemove": .string(id)]))["preferences"]
     }
     public func upload(_ data: Data, filename: String, mime: String, transcription: Bool = false) async throws -> JSONValue {
         guard data.count <= 20_971_520, !filename.contains("\r"), !filename.contains("\n"), !mime.contains("\r"), !mime.contains("\n") else { throw ClassingError.invalid("附件过大或文件名无效。") }

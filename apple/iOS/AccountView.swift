@@ -34,7 +34,7 @@ struct AccountView: View {
             }
             if busy { ProgressView() }
         }.navigationTitle(store.signedIn ? "账号" : "登录")
-        .task { if !store.signedIn { security = (try? await store.api.request("GET", "/api/v1/auth/registration/config", authorized: false)) ?? .null } }
+        .task { if !store.signedIn && !store.demo { security = (try? await store.api.request("GET", "/api/v1/auth/registration/config", authorized: false)) ?? .null } }
         .sheet(isPresented: $verify) { TurnstileView(siteKey: security["turnstileSiteKey"].string, origin: store.api.baseURL) { token in turnstile = token; verify = false } }
         .onDisappear { password = ""; turnstile = "" }
     }

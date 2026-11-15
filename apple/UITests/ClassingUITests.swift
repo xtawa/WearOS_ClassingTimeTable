@@ -8,6 +8,7 @@ final class ClassingUITests: XCTestCase {
         app.tabBars.buttons["课表"].tap(); XCTAssertTrue(app.navigationBars["课表"].waitForExistence(timeout: 5)); screenshot("iPhone-timetable")
         app.tabBars.buttons["助手"].tap(); screenshot("iPhone-assistant")
         app.tabBars.buttons["设置"].tap(); screenshot("iPhone-settings")
+        reveal(app.staticTexts["数据与备份"], in: app); app.staticTexts["数据与备份"].tap()
         app.staticTexts["导入课表"].tap(); XCTAssertTrue(app.textViews["import-text"].waitForExistence(timeout: 5)); screenshot("iPhone-import")
     }
     func testDarkModeAndLargeTextRemainNavigable() {
@@ -18,7 +19,7 @@ final class ClassingUITests: XCTestCase {
     func testWidgetGalleryAndLockScreenLayouts() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
         XCTAssertTrue(app.tabBars.buttons["设置"].waitForExistence(timeout: 10)); app.tabBars.buttons["设置"].tap()
-        app.staticTexts["小组件"].tap()
+        app.staticTexts["外观与组件"].tap(); app.staticTexts["小组件"].tap()
         XCTAssertTrue(app.navigationBars["小组件"].waitForExistence(timeout: 5)); screenshot("iPhone-widgets")
         app.swipeUp(); screenshot("iPhone-widget-agenda")
         app.navigationBars["小组件"].buttons.element(boundBy: 0).tap(); app.staticTexts["小组件"].tap()
@@ -31,6 +32,18 @@ final class ClassingUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["next-course"].waitForExistence(timeout: 10)); screenshot("iPhone-empty")
         app.segmentedControls.buttons["考试"].tap()
         XCTAssertTrue(app.staticTexts["还没有考试安排"].waitForExistence(timeout: 5)); screenshot("iPhone-empty-exams")
+    }
+    func testSettingsUsesCategoriesAndPreservesDetailedControls() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        XCTAssertTrue(app.tabBars.buttons["设置"].waitForExistence(timeout: 10)); app.tabBars.buttons["设置"].tap()
+        XCTAssertEqual(app.switches.count, 0)
+        for (entry, title) in [("学期与课程", "学期与课程"), ("提醒与简报", "通知与简报"), ("外观与组件", "外观与组件"), ("同步与设备", "同步与设备"), ("Ask Classing", "Ask Classing"), ("数据与备份", "数据与备份"), ("关于 Classing", "关于 Classing")] {
+            reveal(app.staticTexts[entry], in: app); app.staticTexts[entry].tap()
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            if entry == "外观与组件" { screenshot("iPhone-settings-appearance") }
+            if entry == "同步与设备" { screenshot("iPhone-settings-devices") }
+            app.navigationBars[title].buttons.element(boundBy: 0).tap()
+        }
     }
     func testOnboardingCanFinishWithoutPermissionsOrSubscription() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--onboarding"]; app.launch()
@@ -66,5 +79,9 @@ final class ClassingUITests: XCTestCase {
         // Let the compositor settle after the explicit page assertion above.
         if name.hasPrefix("iPhone-oobe-") { Thread.sleep(forTimeInterval: 0.5) }
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<6 { if element.exists && element.isHittable { return }; app.swipeUp() }
+        XCTAssertTrue(element.exists && element.isHittable)
     }
 }

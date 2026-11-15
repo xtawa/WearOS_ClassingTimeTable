@@ -1,6 +1,11 @@
 import Foundation
 public enum ClassingError: Error, LocalizedError, Equatable {
     case invalid(String), network(Int, String, String), conflict, missingSession
+    public static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        let value = error as NSError
+        return value.domain == NSURLErrorDomain && value.code == NSURLErrorCancelled
+    }
     public var errorDescription: String? {
         switch self {
         case .invalid(let m): return m

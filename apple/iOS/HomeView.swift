@@ -8,9 +8,10 @@ struct HomeView: View {
     @State private var addCourse = false
     @State private var addExam = false
     @State private var showChanges = false
+    @State private var refreshedAt = Date.distantPast
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            let now = store.demo ? store.now : context.date
+            let now = store.demo ? store.now : max(context.date, refreshedAt)
             let snapshot = store.agenda(at: now)
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
@@ -52,7 +53,7 @@ struct HomeView: View {
         .sheet(isPresented: $addCourse) { NavigationStack { LessonEditor(lesson: Lesson(title: "")) } }
         .sheet(isPresented: $addExam) { NavigationStack { ExamEditor(exam: Exam(title: "", start: store.now.addingTimeInterval(86400), end: store.now.addingTimeInterval(91800), timezone: store.state.settings.timezone)) } }
         .sheet(isPresented: $showChanges) { NavigationStack { ChangesView() } }
-        .refreshable { await store.sync() }
+        .refreshable { await store.refreshAgenda(); refreshedAt = Date() }
         .task {
             guard !store.demo else { return }
             while !Task.isCancelled {

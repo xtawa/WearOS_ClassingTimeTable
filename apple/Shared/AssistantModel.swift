@@ -36,16 +36,16 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
             conversations = try await store.api.request("GET", "/api/v1/ai/conversations?limit=30")["conversations"].array
             let catalog = try await store.api.request("GET", "/api/v1/ai/models"); models = catalog["models"].array
             if model.isEmpty { model = catalog["defaultModel"].string }; usage = try await store.api.request("GET", "/api/v1/ai/usage/me")
-            preferences = try await store.api.request("GET", "/api/v1/ai/preferences")["preferences"]
+            preferences = try await store.api.assistantPreferences()
             let favorites = Set(preferences["favoriteModels"].array.map(\.string))
             models.sort { a, b in favorites.contains(a["id"].string) && !favorites.contains(b["id"].string) }
             if models.contains(where: { $0["id"].string == preferences["defaultModel"].string }) { model = preferences["defaultModel"].string }
             if preferences["showPromptSuggestions"].bool { prompts = try await store.api.request("POST", "/api/v1/ai/prompts", body: .object(["timetableSnapshot": try store.state.aiSnapshot(now: store.now), "force": .bool(false)]))["prompts"].array.map(\.string) }
-        } catch { store.error = error.localizedDescription }
+        } catch { store.report(error) }
     }
     func open(_ id: String) async {
         guard let store = store else { return }; cancel(); conversationId = id; attachments = []
-        do { let items = try await store.api.request("GET", "/api/v1/ai/conversations/\(id)/messages")["messages"].array; messages = items.map { ChatMessage(id: $0["messageId"].string, role: $0["role"].string, content: $0["content"].string, reasoning: $0["reasoning"].string, attachments: $0["attachments"].array, createdAt: $0["createdAt"].int) } } catch { store.error = error.localizedDescription }
+        do { let items = try await store.api.request("GET", "/api/v1/ai/conversations/\(id)/messages")["messages"].array; messages = items.map { ChatMessage(id: $0["messageId"].string, role: $0["role"].string, content: $0["content"].string, reasoning: $0["reasoning"].string, attachments: $0["attachments"].array, createdAt: $0["createdAt"].int) } } catch { store.report(error) }
     }
     func newConversation() { cancel(); messages = []; conversationId = nil; courseProposal = nil; examProposal = nil; attachments = []; if byok { Task { await saveLocal() } } }
     func delete(_ id: String) async { guard let store = store else { return }; do { _ = try await store.api.request("DELETE", "/api/v1/ai/conversations/\(id)"); conversations.removeAll { $0["conversationId"].string == id }; if conversationId == id { newConversation() } } catch { store.error = error.localizedDescription } }
@@ -77,11 +77,10 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
                 } else {
                     let done = try await store.api.chat(message: prompt, conversationId: conversationId, snapshot: base.aiSnapshot(now: store.now), model: model, attachments: pending.map(\.id)) { [weak self] event in await self?.event(event, replyID: replyID) }
                     guard activeRequest == token else { return }; courseProposal = done["courseProposal"] == .null ? nil : done["courseProposal"]; examProposal = done["examProposal"] == .null ? nil : done["examProposal"]
-                    if let i = messages.firstIndex(where: { $0.id == replyID }), messages[i].content.isEmpty { messages[i].content = done["reply"].string }
-                    usage = try await store.api.request("GET", "/api/v1/ai/usage/me")
+                    if let i = messages.firstIndex(where: { $0.id == replyID }), case .string(let reply) = done["reply"] { messages[i].content = reply }
                 }
                 draft = ""; attachments = []
-            } catch { if activeRequest == token { if !Task.isCancelled { store.error = error.localizedDescription }; draft = prompt } }
+            } catch { if activeRequest == token { store.report(error); draft = prompt } }
         }
     }
     func append(_ delta: String, id: String, reasoning: Bool) { guard let i = messages.firstIndex(where: { $0.id == id }) else { return }; if reasoning { messages[i].reasoning += delta } else { messages[i].content += delta } }
@@ -89,6 +88,7 @@ struct PendingAttachment: Identifiable { var id: String, name: String, mime: Str
         guard activeRequest != nil, messages.contains(where: { $0.id == replyID }), let value = try? JSONValue.decode(Data(event.data.utf8)) else { return }
         if event.event == "conversation" { conversationId = value["conversationId"].string }
         if event.event == "delta" || event.event == "reasoning" { append(value["text"].string, id: replyID, reasoning: event.event == "reasoning") }
+        if event.event == "usage", case .object = value { usage = .object(["usage": value]) }
     }
     func cancel() { activeRequest = nil; task?.cancel(); task = nil; busy = false }
     func apply(exams: Bool) {

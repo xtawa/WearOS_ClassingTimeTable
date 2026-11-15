@@ -1,9 +1,18 @@
 import SwiftUI
 import ClassingCore
 @main @MainActor struct ClassingWatchApp: App {
-    @StateObject private var store = AppStore()
+    @StateObject private var store: AppStore
+    init() { let store = AppStore(); _store = StateObject(wrappedValue: store) }
     @Environment(\.scenePhase) var phase
-    var body: some Scene { WindowGroup { WatchRootView().environmentObject(store).task { await store.start() }.onChange(of: phase) { _, p in if p == .active { Task { await store.becameActive() } } else { store.becameInactive() } } } }
+    var body: some Scene { WindowGroup { content.environmentObject(store).task { await store.start() }.onChange(of: phase) { _, p in if p == .active { Task { await store.becameActive() } } else { store.becameInactive() } } } }
+    @ViewBuilder private var content: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--demo") && ProcessInfo.processInfo.arguments.contains("--settings") { NavigationStack { WatchSettings() }.tint(.indigo) }
+        else { WatchRootView() }
+        #else
+        WatchRootView()
+        #endif
+    }
 }
 struct WatchRootView: View {
     @EnvironmentObject var store: AppStore
@@ -22,7 +31,7 @@ struct WatchRootView: View {
                 NavigationLink { WatchAssistantView() } label: { Label("Ask AI / BYOK", systemImage: "sparkles") }
                 NavigationLink { WatchCoursesView() } label: { Label("课程管理", systemImage: "pencil") }
                 NavigationLink { WatchChangesView() } label: { Label("调课与补课", systemImage: "arrow.triangle.swap") }
-                NavigationLink { WatchSettings() } label: { Label("设置与账号", systemImage: "gearshape") }
+                NavigationLink { WatchSettings() } label: { Label("设置", systemImage: "gearshape") }
             }.navigationTitle("Classing")
         }.tint(.indigo)
         .alert("操作未完成", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("知道了", role: .cancel) {} } message: { Text(store.error ?? "") }
@@ -59,8 +68,7 @@ struct WatchLessonEditor: View {
     @Environment(\.dismiss) var dismiss
     @State var l: Lesson
     @State private var remove = false
-    @State private var rule = ""
-    var body: some View { Form { TextField("课程名", text: $l.title); TextField("地点", text: Binding(get: { l.location ?? "" }, set: { l.location = $0 })); TextField("教师", text: Binding(get: { l.teacher ?? "" }, set: { l.teacher = $0 })); Picker("星期", selection: $l.dayOfWeek) { ForEach(1...7, id: \.self) { Text("周\($0)").tag($0) } }; Stepper("开始 \(SchoolTime.clock(l.startMinute))", value: $l.startMinute, in: 0...1435, step: 5); Stepper("结束 \(SchoolTime.clock(l.endMinute))", value: $l.endMinute, in: 5...1440, step: 5); Stepper("起始周 \(l.startWeek)", value: $l.startWeek, in: 1...53); Stepper("结束周 \(l.endWeek)", value: $l.endWeek, in: 1...53); Picker("单双周", selection: $l.weekParity) { Text("每周").tag("ALL"); Text("单周").tag("ODD"); Text("双周").tag("EVEN") }; TextField("高级规则 JSON（可用语音或手机编辑）", text: $rule); Button("保存") { do { l.scheduleRuleJson = rule.isEmpty ? nil : rule; try l.validate(); store.save(l); if store.error == nil { dismiss() } } catch { store.error = error.localizedDescription } }; if store.state.lessons.contains(where: { $0.id == l.id }) { Button("删除课程", role: .destructive) { remove = true } } }.navigationTitle("课程").onAppear { rule = l.scheduleRuleJson ?? "" }.confirmationDialog("删除课程？", isPresented: $remove) { Button("删除", role: .destructive) { store.mutate("删除课程前") { $0.lessons.removeAll { $0.id == l.id }; $0.exceptions.removeAll { $0.lessonId == l.id } }; dismiss() } } }
+    var body: some View { Form { TextField("课程名", text: $l.title); TextField("地点", text: Binding(get: { l.location ?? "" }, set: { l.location = $0 })); TextField("教师", text: Binding(get: { l.teacher ?? "" }, set: { l.teacher = $0 })); Picker("星期", selection: $l.dayOfWeek) { ForEach(1...7, id: \.self) { Text("周\($0)").tag($0) } }; Stepper("开始 \(SchoolTime.clock(l.startMinute))", value: $l.startMinute, in: 0...1435, step: 5); Stepper("结束 \(SchoolTime.clock(l.endMinute))", value: $l.endMinute, in: 5...1440, step: 5); Stepper("起始周 \(l.startWeek)", value: $l.startWeek, in: 1...53); Stepper("结束周 \(l.endWeek)", value: $l.endWeek, in: 1...53); Picker("单双周", selection: $l.weekParity) { Text("每周").tag("ALL"); Text("单周").tag("ODD"); Text("双周").tag("EVEN") }; if l.scheduleRuleJson != nil { Text("高级重复规则请在 iPhone 编辑").font(.caption).foregroundStyle(.secondary) }; Button("保存") { do { try l.validate(); store.save(l); if store.error == nil { dismiss() } } catch { store.error = error.localizedDescription } }; if store.state.lessons.contains(where: { $0.id == l.id }) { Button("删除课程", role: .destructive) { remove = true } } }.navigationTitle("课程").confirmationDialog("删除课程？", isPresented: $remove) { Button("删除", role: .destructive) { store.mutate("删除课程前") { $0.lessons.removeAll { $0.id == l.id }; $0.exceptions.removeAll { $0.lessonId == l.id } }; dismiss() } } }
 }
 struct WatchExamsView: View {
     @EnvironmentObject var store: AppStore

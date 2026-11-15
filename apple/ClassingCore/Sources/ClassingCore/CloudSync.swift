@@ -57,7 +57,7 @@ public enum CloudSync {
         default: return false
         }
     }
-    public static func capture(_ state: inout AppState, now: Int64 = Wire.milliseconds()) throws {
+    public static func capture(_ state: inout AppState, now: Int64 = Wire.milliseconds(), includingCompanionDomains: Bool = false, mobileSettingKeys: Set<String>? = nil) throws {
         try state.validate(); let previous = state.cloud; var domains: [String: [String: String]] = [:]
         domains["timetable.lessons"] = try Dictionary(uniqueKeysWithValues: state.lessons.map { ($0.id, String(decoding: try Wire.encoder.encode($0), as: UTF8.self)) })
         let portableExceptions = state.exceptions.flatMap { e -> [ScheduleException] in
@@ -68,15 +68,17 @@ public enum CloudSync {
         }
         domains["timetable.exceptions"] = try Dictionary(uniqueKeysWithValues: portableExceptions.map { ($0.id, String(decoding: try Wire.encoder.encode($0), as: UTF8.self)) })
         domains["timetable.exams"] = try Dictionary(uniqueKeysWithValues: state.exams.map { ($0.id, String(decoding: try Wire.encoder.encode($0), as: UTF8.self)) })
-        for (key, value) in state.settings.values where !["onboardingCompleted", "officialEventVersion", "cloudAccountId"].contains(key) && !key.lowercased().hasPrefix("byok") {
+        for (key, value) in state.settings.values where !["onboardingCompleted", "officialEventVersion", "cloudAccountId", CompanionSync.readyKey].contains(key) && !key.lowercased().hasPrefix("byok") {
             let domain = key.hasPrefix("watch") ? "wear.settings" : (cloudKeys.contains(key) ? "cloud.config" : "mobile.settings")
+            if domain == "mobile.settings", let keys = mobileSettingKeys, !keys.contains(key) { continue }
             domains[domain, default: [:]][key] = try JSONValue.object(["value": value]).text()
         }
         // Secrets are in Keychain and never appear in settings or cloud payloads.
-        for (domain, current) in domains where enabled(domain, settings: state.settings) {
+        for (domain, current) in domains where enabled(domain, settings: state.settings) || (includingCompanionDomains && CompanionSync.domains.contains(domain)) {
             var rows = Dictionary(uniqueKeysWithValues: (state.cloud.records[domain] ?? []).map { ($0.id, $0) })
             for key in Set(current.keys).union(rows.keys) {
                 if domain == "wear.settings" && !key.hasPrefix("watch") { continue } // Preserve Android-only watch preferences.
+                if domain == "mobile.settings", let keys = mobileSettingKeys, !keys.contains(key) { continue }
                 let old = rows[key], value = current[key]
                 if PayloadEquivalence.equal(value, old?.payload) && old?.deletedAt == nil { continue }
                 if value == nil && (old == nil || old?.deletedAt != nil) { continue }
@@ -94,7 +96,8 @@ public enum CloudSync {
         }
         state.cloud = try state.cloud.merged(with: CloudDocument(), now: now)
     }
-    public static func apply(_ remote: CloudDocument, to state: inout AppState, now: Int64 = Wire.milliseconds(), domains: Set<String>? = nil) throws {
+    public static func apply(_ remote: CloudDocument, to state: inout AppState, now: Int64 = Wire.milliseconds(), domains: Set<String>? = nil, includingCompanionDomains: Bool = false) throws {
+        func enabled(_ domain: String, settings: Settings) -> Bool { Self.enabled(domain, settings: settings) || (includingCompanionDomains && CompanionSync.domains.contains(domain)) }
         // Disabled scopes stay untouched and are not echoed back to remote.
         var filtered = remote; filtered.records = remote.records.filter { enabled($0.key, settings: state.settings) && (domains == nil || domains!.contains($0.key)) }
         let document = try state.cloud.merged(with: filtered, now: now)

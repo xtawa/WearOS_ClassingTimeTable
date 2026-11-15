@@ -3,7 +3,8 @@ import ClassingCore
 
 struct WidgetGalleryView: View {
     @EnvironmentObject var store: AppStore
-    @State private var selection = 0
+    @State private var selection: Int
+    init(selection: Int = 0) { _selection = State(initialValue: selection) }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {

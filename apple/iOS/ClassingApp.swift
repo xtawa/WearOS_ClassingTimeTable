@@ -30,7 +30,7 @@ struct RootView: View {
             NavigationStack { SettingsView() }.tabItem { Label("设置", systemImage: "slider.horizontal.3") }.tag(3)
         }.tint(.indigo)
         .alert("操作未完成", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("知道了", role: .cancel) {} } message: { Text(store.error ?? "") }
-        .alert("授权 Apple Watch 登录？", isPresented: Binding(get: { bridge.pendingAuthorization != nil }, set: { if !$0 { bridge.pendingAuthorization = nil } })) { Button("授权") { Task { await bridge.approve() } }; Button("取消", role: .cancel) { bridge.pendingAuthorization = nil } } message: { Text("仅在你刚刚通过自己的手表发起登录时授权。手表会建立可单独撤销的账号会话。") }
+        .sheet(isPresented: Binding(get: { bridge.pendingAuthorization != nil && store.state.settings["onboardingCompleted"].bool }, set: { if !$0 { bridge.pendingAuthorization = nil } })) { WatchAuthorizationView() }
         .fullScreenCover(isPresented: Binding(get: { !store.state.settings["onboardingCompleted"].bool }, set: { _ in })) { OnboardingView() }
         .onOpenURL { url in
             if url.host == "wear-login", let c = URLComponents(url: url, resolvingAgainstBaseURL: false), let id = c.queryItems?.first(where: { $0.name == "authorizationId" })?.value { bridge.pendingAuthorization = id }

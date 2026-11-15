@@ -16,15 +16,27 @@ import UserNotifications
     lazy var api = ClassingAPI(baseURL: URL(string: Bundle.main.object(forInfoDictionaryKey: "ClassingAPIBaseURL") as? String ?? "https://api-classing.underflo.ink")!, vault: vault, platform: Self.platform, bundleID: Bundle.main.bundleIdentifier ?? "com.xtawa.classingtime.apple")
     private var realtime: Task<Void, Never>?, refreshServices: Task<Void, Never>?
     private var readFailure = false, started = false, syncingSettings = false
+    private var companionPrepared = false
     private var queuedCloudEvent: SSEEvent?
     var demo = false
     var officialCloudAllowed: Bool { signedIn && membership["access"]["cloudSync"].bool && membership["expiresAt"].int > Wire.milliseconds() }
+    func report(_ error: Error) {
+        guard !Task.isCancelled, !ClassingError.isCancellation(error) else { return }
+        self.error = error.localizedDescription
+    }
     var now: Date { demo ? ISO8601DateFormatter().date(from: "2026-11-16T01:41:00Z")! : Date() }
     static var platform: String {
         #if os(watchOS)
         return "WATCHOS"
         #else
         return "IOS"
+        #endif
+    }
+    static var companionRole: CompanionSync.Role {
+        #if os(watchOS)
+        return .watch
+        #else
+        return .phone
         #endif
     }
     init(preview: Bool = false) {
@@ -39,17 +51,26 @@ import UserNotifications
             if ProcessInfo.processInfo.arguments.contains("--onboarding") { state.settings["onboardingCompleted"] = .bool(false) }
         }
         #endif
+        prepareCompanion()
+    }
+    private func prepareCompanion() {
+        guard !demo, !readFailure, !companionPrepared else { return }
+        do {
+            var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try SharedDisk.save(current); state = current
+            companionPrepared = true; PhoneWatchBridge.shared.attach(self)
+        } catch { report(error) }
     }
     func start() async {
         guard !started else { return }; started = true
         if demo { changedServices(); return }
-        do { signedIn = try await api.session() != nil; if signedIn { try await refreshAccount() } else { try await loadPrivateByok() } } catch { self.error = error.localizedDescription }
-        PhoneWatchBridge.shared.attach(self); changedServices()
+        prepareCompanion()
+        do { signedIn = try await api.session() != nil; if signedIn { try await refreshAccount() } else { try await loadPrivateByok() } } catch { report(error) }
+        changedServices()
         if state.settings["cloudSyncEnabled"].bool && signedIn { await sync(); startRealtime() }
     }
     func commit(_ value: AppState, reason: String? = nil) throws {
         guard !readFailure else { throw ClassingError.invalid("请先导出损坏的本地文件并恢复备份，避免覆盖原始数据。") }
-        var candidate = value; if let reason = reason { candidate.backup(reason) }; try candidate.validate(); candidate.settings.values = candidate.settings.values.filter { !$0.key.lowercased().hasPrefix("byok") }; candidate.snapshots = candidate.snapshots.map { snapshot in var s = snapshot; s.settings.values = s.settings.values.filter { !$0.key.lowercased().hasPrefix("byok") }; return s }; try CloudSync.capture(&candidate)
+        var candidate = value; if let reason = reason { candidate.backup(reason) }; try candidate.validate(); candidate.settings.values = candidate.settings.values.filter { !$0.key.lowercased().hasPrefix("byok") }; candidate.snapshots = candidate.snapshots.map { snapshot in var s = snapshot; s.settings.values = s.settings.values.filter { !$0.key.lowercased().hasPrefix("byok") }; return s }; try CompanionSync.capture(&candidate, role: Self.companionRole)
         if !demo { try SharedDisk.save(candidate) }; state = candidate; changedServices(); if !demo { PhoneWatchBridge.shared.publish(candidate) }
     }
     func mutate(_ reason: String? = nil, _ body: (inout AppState) throws -> Void) {
@@ -59,9 +80,9 @@ import UserNotifications
     func save(_ lesson: Lesson) { mutate("编辑课程前") { try lesson.validate(); if let i = $0.lessons.firstIndex(where: { $0.id == lesson.id }) { $0.lessons[i] = lesson } else { $0.lessons.append(lesson) } } }
     func save(_ exam: Exam) { mutate("编辑考试前") { try exam.validate(); if let i = $0.exams.firstIndex(where: { $0.id == exam.id }) { $0.exams[i] = exam } else { $0.exams.append(exam) } } }
     func save(_ exception: ScheduleException) { mutate("编辑调课前") { try exception.validate(); if let i = $0.exceptions.firstIndex(where: { $0.id == exception.id }) { $0.exceptions[i] = exception } else { $0.exceptions.append(exception) } } }
-    func receive(_ document: CloudDocument) { do { var current = state; try CloudSync.capture(&current); try CloudSync.apply(document, to: &current)
-        guard current.cloud != state.cloud || current.lessons != state.lessons || current.exams != state.exams || current.exceptions != state.exceptions || current.settings != state.settings else { return }
-        try commit(current); status = "已与另一设备合并" } catch { self.error = error.localizedDescription } }
+    @discardableResult func receive(_ document: CloudDocument) -> Bool { do { var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CompanionSync.apply(document, to: &current, role: Self.companionRole)
+        guard current.cloud != state.cloud || current.lessons != state.lessons || current.exams != state.exams || current.exceptions != state.exceptions || current.settings != state.settings else { return true }
+        try commit(current); status = "已与另一设备合并"; return true } catch { report(error); return false } }
     func restore(_ snapshot: ScheduleSnapshot) { mutate("恢复备份前") { $0.lessons = snapshot.lessons; $0.exceptions = snapshot.exceptions; $0.exams = snapshot.exams; $0.settings = snapshot.settings } }
     func occurrences(_ from: String, _ through: String) -> [Occurrence] { (try? ScheduleProjector.project(state, from: from, through: through)) ?? [] }
     var upcoming: [Occurrence] { (try? ScheduleProjector.upcoming(state, now: now)) ?? [] }
@@ -109,12 +130,12 @@ import UserNotifications
             for attempt in 0..<3 {
                 let (remote, version) = try await provider.read()
                 // Rebase on the CURRENT state after each await, so in-flight edits cannot be lost.
-                var current = state; try CloudSync.capture(&current); try CloudSync.apply(remote, to: &current)
+                var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CloudSync.apply(remote, to: &current)
                 do {
                     let upload = try CloudSync.upload(current, preserving: remote)
                     if upload != remote { try await provider.write(upload, version: version) }
                     // Incorporate edits made while PUT was in flight before committing the result.
-                    var latest = state; try CloudSync.capture(&latest); try CloudSync.apply(current.cloud, to: &latest); let hasPendingEdits = latest.cloud.records != current.cloud.records
+                    var latest = state; try CompanionSync.capture(&latest, role: Self.companionRole); try CloudSync.apply(current.cloud, to: &latest); let hasPendingEdits = latest.cloud.records != current.cloud.records
                     try commit(latest)
                     if hasPendingEdits && attempt < 2 { continue }
                     if hasPendingEdits { status = "新修改已保存在本地，等待下一次同步"; return }
@@ -124,7 +145,15 @@ import UserNotifications
                     }; status = "同步完成"; await handleCommands(); return
                 } catch ClassingError.conflict { if attempt == 2 { throw ClassingError.conflict }; try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 400_000_000) }
             }
-        } catch { self.error = error.localizedDescription; status = "同步失败" }
+        } catch {
+            if Task.isCancelled || ClassingError.isCancellation(error) { status = "课表已保留在本机" }
+            else { report(error); status = "同步失败" }
+        }
+    }
+    func refreshAgenda() async {
+        changedServices()
+        guard state.settings["cloudSyncEnabled"].bool else { status = "课表已刷新"; return }
+        await sync()
     }
     func syncOfficialSettings() async throws {
         guard !demo, officialCloudAllowed, !syncingSettings else { return }; syncingSettings = true; defer { syncingSettings = false; drainQueuedCloudEvent() }
@@ -132,11 +161,11 @@ import UserNotifications
         let provider = OfficialCloud(api: api)
         for attempt in 0..<3 {
             let (remote, version) = try await provider.read()
-            var current = state; try CloudSync.capture(&current); try CloudSync.apply(remote, to: &current, domains: domains)
+            var current = state; try CompanionSync.capture(&current, role: Self.companionRole); try CloudSync.apply(remote, to: &current, domains: domains)
             do {
                 let upload = try CloudSync.upload(current, preserving: remote, domains: domains)
                 if upload != remote { try await provider.write(upload, version: version) }
-                var latest = state; try CloudSync.capture(&latest); try CloudSync.apply(current.cloud, to: &latest, domains: domains); try commit(latest); return
+                var latest = state; try CompanionSync.capture(&latest, role: Self.companionRole); try CloudSync.apply(current.cloud, to: &latest, domains: domains); try commit(latest); return
             } catch ClassingError.conflict { if attempt == 2 { throw ClassingError.conflict }; try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 400_000_000) }
         }
     }
@@ -192,7 +221,7 @@ import UserNotifications
                 #endif
             }
             WidgetCenter.shared.reloadAllTimelines()
-        } catch { if !Task.isCancelled { self.error = error.localizedDescription } } }
+        } catch { report(error) } }
     }
     func handleCommands() async {
         guard signedIn, !demo else { return }

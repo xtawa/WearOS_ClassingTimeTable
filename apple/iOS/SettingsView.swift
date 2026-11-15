@@ -1,36 +1,17 @@
 import SwiftUI
 import ClassingCore
 import UniformTypeIdentifiers
-struct SettingsView: View {
+struct SemesterSettingsView: View {
     @EnvironmentObject var store: AppStore
-    var body: some View {
-        List {
-            Section { NavigationLink { SubscriptionView() } label: { Label("Classing Pro", systemImage: "sparkles") } }
-            Section { NavigationLink { WidgetGalleryView() } label: { Label("小组件", systemImage: "square.grid.2x2") } }
-            Section("实时活动") {
-                Toggle("锁屏与灵动岛课程卡片", isOn: Binding(get: { store.state.settings["liveActivitiesEnabled"].bool }, set: { store.setting("liveActivitiesEnabled", .bool($0)) }))
-                Text("显示当天的当前或下一节课。关闭后会结束课程实时活动。系统后台刷新并非固定周期。")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section { NavigationLink { AccountView() } label: { Label(store.signedIn ? store.account["username"].string : "登录 Classing 账号", systemImage: "person.crop.circle") } }
-            Section("课程与提醒") { NavigationLink("学期与外观") { AppearanceSettingsView() }; NavigationLink("通知与每日简报") { NotificationSettingsView() }; NavigationLink("导入课表") { ImportView() }; NavigationLink("系统日历") { CalendarSettingsView() }; NavigationLink("课程密度热力图") { CourseHeatmapView() }; NavigationLink("调课与临时安排") { ChangesView() }; NavigationLink("备份与导出") { BackupView() } }
-            Section("连接") { NavigationLink("云同步") { CloudSettingsView() }; NavigationLink("Apple Watch") { WatchSettingsView() }; NavigationLink("Ask AI 偏好") { AssistantSettingsView() }; NavigationLink("BYOK · 自备 AI 密钥") { BYOKSettingsView() } }
-            Section("关于") { NavigationLink("公告") { AnnouncementsView() }; Text("Classing · iOS / watchOS 1.0").foregroundStyle(.secondary); Text("系统更新通过 App Store 分发，不下载 Android APK。").font(.caption).foregroundStyle(.secondary) }
-            if !store.status.isEmpty { Text(store.status).font(.caption) }
-        }.navigationTitle("设置")
-    }
-}
-struct AppearanceSettingsView: View {
-    @EnvironmentObject var store: AppStore
-    @State private var semester = ""
+    @State private var semester = Date()
     @State private var zone = ""
     var body: some View {
         Form {
-            Section("学期") { TextField("第一周开始 YYYY-MM-DD", text: $semester); TextField("课表 IANA 时区", text: $zone).autocorrectionDisabled().textInputAutocapitalization(.never); Picker("每周开始日", selection: string("weekStartDay")) { ForEach(SchoolTime.weekdays, id: \.self) { Text($0).tag($0) } }; Picker("周次模式", selection: string("weekNumberMode")) { Text("学期周").tag("SEMESTER"); Text("自然周").tag("NATURAL") }; Toggle("显示周末", isOn: boolean("showWeekend")) }
-            Section("外观") { Picker("主题", selection: string("appearance")) { Text("跟随系统").tag("system"); Text("浅色").tag("light"); Text("深色").tag("dark") }; Text("iOS 26 使用系统 Liquid Glass；较旧系统使用 Material。遵循减少动态效果、减少透明度与动态字体设置。").font(.caption).foregroundStyle(.secondary) }
-        }.navigationTitle("学期与外观")
-        .onAppear { semester = store.state.settings.semesterStart; zone = store.state.settings.timezone }
-        .toolbar { Button("保存日期与时区") { store.mutate { $0.settings["semesterWeekStartDate"] = .string(semester); $0.settings["timezone"] = .string(zone) } } }
+            Section("学期") { DatePicker("第一教学周开始", selection: $semester, displayedComponents: .date); Picker("每周开始日", selection: string("weekStartDay")) { ForEach(Array(SchoolTime.weekdays.enumerated()), id: \.offset) { index, day in Text(["周一", "周二", "周三", "周四", "周五", "周六", "周日"][index]).tag(day) } }; Picker("周次模式", selection: string("weekNumberMode")) { Text("学期周").tag("SEMESTER"); Text("自然周").tag("NATURAL") }; Toggle("显示周末", isOn: boolean("showWeekend")) }
+            Section("学校时区") { TextField("例如 Asia/Shanghai", text: $zone).autocorrectionDisabled().textInputAutocapitalization(.never) }
+        }.navigationTitle("学期设置").environment(\.timeZone, TimeZone(identifier: zone) ?? .current)
+        .onAppear { zone = store.state.settings.timezone; semester = (try? SchoolTime.instant(date: store.state.settings.semesterStart, minute: 0, zone: zone)) ?? Date() }
+        .toolbar { Button("保存") { store.mutate { $0.settings["semesterWeekStartDate"] = .string(SchoolTime.dateString(semester, zone: zone)); $0.settings["timezone"] = .string(zone) } } }
     }
     func string(_ key: String) -> Binding<String> { Binding(get: { store.state.settings[key].string }, set: { store.setting(key, .string($0)) }) }
     func boolean(_ key: String) -> Binding<Bool> { Binding(get: { store.state.settings[key].bool }, set: { store.setting(key, .bool($0)) }) }
@@ -74,7 +55,23 @@ struct BYOKSettingsView: View { var body: some View { ByokProfilesView() } }
 struct WatchSettingsView: View {
     @EnvironmentObject var store: AppStore
     @ObservedObject var bridge = PhoneWatchBridge.shared
-    var body: some View { Form { Label(bridge.reachable ? "手表当前可连接" : "手表未在前台，课表将排队传输", systemImage: "applewatch"); Button("发送最新课表") { bridge.publish(store.state) }; Toggle("手表显示教师", isOn: Binding(get: { store.state.settings["watchShowTeacher"].bool }, set: { store.setting("watchShowTeacher", .bool($0)) })); Toggle("手表独立排程通知", isOn: Binding(get: { store.state.settings["watchIndependentReminders"].bool }, set: { store.setting("watchIndependentReminders", .bool($0)) })); Text("默认使用 iPhone 镜像通知以避免重复。表盘复杂功能与智能叠放小组件通过 WidgetKit 读取手表本地课表，无需联网。独立登录在手表发起，并在手机上确认。").font(.caption).foregroundStyle(.secondary) }.navigationTitle("Apple Watch") }
+    var body: some View {
+        Form {
+            Section("连接") {
+                Label(bridge.connectionSummary, systemImage: "applewatch")
+                Text(bridge.deliveryStatus).font(.caption).foregroundStyle(.secondary)
+                if let confirmed = bridge.lastAcknowledgedAt { LabeledContent("最近接收确认", value: confirmed.formatted(date: .omitted, time: .shortened)) }
+                Button("发送最新课表") { bridge.publish(store.state, force: true) }
+                Text("在手表的“设置 → 连接与同步”选择“在 iPhone 上继续”，即可在这里的手机端完成登录与授权。").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("手表偏好") {
+                Toggle("显示教师", isOn: Binding(get: { store.state.settings["watchShowTeacher"].bool }, set: { store.setting("watchShowTeacher", .bool($0)) }))
+                Toggle("手表独立提醒", isOn: Binding(get: { store.state.settings["watchIndependentReminders"].bool }, set: { store.setting("watchIndependentReminders", .bool($0)) }))
+                Text("默认镜像 iPhone 通知。课前提前时间在“提醒与简报”设置，避免两端重复提醒。").font(.caption).foregroundStyle(.secondary)
+            }
+            Section { Text("已保存的课表与表盘组件可离线查看。账号、订阅、云服务与 AI 模型均由 iPhone 管理。").font(.caption).foregroundStyle(.secondary) }
+        }.navigationTitle("Apple Watch")
+    }
 }
 struct BackupView: View {
     @EnvironmentObject var store: AppStore

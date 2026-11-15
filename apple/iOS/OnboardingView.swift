@@ -56,7 +56,7 @@ struct OnboardingView: View {
             }
         case 1:
             DatePicker("第一教学周开始日期", selection: $semester, displayedComponents: .date).datePickerStyle(.graphical)
-            Text("请选择学校第一教学周的开始日期。之后可在“设置 → 学期与外观”修改。")
+            Text("请选择学校第一教学周的开始日期。之后可在“设置 → 学期与课程”修改。")
                 .font(.caption).foregroundStyle(.secondary)
         case 2:
             VStack(alignment: .leading, spacing: 16) {
