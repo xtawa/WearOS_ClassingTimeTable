@@ -6,3 +6,7 @@ CLASSING_API_BASE_URL = https:/$()/api-classing.underflo.ink
 GOOGLE_DRIVE_CLIENT_ID =
 GOOGLE_DRIVE_REDIRECT_URI =
 GOOGLE_DRIVE_CALLBACK_SCHEME = classing-google
+// Fill only after creating real auto-renewable products in App Store Connect.
+// Production checkout also needs the membership service's Apple verification.
+CLASSING_PRO_MONTHLY_ID =
+CLASSING_PRO_YEARLY_ID =

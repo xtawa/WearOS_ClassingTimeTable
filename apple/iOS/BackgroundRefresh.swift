@@ -7,7 +7,7 @@ import ClassingCore
         guard !store.demo else { return }
         BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in
             guard let refresh = task as? BGAppRefreshTask else { task.setTaskCompleted(success: false); return }
-            let work = Task { @MainActor in if store.state.settings["cloudSyncEnabled"].bool { await store.sync() }; do { try Task.checkCancellation(); try await LocalNotifications.rebuild(store.state); refresh.setTaskCompleted(success: true) } catch { refresh.setTaskCompleted(success: false) }; schedule() }
+            let work = Task { @MainActor in if store.state.settings["cloudSyncEnabled"].bool { await store.sync() }; do { try Task.checkCancellation(); try await LocalNotifications.rebuild(store.state); try await LiveActivityManager.update(store.agenda(at: Date()), enabled: store.state.settings["liveActivitiesEnabled"].bool); refresh.setTaskCompleted(success: true) } catch { refresh.setTaskCompleted(success: false) }; schedule() }
             refresh.expirationHandler = { work.cancel() }
         }
     }

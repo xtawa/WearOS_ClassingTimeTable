@@ -5,7 +5,13 @@ struct SettingsView: View {
     @EnvironmentObject var store: AppStore
     var body: some View {
         List {
+            Section { NavigationLink { SubscriptionView() } label: { Label("Classing Pro", systemImage: "sparkles") } }
             Section { NavigationLink { WidgetGalleryView() } label: { Label("小组件", systemImage: "square.grid.2x2") } }
+            Section("实时活动") {
+                Toggle("锁屏与灵动岛课程卡片", isOn: Binding(get: { store.state.settings["liveActivitiesEnabled"].bool }, set: { store.setting("liveActivitiesEnabled", .bool($0)) }))
+                Text("显示当天的当前或下一节课。关闭后会结束课程实时活动。系统后台刷新并非固定周期。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section { NavigationLink { AccountView() } label: { Label(store.signedIn ? store.account["username"].string : "登录 Classing 账号", systemImage: "person.crop.circle") } }
             Section("课程与提醒") { NavigationLink("学期与外观") { AppearanceSettingsView() }; NavigationLink("通知与每日简报") { NotificationSettingsView() }; NavigationLink("导入课表") { ImportView() }; NavigationLink("系统日历") { CalendarSettingsView() }; NavigationLink("课程密度热力图") { CourseHeatmapView() }; NavigationLink("调课与临时安排") { ChangesView() }; NavigationLink("备份与导出") { BackupView() } }
             Section("连接") { NavigationLink("云同步") { CloudSettingsView() }; NavigationLink("Apple Watch") { WatchSettingsView() }; NavigationLink("Ask AI 偏好") { AssistantSettingsView() }; NavigationLink("BYOK · 自备 AI 密钥") { BYOKSettingsView() } }

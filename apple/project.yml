@@ -58,7 +58,10 @@ targets:
         ClassingAPIBaseURL: '$(CLASSING_API_BASE_URL)'
         GoogleDriveClientID: '$(GOOGLE_DRIVE_CLIENT_ID)'
         GoogleDriveRedirectURI: '$(GOOGLE_DRIVE_REDIRECT_URI)'
+        ClassingProMonthlyID: '$(CLASSING_PRO_MONTHLY_ID)'
+        ClassingProYearlyID: '$(CLASSING_PRO_YEARLY_ID)'
         UIApplicationSupportsIndirectInputEvents: true
+        NSSupportsLiveActivities: true
         UILaunchScreen: {}
         NSCameraUsageDescription: 拍摄课程表并在你确认后进行识别导入。
         NSMicrophoneUsageDescription: 录制你主动发起的语音问题。
@@ -121,6 +124,7 @@ targets:
       - Widgets
       - path: Shared/Persistence.swift
       - path: Shared/AgendaDesign.swift
+      - path: Shared/CourseActivity.swift
       - path: Config/PrivacyInfo.xcprivacy
         buildPhase: resources
     settings:
@@ -169,7 +173,10 @@ targets:
   ClassingUITests:
     type: bundle.ui-testing
     platform: iOS
-    sources: [UITests]
+    sources:
+      - UITests
+      - path: Config/ClassingTest.storekit
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.xtawa.classingtime.apple.uitests

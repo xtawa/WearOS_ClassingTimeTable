@@ -5,6 +5,7 @@ import ClassingCore
     @StateObject private var store: AppStore
     @Environment(\.scenePhase) private var phase
     init() {
+        _ = SubscriptionStore.shared
         let store = AppStore(); _store = StateObject(wrappedValue: store)
         BackgroundRefresh.register(store: store)
     }
@@ -74,22 +75,5 @@ struct OccurrenceDetailView: View {
             Section { Text(occurrence.title).font(.title2.bold()); Label(occurrence.date, systemImage: "calendar"); Label("\(SchoolTime.clock(occurrence.startMinute))–\(SchoolTime.clock(occurrence.endMinute))", systemImage: "clock"); Label(occurrence.location ?? "未设置地点", systemImage: "location"); Label(occurrence.teacher ?? "未设置教师", systemImage: "person"); Text(occurrence.note ?? "") }
             Section { if let id = occurrence.lessonId, let lesson = store.state.lessons.first(where: { $0.id == id }) { NavigationLink("编辑重复课程") { LessonEditor(lesson: lesson) }; Button("仅修改这一天") { change = true }; Button("取消这一天的课程", role: .destructive) { store.save(ScheduleException(type: "CANCEL", date: occurrence.date, lessonId: id)) } } }
         }.navigationTitle("课程详情").sheet(isPresented: $change) { NavigationStack { ChangeEditor(exception: ScheduleException(type: "RESCHEDULE", date: occurrence.date, lessonId: occurrence.lessonId)) } }
-    }
-}
-struct OnboardingView: View {
-    @EnvironmentObject var store: AppStore
-    @State private var step = 0
-    @State private var semester = Date()
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 28) {
-                Spacer(); Image(systemName: "calendar.badge.clock").font(.system(size: 64)).foregroundStyle(.indigo)
-                Text(step == 0 ? "让课表，轻一点。" : "从你的学期开始。").font(.largeTitle.bold())
-                Text("课程、考试和提醒，留在 iPhone 与 Apple Watch 上。无需登录即可使用本地功能。").foregroundStyle(.secondary)
-                if step == 1 { DatePicker("第一周开始日期", selection: $semester, displayedComponents: .date) }
-                Spacer()
-                Button(step == 0 ? "开始" : "进入 Classing") { if step == 0 { step = 1 } else { store.mutate { $0.settings["semesterWeekStartDate"] = .string(SchoolTime.dateString(semester)); $0.settings["onboardingCompleted"] = .bool(true) } } }.buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
-            }.padding(32).background(ClassingBackdrop())
-        }.interactiveDismissDisabled()
     }
 }

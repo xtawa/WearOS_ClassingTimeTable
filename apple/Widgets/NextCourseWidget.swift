@@ -81,6 +81,7 @@ struct TodayAgendaWidget: Widget {
         NextCourseWidget()
         #if os(iOS)
         TodayAgendaWidget()
+        CourseLiveActivity()
         #endif
     }
 }

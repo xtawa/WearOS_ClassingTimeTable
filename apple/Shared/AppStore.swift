@@ -36,6 +36,7 @@ import UserNotifications
             if ProcessInfo.processInfo.arguments.contains("--dark") { state.settings["appearance"] = .string("dark") }
             if ProcessInfo.processInfo.arguments.contains("--empty") { state.lessons = []; state.exams = []; state.exceptions = [] }
             if ProcessInfo.processInfo.arguments.contains("--exam") { state.settings["academicMode"] = .string("EXAM") }
+            if ProcessInfo.processInfo.arguments.contains("--onboarding") { state.settings["onboardingCompleted"] = .bool(false) }
         }
         #endif
     }
@@ -183,7 +184,15 @@ import UserNotifications
     func becameInactive() { stopRealtime() }
     private func changedServices() {
         refreshServices?.cancel(); let state = state
-        refreshServices = Task { do { if !demo { try await LocalNotifications.rebuild(state) }; WidgetCenter.shared.reloadAllTimelines() } catch { if !Task.isCancelled { self.error = error.localizedDescription } } }
+        refreshServices = Task { do {
+            if !demo {
+                try await LocalNotifications.rebuild(state)
+                #if os(iOS)
+                try await LiveActivityManager.update(agenda(at: now), enabled: state.settings["liveActivitiesEnabled"].bool)
+                #endif
+            }
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch { if !Task.isCancelled { self.error = error.localizedDescription } } }
     }
     func handleCommands() async {
         guard signedIn, !demo else { return }

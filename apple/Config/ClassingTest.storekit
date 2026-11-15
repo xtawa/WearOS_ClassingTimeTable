@@ -1,0 +1,76 @@
+{
+  "identifier": "C1A55100",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "zh_CN",
+    "_storefront": "USA",
+    "_timeRate": 0
+  },
+  "subscriptionGroups": [
+    {
+      "id": "C1A55110",
+      "localizations": [],
+      "name": "Classing Pro Local Test",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "0.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "C1A55101",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "仅供 Xcode 本地测试，不开通云端权益",
+              "displayName": "Pro 月付（测试）",
+              "locale": "zh_CN"
+            },
+            {
+              "description": "Local testing only; no cloud entitlement",
+              "displayName": "Pro monthly (Test)",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.xtawa.classingtime.test.pro.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Classing Pro monthly local test",
+          "subscriptionGroupID": "C1A55110",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "9.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "C1A55102",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "仅供 Xcode 本地测试，不开通云端权益",
+              "displayName": "Pro 年付（测试）",
+              "locale": "zh_CN"
+            },
+            {
+              "description": "Local testing only; no cloud entitlement",
+              "displayName": "Pro yearly (Test)",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.xtawa.classingtime.test.pro.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Classing Pro yearly local test",
+          "subscriptionGroupID": "C1A55110",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

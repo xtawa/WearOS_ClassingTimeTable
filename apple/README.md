@@ -22,8 +22,6 @@
 
 不移植 Android Monet、Wear Tile、Data Layer、WorkManager 保活、APK 下载/安装及仅面向 Android 的设备采集/签名机制。对应替换为系统材质、WidgetKit、WatchConnectivity、Apple 后台刷新与 App Store 分发。国际版登录仍与现有后端一样是未开放状态，不伪造 Google 登录或会员购买。
 
-## Windows：无需本地虚拟机
-
 ## 首页与小组件
 
 首页沿用 Android 的课程信息岛、柔和课程配色与时间上下文，保留 Apple 的原生导航和系统材质。
@@ -37,6 +35,28 @@
 组件只读取设备本地 App Group 数据，不为显示课程请求网络。时间线包含开课、下课和本地午夜；
 倒计时由系统计时文本显示，实际刷新仍受 WidgetKit 调度约束。应用内预览不替代真实主屏幕、
 锁屏及表盘上的安装验收。macOS CI 会导出首页深浅色、空课表和组件布局截图。
+
+## Windows：无需本地虚拟机
+
+## 实时活动、引导与 Apple 订阅
+
+- 首次引导分为欢迎、学期日期、导入、按需授权四步。可以跳过，不强制登录、授权或订阅。
+- 设置 → 实时活动：开启当天课程/考试的锁屏与灵动岛卡片。ActivityKit 在应用运行或系统
+  允许的后台刷新时更新；系统计时文本可继续倒计时。开课/结束边界后标记内容过期，提示打开
+  课表刷新，不把陈旧状态继续表示为实时状态。当前没有配置 APNs 服务端推送或后台自动开课保活。
+- 设置 → 小组件 → 实时活动：查看锁屏布局及灵动岛示意；最终系统容器仍需真机验收。
+- 设置 → Classing Pro：月付/年付页面、商品本地化价格查询、交易监听、验证、购买与恢复。
+  现有云端 Pro 权限仍只由会员服务决定，StoreKit 本地测试不修改账号或云端权益。
+
+商品尚未创建，现有后端也没有 Apple 交易验证/通知接口，因此 **Release 暂不开放扣款**。
+`CLASSING_PRO_MONTHLY_ID` / `CLASSING_PRO_YEARLY_ID` 配置真实商品后可查询价格；正式启用购买
+还需服务端验证 Apple JWS、绑定 Classing 账号、处理续订/退款/撤销并更新会员状态。
+不能仅凭客户端交易 ID 或成功弹窗授予云端 Pro。
+
+`Config/ClassingTest.storekit` 仅包含本地测试商品及测试价格。UI 测试通过 `SKTestSession`
+注入测试商店，并以 Debug 参数 `--storekit-testing` 执行实际 StoreKit 测试购买和恢复。
+测试商品 ID 使用 `com.xtawa.classingtime.test.pro.monthly` / `.yearly`，不得复制为生产配置。
+本地测试不需要 Apple 账号，也不会真实扣款。常规 Debug/Release 启动不会自动启用测试商店。
 
 ### 现在就预览
 

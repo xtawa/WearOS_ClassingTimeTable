@@ -51,6 +51,16 @@ struct HomeView: View {
         .sheet(isPresented: $addExam) { NavigationStack { ExamEditor(exam: Exam(title: "", start: store.now.addingTimeInterval(86400), end: store.now.addingTimeInterval(91800), timezone: store.state.settings.timezone)) } }
         .sheet(isPresented: $showChanges) { NavigationStack { ChangesView() } }
         .refreshable { await store.sync() }
+        .task {
+            guard !store.demo else { return }
+            while !Task.isCancelled {
+                do {
+                    try await LiveActivityManager.update(store.agenda(at: Date()), enabled: store.state.settings["liveActivitiesEnabled"].bool)
+                    try await Task.sleep(for: .seconds(60))
+                } catch is CancellationError { return }
+                catch { store.error = error.localizedDescription; return }
+            }
+        }
     }
     private func header(_ snapshot: AgendaSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 9) {
