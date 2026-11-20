@@ -7,6 +7,9 @@ options:
   xcodeVersion: '26.0'
   createIntermediateGroups: true
 packages:
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios
+    from: 3.98.2
   ClassingCore:
     path: ClassingCore
 settings:
@@ -39,7 +42,7 @@ targets:
       - path: Widgets/WidgetViews.swift
       - path: Fixtures/demo.json
         buildPhase: resources
-      - path: Config/PrivacyInfo.xcprivacy
+      - path: Config/iOS/PrivacyInfo.xcprivacy
         buildPhase: resources
       - path: Assets.xcassets
     settings:
@@ -79,6 +82,7 @@ targets:
         com.apple.developer.applesignin: [Default]
         com.apple.security.application-groups: [group.com.xtawa.classingtime.apple]
     dependencies:
+      - package: PostHog
       - package: ClassingCore
       - target: ClassingWatch
         embed: true

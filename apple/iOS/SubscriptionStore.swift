@@ -51,6 +51,7 @@ import StoreKit
             switch try await product.purchase() {
             case .success(let result):
                 guard case .verified(let transaction) = result, transaction.environment == .xcode else { message = "交易未通过本地测试验证。"; return }
+                PurchaseReporter.report(result)
                 await refreshEntitlements(); await transaction.finish()
                 message = "本地测试订阅已验证"
             case .pending: message = "购买等待批准，批准后会自动更新。"

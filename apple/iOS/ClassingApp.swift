@@ -1,4 +1,5 @@
 import SwiftUI
+import PostHog
 import ClassingCore
 
 @main @MainActor struct ClassingApp: App {
@@ -6,6 +7,12 @@ import ClassingCore
     @Environment(\.scenePhase) private var phase
     init() {
         _ = SubscriptionStore.shared
+        AirCrashReports.start(
+            apiKey: "ak_production_ZVF6r75cvfvDDFdZeYTz-N9Rf-r5Ofw4Wnu55bi_PGs",
+            endpoint: "https://apps.air.build/v1/ingest/crashes"
+        )
+        PurchaseReporter.start()
+        AppAnalytics.start()
         let store = AppStore(); _store = StateObject(wrappedValue: store)
         BackgroundRefresh.register(store: store)
     }
@@ -24,14 +31,14 @@ struct RootView: View {
     @State private var tab = 0
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { HomeView() }.tabItem { Label("今日", systemImage: "sun.max") }.tag(0)
-            NavigationStack { TimetableView() }.tabItem { Label("课表", systemImage: "calendar") }.tag(1)
-            NavigationStack { AssistantView() }.tabItem { Label("助手", systemImage: "sparkles") }.tag(2)
-            NavigationStack { SettingsView() }.tabItem { Label("设置", systemImage: "slider.horizontal.3") }.tag(3)
+            NavigationStack { HomeView().postHogScreenView("Today") }.tabItem { Label("今日", systemImage: "sun.max") }.tag(0)
+            NavigationStack { TimetableView().postHogScreenView("Timetable") }.tabItem { Label("课表", systemImage: "calendar") }.tag(1)
+            NavigationStack { AssistantView().postHogScreenView("Assistant") }.tabItem { Label("助手", systemImage: "sparkles") }.tag(2)
+            NavigationStack { SettingsView().postHogScreenView("Settings") }.tabItem { Label("设置", systemImage: "slider.horizontal.3") }.tag(3)
         }.tint(.indigo)
         .alert("操作未完成", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("知道了", role: .cancel) {} } message: { Text(store.error ?? "") }
         .sheet(isPresented: Binding(get: { bridge.pendingAuthorization != nil && store.state.settings["onboardingCompleted"].bool }, set: { if !$0 { bridge.pendingAuthorization = nil } })) { WatchAuthorizationView() }
-        .fullScreenCover(isPresented: Binding(get: { !store.state.settings["onboardingCompleted"].bool }, set: { _ in })) { OnboardingView() }
+        .fullScreenCover(isPresented: Binding(get: { !store.state.settings["onboardingCompleted"].bool }, set: { _ in })) { OnboardingView().postHogScreenView("Onboarding") }
         .onOpenURL { url in
             if url.host == "wear-login", let c = URLComponents(url: url, resolvingAgainstBaseURL: false), let id = c.queryItems?.first(where: { $0.name == "authorizationId" })?.value { bridge.pendingAuthorization = id }
             else { tab = url.host == "assistant" ? 2 : url.host == "timetable" ? 1 : 0 }
