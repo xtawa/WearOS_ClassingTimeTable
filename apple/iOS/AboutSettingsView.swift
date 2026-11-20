@@ -3,11 +3,14 @@ import PostHog
 import ClassingCore
 
 struct AboutSettingsView: View {
+    @EnvironmentObject var store: AppStore
     @AppStorage("classing.about.developerMode") private var developerMode = false
     @State private var support = false
     @State private var updates = false
     @State private var feedback = false
     @State private var analyticsEnabled = !PostHogSDK.shared.isOptOut()
+    @State private var testingConnection = false
+    @State private var connectionResult: String?
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.4" }
     var body: some View {
         List {
@@ -30,6 +33,60 @@ struct AboutSettingsView: View {
                 if developerMode {
                     LabeledContent("构建", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1")
                     Text(Bundle.main.bundleIdentifier ?? "").font(.caption).textSelection(.enabled)
+                }
+            }
+            if developerMode {
+                Section {
+                    Picker("当前服务", selection: Binding(
+                        get: { store.state.settings["serverSelection"].string.isEmpty ? "OFFICIAL" : store.state.settings["serverSelection"].string },
+                        set: { tag in
+                            Task {
+                                await store.switchServer(to: tag)
+                                connectionResult = nil
+                            }
+                        }
+                    )) {
+                        Text("官方生产服务").tag("OFFICIAL")
+                        Text("AirHost 独立服务").tag("AIRHOST")
+                        Text("自定义服务").tag("CUSTOM")
+                    }
+                    if store.state.settings["serverSelection"].string == "AIRHOST" {
+                        LabeledContent("服务地址", value: "https://classing-airhost.airhost.site")
+                            .font(.caption)
+                    } else if store.state.settings["serverSelection"].string == "CUSTOM" {
+                        TextField("服务 URL", text: Binding(
+                            get: { store.state.settings["serverCustomUrl"].string },
+                            set: { store.setting("serverCustomUrl", .string($0)) }
+                        )).textInputAutocapitalization(.never).keyboardType(.URL)
+                        Button("应用自定义地址") {
+                            Task {
+                                await store.switchServer(to: "CUSTOM", customURL: store.state.settings["serverCustomUrl"].string)
+                                connectionResult = nil
+                            }
+                        }
+                    } else {
+                        LabeledContent("服务地址", value: "https://api-classing.underflo.ink")
+                            .font(.caption)
+                    }
+                    Button(testingConnection ? "正在检测…" : "测试服务连接") {
+                        testingConnection = true
+                        Task {
+                            defer { testingConnection = false }
+                            do {
+                                let res = try await store.api.request("GET", "/api/v1/health", authorized: false)
+                                connectionResult = "连接正常：\(res["service"].string.isEmpty ? "OK" : res["service"].string) (v\(res["version"].string.isEmpty ? "1.0" : res["version"].string))"
+                            } catch {
+                                connectionResult = "连接失败：\(error.localizedDescription)"
+                            }
+                        }
+                    }.disabled(testingConnection)
+                    if let result = connectionResult {
+                        Text(result).font(.footnote).foregroundStyle(result.contains("失败") ? .red : .green)
+                    }
+                } header: {
+                    Text("服务器环境 (Dev Mode)")
+                } footer: {
+                    Text("切换服务后使用独立的账号会话与云端记录，本地课表不会被覆盖。")
                 }
             }
             Section {

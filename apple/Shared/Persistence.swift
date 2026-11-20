@@ -4,9 +4,22 @@ import ClassingCore
 
 actor KeychainVault: TokenVault {
     private let service: String
-    init(service: String = Bundle.main.bundleIdentifier ?? "Classing") { self.service = service }
-    func read() throws -> AuthSession? { guard let data = try data("account.session") else { return nil }; return try Wire.decoder.decode(AuthSession.self, from: data) }
-    func write(_ session: AuthSession?) throws { try put(session.map { try Wire.encoder.encode($0) }, key: "account.session") }
+    private var sessionKey: String
+    init(service: String = Bundle.main.bundleIdentifier ?? "Classing", sessionKey: String = "account.session.official") {
+        self.service = service
+        self.sessionKey = sessionKey
+    }
+    func setSessionKey(_ key: String) { self.sessionKey = key }
+    func read() throws -> AuthSession? {
+        if let data = try data(sessionKey) {
+            return try Wire.decoder.decode(AuthSession.self, from: data)
+        }
+        if sessionKey == "account.session.official", let legacy = try data("account.session") {
+            return try Wire.decoder.decode(AuthSession.self, from: legacy)
+        }
+        return nil
+    }
+    func write(_ session: AuthSession?) throws { try put(session.map { try Wire.encoder.encode($0) }, key: sessionKey) }
     func secret(_ key: String) throws -> String { try data(key).map { String(decoding: $0, as: UTF8.self) } ?? "" }
     func setSecret(_ value: String, key: String) throws { try put(value.isEmpty ? nil : Data(value.utf8), key: key) }
     func data(_ key: String) throws -> Data? {

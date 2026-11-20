@@ -9,8 +9,19 @@ public protocol CloudProvider: Sendable {
 public struct OfficialCloud: CloudProvider {
     public var api: ClassingAPI
     public init(api: ClassingAPI) { self.api = api }
-    public func read() async throws -> (CloudDocument, String?) { let r = try await api.response("GET", "/api/v1/cloud/official/document"); let d = r.data.isEmpty ? CloudDocument() : try Wire.decoder.decode(CloudDocument.self, from: r.data); try d.validate(); return (d, r.headers["etag"] ?? "\"0\"") }
-    public func write(_ document: CloudDocument, version: String?) async throws { _ = try await api.response("PUT", "/api/v1/cloud/official/document", body: Wire.encoder.encode(document), headers: ["If-Match": version ?? "\"0\"", "Idempotency-Key": UUID().uuidString]) }
+    public func read() async throws -> (CloudDocument, String?) {
+        let r = try await api.response("GET", "/api/v1/cloud/official/document")
+        let d = r.data.isEmpty ? CloudDocument() : try Wire.decoder.decode(CloudDocument.self, from: r.data)
+        try d.validate()
+        var etag = r.headers["etag"] ?? "\"0\""
+        if etag.hasPrefix("W/") { etag = String(etag.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        return (d, etag)
+    }
+    public func write(_ document: CloudDocument, version: String?) async throws {
+        var v = version ?? "\"0\""
+        if v.hasPrefix("W/") { v = String(v.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        _ = try await api.response("PUT", "/api/v1/cloud/official/document", body: Wire.encoder.encode(document), headers: ["If-Match": v, "Idempotency-Key": UUID().uuidString])
+    }
 }
 public struct WebDAVCloud: CloudProvider {
     public var url: URL, username: String, password: String

@@ -14,7 +14,7 @@ import UserNotifications
     @Published var membership: JSONValue = .null
     @Published var byok = ByokConfiguration(ownerId: "local")
     let vault = KeychainVault()
-    lazy var api = ClassingAPI(baseURL: URL(string: Bundle.main.object(forInfoDictionaryKey: "ClassingAPIBaseURL") as? String ?? "https://api-classing.underflo.ink")!, vault: vault, platform: Self.platform, bundleID: Bundle.main.bundleIdentifier ?? "com.xtawa.classingtime.apple")
+    private(set) var api: ClassingAPI!
     private var realtime: Task<Void, Never>?, refreshServices: Task<Void, Never>?
     private var readFailure = false, started = false, syncingSettings = false
     private var companionPrepared = false
@@ -60,6 +60,18 @@ import UserNotifications
             if ProcessInfo.processInfo.arguments.contains("--assistant-preview") { signedIn = true }
         }
         #endif
+        let selection = state.settings["serverSelection"].string
+        let initialURL: URL
+        if selection == "AIRHOST" {
+            let custom = state.settings["serverAirHostUrl"].string
+            initialURL = URL(string: custom.isEmpty ? "https://classing-airhost.airhost.site" : custom) ?? URL(string: "https://classing-airhost.airhost.site")!
+        } else if selection == "CUSTOM" {
+            let custom = state.settings["serverCustomUrl"].string
+            initialURL = URL(string: custom.isEmpty ? "https://api-classing.underflo.ink" : custom) ?? URL(string: "https://api-classing.underflo.ink")!
+        } else {
+            initialURL = URL(string: Bundle.main.object(forInfoDictionaryKey: "ClassingAPIBaseURL") as? String ?? "https://api-classing.underflo.ink")!
+        }
+        api = ClassingAPI(baseURL: initialURL, vault: vault, platform: Self.platform, bundleID: Bundle.main.bundleIdentifier ?? "com.xtawa.classingtime.apple")
         prepareCompanion()
     }
     private func prepareCompanion() {
@@ -73,12 +85,84 @@ import UserNotifications
         guard !started else { return }; started = true
         if demo { changedServices(); return }
         prepareCompanion()
+        let selection = state.settings["serverSelection"].string
+        let serverKey = selection == "AIRHOST" ? "airhost" : (selection == "CUSTOM" ? "custom" : "official")
+        await vault.setSessionKey("account.session.\(serverKey)")
         do { let session = try await api.session(); signedIn = session != nil; account = session?.account ?? .null; accountResolved = true
             if signedIn { try await refreshAccount() } else { try await loadPrivateByok() }
         } catch { report(error); if (try? await api.session()) == nil { signedIn = false; account = .null } }
         PhoneWatchBridge.shared.accountDidChange()
         changedServices()
         if state.settings["cloudSyncEnabled"].bool && signedIn { await sync(); startRealtime() }
+    }
+    func currentServerURL() -> URL {
+        let selection = state.settings["serverSelection"].string
+        if selection == "AIRHOST" {
+            let custom = state.settings["serverAirHostUrl"].string
+            return URL(string: custom.isEmpty ? "https://classing-airhost.airhost.site" : custom) ?? URL(string: "https://classing-airhost.airhost.site")!
+        } else if selection == "CUSTOM" {
+            let custom = state.settings["serverCustomUrl"].string
+            return URL(string: custom.isEmpty ? "https://api-classing.underflo.ink" : custom) ?? URL(string: "https://api-classing.underflo.ink")!
+        } else {
+            return URL(string: Bundle.main.object(forInfoDictionaryKey: "ClassingAPIBaseURL") as? String ?? "https://api-classing.underflo.ink")!
+        }
+    }
+    func currentServerKey() -> String {
+        let selection = state.settings["serverSelection"].string
+        if selection == "AIRHOST" { return "airhost" }
+        if selection == "CUSTOM" { return "custom" }
+        return "official"
+    }
+    func switchServer(to selection: String, customURL: String? = nil) async {
+        stopRealtime()
+        syncing = false
+        let oldKey = currentServerKey()
+        var current = state
+        if let customURL = customURL {
+            if selection == "AIRHOST" { current.settings["serverAirHostUrl"] = .string(customURL) }
+            else if selection == "CUSTOM" { current.settings["serverCustomUrl"] = .string(customURL) }
+        }
+        current.settings["serverSelection"] = .string(selection)
+
+        current.settings["server.\(oldKey).cloudAccountId"] = current.settings["cloudAccountId"]
+        current.settings["server.\(oldKey).officialEventVersion"] = current.settings["officialEventVersion"]
+        current.settings["server.\(oldKey).cloudSyncEnabled"] = current.settings["cloudSyncEnabled"]
+
+        let newKey = selection == "AIRHOST" ? "airhost" : (selection == "CUSTOM" ? "custom" : "official")
+        current.settings["cloudAccountId"] = current.settings["server.\(newKey).cloudAccountId"]
+        current.settings["officialEventVersion"] = current.settings["server.\(newKey).officialEventVersion"]
+        current.settings["cloudSyncEnabled"] = current.settings["server.\(newKey).cloudSyncEnabled"] == .null ? .bool(false) : current.settings["server.\(newKey).cloudSyncEnabled"]
+        current.cloud = CloudDocument()
+
+        do { try commit(current) } catch { report(error) }
+
+        await vault.setSessionKey("account.session.\(newKey)")
+        let targetURL = currentServerURL()
+        api = ClassingAPI(baseURL: targetURL, vault: vault, platform: Self.platform, bundleID: Bundle.main.bundleIdentifier ?? "com.xtawa.classingtime.apple")
+
+        signedIn = false
+        account = .null
+        membership = .null
+        accountResolved = false
+
+        do {
+            if let saved = try await vault.read() {
+                signedIn = true
+                account = saved.account
+                try await refreshAccount()
+                if state.settings["cloudSyncEnabled"].bool {
+                    await sync()
+                    startRealtime()
+                }
+            } else {
+                accountResolved = true
+            }
+        } catch {
+            accountResolved = true
+        }
+        PhoneWatchBridge.shared.accountDidChange()
+        let serverTitle = selection == "AIRHOST" ? "AirHost" : (selection == "CUSTOM" ? "自定义" : "官方")
+        status = "已切换至 \(serverTitle) 服务"
     }
     func commit(_ value: AppState, reason: String? = nil) throws {
         guard !readFailure else { throw ClassingError.invalid("请先导出损坏的本地文件并恢复备份，避免覆盖原始数据。") }
